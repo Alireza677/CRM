@@ -35,6 +35,9 @@ Route::middleware(['auth'])->group(function () {
     // Sales Leads
     Route::resource('marketing/leads', SalesLeadController::class)->names('marketing.leads');
 
+
+
+    
     // Sales Routes
     Route::get('/sales', [SalesController::class, 'index'])->name('sales');
     Route::get('/sales/opportunities', [OpportunityController::class, 'index'])->name('sales.opportunities.index');
@@ -71,3 +74,14 @@ Route::middleware('auth')->group(function () {
 });
 
 require __DIR__.'/auth.php';
+
+use App\Http\Controllers\Sales\OpportunityController as SalesOpportunityController;
+
+
+Route::prefix('sales')->name('sales.')->group(function () {
+    Route::resource('opportunities', SalesOpportunityController::class)->names([
+        'index' => 'opportunities.index',
+        'create' => 'opportunities.create',
+        'store' => 'opportunities.store',
+    ]);
+});

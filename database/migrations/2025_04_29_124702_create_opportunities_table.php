@@ -14,11 +14,11 @@ return new class extends Migration
         Schema::create('opportunities', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('organization');
-            $table->string('contact');
+            $table->foreignId('organization_id')->nullable()->constrained('organizations')->nullOnDelete();
+            $table->foreignId('contact_id')->nullable()->constrained('contacts')->nullOnDelete();
             $table->string('type')->nullable();
             $table->string('source')->nullable();
-            $table->string('assigned_to');
+            $table->foreignId('assigned_to')->nullable()->constrained('users')->nullOnDelete();
             $table->integer('success_rate')->nullable();
             $table->bigInteger('amount')->nullable();
             $table->date('next_follow_up');

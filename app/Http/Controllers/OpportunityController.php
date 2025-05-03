@@ -2,80 +2,43 @@
 
 namespace App\Http\Controllers;
 
+use Illuminate\Http\Request;
 use App\Models\Opportunity;
 use App\Models\Contact;
-use Illuminate\Http\Request;
 
 class OpportunityController extends Controller
 {
-    public function index()
-    {
-        $opportunities = Opportunity::all();
-        return view('sales.opportunities.index', compact('opportunities'));
-    }
-
     public function create()
     {
-        return view('sales.opportunities.create');
+        return view('opportunity.create');
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string',
+        $request->validate([
+            'name' => 'required|string|max:255',
             'organization' => 'nullable|string',
-            'contact' => 'nullable|string',
+            'contact' => 'required|string',
             'type' => 'nullable|string',
             'source' => 'nullable|string',
             'assigned_to' => 'nullable|string',
-            'success_rate' => 'nullable|integer',
+            'success_rate' => 'nullable|numeric',
             'amount' => 'nullable|numeric',
             'next_follow_up' => 'nullable|date',
             'description' => 'nullable|string',
         ]);
 
-        Opportunity::create($validated);
+        $contact = Contact::where('name', $request->input('contact'))->first();
 
-        return redirect()->route('sales.opportunities.index')
-            ->with('success', 'Opportunity created successfully.');
+        if (!$contact) {
+            return back()->withErrors(['contact' => 'مخاطب واردشده یافت نشد.']);
+        }
+
+        $data = $request->except('contact');
+        $data['contact_id'] = $contact->id;
+
+        Opportunity::create($data);
+
+        return redirect()->route('opportunity.index')->with('success', 'فرصت فروش با موفقیت ثبت شد.');
     }
-
-    public function show(Opportunity $opportunity)
-    {
-        return view('sales.opportunities.show', compact('opportunity'));
-    }
-
-    public function edit(Opportunity $opportunity)
-    {
-        return view('sales.opportunities.edit', compact('opportunity'));
-    }
-
-    public function update(Request $request, Opportunity $opportunity)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string',
-            'organization' => 'nullable|string',
-            'contact' => 'nullable|string',
-            'type' => 'nullable|string',
-            'source' => 'nullable|string',
-            'assigned_to' => 'nullable|string',
-            'success_rate' => 'nullable|integer',
-            'amount' => 'nullable|numeric',
-            'next_follow_up' => 'nullable|date',
-            'description' => 'nullable|string',
-        ]);
-
-        $opportunity->update($validated);
-
-        return redirect()->route('sales.opportunities.index')
-            ->with('success', 'Opportunity updated successfully.');
-    }
-
-    public function destroy(Opportunity $opportunity)
-    {
-        $opportunity->delete();
-
-        return redirect()->route('sales.opportunities.index')
-            ->with('success', 'Opportunity deleted successfully.');
-    }
-} 
+}
