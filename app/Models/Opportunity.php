@@ -11,8 +11,8 @@ class Opportunity extends Model
 
     protected $fillable = [
         'name',
-        'organization',
-        'contact',
+        'organization_id',
+        'contact_id',
         'type',
         'source',
         'assigned_to',
@@ -24,16 +24,18 @@ class Opportunity extends Model
 
     public function contact()
     {
-        return $this->belongsTo(Contact::class);
+        return $this->belongsTo(\App\Models\Contact::class);
     }
 
-    public function user()
+    public function assignedTo()
     {
-        return $this->belongsTo(User::class);
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
     public function organization()
     {
-        return $this->belongsTo(Organization::class);
+        return $this->belongsTo(Organization::class, 'organization_id');
     }
 }
+
+
