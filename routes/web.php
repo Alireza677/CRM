@@ -19,6 +19,13 @@ use App\Http\Controllers\SalesContactsController;
 use App\Http\Controllers\SalesOrganizationsController;
 use App\Http\Controllers\ProformaInvoiceController;
 use App\Http\Controllers\Sales\OpportunityController;
+use App\Http\Controllers\Sales\ContactController;
+use App\Http\Controllers\Sales\ProformaController;
+use App\Http\Controllers\Inventory\ProductController;
+use App\Http\Controllers\Inventory\SupplierController;
+use App\Http\Controllers\Inventory\PurchaseOrderController;
+use App\Http\Controllers\PrintTemplateController;
+use App\Http\Controllers\FormController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -40,12 +47,11 @@ Route::middleware(['auth'])->group(function () {
     
     // Sales Routes
     Route::get('/sales', [SalesController::class, 'index'])->name('sales');
-    Route::get('/sales/opportunities', [OpportunityController::class, 'index'])->name('sales.opportunities.index');
-    Route::get('/sales/opportunities/create', [OpportunityController::class, 'create'])->name('sales.opportunities.create');
-    Route::post('/sales/opportunities', [OpportunityController::class, 'store'])->name('sales.opportunities.store');
+    Route::resource('sales/opportunities', OpportunityController::class)->names('sales.opportunities');
     Route::get('/sales/contacts', [SalesContactsController::class, 'index'])->name('sales.contacts.index');
     Route::get('/sales/organizations', [SalesOrganizationsController::class, 'index'])->name('sales.organizations.index');
     Route::get('/sales/proforma-invoice', [ProformaInvoiceController::class, 'index'])->name('sales.proforma.index');
+    Route::get('/sales/proformas', [ProformaController::class, 'index'])->name('sales.proformas.index');
 
     // Other sections
     Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
@@ -60,10 +66,23 @@ Route::middleware(['auth'])->group(function () {
     // Customers
     Route::resource('customers', CustomerController::class);
 
-    // New route for sales.opportunities
-    Route::prefix('sales')->name('sales.')->group(function () {
-        Route::resource('opportunities', OpportunityController::class);
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        Route::resource('products', ProductController::class);
+        Route::resource('suppliers', SupplierController::class);
+        Route::resource('purchase-orders', PurchaseOrderController::class);
     });
+
+    Route::resource('print-templates', PrintTemplateController::class);
+
+    Route::resource('forms', FormController::class)->names([
+        'index' => 'forms.index',
+        'create' => 'forms.create',
+        'store' => 'forms.store',
+        'show' => 'forms.show',
+        'edit' => 'forms.edit',
+        'update' => 'forms.update',
+        'destroy' => 'forms.destroy'
+    ]);
 });
 
 // Profile management
@@ -84,4 +103,12 @@ Route::prefix('sales')->name('sales.')->group(function () {
         'create' => 'opportunities.create',
         'store' => 'opportunities.store',
     ]);
+    
+    // Contacts routes
+    Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
+    
+    // Organizations routes
+    Route::get('/organizations', [App\Http\Controllers\Sales\OrganizationController::class, 'index'])->name('organizations.index');
+    Route::get('/organizations/create', [App\Http\Controllers\Sales\OrganizationController::class, 'create'])->name('organizations.create');
+    Route::post('/organizations', [App\Http\Controllers\Sales\OrganizationController::class, 'store'])->name('organizations.store');
 });

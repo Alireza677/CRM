@@ -19,12 +19,12 @@ class Opportunity extends Model
         'success_rate',
         'amount',
         'next_follow_up',
-        'description',
+        'description'
     ];
 
     public function contact()
     {
-        return $this->belongsTo(\App\Models\Contact::class);
+        return $this->belongsTo(Contact::class, 'contact_id');
     }
 
     public function assignedTo()
