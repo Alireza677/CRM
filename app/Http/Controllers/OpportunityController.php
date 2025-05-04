@@ -1,44 +1,44 @@
 <?php
 
-namespace App\Http\Controllers;
+namespace App\Http\Controllers\Sales;
 
+use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Opportunity;
 use App\Models\Contact;
+use App\Models\Organization;
+use App\Models\User;
 
 class OpportunityController extends Controller
 {
+    // نمایش فرم ایجاد فرصت جدید
     public function create()
     {
-        return view('opportunity.create');
+        $organizations = Organization::all();
+        $contacts = Contact::all();
+        $users = User::all();
+
+        return view('sales.opportunities.create', compact('organizations', 'contacts', 'users'));
     }
 
+    // ذخیره فرصت فروش جدید
     public function store(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'organization' => 'nullable|string',
-            'contact' => 'required|string',
-            'type' => 'nullable|string',
-            'source' => 'nullable|string',
-            'assigned_to' => 'nullable|string',
-            'success_rate' => 'nullable|numeric',
-            'amount' => 'nullable|numeric',
+            'organization_id' => 'nullable|exists:organizations,id',
+            'contact_id' => 'required|exists:contacts,id',
+            'type' => 'nullable|string|max:255',
+            'source' => 'nullable|string|max:255',
+            'assigned_to' => 'nullable|exists:users,id',
+            'success_rate' => 'nullable|numeric|min:0|max:100',
+            'amount' => 'nullable|numeric|min:0',
             'next_follow_up' => 'nullable|date',
             'description' => 'nullable|string',
         ]);
 
-        $contact = Contact::where('name', $request->input('contact'))->first();
+        Opportunity::create($validated);
 
-        if (!$contact) {
-            return back()->withErrors(['contact' => 'مخاطب واردشده یافت نشد.']);
-        }
-
-        $data = $request->except('contact');
-        $data['contact_id'] = $contact->id;
-
-        Opportunity::create($data);
-
-        return redirect()->route('opportunity.index')->with('success', 'فرصت فروش با موفقیت ثبت شد.');
+        return redirect()->route('sales.opportunities.index')->with('success', 'فرصت فروش با موفقیت ثبت شد.');
     }
 }

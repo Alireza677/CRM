@@ -16,19 +16,12 @@
     </head>
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
-            @include('layouts.navigation')
             <x-sidebar />
 
-            <!-- Breadcrumb -->
-            <x-breadcrumb :items="$breadcrumbItems ?? []" />
-
             <!-- Page Content -->
-            <main class="py-6 px-4 sm:px-6 lg:px-8">
+            <main class="mr-0 md:mr-64 transition-all duration-300">
                 {{ $slot }}
             </main>
         </div>
-
-        <!-- Alpine.js -->
-        <script src="//unpkg.com/alpinejs" defer></script>
     </body>
 </html>

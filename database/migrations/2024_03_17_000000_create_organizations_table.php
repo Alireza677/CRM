@@ -11,13 +11,10 @@ return new class extends Migration
         Schema::create('organizations', function (Blueprint $table) {
             $table->id();
             $table->string('name');
-            $table->string('email')->nullable();
+            $table->string('website')->nullable();
             $table->string('phone')->nullable();
             $table->text('address')->nullable();
-            $table->string('website')->nullable();
-            $table->string('industry')->nullable();
-            $table->string('size')->nullable();
-            $table->text('notes')->nullable();
+            $table->text('description')->nullable();
             $table->timestamps();
         });
     }

@@ -15,6 +15,23 @@
                     <x-nav-link :href="route('dashboard')" :active="request()->routeIs('dashboard')">
                         {{ __('Dashboard') }}
                     </x-nav-link>
+
+                    <!-- Sales Menu -->
+                    <x-nav-link :href="route('sales.opportunities.index')" :active="request()->routeIs('sales.opportunities.*')">
+                        {{ __('فرصت‌های فروش') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('sales.contacts.index')" :active="request()->routeIs('sales.contacts.*')">
+                        {{ __('مخاطبین') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('sales.organizations.index')" :active="request()->routeIs('sales.organizations.*')">
+                        {{ __('سازمان‌ها') }}
+                    </x-nav-link>
+
+                    <x-nav-link :href="route('sales.proformas.index')" :active="request()->routeIs('sales.proformas.*')">
+                        {{ __('پیش‌فاکتورها') }}
+                    </x-nav-link>
                 </div>
             </div>
 
