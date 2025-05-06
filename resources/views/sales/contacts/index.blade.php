@@ -7,6 +7,14 @@
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Create New Contact Button -->
+            <div class="mb-4">
+                <a href="{{ route('sales.contacts.create') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                    <i class="fas fa-plus mr-2"></i>
+                    ایجاد مخاطب جدید
+                </a>
+            </div>
+
             <!-- Search Bar -->
             <div class="mb-4">
                 <form method="GET" action="{{ route('sales.contacts.index') }}" class="flex gap-2">
@@ -100,7 +108,7 @@
                                             <div class="text-sm text-gray-900">{{ $contact->assigned_to_name ?? '-' }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ jdate($contact->created_at)->format('Y/m/d H:i') }}
+                                            {{ $contact->created_at->format('Y/m/d H:i') }}
                                         </td>
                                     </tr>
                                 @endforeach
