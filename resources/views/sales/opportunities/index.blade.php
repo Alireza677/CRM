@@ -19,14 +19,38 @@
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عنوان</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مخاطب</th>
                             <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مبلغ</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">درصد موفقیت</th>
+                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($opportunities as $op)
+                        @foreach($opportunities as $opportunity)
                             <tr>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ $op->name }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ $op->contact->name ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ number_format($op->amount) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <a href="{{ route('sales.opportunities.show', $opportunity) }}" class="text-blue-600 hover:text-blue-900">
+                                        {{ $opportunity->name }}
+                                    </a>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->contact->name ?? '-' }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ number_format($opportunity->amount) }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->success_rate }}%</td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                    <div class="flex space-x-3">
+                                        <a href="{{ route('sales.opportunities.edit', $opportunity) }}" 
+                                           class="text-indigo-600 hover:text-indigo-900">
+                                            ویرایش
+                                        </a>
+                                        <form action="{{ route('sales.opportunities.destroy', $opportunity) }}" method="POST" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" 
+                                                    class="text-red-600 hover:text-red-900"
+                                                    onclick="return confirm('آیا از حذف این فرصت فروش اطمینان دارید؟')">
+                                                حذف
+                                            </button>
+                                        </form>
+                                    </div>
+                                </td>
                             </tr>
                         @endforeach
                     </tbody>

@@ -43,4 +43,36 @@ class ContactController extends Controller
 
         return view('sales.contacts.index', compact('contacts'));
     }
+
+    public function create()
+    {
+        $organizations = \App\Models\Organization::all();
+        return view('sales.contacts.create', compact('organizations'));
+    }
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'first_name' => 'required|string|max:255',
+            'last_name' => 'required|string|max:255',
+            'email' => 'required|string|email|max:255|unique:contacts',
+            'phone' => 'nullable|string|max:20',
+            'mobile' => 'nullable|string|max:20',
+            'address' => 'nullable|string',
+            'organization_id' => 'nullable|exists:organizations,id',
+        ]);
+
+        $contact = new Contact();
+        $contact->first_name = $validated['first_name'];
+        $contact->last_name = $validated['last_name'];
+        $contact->email = $validated['email'];
+        $contact->phone = $validated['phone'] ?? null;
+        $contact->mobile = $validated['mobile'] ?? null;
+        $contact->address = $validated['address'] ?? null;
+        $contact->organization_id = $validated['organization_id'] ?? null;
+        $contact->save();
+
+        return redirect()->route('sales.contacts.index')
+            ->with('success', 'مخاطب با موفقیت ایجاد شد.');
+    }
 } 

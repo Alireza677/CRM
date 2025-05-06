@@ -67,4 +67,51 @@ class OpportunityController extends Controller
         return redirect()->route('sales.opportunities.index')
             ->with('success', 'فرصت فروش با موفقیت ایجاد شد.');
     }
+
+    // نمایش جزئیات فرصت فروش
+    public function show(Opportunity $opportunity)
+    {
+        return view('sales.opportunities.show', compact('opportunity'));
+    }
+
+    // نمایش فرم ویرایش فرصت فروش
+    public function edit(Opportunity $opportunity)
+    {
+        $organizations = Organization::all();
+        $contacts = Contact::all();
+        $users = User::all();
+
+        return view('sales.opportunities.edit', compact('opportunity', 'organizations', 'contacts', 'users'));
+    }
+
+    // بروزرسانی فرصت فروش
+    public function update(Request $request, Opportunity $opportunity)
+    {
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'organization_id' => 'nullable|exists:organizations,id',
+            'contact_id' => 'required|exists:contacts,id',
+            'type' => 'nullable|string|max:255',
+            'source' => 'nullable|string|max:255',
+            'assigned_to' => 'nullable|exists:users,id',
+            'success_rate' => 'nullable|numeric|min:0|max:100',
+            'amount' => 'nullable|numeric|min:0',
+            'next_follow_up' => 'nullable|date',
+            'description' => 'nullable|string',
+        ]);
+
+        $opportunity->update($validated);
+
+        return redirect()->route('sales.opportunities.show', $opportunity)
+            ->with('success', 'فرصت فروش با موفقیت بروزرسانی شد.');
+    }
+
+    // حذف فرصت فروش
+    public function destroy(Opportunity $opportunity)
+    {
+        $opportunity->delete();
+
+        return redirect()->route('sales.opportunities.index')
+            ->with('success', 'فرصت فروش با موفقیت حذف شد.');
+    }
 }

@@ -83,6 +83,14 @@ Route::middleware(['auth'])->group(function () {
         'update' => 'forms.update',
         'destroy' => 'forms.destroy'
     ]);
+
+    Route::prefix('sales')->name('sales.')->group(function () {
+        // ... existing sales routes ...
+
+        // Quotation routes
+        Route::resource('quotations', \App\Http\Controllers\Sales\QuotationController::class);
+        Route::resource('proformas', \App\Http\Controllers\Sales\ProformaController::class);
+    });
 });
 
 // Profile management
@@ -102,10 +110,16 @@ Route::prefix('sales')->name('sales.')->group(function () {
         'index' => 'opportunities.index',
         'create' => 'opportunities.create',
         'store' => 'opportunities.store',
+        'show' => 'opportunities.show',
+        'edit' => 'opportunities.edit',
+        'update' => 'opportunities.update',
+        'destroy' => 'opportunities.destroy'
     ]);
     
     // Contacts routes
     Route::get('/contacts', [ContactController::class, 'index'])->name('contacts.index');
+    Route::get('/contacts/create', [ContactController::class, 'create'])->name('contacts.create');
+    Route::post('/contacts', [ContactController::class, 'store'])->name('contacts.store');
     
     // Organizations routes
     Route::get('/organizations', [App\Http\Controllers\Sales\OrganizationController::class, 'index'])->name('organizations.index');

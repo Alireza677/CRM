@@ -7,6 +7,14 @@
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <!-- Create New Proforma Button -->
+            <div class="mb-4">
+                <a href="{{ route('sales.proformas.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150">
+                    <i class="fas fa-plus mr-2"></i>
+                    ایجاد پیش‌فاکتور
+                </a>
+            </div>
+
             <!-- Search Bar -->
             <div class="mb-4">
                 <form action="{{ route('sales.proformas.index') }}" method="GET" class="flex items-center">
@@ -141,7 +149,7 @@
                                         {{ number_format($proforma->total_amount) }} تومان
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
-                                        {{ jdate($proforma->proforma_date)->format('Y/m/d') }}
+                                        {{ $proforma->proforma_date->format('Y/m/d') }}
                                     </td>
                                     <td class="px-6 py-4 whitespace-nowrap">
                                         {{ $proforma->opportunity_name }}

@@ -137,7 +137,7 @@
                                             <div class="text-sm text-gray-900">{{ $organization->assigned_to_name ?? '-' }}</div>
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ jdate($organization->created_at)->format('Y/m/d H:i') }}
+                                            {{ $organization->created_at->format('Y/m/d H:i') }}
                                         </td>
                                     </tr>
                                 @endforeach

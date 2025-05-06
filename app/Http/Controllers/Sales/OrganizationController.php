@@ -50,15 +50,13 @@ class OrganizationController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'industry' => 'nullable|string|max:255',
             'phone' => 'nullable|string|max:20',
-            'email' => 'nullable|email|max:255',
             'website' => 'nullable|url|max:255',
+            'address' => 'nullable|string',
+            'description' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
-            'is_favorite' => 'boolean',
         ], [
             'name.required' => 'نام سازمان الزامی است.',
-            'email.email' => 'فرمت ایمیل نامعتبر است.',
             'website.url' => 'فرمت آدرس وب‌سایت نامعتبر است.',
             'assigned_to.exists' => 'کاربر انتخاب شده معتبر نیست.',
         ]);
