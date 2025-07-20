@@ -1,4 +1,6 @@
-<x-guest-layout>
+@extends('layouts.guest')
+
+@section('content')
     <form method="POST" action="{{ route('password.store') }}">
         @csrf
 
@@ -7,33 +9,33 @@
 
         <!-- Email Address -->
         <div>
-            <x-input-label for="email" :value="__('Email')" />
-            <x-text-input id="email" class="block mt-1 w-full" type="email" name="email" :value="old('email', $request->email)" required autofocus autocomplete="username" />
-            <x-input-error :messages="$errors->get('email')" class="mt-2" />
+            <label for="email">{{ __('Email') }}</label>
+            <input id="email" class="block mt-1 w-full" type="email" name="email" value="{{ old('email', $request->email) }}" required autofocus autocomplete="username">
+            @error('email')
+                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+            @enderror
         </div>
 
         <!-- Password -->
         <div class="mt-4">
-            <x-input-label for="password" :value="__('Password')" />
-            <x-text-input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password" />
-            <x-input-error :messages="$errors->get('password')" class="mt-2" />
+            <label for="password">{{ __('Password') }}</label>
+            <input id="password" class="block mt-1 w-full" type="password" name="password" required autocomplete="new-password">
+            @error('password')
+                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+            @enderror
         </div>
 
         <!-- Confirm Password -->
         <div class="mt-4">
-            <x-input-label for="password_confirmation" :value="__('Confirm Password')" />
-
-            <x-text-input id="password_confirmation" class="block mt-1 w-full"
-                                type="password"
-                                name="password_confirmation" required autocomplete="new-password" />
-
-            <x-input-error :messages="$errors->get('password_confirmation')" class="mt-2" />
+            <label for="password_confirmation">{{ __('Confirm Password') }}</label>
+            <input id="password_confirmation" class="block mt-1 w-full" type="password" name="password_confirmation" required autocomplete="new-password">
+            @error('password_confirmation')
+                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+            @enderror
         </div>
 
         <div class="flex items-center justify-end mt-4">
-            <x-primary-button>
-                {{ __('Reset Password') }}
-            </x-primary-button>
+            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ __('Reset Password') }}</button>
         </div>
     </form>
-</x-guest-layout>
+@endsection

@@ -1,9 +1,12 @@
-<x-app-layout>
-    <x-slot name="header">
+@extends('layouts.app')
+
+@section('content')
+
+    @section('header')
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">
             {{ __('Create Customer') }}
         </h2>
-    </x-slot>
+    @endsection
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -12,39 +15,54 @@
                     <form method="POST" action="{{ route('customers.store') }}" class="space-y-6">
                         @csrf
 
+                        <!-- Name -->
                         <div>
-                            <x-input-label for="name" :value="__('Name')" />
-                            <x-text-input id="name" name="name" type="text" class="mt-1 block w-full" :value="old('name')" required autofocus />
-                            <x-input-error class="mt-2" :messages="$errors->get('name')" />
+                            <label for="name" class="block text-sm font-medium text-gray-700">{{ __('Name') }}</label>
+                            <input id="name" name="name" type="text" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" value="{{ old('name') }}" required autofocus>
+                            @error('name')
+                                <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+                            @enderror
                         </div>
 
+                        <!-- Email -->
                         <div>
-                            <x-input-label for="email" :value="__('Email')" />
-                            <x-text-input id="email" name="email" type="email" class="mt-1 block w-full" :value="old('email')" required />
-                            <x-input-error class="mt-2" :messages="$errors->get('email')" />
+                            <label for="email" class="block text-sm font-medium text-gray-700">{{ __('Email') }}</label>
+                            <input id="email" name="email" type="email" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" value="{{ old('email') }}" required>
+                            @error('email')
+                                <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+                            @enderror
                         </div>
 
+                        <!-- Phone -->
                         <div>
-                            <x-input-label for="phone" :value="__('Phone')" />
-                            <x-text-input id="phone" name="phone" type="text" class="mt-1 block w-full" :value="old('phone')" />
-                            <x-input-error class="mt-2" :messages="$errors->get('phone')" />
+                            <label for="phone" class="block text-sm font-medium text-gray-700">{{ __('Phone') }}</label>
+                            <input id="phone" name="phone" type="text" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" value="{{ old('phone') }}">
+                            @error('phone')
+                                <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+                            @enderror
                         </div>
 
+                        <!-- Address -->
                         <div>
-                            <x-input-label for="address" :value="__('Address')" />
+                            <label for="address" class="block text-sm font-medium text-gray-700">{{ __('Address') }}</label>
                             <textarea id="address" name="address" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">{{ old('address') }}</textarea>
-                            <x-input-error class="mt-2" :messages="$errors->get('address')" />
+                            @error('address')
+                                <p class="text-sm text-red-600 mt-2">{{ $message }}</p>
+                            @enderror
                         </div>
 
+                        <!-- Buttons -->
                         <div class="flex items-center gap-4">
-                            <x-primary-button>{{ __('Create Customer') }}</x-primary-button>
+                            <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">{{ __('Create Customer') }}</button>
                             <a href="{{ route('customers.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-800 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-gray-700">
                                 {{ __('Cancel') }}
                             </a>
                         </div>
+
                     </form>
                 </div>
             </div>
         </div>
     </div>
-</x-app-layout> 
+
+@endsection

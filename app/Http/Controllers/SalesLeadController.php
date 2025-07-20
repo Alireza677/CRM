@@ -7,133 +7,193 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Validator;
+use App\Helpers\FormOptionsHelper;
+use Illuminate\Validation\Rule;
+use App\Helpers\DateHelper;
 
 class SalesLeadController extends Controller
 {
     public function index(Request $request)
     {
-        $query = SalesLead::query();
+        $query = SalesLead::with('assignedUser');
 
-        // Search functionality
-        if ($request->has('search')) {
+        // جستجوی عمومی
+        if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                  ->orWhere('last_name', 'like', "%{$search}%")
-                  ->orWhere('company', 'like', "%{$search}%")
-                  ->orWhere('state', 'like', "%{$search}%");
+                ->orWhere('last_name', 'like', "%{$search}%")
+                ->orWhere('company', 'like', "%{$search}%")
+                ->orWhere('state', 'like', "%{$search}%");
             });
         }
 
-        // Filter by lead source
-        if ($request->has('lead_source')) {
+       // فیلتر بر اساس فیلدهای خاص
+        if ($request->filled('lead_source')) {
             $query->where('lead_source', $request->lead_source);
         }
 
-        // Filter by lead status
-        if ($request->has('lead_status')) {
+        if ($request->filled('lead_status')) {
             $query->where('lead_status', $request->lead_status);
         }
 
-        $leads = $query->latest()->paginate(10);
-        $users = User::all();
+        if ($request->filled('assigned_to')) {
+            $query->where('assigned_to', $request->assigned_to);
+        }
 
-        return view('marketing.leads.index', compact('leads', 'users'));
+        if ($request->filled('full_name')) {
+            $query->where('full_name', 'like', '%' . $request->full_name . '%');
+        }
+
+        if ($request->filled('mobile')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('mobile', 'like', '%' . $request->mobile . '%')
+                ->orWhere('phone', 'like', '%' . $request->mobile . '%');
+            });
+        }
+
+
+        // صفحه‌بندی
+        $leads = $query->latest()->paginate(10)->appends($request->query());
+
+        // داده‌های کمکی
+        $users = User::all();
+        $leadSources = \App\Helpers\FormOptionsHelper::leadSources();
+
+        return view('marketing.leads.index', compact('leads', 'users', 'leadSources'));
     }
+
 
     public function create()
     {
         $users = User::all();
-        return view('marketing.leads.create', compact('users'));
+        $referrals = $users;
+        return view('marketing.leads.create', compact('users', 'referrals'));
     }
+
+    
 
     public function store(Request $request)
     {
+        \Log::info('🟡 store() method started');
+        \Log::info('🟡 Raw request input:', $request->all());
+
         $validator = Validator::make($request->all(), [
             'prefix' => 'nullable|string|max:10',
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
+            'full_name' => 'required|string|max:255',
             'company' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'mobile' => 'nullable|string|max:20',
             'phone' => 'nullable|string|max:20',
             'website' => 'nullable|url|max:255',
-            'lead_source' => ['required', 'string', 'in:وبسایت,شبکه‌های اجتماعی,معرفی,سایر'],
-            'lead_status' => ['required', 'string', 'in:جدید,تماس گرفته شده,واجد شرایط,فاقد شرایط'],
-            'assigned_to' => 'required|exists:users,id',
-            'lead_date' => 'required|date',
-            'next_follow_up_date' => 'required|date|after_or_equal:today',
+            'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
+        
+            // موارد موقتاً آزاد شده:
+            'lead_status' => ['nullable', 'string'], // ⬅ قبلاً required بود
+            'assigned_to' => 'nullable|exists:users,id',
+            'lead_date' => 'nullable|string',
+            'next_follow_up_date' => 'nullable|string',
+        
+            'referred_to' => 'nullable|exists:users,id',
             'do_not_email' => 'boolean',
-            'description' => 'nullable|string',
+            'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
+            'industry' => 'nullable|string|max:255',
+            'nationality' => 'nullable|string|max:255',
+            'main_test_field' => 'nullable|string|max:255',
+            'dependent_test_field' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:1000',
+            'state' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
         ], [
-            'first_name.required' => 'نام الزامی است.',
-            'last_name.required' => 'نام خانوادگی الزامی است.',
-            'assigned_to.required' => 'ارجاع به الزامی است.',
-            'lead_date.required' => 'تاریخ ثبت سرنخ الزامی است.',
-            'next_follow_up_date.required' => 'تاریخ پیگیری بعدی الزامی است.',
-            'next_follow_up_date.after_or_equal' => 'تاریخ پیگیری بعدی باید از امروز به بعد باشد.',
+            'full_name.required' => 'نام و نام خانوادگی الزامی است.',
+            // پیام‌های خطای زیر دیگه نیاز نیست، چون فیلدها nullable شدند:
+            // 'assigned_to.required' => 'ارجاع به الزامی است.',
+            // 'lead_date.required' => 'تاریخ ثبت سرنخ الزامی است.',
+            // 'next_follow_up_date.required' => 'تاریخ پیگیری بعدی الزامی است.',
+            // 'lead_status.required' => 'وضعیت سرنخ الزامی است.',
             'email.email' => 'فرمت ایمیل نامعتبر است.',
             'website.url' => 'فرمت وب سایت نامعتبر است.',
-            'lead_source.required' => 'منبع سرنخ الزامی است.',
-            'lead_status.required' => 'وضعیت سرنخ الزامی است.',
-            'lead_source.in' => 'منبع سرنخ انتخاب شده نامعتبر است.',
-            'lead_status.in' => 'وضعیت سرنخ انتخاب شده نامعتبر است.',
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
+            \Log::warning('🔴 Validation failed:', $validator->errors()->toArray());
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         try {
             $validated = $validator->validated();
+            \Log::info('🟢 Validation passed:', $validated);
+
             $validated['created_by'] = Auth::id();
             $validated['do_not_email'] = $request->has('do_not_email');
-            
-            // Format dates if they're not already in the correct format
-            $validated['lead_date'] = \Carbon\Carbon::parse($validated['lead_date'])->format('Y-m-d');
-            $validated['next_follow_up_date'] = \Carbon\Carbon::parse($validated['next_follow_up_date'])->format('Y-m-d');
+             // 🟢 تبدیل تاریخ شمسی به میلادی
+            $validated['lead_date'] = DateHelper::toGregorian($validated['lead_date']);
+            $validated['next_follow_up_date'] = DateHelper::toGregorian($validated['next_follow_up_date']);
 
-            // Create the lead
+            \Log::info('🔵 Final data before create:', $validated);
+
             $lead = SalesLead::create($validated);
 
-            if ($lead) {
+            if ($lead && $lead->id) {
+                \Log::info('✅ Sales lead created successfully with ID: ' . $lead->id);
                 return redirect()->route('marketing.leads.index')
                     ->with('success', 'سرنخ فروش با موفقیت ایجاد شد.');
             } else {
+                \Log::error('🛑 Sales lead creation failed. No ID returned.');
                 return redirect()->back()
                     ->with('error', 'خطا در ایجاد سرنخ فروش. لطفا دوباره تلاش کنید.')
                     ->withInput();
             }
         } catch (\Exception $e) {
-            \Log::error('Error creating sales lead: ' . $e->getMessage());
+            \Log::error('🔥 Exception caught during sales lead creation: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'خطا در ایجاد سرنخ فروش: ' . $e->getMessage())
                 ->withInput();
         }
     }
 
+    public function bulkDelete(Request $request)
+    {
+        
+        $leadIds = $request->input('selected_leads', []);
+        
+        if (!empty($leadIds)) {
+            SalesLead::whereIn('id', $leadIds)->delete();
+        }
+
+        return redirect()->route('marketing.leads.index')->with('success', 'سرنخ‌ها با موفقیت حذف شدند.');
+    }
+
+
+
+
+
+
     public function edit(SalesLead $lead)
     {
         $users = User::all();
-        return view('marketing.leads.edit', compact('lead', 'users'));
+        $referrals = $users;
+        return view('marketing.leads.edit', compact('lead', 'users', 'referrals'));
     }
 
+    
     public function update(Request $request, SalesLead $lead)
     {
+        \Log::info('🔵 update() reached');
+\Log::info('🔵 Request all:', $request->all());
+
         $validator = Validator::make($request->all(), [
             'prefix' => 'nullable|string|max:10',
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
             'company' => 'nullable|string|max:255',
             'email' => 'nullable|email|max:255',
             'mobile' => 'nullable|string|max:20',
             'phone' => 'nullable|string|max:20',
             'website' => 'nullable|url|max:255',
-            'lead_source' => 'required|string|in:وب سایت,نمایشگاه,معرفی,تبلیغات,سایر',
-            'lead_status' => 'required|string|in:تماس اولیه,موکول به آینده,در حال پیگیری,تبدیل شده,از دست رفته',
+            'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
+            'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
             'assigned_to' => 'required|exists:users,id',
+            'referred_to' => 'nullable|exists:users,id',
             'lead_date' => 'required|date',
             'next_follow_up_date' => 'required|date|after_or_equal:today',
             'do_not_email' => 'boolean',
@@ -146,21 +206,10 @@ class SalesLeadController extends Controller
             'state' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
-        ], [
-            'first_name.required' => 'نام الزامی است.',
-            'last_name.required' => 'نام خانوادگی الزامی است.',
-            'assigned_to.required' => 'ارجاع به الزامی است.',
-            'lead_date.required' => 'تاریخ ثبت سرنخ الزامی است.',
-            'next_follow_up_date.required' => 'تاریخ پیگیری بعدی الزامی است.',
-            'next_follow_up_date.after_or_equal' => 'تاریخ پیگیری بعدی باید از امروز به بعد باشد.',
-            'email.email' => 'فرمت ایمیل نامعتبر است.',
-            'website.url' => 'فرمت وب سایت نامعتبر است.',
         ]);
 
         if ($validator->fails()) {
-            return redirect()->back()
-                ->withErrors($validator)
-                ->withInput();
+            return redirect()->back()->withErrors($validator)->withInput();
         }
 
         $validated = $validator->validated();
@@ -182,6 +231,15 @@ class SalesLeadController extends Controller
 
     public function show(SalesLead $lead)
     {
+        $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
+        $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
+
         return view('marketing.leads.show', compact('lead'));
     }
-} 
+
+    public function loadTab(SalesLead $lead, $tab)
+    {
+        return view("marketing.leads.tabs.{$tab}", compact('lead'));
+    }
+
+}

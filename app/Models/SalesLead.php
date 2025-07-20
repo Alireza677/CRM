@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class SalesLead extends Model
 {
@@ -11,8 +13,7 @@ class SalesLead extends Model
 
     protected $fillable = [
         'prefix',
-        'first_name',
-        'last_name',
+        'full_name',
         'company',
         'email',
         'mobile',
@@ -33,7 +34,6 @@ class SalesLead extends Model
         'state',
         'city',
         'notes',
-        'description',
         'created_by',
     ];
 
@@ -51,5 +51,28 @@ class SalesLead extends Model
     public function assignedUser()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+    //
+    public function notes()
+    {
+        return $this->morphMany(\App\Models\Note::class, 'noteable');
+    }
+    public function referrer()
+    {
+        return $this->belongsTo(User::class, 'referred_by');
+    }
+
+    use LogsActivity;
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logAll() // یا مشخص کردن فیلدهای خاص
+            ->useLogName('lead');
+    }
+
+    public function activities()
+    {
+        return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
     }
 } 

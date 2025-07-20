@@ -21,7 +21,6 @@ class PurchaseOrderController extends Controller
             ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
             ->leftJoin('users', 'purchase_orders.assigned_to', '=', 'users.id');
 
-        // Global search
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
@@ -30,7 +29,6 @@ class PurchaseOrderController extends Controller
             });
         }
 
-        // Column-specific filters
         if ($request->has('subject')) {
             $query->where('purchase_orders.subject', 'like', "%{$request->subject}%");
         }
@@ -47,10 +45,9 @@ class PurchaseOrderController extends Controller
             $query->where('users.name', 'like', "%{$request->assigned_to}%");
         }
 
-        // Sorting
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
+
         if ($sortField === 'supplier') {
             $query->orderBy('suppliers.name', $sortDirection);
         } elseif ($sortField === 'assigned_to') {
@@ -71,4 +68,23 @@ class PurchaseOrderController extends Controller
 
         return view('inventory.purchase-orders.create', compact('suppliers', 'users'));
     }
-} 
+
+    public function store(Request $request)
+    {
+        $validated = $request->validate([
+            'subject' => 'required|string|max:255',
+            'supplier_id' => 'required|exists:suppliers,id',
+            'purchase_date' => 'required|date',
+            'status' => 'nullable|string|max:50',
+            'total_amount' => 'nullable|numeric',
+            'assigned_to' => 'nullable|exists:users,id',
+            'description' => 'nullable|string',
+        ]);
+
+        PurchaseOrder::create($validated);
+
+        return redirect()
+            ->route('inventory.purchase-orders.index')
+            ->with('success', 'سفارش خرید با موفقیت ثبت شد.');
+    }
+}

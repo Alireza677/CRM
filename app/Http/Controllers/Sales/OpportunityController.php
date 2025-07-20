@@ -8,17 +8,50 @@ use App\Models\Opportunity;
 use App\Models\Contact;
 use App\Models\Organization;
 use App\Models\User;
+use Illuminate\Support\Facades\View;
+use Spatie\Activitylog\Models\Activity;
 
 class OpportunityController extends Controller
 {
-    // نمایش لیست فرصت‌های فروش
-    public function index()
+    public function index(Request $request)
     {
-        $opportunities = Opportunity::with('contact')->latest()->paginate(10);
+        $query = Opportunity::with(['contact', 'assignedUser', 'organization']);
+
+        if ($request->filled('name')) {
+            $query->where('name', 'like', '%' . $request->name . '%');
+        }
+
+        if ($request->filled('contact')) {
+            $query->whereHas('contact', function ($q) use ($request) {
+                $q->where('first_name', 'like', '%' . $request->contact . '%')
+                  ->orWhere('last_name', 'like', '%' . $request->contact . '%')
+                  ->orWhereRaw("(first_name || ' ' || last_name) LIKE ?", ['%' . $request->contact . '%']);
+            });
+        }
+
+        if ($request->filled('source')) {
+            $query->where('source', 'like', '%' . $request->source . '%');
+        }
+
+        if ($request->filled('assigned_to')) {
+            $query->whereHas('assignedUser', function ($q) use ($request) {
+                $q->where('name', 'like', '%' . $request->assigned_to . '%');
+            });
+        }
+
+        if ($request->filled('stage')) {
+            $query->where('stage', 'like', '%' . $request->stage . '%');
+        }
+
+        if ($request->filled('created_at')) {
+            $query->whereDate('created_at', $request->created_at);
+        }
+
+        $opportunities = $query->latest()->paginate(15)->withQueryString();
+
         return view('sales.opportunities.index', compact('opportunities'));
     }
 
-    // نمایش فرم ایجاد فرصت جدید
     public function create()
     {
         $organizations = Organization::all();
@@ -28,7 +61,6 @@ class OpportunityController extends Controller
         return view('sales.opportunities.create', compact('organizations', 'contacts', 'users'));
     }
 
-    // ذخیره فرصت فروش جدید
     public function store(Request $request)
     {
         $validated = $request->validate([
@@ -42,39 +74,28 @@ class OpportunityController extends Controller
             'amount' => 'required|numeric|min:0',
             'next_follow_up' => 'required|date',
             'description' => 'nullable|string',
-        ], [
-            'name.required' => 'نام فرصت فروش الزامی است.',
-            'organization_id.exists' => 'سازمان انتخاب شده معتبر نیست.',
-            'contact_id.exists' => 'مخاطب انتخاب شده معتبر نیست.',
-            'type.required' => 'نوع کسب و کار الزامی است.',
-            'type.in' => 'نوع کسب و کار انتخاب شده معتبر نیست.',
-            'source.required' => 'منبع سرنخ الزامی است.',
-            'source.in' => 'منبع سرنخ انتخاب شده معتبر نیست.',
-            'assigned_to.exists' => 'کاربر انتخاب شده معتبر نیست.',
-            'success_rate.required' => 'درصد موفقیت الزامی است.',
-            'success_rate.numeric' => 'درصد موفقیت باید عددی باشد.',
-            'success_rate.min' => 'درصد موفقیت نمی‌تواند کمتر از 0 باشد.',
-            'success_rate.max' => 'درصد موفقیت نمی‌تواند بیشتر از 100 باشد.',
-            'amount.required' => 'مقدار الزامی است.',
-            'amount.numeric' => 'مقدار باید عددی باشد.',
-            'amount.min' => 'مقدار نمی‌تواند کمتر از 0 باشد.',
-            'next_follow_up.required' => 'تاریخ پیگیری بعدی الزامی است.',
-            'next_follow_up.date' => 'تاریخ پیگیری بعدی معتبر نیست.',
+            'stage' => 'nullable|string|max:255',
         ]);
 
-        Opportunity::create($validated);
+        $opportunity = Opportunity::create($validated);
+        $opportunity->notifyIfAssigneeChanged(null);
 
         return redirect()->route('sales.opportunities.index')
             ->with('success', 'فرصت فروش با موفقیت ایجاد شد.');
     }
 
-    // نمایش جزئیات فرصت فروش
     public function show(Opportunity $opportunity)
-    {
-        return view('sales.opportunities.show', compact('opportunity'));
-    }
+{
+    $breadcrumb = [
+        ['title' => 'خانه', 'url' => url('/dashboard')],
+        ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
+        ['title' => $opportunity->name ?? 'فرصت #' . $opportunity->id],
+    ];
 
-    // نمایش فرم ویرایش فرصت فروش
+    return view('sales.opportunities.show', compact('opportunity', 'breadcrumb'));
+}
+
+
     public function edit(Opportunity $opportunity)
     {
         $organizations = Organization::all();
@@ -84,13 +105,12 @@ class OpportunityController extends Controller
         return view('sales.opportunities.edit', compact('opportunity', 'organizations', 'contacts', 'users'));
     }
 
-    // بروزرسانی فرصت فروش
     public function update(Request $request, Opportunity $opportunity)
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'organization_id' => 'nullable|exists:organizations,id',
-            'contact_id' => 'required|exists:contacts,id',
+            'contact_id' => 'nullable|exists:contacts,id',
             'type' => 'nullable|string|max:255',
             'source' => 'nullable|string|max:255',
             'assigned_to' => 'nullable|exists:users,id',
@@ -98,20 +118,84 @@ class OpportunityController extends Controller
             'amount' => 'nullable|numeric|min:0',
             'next_follow_up' => 'nullable|date',
             'description' => 'nullable|string',
+            'stage' => 'nullable|string|max:255',
         ]);
 
+        $oldAssignedTo = $opportunity->assigned_to;
+
         $opportunity->update($validated);
+        $opportunity->notifyIfAssigneeChanged($oldAssignedTo);
 
         return redirect()->route('sales.opportunities.show', $opportunity)
             ->with('success', 'فرصت فروش با موفقیت بروزرسانی شد.');
     }
 
-    // حذف فرصت فروش
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
+
+
     public function destroy(Opportunity $opportunity)
     {
         $opportunity->delete();
 
         return redirect()->route('sales.opportunities.index')
             ->with('success', 'فرصت فروش با موفقیت حذف شد.');
+    }
+
+    public function loadTab(Opportunity $opportunity, $tab)
+    {
+        $view = 'sales.opportunities.tabs.' . $tab;
+
+        if (!View::exists($view)) {
+            abort(404);
+        }
+
+        if ($tab === 'updates') {
+            $activities = $opportunity->activities()->latest()->get();
+
+
+            return view($view, compact('opportunity', 'activities'));
+        }
+
+        return view($view, compact('opportunity'));
+    }
+
+    public function ajaxTab(Opportunity $opportunity, $tab)
+    {
+        switch ($tab) {
+            case 'info':
+                return view('sales.opportunities.tabs.info', compact('opportunity'));
+            case 'notes':
+                return view('sales.opportunities.tabs.notes', compact('opportunity'));
+            case 'calls':
+                return view('sales.opportunities.tabs.calls', compact('opportunity'));
+            case 'updates':
+                $activities = Activity::where('subject_type', Opportunity::class)
+                    ->where('subject_id', $opportunity->id)
+                    ->latest()
+                    ->get();
+                return view('sales.opportunities.tabs.updates', compact('opportunity', 'activities'));
+            case 'activities':
+                return view('sales.opportunities.tabs.activities', compact('opportunity'));
+                case 'proformas':
+                    $opportunity->load('proformas');
+                    return view('sales.opportunities.tabs.proformas', compact('opportunity'));
+                
+            case 'approvals':
+                return view('sales.opportunities.tabs.approvals', compact('opportunity'));
+            case 'documents':
+                $opportunity->load('documents');
+                return view('sales.opportunities.tabs.documents', compact('opportunity'));
+                case 'contacts':
+                $opportunity->load('contact', 'contact.organization');
+                return view('sales.opportunities.tabs.contacts', compact('opportunity'));
+                
+            case 'orders':
+                return view('sales.opportunities.tabs.orders', compact('opportunity'));
+            default:
+                abort(404);
+        }
     }
 }

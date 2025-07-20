@@ -60,6 +60,9 @@ class ProductController extends Controller
 
     public function store(Request $request)
     {
+        // Temporary debug
+        \Log::info('Product creation request:', $request->all());
+
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'sales_start_date' => 'nullable|date',

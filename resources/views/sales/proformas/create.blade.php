@@ -1,105 +1,234 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('ایجاد پیش‌فاکتور جدید') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <form action="{{ route('sales.proformas.store') }}" method="POST" class="space-y-6">
-                        @csrf
+@section('content')
+@php
+    $breadcrumb = [
+        ['title' => 'پیش‌فاکتورها', 'url' => route('sales.proformas.index')],
+        ['title' => 'ایجاد پیش‌فاکتور']
+    ];
+@endphp
 
-                        <!-- Subject -->
-                        <div>
-                            <x-input-label for="subject" :value="__('موضوع')" />
-                            <x-text-input id="subject" name="subject" type="text" class="mt-1 block w-full" :value="old('subject')" required autofocus />
-                            <x-input-error class="mt-2" :messages="$errors->get('subject')" />
+<link rel="stylesheet" href="{{ asset('css/proforma-style.css') }}">
+
+<div class="container py-6 proforma-card" dir="rtl">
+    <div class="w-full px-4">
+        <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div class="p-6 text-gray-900">
+                <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-6">
+                    ایجاد پیش‌فاکتور جدید
+                </h2>
+
+                {{-- فرم کامل --}}
+                <form action="{{ route('sales.proformas.store') }}" method="POST" class="space-y-6" id="proforma-form">
+                    @csrf
+                    {{-- دسته اول: اطلاعات پیش‌فاکتور --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        {{-- subject --}}
+                        <div class="form-group">
+                            <label for="subject" class="form-label">
+                                موضوع <span class="text-danger">*</span>
+                            </label>
+                            <input type="text" class="form-control" id="subject" name="subject" required>
+                            @error('subject')
+                                <div class="text-danger">{{ $message }}</div>
+                            @enderror
                         </div>
 
-                        <!-- Organization -->
+                        {{-- تاریخ شمسی و مخفی میلادی --}}
+                        <div class="form-group">
+                            <label for="proforma_date_shamsi" class="form-label">تاریخ پیش فاکتور</label>
+                            <input type="text" class="form-control" id="proforma_date_shamsi" placeholder=" تاریخ را وارد کنید">
+                            <input type="hidden" name="proforma_date" id="proforma_date" value="{{ old('proforma_date') }}">
+                            @error('proforma_date')
+                                <div class="text-danger">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- شماره پیش فاکتور --}}
+                        <div class="form-group">
+                            <label for="proforma_number" class="form-label">شماره پیش فاکتور</label>
+                            <input type="text" class="form-control" id="proforma_number" name="proforma_number">
+                            @error('proforma_number')
+                                <div class="text-danger">{{ $message }}</div>
+                            @enderror
+                        </div>
+
                         <div>
-                            <x-input-label for="organization_id" :value="__('سازمان')" />
-                            <select id="organization_id" name="organization_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                            <label for="proforma_stage" class="block mb-1 font-medium text-gray-700">
+                                مرحله پیش‌فاکتور <span class="text-red-600">*</span>
+                            </label>
+                            <select id="proforma_stage" name="proforma_stage" required class="form-control">
                                 <option value="">انتخاب کنید</option>
-                                @foreach($organizations as $organization)
-                                    <option value="{{ $organization->id }}" {{ old('organization_id') == $organization->id ? 'selected' : '' }}>
-                                        {{ $organization->name }}
+                                @foreach (\App\Helpers\FormOptionsHelper::proformaStages() as $value => $label)
+                                    <option value="{{ $value }}" {{ old('proforma_stage', $proforma->proforma_stage ?? '') === $value ? 'selected' : '' }}>
+                                        {{ $label }}
                                     </option>
                                 @endforeach
                             </select>
-                            <x-input-error class="mt-2" :messages="$errors->get('organization_id')" />
+
+                            @error('proforma_stage')
+                                <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
+                            @enderror
                         </div>
 
-                        <!-- Contact -->
-                        <div>
-                            <x-input-label for="contact_id" :value="__('مخاطب')" />
-                            <select id="contact_id" name="contact_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
-                                <option value="">انتخاب کنید</option>
-                                @foreach($contacts as $contact)
-                                    <option value="{{ $contact->id }}" {{ old('contact_id') == $contact->id ? 'selected' : '' }}>
-                                        {{ $contact->first_name }} {{ $contact->last_name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            <x-input-error class="mt-2" :messages="$errors->get('contact_id')" />
-                        </div>
+                    </div>
 
-                        <!-- Total Amount -->
-                        <div>
-                            <x-input-label for="total_amount" :value="__('مبلغ کل')" />
-                            <x-text-input id="total_amount" name="total_amount" type="number" step="0.01" class="mt-1 block w-full" :value="old('total_amount')" required />
-                            <x-input-error class="mt-2" :messages="$errors->get('total_amount')" />
-                        </div>
+                    {{-- دسته دوم: مخاطب و فروش --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        @foreach([
+                            ['contact_name', 'نام مخاطب'],
+                            ['organization_name', 'نام سازمان'],
+                        ] as [$id, $label])
+                            <div class="form-group">
+                                <label for="{{ $id }}" class="form-label">{{ $label }}</label>
+                                <input type="text" class="form-control" id="{{ $id }}" name="{{ $id }}">
+                                @error($id)
+                                    <div class="text-danger">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        @endforeach
 
-                        <!-- Proforma Date -->
-                        <div>
-                            <x-input-label for="proforma_date" :value="__('تاریخ پیش‌فاکتور')" />
-                            <x-text-input id="proforma_date" name="proforma_date" type="date" class="mt-1 block w-full" :value="old('proforma_date')" required />
-                            <x-input-error class="mt-2" :messages="$errors->get('proforma_date')" />
-                        </div>
-
-                        <!-- Opportunity -->
-                        <div>
-                            <x-input-label for="opportunity_id" :value="__('فرصت')" />
-                            <select id="opportunity_id" name="opportunity_id" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm">
+                        <div class="form-group">
+                            <label for="opportunity_id" class="form-label">فرصت فروش</label>
+                            <select name="opportunity_id" id="opportunity_id" class="form-control">
                                 <option value="">انتخاب کنید</option>
                                 @foreach($opportunities as $opportunity)
-                                    <option value="{{ $opportunity->id }}" {{ old('opportunity_id') == $opportunity->id ? 'selected' : '' }}>
-                                        {{ $opportunity->name }}
-                                    </option>
+                                    <option value="{{ $opportunity->id }}">{{ $opportunity->name }}</option>
                                 @endforeach
                             </select>
-                            <x-input-error class="mt-2" :messages="$errors->get('opportunity_id')" />
+                            @error('opportunity_id')
+                                <div class="text-danger">{{ $message }}</div>
+                            @enderror
                         </div>
 
-                        <!-- Assigned To -->
-                        <div>
-                            <x-input-label for="assigned_to" :value="__('ارجاع به')" />
-                            <select id="assigned_to" name="assigned_to" class="mt-1 block w-full border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 rounded-md shadow-sm" required>
+                        <div class="form-group">
+                            <label for="assigned_to" class="form-label">ارجاع به <span class="text-danger">*</span></label>
+                            <select class="form-control" id="assigned_to" name="assigned_to" required>
                                 <option value="">انتخاب کنید</option>
                                 @foreach($users as $user)
-                                    <option value="{{ $user->id }}" {{ old('assigned_to') == $user->id ? 'selected' : '' }}>
-                                        {{ $user->name }}
-                                    </option>
+                                    <option value="{{ $user->id }}">{{ $user->name }}</option>
                                 @endforeach
                             </select>
-                            <x-input-error class="mt-2" :messages="$errors->get('assigned_to')" />
+                            @error('assigned_to')
+                                <div class="text-danger">{{ $message }}</div>
+                            @enderror
                         </div>
+                    </div>
 
-                        <div class="flex items-center justify-end mt-4">
-                            <x-secondary-button class="ml-4" onclick="window.location='{{ route('sales.proformas.index') }}'">
-                                {{ __('انصراف') }}
-                            </x-secondary-button>
-                            <x-primary-button class="ml-4">
-                                {{ __('ذخیره') }}
-                            </x-primary-button>
+                    {{-- دسته سوم: اطلاعات آدرس --}}
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        @foreach([
+                            ['city', 'شهر'],
+                            ['state', 'استان'],
+                        ] as [$id, $label])
+                            <div class="form-group">
+                                <label for="{{ $id }}" class="form-label">{{ $label }}</label>
+                                <input type="text" class="form-control" id="{{ $id }}" name="{{ $id }}">
+                                @error($id)
+                                    <div class="text-danger">{{ $message }}</div>
+                                @enderror
+                            </div>
+                        @endforeach
+                    </div>
+
+                    <div class="form-group">
+                        <label for="customer_address" class="form-label">آدرس مشتری</label>
+                        <textarea class="form-control" id="customer_address" name="customer_address" rows="3"></textarea>
+                        @error('customer_address')
+                            <div class="text-danger">{{ $message }}</div>
+                        @enderror
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label">نوع آدرس</label>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="address_type" id="invoice_address" value="invoice" checked>
+                            <label class="form-check-label" for="invoice_address">آدرس تحویل صورت‌حساب</label>
                         </div>
-                    </form>
-                </div>
+                        <div class="form-check">
+                            <input class="form-check-input" type="radio" name="address_type" id="product_address" value="product">
+                            <label class="form-check-label" for="product_address">آدرس تحویل محصول</label>
+                        </div>
+                    </div>
+
+                    {{-- اطلاعات محصولات --}}
+                    <div class="bg-white p-6 rounded-lg shadow-sm mt-6">
+                        <h3 class="text-lg font-semibold mb-4">اطلاعات محصولات</h3>
+                        <div id="product-rows-container" class="space-y-6"></div>
+                        <div class="flex justify-start mt-4">
+                            <button type="button" onclick="openProductModal()" class="btn btn-secondary">انتخاب محصول</button>
+                        </div>
+                    </div>
+
+                    @include('sales.proformas.partials.product-modal')
+
+                    <div class="mt-6 text-lg font-semibold text-right">
+                        جمع کل پیش‌فاکتور: <span id="invoice-total">۰</span> تومان
+                    </div>
+
+                    <div class="flex items-center justify-end mt-6">
+                        <input type="hidden" name="total_amount" id="total_amount_input" value="0">
+                        <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary ml-4">انصراف</a>
+                        <button type="button" id="save-btn" class="btn btn-primary">ذخیره پیش‌فاکتور</button>
+                    </div>
+
+                    @if (request('opportunity_id'))
+                        <input type="hidden" name="opportunity_id" value="{{ request('opportunity_id') }}">
+                    @endif
+
+                    <!-- مودال تأیید ارسال برای تاییدیه -->
+                    <div class="modal fade" id="automationConfirmModal" tabindex="-1" aria-labelledby="automationConfirmLabel" aria-hidden="true">
+                        <div class="modal-dialog">
+                            <div class="modal-content text-end">
+                                <div class="modal-header">
+                                    <h5 class="modal-title" id="automationConfirmLabel">تأیید ارسال برای تاییدیه</h5>
+                                    <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                                </div>
+                                <div class="modal-body">
+                                    مرحله‌ی انتخاب‌شده "ارسال برای تاییدیه" است. آیا مطمئن هستید که می‌خواهید پیش‌فاکتور را ارسال کنید؟
+                                </div>
+                                <div class="modal-footer">
+                                    <button type="button" class="btn btn-success" id="confirm-save">بله، ارسال شود</button>
+                                    <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">خیر</button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+
             </div>
         </div>
     </div>
-</x-app-layout> 
+</div>
+@endsection
+
+@push('scripts')
+
+
+    <script>
+        document.addEventListener("DOMContentLoaded", function () {
+            const saveBtn = document.getElementById("save-btn");
+            const confirmSave = document.getElementById("confirm-save");
+            const form = document.getElementById("proforma-form");
+            const stageField = document.getElementById("proforma_stage");
+
+            saveBtn.addEventListener("click", function () {
+                const selectedStage = stageField.value;
+                if (selectedStage === 'send_for_approval') {
+                const modal = new bootstrap.Modal(document.getElementById('automationConfirmModal'));
+                modal.show();
+                } else {
+                    calculateInvoiceTotal();
+                    form.submit();
+                }
+            });
+
+            confirmSave.addEventListener("click", function () {
+                calculateInvoiceTotal();
+                form.submit();
+            });
+        });
+    </script>
+
+    @include('sales.proformas.partials.product-scripts')
+@endpush

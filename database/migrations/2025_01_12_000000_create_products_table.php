@@ -16,7 +16,7 @@ return new class extends Migration
             $table->date('support_start_date')->nullable();
             $table->date('support_end_date')->nullable();
             $table->foreignId('category_id')->nullable()->constrained()->nullOnDelete();
-            $table->foreignId('supplier_id')->nullable()->constrained()->nullOnDelete();
+            $table->foreignId('supplier_id')->nullable()->constrained('suppliers')->nullOnDelete();
             $table->string('manufacturer')->nullable();
             $table->string('series')->nullable();
             $table->decimal('length', 10, 2)->nullable();

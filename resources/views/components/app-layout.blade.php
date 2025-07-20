@@ -17,10 +17,10 @@
     <body class="font-sans antialiased">
         <div class="min-h-screen bg-gray-100">
             @include('layouts.navigation')
-            <x-sidebar />
+            @include('components.sidebar')
 
             <!-- Breadcrumb -->
-            <x-breadcrumb :items="$breadcrumbItems ?? []" />
+            @include('components.breadcrumb', ['items' => $breadcrumbItems ?? []])
 
             <!-- Page Content -->
             <main class="py-6 px-4 sm:px-6 lg:px-8">
@@ -31,4 +31,4 @@
         <!-- Alpine.js -->
         <script src="//unpkg.com/alpinejs" defer></script>
     </body>
-</html> 
+</html>
