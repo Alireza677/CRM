@@ -1,14 +1,20 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('محصولات') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
+@php
+    $breadcrumb = [
+        ['title' => 'محصولات']
+    ];
+@endphp
 
-    <div class="py-12">
+@section('content')
+    <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 bg-white border-b border-gray-200">
+
+                    <h2 class="text-2xl font-semibold mb-6 text-gray-800">
+                        {{ __('محصولات') }}
+                    </h2>
+
                     <div class="flex justify-between items-center mb-6">
                         <div class="flex-1 max-w-sm">
                             <form action="{{ route('inventory.products.index') }}" method="GET">
@@ -18,7 +24,8 @@
                                            placeholder="{{ __('جستجو...') }}">
                                     <button type="submit" class="absolute left-0 inset-y-0 flex items-center pl-3">
                                         <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
                                         </svg>
                                     </button>
                                 </div>
@@ -34,79 +41,34 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'name', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('نام محصول') }}
-                                            @if(request('sort') === 'name')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('نام محصول') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'code', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('کد محصول') }}
-                                            @if(request('sort') === 'code')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('کد محصول') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'serial_number', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('شماره سریال') }}
-                                            @if(request('sort') === 'serial_number')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('شماره سریال') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'stock_quantity', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('موجودی') }}
-                                            @if(request('sort') === 'stock_quantity')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('موجودی') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'unit_price', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('قیمت واحد') }}
-                                            @if(request('sort') === 'unit_price')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('قیمت واحد') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'receiver', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('تحویل گیرنده') }}
-                                            @if(request('sort') === 'receiver')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('تحویل گیرنده') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'percentage', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('درصد') }}
-                                            @if(request('sort') === 'percentage')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('درصد') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'is_active', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('وضعیت') }}
-                                            @if(request('sort') === 'is_active')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('وضعیت') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('inventory.products.index', ['sort' => 'category', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc']) }}">
-                                            {{ __('دسته‌بندی') }}
-                                            @if(request('sort') === 'category')
-                                                <span class="ml-1">{{ request('direction') === 'asc' ? '↑' : '↓' }}</span>
-                                            @endif
-                                        </a>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
+                                        {{ __('دسته‌بندی') }}
                                     </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">
                                         {{ __('عملیات') }}
                                     </th>
                                 </tr>
@@ -114,36 +76,23 @@
                             <tbody class="bg-white divide-y divide-gray-200">
                                 @foreach($products as $product)
                                     <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $product->name }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $product->code }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $product->serial_number }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $product->stock_quantity }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ number_format($product->unit_price) }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $product->receiver_name }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $product->name }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $product->code }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $product->serial_number }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $product->stock_quantity }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ number_format($product->unit_price) }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $product->receiver_name }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">
                                             {{ $product->percentage ? $product->percentage . '%' : '-' }}
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $product->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
+                                        <td class="px-6 py-4 text-sm text-gray-900">
+                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full
+                                            {{ $product->is_active ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800' }}">
                                                 {{ $product->is_active ? __('فعال') : __('غیرفعال') }}
                                             </span>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-900">
-                                            {{ $product->category_name }}
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $product->category_name }}</td>
+                                        <td class="px-6 py-4 text-sm font-medium">
                                             <a href="#" class="text-indigo-600 hover:text-indigo-900">{{ __('ویرایش') }}</a>
                                             <a href="#" class="text-red-600 hover:text-red-900 mr-4">{{ __('حذف') }}</a>
                                         </td>
@@ -156,8 +105,9 @@
                     <div class="mt-4">
                         {{ $products->links() }}
                     </div>
+                    
                 </div>
             </div>
         </div>
     </div>
-</x-app-layout> 
+@endsection

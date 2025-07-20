@@ -1,9 +1,16 @@
+@extends('layouts.app')
 @php
-use App\Models\PrintTemplate;
+    $breadcrumb = [
+        ['title' => 'قالب‌های پرینت']
+    ];
 @endphp
 
-<x-app-layout>
-    <x-slot name="header">
+@section('content')
+    @php
+    use App\Models\PrintTemplate;
+    @endphp
+
+    @section('header')
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 {{ __('قالب‌های پرینت') }}
@@ -13,7 +20,7 @@ use App\Models\PrintTemplate;
                 ایجاد قالب پرینت +
             </a>
         </div>
-    </x-slot>
+    @endsection
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -133,4 +140,4 @@ use App\Models\PrintTemplate;
             </div>
         </div>
     </div>
-</x-app-layout> 
+@endsection 

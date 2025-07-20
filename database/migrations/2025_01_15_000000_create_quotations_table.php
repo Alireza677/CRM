@@ -24,7 +24,8 @@ return new class extends Migration
             $table->string('city');
             $table->text('customer_address');
             $table->string('postal_code');
-            $table->foreignId('item_name')->constrained('items')->onDelete('cascade');
+            $table->foreignId('item_id')->constrained('items')->onDelete('cascade');
+            $table->string('item_name')->nullable();
             $table->decimal('quantity', 10, 2);
             $table->foreignId('price_list')->constrained('price_lists')->onDelete('cascade');
             $table->decimal('discount', 10, 2)->nullable();

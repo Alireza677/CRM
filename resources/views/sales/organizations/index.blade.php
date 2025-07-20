@@ -1,25 +1,28 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('سازمان‌ها') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
+
+@section('content')
+    @php
+        $breadcrumb = [
+            ['title' => 'سازمان‌ها']
+        ];
+    @endphp
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                {{ __('سازمان‌ها') }}
+            </h2>
+
             <!-- Search Bar -->
             <div class="mb-4">
                 <form method="GET" action="{{ route('sales.organizations.index') }}" class="flex gap-2">
-                    <x-text-input 
-                        type="text" 
+                    <input type="text" 
                         name="search" 
                         class="flex-1" 
                         placeholder="جستجو بر اساس نام سازمان یا شماره تلفن..."
                         value="{{ request('search') }}"
-                    />
-                    <x-primary-button>
-                        جستجو
-                    </x-primary-button>
+                    >
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">جستجو</button>
                 </form>
             </div>
 
@@ -37,62 +40,13 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.organizations.index', array_merge(request()->query(), ['sort' => 'name', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            نام سازمان
-                                            @if(request('sort') === 'name')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.organizations.index', array_merge(request()->query(), ['sort' => 'industry', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            صنعت
-                                            @if(request('sort') === 'industry')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.organizations.index', array_merge(request()->query(), ['sort' => 'phone', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            شماره تلفن
-                                            @if(request('sort') === 'phone')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.organizations.index', array_merge(request()->query(), ['sort' => 'email', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            ایمیل
-                                            @if(request('sort') === 'email')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.organizations.index', array_merge(request()->query(), ['sort' => 'website', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            وب‌سایت
-                                            @if(request('sort') === 'website')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.organizations.index', array_merge(request()->query(), ['sort' => 'assigned_to_name', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            ارجاع به
-                                            @if(request('sort') === 'assigned_to_name')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.organizations.index', array_merge(request()->query(), ['sort' => 'created_at', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            تاریخ ایجاد
-                                            @if(request('sort') === 'created_at')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نام سازمان</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">صنعت</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">شماره تلفن</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ایمیل</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">وب‌سایت</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ارجاع به</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ ایجاد</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -113,32 +67,20 @@
                                                 @endif
                                             </div>
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">{{ $organization->industry ?? '-' }}</div>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->industry ?? '-' }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->phone ?? '-' }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->email ?? '-' }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">
+                                            @if($organization->website)
+                                                <a href="{{ $organization->website }}" target="_blank" class="text-blue-600 hover:text-blue-800">
+                                                    {{ $organization->website }}
+                                                </a>
+                                            @else
+                                                -
+                                            @endif
                                         </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">{{ $organization->phone ?? '-' }}</div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">{{ $organization->email ?? '-' }}</div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">
-                                                @if($organization->website)
-                                                    <a href="{{ $organization->website }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                                        {{ $organization->website }}
-                                                    </a>
-                                                @else
-                                                    -
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="text-sm text-gray-900">{{ $organization->assigned_to_name ?? '-' }}</div>
-                                        </td>
-                                        <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
-                                            {{ $organization->created_at->format('Y/m/d H:i') }}
-                                        </td>
+                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->assigned_to_name ?? '-' }}</td>
+                                        <td class="px-6 py-4 text-sm text-gray-500">{{ jdate($organization->created_at, 'Y/m/d H:i') }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -153,4 +95,4 @@
             </div>
         </div>
     </div>
-</x-app-layout> 
+@endsection

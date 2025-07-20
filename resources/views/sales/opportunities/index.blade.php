@@ -1,65 +1,124 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('فرصت‌های فروش') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <a href="{{ route('sales.opportunities.create') }}" 
-               class="mb-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-                + فرصت جدید
-            </a>
+@php
+    $breadcrumb = [
+        ['title' => 'فرصت‌های فروش']
+    ];
+@endphp
 
-            <div class="bg-white shadow overflow-hidden sm:rounded-lg">
-                <table class="min-w-full divide-y divide-gray-200">
-                    <thead class="bg-gray-50">
+@section('content')
+<div class="py-6 px-4 sm:px-6 lg:px-8">
+    <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+        فرصت‌های فروش
+    </h2>
+
+    <a href="{{ route('sales.opportunities.create') }}" 
+       class="mb-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+        + فرصت جدید
+    </a>
+
+    <div class="bg-white shadow overflow-hidden sm:rounded-lg">
+        <div class="overflow-x-auto">
+            <table class="min-w-full divide-y divide-gray-200 text-sm">
+                <thead class="bg-gray-50">
+                    <tr>
+                        <th class="px-2 py-2 text-right text-gray-600">عنوان</th>
+                        <th class="px-2 py-2 text-right text-gray-600">مخاطب</th>
+                        <th class="px-2 py-2 text-right text-gray-600">مرحله فروش</th>
+                        <th class="px-2 py-2 text-right text-gray-600">منبع سرنخ</th>
+                        <th class="px-2 py-2 text-right text-gray-600">ارجاع به</th>
+                        <th class="px-2 py-2 text-right text-gray-600">تاریخ ایجاد</th>
+                        <th class="px-2 py-2 text-right text-gray-600">عملیات</th>
+                    </tr>
+                    <tr>
+                        <form method="GET" action="{{ route('sales.opportunities.index') }}">
+                            <th class="px-2 py-1">
+                                <input type="text" name="name" value="{{ request('name') }}"
+                                    class="w-full px-2 py-1 border rounded text-sm" placeholder="جستجوی عنوان">
+                            </th>
+                            <th class="px-2 py-1">
+                                <input type="text" name="contact" value="{{ request('contact') }}"
+                                    class="w-full px-2 py-1 border rounded text-sm" placeholder="نام مخاطب">
+                            </th>
+                            <th class="px-2 py-1">
+                            <select name="stage" class="w-full px-2 py-1 border rounded text-sm">
+    <option value="">همه</option>
+    <option value="در حال پیگیری" {{ request('stage') == 'در حال پیگیری' ? 'selected' : '' }}>در حال پیگیری</option>
+    <option value="پیگیری در آینده" {{ request('stage') == 'پیگیری در آینده' ? 'selected' : '' }}>پیگیری در آینده</option>
+    <option value="برنده" {{ request('stage') == 'برنده' ? 'selected' : '' }}>برنده</option>
+    <option value="بازنده" {{ request('stage') == 'بازنده' ? 'selected' : '' }}>بازنده</option>
+    <option value="سرکاری" {{ request('stage') == 'سرکاری' ? 'selected' : '' }}>سرکاری</option>
+    <option value="ارسال پیش فاکتور" {{ request('stage') == 'ارسال پیش فاکتور' ? 'selected' : '' }}>ارسال پیش فاکتور</option>
+</select>
+
+                            </th>
+                            <th class="px-2 py-1">
+                                <select name="source" class="w-full px-2 py-1 border rounded text-sm">
+                                    <option value="">همه</option>
+                                    <option value="وب سایت" {{ request('source') == 'وب سایت' ? 'selected' : '' }}>وب سایت</option>
+                                    <option value="مشتریان قدیمی" {{ request('source') == 'مشتریان قدیمی' ? 'selected' : '' }}>مشتریان قدیمی</option>
+                                    <option value="نمایشگاه" {{ request('source') == 'نمایشگاه' ? 'selected' : '' }}>نمایشگاه</option>
+                                    <option value="بازاریابی حضوری" {{ request('source') == 'بازاریابی حضوری' ? 'selected' : '' }}>بازاریابی حضوری</option>
+                                </select>
+                            </th>
+                            <th class="px-2 py-1">
+                                <input type="text" name="assigned_to" value="{{ request('assigned_to') }}"
+                                    class="w-full px-2 py-1 border rounded text-sm" placeholder="ارجاع به">
+                            </th>
+                            <th class="px-2 py-1 text-center">
+                                <button type="submit" class="text-sm text-blue-600 hover:underline">جستجو</button>
+                            </th>
+                            <th class="px-2 py-1 text-center">
+                                <a href="{{ route('sales.opportunities.index') }}" class="text-sm text-gray-500 hover:text-red-500">
+                                    پاک‌سازی
+                                </a>
+                            </th>
+                        </form>
+                    </tr>
+                </thead>
+
+                <tbody class="bg-white divide-y divide-gray-200">
+                    @forelse($opportunities as $opportunity)
                         <tr>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عنوان</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مخاطب</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">مبلغ</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">درصد موفقیت</th>
-                            <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عملیات</th>
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                <a href="{{ route('sales.opportunities.show', $opportunity) }}" class="text-blue-600 hover:text-blue-900">
+                                {{ $opportunity->name ?? '-' }}
+                                </a>
+                            </td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->contact->name ?? '—' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->stage ?? '—' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->source ?? '—' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->assignedTo->name ?? '—' }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap">{{ jdate($opportunity->created_at) }}</td>
+                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
+                                <div class="flex gap-4">
+                                    <a href="{{ route('sales.opportunities.edit', $opportunity) }}" class="text-indigo-600 hover:text-indigo-900">ویرایش</a>
+                                    <form action="{{ route('sales.opportunities.destroy', $opportunity) }}" method="POST" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" 
+                                                class="text-red-600 hover:text-red-900"
+                                                onclick="return confirm('آیا از حذف این فرصت فروش اطمینان دارید؟')">
+                                            حذف
+                                        </button>
+                                    </form>
+                                </div>
+                            </td>
                         </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                        @foreach($opportunities as $opportunity)
-                            <tr>
-                                <td class="px-6 py-4 whitespace-nowrap">
-                                    <a href="{{ route('sales.opportunities.show', $opportunity) }}" class="text-blue-600 hover:text-blue-900">
-                                        {{ $opportunity->name }}
-                                    </a>
-                                </td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->contact->name ?? '-' }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ number_format($opportunity->amount) }}</td>
-                                <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->success_rate }}%</td>
-                                <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                    <div class="flex space-x-3">
-                                        <a href="{{ route('sales.opportunities.edit', $opportunity) }}" 
-                                           class="text-indigo-600 hover:text-indigo-900">
-                                            ویرایش
-                                        </a>
-                                        <form action="{{ route('sales.opportunities.destroy', $opportunity) }}" method="POST" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" 
-                                                    class="text-red-600 hover:text-red-900"
-                                                    onclick="return confirm('آیا از حذف این فرصت فروش اطمینان دارید؟')">
-                                                حذف
-                                            </button>
-                                        </form>
-                                    </div>
-                                </td>
-                            </tr>
-                        @endforeach
-                    </tbody>
-                </table>
-            </div>
-
-            <div class="mt-4">
-                {{ $opportunities->links() }}
-            </div>
+                    @empty
+                        <tr>
+                            <td colspan="7" class="px-6 py-4 text-center text-gray-400">
+                                هیچ فرصتی یافت نشد.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
         </div>
     </div>
-</x-app-layout>
+
+    <div class="mt-4">
+        {{ $opportunities->links() }}
+    </div>
+</div>
+@endsection

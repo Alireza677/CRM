@@ -1,9 +1,16 @@
+@extends('layouts.app')
+
+@section('content')
+    @php
+    use App\Models\Form;
+    @endphp
+
 @php
 use App\Models\Form;
 @endphp
 
-<x-app-layout>
-    <x-slot name="header">
+
+    @section('header')
         <div class="flex justify-between items-center">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">
                 فرم‌ها
@@ -12,7 +19,7 @@ use App\Models\Form;
                 ایجاد فرم جدید +
             </a>
         </div>
-    </x-slot>
+    @endsection
 
     <div class="py-12">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -129,4 +136,4 @@ use App\Models\Form;
             </div>
         </div>
     </div>
-</x-app-layout> 
+ 

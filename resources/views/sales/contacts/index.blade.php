@@ -1,12 +1,18 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('مخاطبین') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
+
+@section('content')
+    @php
+        $breadcrumb = [
+            ['title' => 'مخاطبین']
+        ];
+    @endphp
 
     <div class="py-6">
         <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                {{ __('مخاطبین') }}
+            </h2>
+
             <!-- Create New Contact Button -->
             <div class="mb-4">
                 <a href="{{ route('sales.contacts.create') }}" class="inline-flex items-center px-4 py-2 bg-green-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-green-700 focus:bg-green-700 active:bg-green-900 focus:outline-none focus:ring-2 focus:ring-green-500 focus:ring-offset-2 transition ease-in-out duration-150">
@@ -18,16 +24,13 @@
             <!-- Search Bar -->
             <div class="mb-4">
                 <form method="GET" action="{{ route('sales.contacts.index') }}" class="flex gap-2">
-                    <x-text-input 
-                        type="text" 
+                    <input type="text" 
                         name="search" 
                         class="flex-1" 
                         placeholder="جستجو بر اساس نام یا شماره موبایل..."
                         value="{{ request('search') }}"
-                    />
-                    <x-primary-button>
-                        جستجو
-                    </x-primary-button>
+                    >
+                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">جستجو</button>
                 </form>
             </div>
 
@@ -38,46 +41,11 @@
                         <table class="min-w-full divide-y divide-gray-200">
                             <thead class="bg-gray-50">
                                 <tr>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.contacts.index', array_merge(request()->query(), ['sort' => 'first_name', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            نام
-                                            @if(request('sort') === 'first_name')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.contacts.index', array_merge(request()->query(), ['sort' => 'mobile', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            شماره موبایل
-                                            @if(request('sort') === 'mobile')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.contacts.index', array_merge(request()->query(), ['sort' => 'organization_name', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            سازمان
-                                            @if(request('sort') === 'organization_name')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.contacts.index', array_merge(request()->query(), ['sort' => 'assigned_to_name', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            ارجاع به
-                                            @if(request('sort') === 'assigned_to_name')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
-                                    <th scope="col" class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">
-                                        <a href="{{ route('sales.contacts.index', array_merge(request()->query(), ['sort' => 'created_at', 'direction' => request('direction') === 'asc' ? 'desc' : 'asc'])) }}">
-                                            تاریخ ایجاد
-                                            @if(request('sort') === 'created_at')
-                                                <i class="fas fa-sort-{{ request('direction') === 'asc' ? 'up' : 'down' }}"></i>
-                                            @endif
-                                        </a>
-                                    </th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نام</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">شماره موبایل</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">سازمان</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ارجاع به</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ ایجاد</th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -89,9 +57,15 @@
                                                     <i class="fas fa-user-circle text-gray-400 text-2xl"></i>
                                                 </div>
                                                 <div class="mr-4">
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        {{ $contact->gender === 'male' ? 'آقای' : 'خانم' }} {{ $contact->first_name }} {{ $contact->last_name }}
-                                                    </div>
+                                                <div class="text-sm font-medium text-blue-600 hover:underline">
+                                                <a href="{{ route('sales.contacts.show', $contact->id) }}"
+    class="text-sm font-medium text-blue-600 hover:underline">
+    {{ $contact->first_name }} {{ $contact->last_name }}
+</a>
+
+
+                                                </div>
+
                                                 </div>
                                                 @if($contact->is_favorite)
                                                     <i class="fas fa-star text-yellow-400"></i>
@@ -124,4 +98,4 @@
             </div>
         </div>
     </div>
-</x-app-layout> 
+@endsection

@@ -2,6 +2,26 @@
 @tailwind components;
 @tailwind utilities;
 
+
+
+
+[x-cloak] {
+    display: none !important;
+}
+@font-face {
+    font-family: 'IRANSans';
+    src: url('/fonts/iransans/IRANSans.woff2') format('woff2'),
+         url('/fonts/iransans/IRANSans.woff') format('woff');
+    font-weight: normal;
+    font-style: normal;
+    font-display: swap;
+}
+body {
+    font-family: 'IRANSans', sans-serif;
+}
+
+
+
 /* Sidebar Styles */
 @media (max-width: 1024px) {
     .w-1\/3 {
@@ -45,3 +65,35 @@
         height: auto;
     }
 }
+/* تغییر رنگ پس‌زمینه تقویم */
+.pwt-datepicker {
+    background-color: #fdfdfd !important;
+    border-radius: 8px !important;
+    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
+    font-family: IRANSans, sans-serif;
+}
+
+/* رنگ انتخاب‌شده */
+.pwt-datepicker td.pwt-selected {
+    background-color: #3b82f6 !important; /* آبی Tailwind */
+    color: white !important;
+    border-radius: 4px;
+}
+
+/* رنگ روز جاری */
+.pwt-datepicker td.pwt-today {
+    border: 1px dashed #3b82f6 !important;
+    border-radius: 4px;
+}
+
+/* رنگ نوار بالای تقویم */
+.pwt-datepicker .pwt-toolbar {
+    background-color: #f3f4f6; /* خاکستری روشن */
+    padding: 6px 10px;
+    font-weight: bold;
+    color: #333;
+}
+.pwt-datepicker {
+    font-family: 'IRANSans', Tahoma, sans-serif !important;
+}
+

@@ -1,12 +1,15 @@
-<x-app-layout>
-    <x-slot name="header">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-            {{ __('افزودن محصول جدید') }}
-        </h2>
-    </x-slot>
+@extends('layouts.app')
 
-    <div class="py-12">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+@section('content')
+<div class="py-12" dir="rtl">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="mb-6">
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
+                {{ __('افزودن محصول جدید') }}
+            </h2>
+        </div>
+
+    
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <form action="{{ route('inventory.products.store') }}" method="POST" class="p-6">
                     @csrf
@@ -29,12 +32,52 @@
                                     </div>
 
                                     <div>
+                                        <label for="unit_price" class="block text-sm font-medium text-gray-700">
+                                            قیمت واحد <span class="text-red-500">*</span>
+                                        </label>
+                                        <div class="relative mt-1 rounded-md shadow-sm">
+                                            <input type="number" name="unit_price" id="unit_price" step="0.01" required
+                                                   class="block w-full rounded-md border-gray-300 pr-12 focus:border-blue-500 focus:ring-blue-500"
+                                                   value="{{ old('unit_price') }}">
+                                            <div class="absolute inset-y-0 right-0 flex items-center pr-3">
+                                                <span class="text-gray-500 sm:text-sm">ریال</span>
+                                            </div>
+                                        </div>
+                                        @error('unit_price')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
+                                    </div>
+
+                                    <div class="flex items-center space-x-4">
+                                        <div class="flex items-center">
+                                            <input type="checkbox" name="has_vat" id="has_vat" value="1"
+                                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                   {{ old('has_vat') ? 'checked' : '' }}>
+                                            <label for="has_vat" class="mr-2 block text-sm text-gray-900">
+                                                مشمول مالیات
+                                            </label>
+                                        </div>
+
+                                        <div class="flex items-center">
+                                            <input type="checkbox" name="is_active" id="is_active" value="1"
+                                                   class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                   {{ old('is_active', true) ? 'checked' : '' }}>
+                                            <label for="is_active" class="mr-2 block text-sm text-gray-900">
+                                                فعال
+                                            </label>
+                                        </div>
+                                    </div>
+
+                                    <div>
                                         <label for="sales_start_date" class="block text-sm font-medium text-gray-700">
-                                            تاریخ آغاز فروش
+                                            تاریخ شروع فروش
                                         </label>
                                         <input type="date" name="sales_start_date" id="sales_start_date"
                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                                value="{{ old('sales_start_date') }}">
+                                        @error('sales_start_date')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
                                     </div>
 
                                     <div>
@@ -44,6 +87,9 @@
                                         <input type="date" name="support_start_date" id="support_start_date"
                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                                value="{{ old('support_start_date') }}">
+                                        @error('support_start_date')
+                                            <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                                        @enderror
                                     </div>
 
                                     <div>
@@ -102,34 +148,6 @@
                                                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
                                                value="{{ old('length') }}">
                                     </div>
-
-                                    <div>
-                                        <h4 class="text-sm font-medium text-gray-700 mb-2">نحوه قیمت‌گذاری</h4>
-                                        <div class="space-y-4">
-                                            <div>
-                                                <label for="unit_price" class="block text-sm font-medium text-gray-700">
-                                                    قیمت واحد
-                                                </label>
-                                                <div class="relative mt-1 rounded-md shadow-sm">
-                                                    <input type="number" name="unit_price" id="unit_price" step="0.01"
-                                                           class="block w-full rounded-md border-gray-300 pr-12 focus:border-blue-500 focus:ring-blue-500"
-                                                           value="{{ old('unit_price') }}">
-                                                    <div class="absolute inset-y-0 right-0 flex items-center pr-3">
-                                                        <span class="text-gray-500 sm:text-sm">ریال</span>
-                                                    </div>
-                                                </div>
-                                            </div>
-
-                                            <div class="flex items-center">
-                                                <input type="checkbox" name="has_vat" id="has_vat"
-                                                       class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                                       {{ old('has_vat') ? 'checked' : '' }}>
-                                                <label for="has_vat" class="mr-2 block text-sm text-gray-700">
-                                                    ارزش افزوده (%)
-                                                </label>
-                                            </div>
-                                        </div>
-                                    </div>
                                 </div>
                             </div>
                         </div>
@@ -137,17 +155,8 @@
                         <!-- Left Column -->
                         <div class="space-y-6">
                             <div class="bg-gray-50 p-4 rounded-lg">
-                                <h3 class="text-lg font-medium text-gray-900 mb-4">اطلاعات موجودی انبار</h3>
+                               
                                 <div class="space-y-4">
-                                    <div class="flex items-center">
-                                        <input type="checkbox" name="is_active" id="is_active"
-                                               class="h-4 w-4 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
-                                               {{ old('is_active', true) ? 'checked' : '' }}>
-                                        <label for="is_active" class="mr-2 block text-sm text-gray-700">
-                                            محصول فعال است
-                                        </label>
-                                    </div>
-
                                     <div>
                                         <label for="sales_end_date" class="block text-sm font-medium text-gray-700">
                                             تاریخ اتمام فروش
@@ -258,17 +267,18 @@
             </div>
         </div>
     </div>
+    @endsection
 
-    @push('scripts')
-    <script>
-        // Initialize select2 for searchable selects
-        $(document).ready(function() {
-            $('#category_id, #supplier_id').select2({
-                placeholder: 'یک گزینه را انتخاب کنید',
-                allowClear: true,
-                dir: 'rtl'
-            });
+   
+@push('scripts')
+<script>
+    $(document).ready(function() {
+        $('#category_id, #supplier_id').select2({
+            placeholder: 'یک گزینه را انتخاب کنید',
+            allowClear: true,
+            dir: 'rtl'
         });
-    </script>
-    @endpush
-</x-app-layout> 
+    });
+</script>
+@endpush
+/////////////////////

@@ -8,7 +8,6 @@ use App\Models\Opportunity;
 use App\Models\User;
 use App\Models\Contact;
 use App\Models\Organization;
-// use Illuminate\Database\Console\Seeds\WithoutModelEvents;
 
 class DatabaseSeeder extends Seeder
 {
@@ -35,8 +34,8 @@ class DatabaseSeeder extends Seeder
         // Create test opportunities
         Opportunity::factory(3)->create()->each(function ($opportunity) use ($users, $contacts, $organizations) {
             $opportunity->assigned_to = $users->random()->id;
-            $opportunity->contact = $contacts->random()->id;
-            $opportunity->organization = $organizations->random()->id;
+            $opportunity->contact_id = $contacts->random()->id;
+            $opportunity->organization_id = $organizations->random()->id;
             $opportunity->save();
         });
     }

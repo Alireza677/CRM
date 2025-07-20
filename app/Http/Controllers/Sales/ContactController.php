@@ -6,6 +6,8 @@ use App\Http\Controllers\Controller;
 use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Models\Opportunity;
+
 
 class ContactController extends Controller
 {
@@ -44,35 +46,47 @@ class ContactController extends Controller
         return view('sales.contacts.index', compact('contacts'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $organizations = \App\Models\Organization::all();
-        return view('sales.contacts.create', compact('organizations'));
+        $opportunityId = $request->get('opportunity_id'); // دریافت opportunity_id از URL
+    
+        return view('sales.contacts.create', compact('organizations', 'opportunityId'));
     }
+    
 
     public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'first_name' => 'required|string|max:255',
-            'last_name' => 'required|string|max:255',
-            'email' => 'required|string|email|max:255|unique:contacts',
-            'phone' => 'nullable|string|max:20',
-            'mobile' => 'nullable|string|max:20',
-            'address' => 'nullable|string',
-            'organization_id' => 'nullable|exists:organizations,id',
-        ]);
+{
+    $validated = $request->validate([
+        'first_name' => 'required|string|max:255',
+        'last_name' => 'required|string|max:255',
+        'email' => 'required|string|email|max:255|unique:contacts',
+        'phone' => 'nullable|string|max:20',
+        'mobile' => 'nullable|string|max:20',
+        'address' => 'nullable|string',
+        'organization_id' => 'nullable|exists:organizations,id',
+        'opportunity_id' => 'nullable|exists:opportunities,id',
+    ]);
 
-        $contact = new Contact();
-        $contact->first_name = $validated['first_name'];
-        $contact->last_name = $validated['last_name'];
-        $contact->email = $validated['email'];
-        $contact->phone = $validated['phone'] ?? null;
-        $contact->mobile = $validated['mobile'] ?? null;
-        $contact->address = $validated['address'] ?? null;
-        $contact->organization_id = $validated['organization_id'] ?? null;
-        $contact->save();
+    // ساخت مخاطب
+    $contact = Contact::create($validated);
 
-        return redirect()->route('sales.contacts.index')
-            ->with('success', 'مخاطب با موفقیت ایجاد شد.');
+    // ارتباط با فرصت فروش (در صورت وجود)
+    if ($request->filled('opportunity_id')) {
+        Opportunity::where('id', $request->opportunity_id)
+            ->update(['contact_id' => $contact->id]);
+
+        return redirect()->route('sales.opportunities.show', $request->opportunity_id)
+            ->with('success', 'مخاطب با موفقیت ایجاد و به فرصت فروش متصل شد.');
     }
-} 
+
+    return redirect()->route('sales.contacts.index')
+        ->with('success', 'مخاطب با موفقیت ایجاد شد.');
+}
+
+
+    public function show(Contact $contact)
+    {
+        return view('sales.contacts.show', compact('contact'));
+    }
+}
