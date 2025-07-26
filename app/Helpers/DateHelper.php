@@ -14,10 +14,15 @@ class DateHelper
     public static function toGregorian(string $jalaliDate): ?string
     {
         try {
-            $jalaliDate = str_replace('-', '/', $jalaliDate); // پشتیبانی از هر دو نوع جداکننده
-            if (!preg_match('/^\d{4}\/\d{2}\/\d{2}$/', $jalaliDate)) {
+            // پشتیبانی از اعداد فارسی و جداکننده -
+            $jalaliDate = self::convertPersianToEnglishNumbers($jalaliDate);
+            $jalaliDate = str_replace('-', '/', $jalaliDate);
+
+            if (!preg_match('/^\d{4}\/\d{1,2}\/\d{1,2}$/', $jalaliDate)) {
+                \Log::warning("❗ Invalid Jalali date format after cleanup: " . $jalaliDate);
                 return null;
             }
+
             return Jalalian::fromFormat('Y/m/d', $jalaliDate)->toCarbon()->format('Y-m-d');
         } catch (Exception $e) {
             \Log::error("toGregorian() error: " . $e->getMessage());
@@ -50,6 +55,16 @@ class DateHelper
             \Log::error("toJalali() error: " . $e->getMessage());
             return null;
         }
+    }
+
+    /**
+     * تبدیل اعداد فارسی به انگلیسی
+     */
+    public static function convertPersianToEnglishNumbers(string $input): string
+    {
+        $persian = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        $english = ['0','1','2','3','4','5','6','7','8','9'];
+        return str_replace($persian, $english, $input);
     }
 
     /**

@@ -18,6 +18,10 @@ class Organization extends Model
         'industry',
         'size',
         'notes',
+        'state',
+        'city',
+        'contact_id',      // ← اضافه کن
+        'assigned_to',     // ← اضافه کن
     ];
 
     public function contacts()
@@ -29,4 +33,14 @@ class Organization extends Model
     {
         return $this->hasMany(Opportunity::class);
     }
-} 
+
+    public function assignedUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function contact()
+    {
+        return $this->belongsTo(Contact::class, 'contact_id');
+    }
+}

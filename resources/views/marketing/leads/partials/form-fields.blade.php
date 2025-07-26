@@ -26,12 +26,17 @@
 @endphp
 
 @foreach ($fields as $field)
-    @php
-        $id = $field[0];
-        $label = $field[1];
-        $required = $field[2] ?? false;
-        $value = old($id, $lead->$id ?? '');
-    @endphp
+@php
+    $id = $field[0];
+    $label = $field[1];
+    $required = $field[2] ?? false;
+    $value = old($id, $lead->$id ?? '');
+
+    if (is_array($value)) {
+        $value = '';
+    }
+@endphp
+
 
     <div class="{{ in_array($id, ['address', 'notes']) ? 'md:col-span-2' : '' }}">
         <label for="{{ $id }}" class="block font-medium text-sm text-gray-700">
@@ -84,18 +89,22 @@
 </div>
 
 {{-- وضعیت سرنخ --}}
-<div>
-    <label for="lead_status" class="block font-medium text-sm text-gray-700">وضعیت سرنخ <span class="text-red-600">*</span></label>
-    <select id="lead_status" name="lead_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
-        <option value="">انتخاب کنید</option>
-        @foreach(FormOptionsHelper::leadStatuses() as $key => $label)
-            <option value="{{ $key }}" {{ old('lead_status', $lead->lead_status ?? '') == $key ? 'selected' : '' }}>
-                {{ $label }}
-            </option>
-        @endforeach
-    </select>
-    @error('lead_status') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-</div>
+    @php
+        // اگر lead وجود ندارد (یعنی فرم ایجاد است)، مقدار پیش‌فرض 'new'
+        $lead_status_value = old('lead_status', isset($lead) ? $lead->lead_status : 'new');
+    @endphp
+
+    <div>
+        <label for="lead_status" class="block font-medium text-sm text-gray-700">وضعیت سرنخ <span class="text-red-600">*</span></label>
+        <select id="lead_status" name="lead_status" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
+            @foreach(FormOptionsHelper::leadStatuses() as $key => $label)
+                <option value="{{ $key }}" {{ $lead_status_value == $key ? 'selected' : '' }}>
+                    {{ $label }}
+                </option>
+            @endforeach
+        </select>
+        @error('lead_status') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+    </div>
 
 @php
     

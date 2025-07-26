@@ -23,6 +23,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CustomizeController;
 use App\Http\Controllers\SalesLeadController;
 use App\Http\Controllers\ProformaInvoiceController;
+use App\Http\Controllers\Sales\ContactImportController;
 use App\Http\Controllers\Sales\OpportunityController;
 use App\Http\Controllers\Sales\ContactController;
 use App\Http\Controllers\Sales\ProformaController;
@@ -102,14 +103,15 @@ Route::prefix('sales')->name('sales.')->group(function () {
         Route::resource('documents', DocumentController::class);
 
         // مخاطبین
+        Route::get('contacts/import', [ContactImportController::class, 'showForm'])->name('contacts.import.form');
+        Route::post('contacts/import', [ContactImportController::class, 'import'])->name('contacts.import');
+        
         Route::resource('contacts', ContactController::class);
         
-
+        
 
         // سازمان‌ها
-        Route::get('organizations', [OrganizationController::class, 'index'])->name('organizations.index');
-        Route::get('organizations/create', [OrganizationController::class, 'create'])->name('organizations.create');
-        Route::post('organizations', [OrganizationController::class, 'store'])->name('organizations.store');
+        Route::resource('organizations', OrganizationController::class)->names('organizations');
 
         // پیش‌فاکتورها و پیش‌نویس‌ها
         Route::resource('proformas', ProformaController::class);

@@ -7,6 +7,8 @@ use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Opportunity;
+use App\Models\Organization;
+
 
 
 class ContactController extends Controller
@@ -56,37 +58,88 @@ class ContactController extends Controller
     
 
     public function store(Request $request)
-{
-    $validated = $request->validate([
-        'first_name' => 'required|string|max:255',
-        'last_name' => 'required|string|max:255',
-        'email' => 'required|string|email|max:255|unique:contacts',
-        'phone' => 'nullable|string|max:20',
-        'mobile' => 'nullable|string|max:20',
-        'address' => 'nullable|string',
-        'organization_id' => 'nullable|exists:organizations,id',
-        'opportunity_id' => 'nullable|exists:opportunities,id',
-    ]);
+    {
+        $validated = $request->validate([
+            'first_name' => 'nullable|string|max:255',
+            'last_name'  => 'nullable|string|max:255',
+            'email'      => 'nullable|string|email|max:255|unique:contacts',
+            'phone'      => 'nullable|string|max:20',
+            'mobile'     => 'nullable|string|max:20',
+            'address'    => 'nullable|string',
+            'company'    => 'nullable|string|max:255',
+            'city'       => 'nullable|string|max:255',
+            'organization_id' => 'nullable|exists:organizations,id',
+            'opportunity_id'  => 'nullable|exists:opportunities,id',
+            'do_not_send_email' => 'nullable|boolean',
+            'is_portal_user'    => 'nullable|boolean',
+        ]);
 
-    // ساخت مخاطب
-    $contact = Contact::create($validated);
+        // ساخت سازمان جدید در صورت نیاز
+        if ($request->filled('company') && !$request->filled('organization_id')) {
+            $organization = Organization::firstOrCreate([
+                'name' => $request->input('company'),
+            ]);
+            $validated['organization_id'] = $organization->id;
+        }
 
-    // ارتباط با فرصت فروش (در صورت وجود)
-    if ($request->filled('opportunity_id')) {
-        Opportunity::where('id', $request->opportunity_id)
-            ->update(['contact_id' => $contact->id]);
+        $validated['do_not_send_email'] = $request->has('do_not_send_email');
+        $validated['is_portal_user'] = $request->has('is_portal_user');
 
-        return redirect()->route('sales.opportunities.show', $request->opportunity_id)
-            ->with('success', 'مخاطب با موفقیت ایجاد و به فرصت فروش متصل شد.');
+        $contact = Contact::create($validated);
+
+        if ($request->filled('opportunity_id')) {
+            Opportunity::where('id', $request->opportunity_id)
+                ->update(['contact_id' => $contact->id]);
+
+            return redirect()
+                ->route('sales.opportunities.show', $request->opportunity_id)
+                ->with('success', 'مخاطب با موفقیت ایجاد و به فرصت فروش متصل شد.');
+        }
+
+        return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت ایجاد شد.');
     }
-
-    return redirect()->route('sales.contacts.index')
-        ->with('success', 'مخاطب با موفقیت ایجاد شد.');
-}
 
 
     public function show(Contact $contact)
     {
         return view('sales.contacts.show', compact('contact'));
     }
+
+    public function edit(Contact $contact)
+    {
+        $organizations = \App\Models\Organization::all();
+        return view('sales.contacts.edit', compact('contact', 'organizations'));
+    }
+
+    public function update(Request $request, Contact $contact)
+    {
+        $validated = $request->validate([
+            'first_name' => 'nullable|string|max:255',
+            'last_name'  => 'nullable|string|max:255',
+            'email'      => 'nullable|email|max:255|unique:contacts,email,' . $contact->id,
+            'phone'      => 'nullable|string|max:20',
+            'mobile'     => 'nullable|string|max:20',
+            'company'    => 'nullable|string|max:255',
+            'city'       => 'nullable|string|max:255',
+            'organization_id' => 'nullable|exists:organizations,id',
+            'opportunity_id'  => 'nullable|exists:opportunities,id',
+            
+        ]);
+
+        if ($request->filled('company') && !$request->filled('organization_id')) {
+            $organization = Organization::firstOrCreate([
+                'name' => $request->input('company'),
+            ]);
+            $validated['organization_id'] = $organization->id;
+        }
+
+        $validated['do_not_send_email'] = $request->has('do_not_send_email');
+        $validated['is_portal_user'] = $request->has('is_portal_user');
+
+        $contact->update($validated);
+
+        return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت ویرایش شد.');
+    }
+
+
 }

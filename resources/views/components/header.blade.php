@@ -33,7 +33,7 @@
 
     <!-- لوگو در وسط -->
     <a href="{{ route('dashboard') }}" class="flex items-center justify-center">
-        <img src="{{ asset('images/admin-ajax.png') }}" alt="Logo" class="h-8 w-auto">
+        <img src="{{ asset('images/admin-ajax.png') }}" alt="Logo" class="h-10 w-auto">
     </a>
 
     <!-- آیکن زنگ و نام کاربر -->

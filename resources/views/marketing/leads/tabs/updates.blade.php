@@ -40,17 +40,25 @@
                         @foreach($new as $key => $value)
                             @if(isset($fields[$key]))
                                 <li class="flex flex-row-reverse justify-end items-center gap-1 flex-wrap">
-                                    <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
-                                        {{ is_numeric($value) && $key === 'assigned_to'
+                                <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
+                                    {{ $key === 'next_follow_up_date' && !empty($value)
+                                        ? jdate($value)->format('Y/m/d ')
+                                        : (is_numeric($value) && $key === 'assigned_to'
                                             ? ($users[$value] ?? $value)
-                                            : \App\Helpers\UpdateHelper::beautify($value, $key) }}
-                                    </span>
-                                    <span>به</span>
-                                    <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs">
-                                        {{ is_numeric($old[$key] ?? '') && $key === 'assigned_to'
+                                            : \App\Helpers\UpdateHelper::beautify($value, $key)) }}
+                                </span>
+
+                                <span>به</span>
+
+                                <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs">
+                                    {{ $key === 'next_follow_up_date' && isset($old[$key]) && !empty($old[$key])
+                                        ? jdate($old[$key])->format('Y/m/d ')
+                                        : (is_numeric($old[$key] ?? '') && $key === 'assigned_to'
                                             ? ($users[$old[$key]] ?? $old[$key])
-                                            : \App\Helpers\UpdateHelper::beautify($old[$key] ?? '-', $key) }}
-                                    </span>
+                                            : \App\Helpers\UpdateHelper::beautify($old[$key] ?? '-', $key)) }}
+                                </span>
+
+
                                     <span>از</span>
                                     <span class="text-gray-600">{{ $fields[$key] }}</span>
                                     <span>تغییر یافت</span>
