@@ -4,51 +4,37 @@ namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
-use App\Models\Lead;
+use App\Models\SalesLead;
 use Illuminate\Support\Facades\Log;
 
 class LeadController extends Controller
 {
     public function store(Request $request)
     {
-        // لاگ ورودی کامل
-        Log::info('📥 دریافت درخواست جدید از گرویتی فرم', [
+        
+        Log::info('📥 دریافت سرنخ جدید از سایت', [
             'request_data' => $request->all(),
             'ip' => $request->ip(),
             'user_agent' => $request->userAgent()
         ]);
 
         try {
-            // اعتبارسنجی
             $validated = $request->validate([
-                'prefix' => 'nullable|string|max:20',
-                'first_name' => 'required|string|max:100',
-                'last_name' => 'required|string|max:100',
-                'company' => 'nullable|string|max:255',
-                'email' => 'nullable|email|max:255',
-                'mobile' => 'nullable|string|max:20',
-                'phone' => 'nullable|string|max:20',
-                'website' => 'nullable|string|max:255',
-                'industry' => 'nullable|string|max:255',
-                'nationality' => 'nullable|string|max:100',
-                'address' => 'nullable|string',
-                'state' => 'nullable|string|max:100',
+                'full_name' => 'required|string|max:200',
                 'city' => 'nullable|string|max:100',
-                'notes' => 'nullable|string',
-                'lead_source' => 'required|string',
-                'lead_status' => 'required|string',
-                'lead_date' => 'required|date',
-                'next_follow_up_date' => 'nullable|date',
+                'mobile' => 'nullable|string|max:20',
+                'lead_source' => 'required|string|max:100',
                 'assigned_to' => 'required|integer|exists:users,id',
             ]);
 
-            // ذخیره در دیتابیس
-            $lead = Lead::create($validated);
+            // افزودن فیلدهای پیش‌فرض
+            $validated['lead_status'] = 'new';
+            $validated['lead_date'] = now()->toDateString();
+            $validated['created_by'] = 1;
 
-            // موفقیت
-            Log::info('✅ سرنخ با موفقیت ثبت شد', [
-                'lead_id' => $lead->id
-            ]);
+            $lead = SalesLead::create($validated);
+
+            Log::info('✅ سرنخ ذخیره شد', ['lead_id' => $lead->id]);
 
             return response()->json([
                 'status' => 'success',
@@ -56,15 +42,15 @@ class LeadController extends Controller
             ], 201);
 
         } catch (\Throwable $e) {
-            // در صورت خطا
-            Log::error('❌ خطا در ثبت سرنخ', [
+            
+            Log::error('❌ خطا در ذخیره سرنخ', [
                 'message' => $e->getMessage(),
                 'trace' => $e->getTraceAsString(),
             ]);
 
             return response()->json([
                 'status' => 'error',
-                'message' => 'خطا در پردازش اطلاعات. لطفاً بعداً تلاش کنید.',
+                'message' => 'ثبت سرنخ با خطا مواجه شد.',
             ], 500);
         }
     }

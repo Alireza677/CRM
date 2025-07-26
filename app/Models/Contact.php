@@ -16,18 +16,15 @@ class Contact extends Model
         'email',
         'phone',
         'mobile',
+        'company',
+        'city',
         'address',
         'organization_id',
-        'position',
-        'department',
-        'notes',
+        'opportunity_id',
+        
     ];
-
-    // اتصال به سازمان
-    public function organization()
-    {
-        return $this->belongsTo(Organization::class);
-    }
+    
+    
 
     // فرصت‌های فروش مرتبط با مخاطب
     public function opportunities()
@@ -40,10 +37,18 @@ class Contact extends Model
     {
         return trim("{$this->first_name} {$this->last_name}");
     }
-    
+
     public function getFullNameAttribute()
     {
-    return trim("{$this->first_name} {$this->last_name}");
+        return trim("{$this->first_name} {$this->last_name}");
+    }
+    public function organization()
+    {
+        return $this->belongsTo(Organization::class);
+    }
+    public function proformas()
+    {
+        return $this->hasMany(Proforma::class);
     }
 
 }

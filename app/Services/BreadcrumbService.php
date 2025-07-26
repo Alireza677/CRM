@@ -11,6 +11,16 @@ class BreadcrumbService
         $currentRoute = Route::current();
         $items = [];
 
+        // جلوگیری از خطا در حالت null یا درخواست‌های API
+        if (!$currentRoute || request()->is('api/*')) {
+            return [];
+        }
+
+        // بررسی اینکه متد uri() قابل دسترس هست
+        if (!method_exists($currentRoute, 'uri')) {
+            return [];
+        }
+
         // Get route segments
         $segments = explode('/', trim($currentRoute->uri(), '/'));
 
@@ -18,7 +28,7 @@ class BreadcrumbService
         $url = '';
         foreach ($segments as $segment) {
             $url .= '/' . $segment;
-            
+
             // Skip numeric segments (like IDs)
             if (is_numeric($segment)) {
                 continue;
@@ -40,7 +50,7 @@ class BreadcrumbService
     {
         // Convert dashes and underscores to spaces
         $title = str_replace(['-', '_'], ' ', $segment);
-        
+
         // Convert to Persian titles if needed
         $persianTitles = [
             'dashboard' => 'داشبورد',
@@ -63,4 +73,4 @@ class BreadcrumbService
 
         return $persianTitles[strtolower($title)] ?? ucwords($title);
     }
-} 
+}

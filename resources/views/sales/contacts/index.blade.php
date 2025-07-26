@@ -19,6 +19,11 @@
                     <i class="fas fa-plus mr-2"></i>
                     ایجاد مخاطب جدید
                 </a>
+                 <!-- Import Button -->
+            <a href="{{ url('/sales/contacts/import') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700 focus:bg-blue-700 active:bg-blue-900 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:ring-offset-2 transition ease-in-out duration-150 ml-2">
+                <i class="fas fa-arrow-down mr-2"></i>
+                ایمپورت مخاطبین
+            </a>
             </div>
 
             <!-- Search Bar -->
@@ -46,6 +51,7 @@
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">سازمان</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ارجاع به</th>
                                     <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ ایجاد</th>
+                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">عملیات </th>
                                 </tr>
                             </thead>
                             <tbody class="bg-white divide-y divide-gray-200">
@@ -58,12 +64,10 @@
                                                 </div>
                                                 <div class="mr-4">
                                                 <div class="text-sm font-medium text-blue-600 hover:underline">
-                                                <a href="{{ route('sales.contacts.show', $contact->id) }}"
-    class="text-sm font-medium text-blue-600 hover:underline">
-    {{ $contact->first_name }} {{ $contact->last_name }}
-</a>
-
-
+                                                    <a href="{{ route('sales.contacts.show', $contact->id) }}"
+                                                        class="text-sm font-medium text-blue-600 hover:underline">
+                                                        {{ $contact->first_name }} {{ $contact->last_name }}
+                                                    </a>
                                                 </div>
 
                                                 </div>
@@ -83,6 +87,12 @@
                                         </td>
                                         <td class="px-6 py-4 whitespace-nowrap text-sm text-gray-500">
                                             {{ $contact->created_at->format('Y/m/d H:i') }}
+                                        </td>
+                                        
+                                        <td class="text-sm text-blue-600">
+                                            <a href="{{ route('sales.contacts.edit', $contact->id) }}" class="hover:underline">
+                                                <i class="fas fa-edit ml-1"></i> ویرایش
+                                            </a>
                                         </td>
                                     </tr>
                                 @endforeach

@@ -75,32 +75,54 @@
 
                     {{-- دسته دوم: مخاطب و فروش --}}
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                        @foreach([
-                            ['contact_name', 'نام مخاطب'],
-                            ['organization_name', 'نام سازمان'],
-                        ] as [$id, $label])
-                            <div class="form-group">
-                                <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-                                <input type="text" class="form-control" id="{{ $id }}" name="{{ $id }}">
-                                @error($id)
-                                    <div class="text-danger">{{ $message }}</div>
-                                @enderror
-                            </div>
-                        @endforeach
 
-                        <div class="form-group">
-                            <label for="opportunity_id" class="form-label">فرصت فروش</label>
-                            <select name="opportunity_id" id="opportunity_id" class="form-control">
-                                <option value="">انتخاب کنید</option>
-                                @foreach($opportunities as $opportunity)
-                                    <option value="{{ $opportunity->id }}">{{ $opportunity->name }}</option>
-                                @endforeach
-                            </select>
-                            @error('opportunity_id')
-                                <div class="text-danger">{{ $message }}</div>
+                        {{-- سازمان --}}
+                        <div>
+                            <label for="organization_id" class="block font-medium text-sm text-gray-700">سازمان</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="organization_name" name="organization_name"
+                                    class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                                    placeholder="انتخاب سازمان" readonly>
+                                <input type="hidden" id="organization_id" name="organization_id">
+                                <button type="button" onclick="openOrganizationModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
+                            </div>
+                            @error('organization_id')
+                                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
                             @enderror
                         </div>
 
+                        {{-- مخاطب --}}
+                        <div>
+                            <label for="contact_id" class="block font-medium text-sm text-gray-700">مخاطب</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="contact_name" name="contact_name"
+                                    class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                                    placeholder="انتخاب مخاطب" readonly>
+                                <input type="hidden" id="contact_id" name="contact_id">
+                                <button type="button" onclick="openContactModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
+                            </div>
+                            @error('contact_id')
+                                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        {{-- فرصت فروش --}}
+                        <div>
+                            <label for="opportunity_id" class="block font-medium text-sm text-gray-700">فرصت فروش</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="opportunity_name" name="opportunity_name"
+                                    class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                                    placeholder="انتخاب فرصت فروش" readonly>
+                                <input type="hidden" id="opportunity_id" name="opportunity_id">
+                                <button type="button" onclick="openOpportunityModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
+                            </div>
+                            @error('opportunity_id')
+                                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+
+                        {{-- ارجاع به --}}
                         <div class="form-group">
                             <label for="assigned_to" class="form-label">ارجاع به <span class="text-danger">*</span></label>
                             <select class="form-control" id="assigned_to" name="assigned_to" required>
@@ -114,6 +136,7 @@
                             @enderror
                         </div>
                     </div>
+
 
                     {{-- دسته سوم: اطلاعات آدرس --}}
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -202,8 +225,138 @@
 </div>
 @endsection
 
-@push('scripts')
+    {{-- مودال انتخاب مخاطب --}}
+    <div id="contactModal"
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+     style="display: none;">
+        <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">انتخاب مخاطب</h3>
+                <button onclick="closeContactModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
+            </div>
 
+            <table class="w-full text-sm text-right border border-gray-200">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700">
+                        <th class="px-4 py-2 border-b border-gray-300">نام مخاطب</th>
+                        <th class="px-4 py-2 border-b border-gray-300">شماره موبایل</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($contacts as $c)
+                        <tr class="cursor-pointer hover:bg-gray-50"
+                            onclick="selectContact({{ $c->id }}, '{{ $c->full_name }}')">
+                            <td class="px-4 py-2 border-b border-gray-200">{{ $c->full_name }}</td>
+                            <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $c->mobile ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- Organization Modal -->
+    <div id="organizationModal"
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+     style="display: none;">
+             <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+            <h2 class="text-lg font-bold mb-4">انتخاب سازمان</h2>
+            <table class="w-full text-right border">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="p-2 border">نام سازمان</th>
+                        <th class="p-2 border">شماره تماس</th>
+                        <th class="p-2 border">انتخاب</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($organizations as $org)
+                        <tr class="border-b">
+                            <td class="p-2">{{ $org->name }}</td>
+                            <td class="p-2">{{ $org->phone ?? '---' }}</td>
+                            <td class="p-2">
+                                <button class="text-blue-600 hover:underline" 
+                                        onclick="selectOrganization({{ $org->id }}, '{{ $org->name }}')">
+                                    انتخاب
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <div class="mt-4 text-left">
+                <button onclick="closeOrganizationModal()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">بستن</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Opportunity Modal -->
+    <div id="opportunityModal"
+        class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+        style="display: none;">
+        <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+            <h2 class="text-lg font-bold mb-4">انتخاب فرصت فروش</h2>
+            <table class="w-full text-right border">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-2 border">نام فرصت</th>
+                            <th class="p-2 border">مشتری</th>
+                            <th class="p-2 border">وضعیت</th>
+                            <th class="p-2 border">انتخاب</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        @foreach($opportunities as $opp)
+                            <tr class="border-b">
+                                <td class="p-2">{{ $opp->name }}</td>
+                                <td class="p-2">{{ $opp->contact->full_name ?? '---' }}</td>
+                                <td class="p-2">{{ $opp->status_label ?? '---' }}</td>
+                                <td class="p-2">
+                                    <button class="text-blue-600 hover:underline"
+                                            onclick="selectOpportunity({{ $opp->id }}, '{{ $opp->name }}')">
+                                        انتخاب
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+            <div class="mt-4 text-left">
+                <button onclick="closeOpportunityModal()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">بستن</button>
+            </div>
+        </div>
+    </div>
+
+
+@push('scripts')
+    <script>
+        function openContactModal() {
+            const modal = document.getElementById('contactModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeContactModal() {
+            const modal = document.getElementById('contactModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+    </script>
+
+    <script>
+        function openOrganizationModal() {
+            const modal = document.getElementById('organizationModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeOrganizationModal() {
+            const modal = document.getElementById('organizationModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+    </script>
 
     <script>
         document.addEventListener("DOMContentLoaded", function () {
@@ -229,6 +382,28 @@
             });
         });
     </script>
+
+    <script>
+        function openOpportunityModal() {
+            const modal = document.getElementById('opportunityModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeOpportunityModal() {
+            const modal = document.getElementById('opportunityModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+
+        function selectOpportunity(id, name) {
+            document.getElementById('opportunity_id').value = id;
+            document.getElementById('opportunity_name').value = name;
+            closeOpportunityModal();
+        }
+    </script>
+
+
 
     @include('sales.proformas.partials.product-scripts')
 @endpush

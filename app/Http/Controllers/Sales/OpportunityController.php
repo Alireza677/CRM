@@ -10,6 +10,8 @@ use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Support\Facades\View;
 use Spatie\Activitylog\Models\Activity;
+use Morilog\Jalali\Jalalian;
+
 
 class OpportunityController extends Controller
 {
@@ -52,14 +54,24 @@ class OpportunityController extends Controller
         return view('sales.opportunities.index', compact('opportunities'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $organizations = Organization::all();
         $contacts = Contact::all();
         $users = User::all();
 
-        return view('sales.opportunities.create', compact('organizations', 'contacts', 'users'));
+        // بررسی اینکه آیا contact_id در URL هست یا نه
+        $contactId = $request->input('contact_id');
+        $defaultContact = $contactId ? Contact::find($contactId) : null;
+
+        return view('sales.opportunities.create', compact(
+            'organizations',
+            'contacts',
+            'users',
+            'defaultContact'
+        ));
     }
+
 
     public function store(Request $request)
     {
@@ -102,7 +114,23 @@ class OpportunityController extends Controller
         $contacts = Contact::all();
         $users = User::all();
 
-        return view('sales.opportunities.edit', compact('opportunity', 'organizations', 'contacts', 'users'));
+        // تبدیل تاریخ پیگیری بعدی به شمسی
+        $nextFollowUpDate = '';
+            if ($opportunity->next_follow_up && strtotime($opportunity->next_follow_up)) {
+                try {
+                    $nextFollowUpDate = Jalalian::fromDateTime($opportunity->next_follow_up)->format('Y/m/d');
+                } catch (\Exception $e) {
+                    $nextFollowUpDate = '';
+                }
+            }
+
+        return view('sales.opportunities.edit', compact(
+            'opportunity',
+            'organizations',
+            'contacts',
+            'users',
+            'nextFollowUpDate'
+        ));
     }
 
     public function update(Request $request, Opportunity $opportunity)

@@ -43,8 +43,15 @@ public function loadTab(Lead $lead, $tab)
 
             case 'notes':
                 $notes = $lead->notes()->latest()->get();
-                return view('marketing.leads.tabs.notes', compact('lead', 'notes'));
-
+            
+                // اضافه کردن لیست کاربران برای انتخاب در فرم منشن
+                $allUsers = \App\Models\User::select('id', 'name', 'username')
+                    ->whereNotNull('username')
+                    ->where('id', '!=', auth()->id())
+                    ->get();
+            
+                return view('marketing.leads.tabs.notes', compact('lead', 'notes', 'allUsers'));
+            
     
         default:
             abort(404);

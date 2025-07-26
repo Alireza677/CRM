@@ -72,7 +72,6 @@ class SalesLeadController extends Controller
     }
 
     
-
     public function store(Request $request)
     {
         \Log::info('🟡 store() method started');
@@ -87,13 +86,12 @@ class SalesLeadController extends Controller
             'phone' => 'nullable|string|max:20',
             'website' => 'nullable|url|max:255',
             'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
-        
-            // موارد موقتاً آزاد شده:
-            'lead_status' => ['nullable', 'string'], // ⬅ قبلاً required بود
+
+            'lead_status' => ['nullable', 'string'],
             'assigned_to' => 'nullable|exists:users,id',
             'lead_date' => 'nullable|string',
             'next_follow_up_date' => 'nullable|string',
-        
+
             'referred_to' => 'nullable|exists:users,id',
             'do_not_email' => 'boolean',
             'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
@@ -107,11 +105,6 @@ class SalesLeadController extends Controller
             'notes' => 'nullable|string',
         ], [
             'full_name.required' => 'نام و نام خانوادگی الزامی است.',
-            // پیام‌های خطای زیر دیگه نیاز نیست، چون فیلدها nullable شدند:
-            // 'assigned_to.required' => 'ارجاع به الزامی است.',
-            // 'lead_date.required' => 'تاریخ ثبت سرنخ الزامی است.',
-            // 'next_follow_up_date.required' => 'تاریخ پیگیری بعدی الزامی است.',
-            // 'lead_status.required' => 'وضعیت سرنخ الزامی است.',
             'email.email' => 'فرمت ایمیل نامعتبر است.',
             'website.url' => 'فرمت وب سایت نامعتبر است.',
         ]);
@@ -125,9 +118,12 @@ class SalesLeadController extends Controller
             $validated = $validator->validated();
             \Log::info('🟢 Validation passed:', $validated);
 
+            // 🟠 جدا کردن یادداشت اولیه
+            $noteContent = $validated['notes'] ?? null;
+            unset($validated['notes']);
+
             $validated['created_by'] = Auth::id();
             $validated['do_not_email'] = $request->has('do_not_email');
-             // 🟢 تبدیل تاریخ شمسی به میلادی
             $validated['lead_date'] = DateHelper::toGregorian($validated['lead_date']);
             $validated['next_follow_up_date'] = DateHelper::toGregorian($validated['next_follow_up_date']);
 
@@ -137,6 +133,16 @@ class SalesLeadController extends Controller
 
             if ($lead && $lead->id) {
                 \Log::info('✅ Sales lead created successfully with ID: ' . $lead->id);
+
+                // 🟢 ثبت یادداشت اولیه در جدول notes
+                if (!empty($noteContent)) {
+                    $lead->notes()->create([
+                        'body' => $noteContent,
+                        'user_id' => auth()->id(),
+                    ]);
+                    \Log::info('📝 Initial note saved for lead ID: ' . $lead->id);
+                }
+
                 return redirect()->route('marketing.leads.index')
                     ->with('success', 'سرنخ فروش با موفقیت ایجاد شد.');
             } else {
@@ -152,6 +158,8 @@ class SalesLeadController extends Controller
                 ->withInput();
         }
     }
+
+    
 
     public function bulkDelete(Request $request)
     {
@@ -179,47 +187,58 @@ class SalesLeadController extends Controller
 
     
     public function update(Request $request, SalesLead $lead)
-    {
-        \Log::info('🔵 update() reached');
-\Log::info('🔵 Request all:', $request->all());
+{
+    \Log::info('🔵 update() reached');
+    \Log::info('🔵 Request all:', $request->all());
 
-        $validator = Validator::make($request->all(), [
-            'prefix' => 'nullable|string|max:10',
-            'company' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'mobile' => 'nullable|string|max:20',
-            'phone' => 'nullable|string|max:20',
-            'website' => 'nullable|url|max:255',
-            'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
-            'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
-            'assigned_to' => 'required|exists:users,id',
-            'referred_to' => 'nullable|exists:users,id',
-            'lead_date' => 'required|date',
-            'next_follow_up_date' => 'required|date|after_or_equal:today',
-            'do_not_email' => 'boolean',
-            'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
-            'industry' => 'nullable|string|max:255',
-            'nationality' => 'nullable|string|max:255',
-            'main_test_field' => 'nullable|string|max:255',
-            'dependent_test_field' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:1000',
-            'state' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-        ]);
+    // 🟢 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
+    $request->merge([
+        'lead_date' => DateHelper::toGregorian($request->lead_date),
+        'next_follow_up_date' => DateHelper::toGregorian($request->next_follow_up_date),
+    ]);
+    \Log::info('🔁 Converted dates:', [
+        'lead_date' => $request->lead_date,
+        'next_follow_up_date' => $request->next_follow_up_date,
+    ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
-        }
+    $validator = Validator::make($request->all(), [
+        'prefix' => 'nullable|string|max:10',
+        'company' => 'nullable|string|max:255',
+        'email' => 'nullable|email|max:255',
+        'mobile' => 'nullable|string|max:20',
+        'phone' => 'nullable|string|max:20',
+        'website' => 'nullable|url|max:255',
+        'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
+        'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
+        'assigned_to' => 'required|exists:users,id',
+        'referred_to' => 'nullable|exists:users,id',
+        'lead_date' => 'required|date',
+        'next_follow_up_date' => 'required|date|after_or_equal:today',
+        'do_not_email' => 'boolean',
+        'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
+        'industry' => 'nullable|string|max:255',
+        'nationality' => 'nullable|string|max:255',
+        'main_test_field' => 'nullable|string|max:255',
+        'dependent_test_field' => 'nullable|string|max:255',
+        'address' => 'nullable|string|max:1000',
+        'state' => 'nullable|string|max:255',
+        'city' => 'nullable|string|max:255',
+        'notes' => 'nullable|string',
+    ]);
 
-        $validated = $validator->validated();
-        $validated['do_not_email'] = $request->has('do_not_email');
-
-        $lead->update($validated);
-
-        return redirect()->route('marketing.leads.index')
-            ->with('success', 'سرنخ فروش با موفقیت بروزرسانی شد.');
+    if ($validator->fails()) {
+        return redirect()->back()->withErrors($validator)->withInput();
     }
+
+    $validated = $validator->validated();
+    $validated['do_not_email'] = $request->has('do_not_email');
+
+    $lead->update($validated);
+
+    return redirect()->route('marketing.leads.index')
+        ->with('success', 'سرنخ فروش با موفقیت بروزرسانی شد.');
+}
+
 
     public function destroy(SalesLead $lead)
     {

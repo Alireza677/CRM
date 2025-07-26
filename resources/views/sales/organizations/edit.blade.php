@@ -4,20 +4,20 @@
 @php
     $breadcrumb = [
         ['title' => 'سازمان‌ها', 'url' => route('sales.organizations.index')],
-        ['title' => 'ایجاد سازمان جدید']
+        ['title' => 'ویرایش سازمان']
     ];
 @endphp
 
 <div class="py-6">
     <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-6">
-            {{ __('ایجاد سازمان جدید') }}
+            {{ __('ویرایش سازمان') }}
         </h2>
 
         @include('sales.organizations.partials._form', [
-            'action' => route('sales.organizations.store'),
-            'method' => 'POST',
-            'organization' => null,
+            'action' => route('sales.organizations.update', $organization),
+            'method' => 'PUT',
+            'organization' => $organization,
             'users' => $users,
             'contacts' => $contacts
         ])

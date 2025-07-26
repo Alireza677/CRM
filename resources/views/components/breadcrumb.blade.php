@@ -14,7 +14,7 @@
     $items = array_merge($defaultItems, $items);
 @endphp
 
-<nav class="bg-white border-b border-gray-200 px-4 py-3" dir="rtl">
+<nav class="bg-white border-b border-gray-200 px-5 py-2" dir="rtl">
     <ol class="flex items-center space-x-2 space-x-reverse">
         @foreach($items as $index => $item)
             <li class="flex items-center">

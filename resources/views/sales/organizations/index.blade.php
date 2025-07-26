@@ -1,98 +1,99 @@
 @extends('layouts.app')
 
 @section('content')
-    @php
-        $breadcrumb = [
-            ['title' => 'سازمان‌ها']
-        ];
-    @endphp
+@php
+    $breadcrumb = [['title' => 'سازمان‌ها']];
+    $sort = request('sort', 'created_at');
+    $direction = request('direction', 'desc');
+    $opposite = $direction === 'asc' ? 'desc' : 'asc';
+@endphp
 
-    <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-6">
-                {{ __('سازمان‌ها') }}
-            </h2>
+<div class="py-6">
+    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-4">لیست سازمان‌ها</h2>
 
-            <!-- Search Bar -->
-            <div class="mb-4">
-                <form method="GET" action="{{ route('sales.organizations.index') }}" class="flex gap-2">
-                    <input type="text" 
-                        name="search" 
-                        class="flex-1" 
-                        placeholder="جستجو بر اساس نام سازمان یا شماره تلفن..."
-                        value="{{ request('search') }}"
-                    >
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">جستجو</button>
-                </form>
-            </div>
-
-            <!-- Organizations Table -->
-            <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                <div class="p-6 text-gray-900">
-                    <div class="flex justify-between items-center mb-6">
-                        <h3 class="text-lg font-medium">لیست سازمان‌ها</h3>
-                        <a href="{{ route('sales.organizations.create') }}" class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            ایجاد سازمان جدید
-                        </a>
-                    </div>
-                    
-                    <div class="overflow-x-auto">
-                        <table class="min-w-full divide-y divide-gray-200">
-                            <thead class="bg-gray-50">
-                                <tr>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">نام سازمان</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">صنعت</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">شماره تلفن</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ایمیل</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">وب‌سایت</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">ارجاع به</th>
-                                    <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase tracking-wider">تاریخ ایجاد</th>
-                                </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @foreach($organizations as $organization)
-                                    <tr>
-                                        <td class="px-6 py-4 whitespace-nowrap">
-                                            <div class="flex items-center">
-                                                <div class="flex-shrink-0 h-10 w-10">
-                                                    <i class="fas fa-building text-gray-400 text-2xl"></i>
-                                                </div>
-                                                <div class="mr-4">
-                                                    <div class="text-sm font-medium text-gray-900">
-                                                        {{ $organization->name }}
-                                                    </div>
-                                                </div>
-                                                @if($organization->is_favorite)
-                                                    <i class="fas fa-star text-yellow-400"></i>
-                                                @endif
-                                            </div>
-                                        </td>
-                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->industry ?? '-' }}</td>
-                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->phone ?? '-' }}</td>
-                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->email ?? '-' }}</td>
-                                        <td class="px-6 py-4 text-sm text-gray-900">
-                                            @if($organization->website)
-                                                <a href="{{ $organization->website }}" target="_blank" class="text-blue-600 hover:text-blue-800">
-                                                    {{ $organization->website }}
-                                                </a>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4 text-sm text-gray-900">{{ $organization->assigned_to_name ?? '-' }}</td>
-                                        <td class="px-6 py-4 text-sm text-gray-500">{{ jdate($organization->created_at, 'Y/m/d H:i') }}</td>
-                                    </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                    </div>
-
-                    <!-- Pagination -->
-                    <div class="mt-4">
-                        {{ $organizations->links() }}
-                    </div>
+        {{-- دکمه ایجاد + فرم جستجو --}}
+        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+            {{-- فرم جستجو --}}
+            <form method="GET" action="{{ route('sales.organizations.index') }}">
+                <div class="flex gap-3">
+                    <input type="text" name="search" value="{{ request('search') }}"
+                        placeholder="جستجو بر اساس نام یا تلفن..."
+                        class="w-64 border border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <button type="submit"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                        جستجو
+                    </button>
                 </div>
-            </div>
+            </form>
+
+            {{-- دکمه ایجاد سازمان جدید --}}
+            <a href="{{ route('sales.organizations.create') }}"
+                class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 whitespace-nowrap">
+                + ایجاد سازمان جدید
+            </a>
+        </div>
+
+        {{-- جدول --}}
+        <div class="bg-white shadow rounded-lg overflow-x-auto">
+            <table class="min-w-full text-sm divide-y divide-gray-200 text-right">
+                <thead class="bg-gray-100">
+                    <tr>
+                        <th class="px-4 py-2">
+                            <a href="{{ route('sales.organizations.index', ['sort' => 'name', 'direction' => $sort === 'name' ? $opposite : 'asc']) }}">
+                                نام سازمان
+                                @if ($sort === 'name')
+                                    {!! $direction === 'asc' ? '↑' : '↓' !!}
+                                @endif
+                            </a>
+                        </th>
+                        <th class="px-4 py-2">شماره تلفن</th>
+                        <th class="px-4 py-2">شهر</th>
+                        <th class="px-4 py-2">
+                            <a href="{{ route('sales.organizations.index', ['sort' => 'assigned_to_name', 'direction' => $sort === 'assigned_to_name' ? $opposite : 'asc']) }}">
+                                ارجاع‌شده به
+                                @if ($sort === 'assigned_to_name')
+                                    {!! $direction === 'asc' ? '↑' : '↓' !!}
+                                @endif
+                            </a>
+                        </th>
+                        <th class="px-4 py-2">عملیات</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-gray-100">
+                    @forelse ($organizations as $organization)
+                        <tr>
+                            <td class="px-4 py-2">
+                                <a href="{{ route('sales.organizations.show', $organization) }}" class="text-indigo-600 hover:underline">
+                                    {{ $organization->name }}
+                                </a>
+                            </td>
+                            <td class="px-4 py-2">{{ $organization->phone }}</td>
+                            <td class="px-4 py-2">{{ $organization->city }}</td>
+                            <td class="px-4 py-2">{{ $organization->assigned_to_name }}</td>
+                            <td class="px-4 py-2">
+                                <a href="{{ route('sales.organizations.edit', $organization) }}" class="text-blue-600 hover:text-blue-800 inline-flex items-center">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z"/>
+                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 21H4a1 1 0 01-1-1V4a1 1 0 011-1h12a1 1 0 011 1v6"/>
+                                    </svg>
+                                    ویرایش
+                                </a>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">هیچ سازمانی پیدا نشد.</td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        {{-- صفحه‌بندی --}}
+        <div class="mt-4">
+            {{ $organizations->links() }}
         </div>
     </div>
+</div>
 @endsection

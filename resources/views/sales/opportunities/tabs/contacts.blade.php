@@ -20,7 +20,12 @@
             </thead>
             <tbody>
                 <tr class="border-t hover:bg-gray-50">
-                    <td class="px-4 py-2">{{ $opportunity->contact->full_name ?? '-' }}</td>
+                    <td class="px-4 py-2">
+                        <a href="{{ route('sales.contacts.show', $opportunity->contact->id) }}"
+                        class="text-blue-600 hover:underline">
+                            {{ $opportunity->contact->full_name ?? '-' }}
+                        </a>
+                    </td>
                     <td class="px-4 py-2">{{ $opportunity->contact->email ?? '-' }}</td>
                     <td class="px-4 py-2">{{ $opportunity->contact->phone ?? '-' }}</td>
                     <td class="px-4 py-2">{{ $opportunity->contact->position ?? '-' }}</td>

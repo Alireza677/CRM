@@ -21,6 +21,7 @@ class User extends Authenticatable
      */
     protected $fillable = [
         'name',
+        'username',
         'email',
         'password',
     ];
@@ -51,5 +52,25 @@ class User extends Authenticatable
     {
         return $this->belongsToMany(AutomationRule::class)->withPivot('role');
     }
+    protected static function booted(): void
+    {
+        static::creating(function ($user) {
+            if (empty($user->username)) {
+                // ساخت username از نام
+                $base = \Str::slug($user->name, '_') ?: 'user';
+
+                // اگر تکراری بود، عدد اضافه کن
+                $counter = 1;
+                $username = $base;
+                while (User::where('username', $username)->exists()) {
+                    $username = $base . '_' . $counter++;
+                }
+
+                $user->username = $username;
+            }
+        });
+    }
+
+    
 
 }

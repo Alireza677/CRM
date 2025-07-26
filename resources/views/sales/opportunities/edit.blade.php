@@ -28,30 +28,32 @@
 
                         {{-- سازمان --}}
                         <div>
-                            <label for="organization_id" class="block text-sm font-medium text-gray-700">سازمان</label>
-                            <select name="organization_id" id="organization_id" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm">
-                                <option value="">انتخاب کنید</option>
-                                @foreach($organizations as $organization)
-                                    <option value="{{ $organization->id }}" {{ old('organization_id', $opportunity->organization_id) == $organization->id ? 'selected' : '' }}>
-                                        {{ $organization->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('organization_id') <div class="text-red-500 text-xs mt-1">{{ $message }}</div> @enderror
+                            <label for="organization_id" class="block font-medium text-sm text-gray-700">سازمان</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="organization_name" name="organization_name"
+                                    class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                                    placeholder="انتخاب سازمان" readonly>
+                                <input type="hidden" id="organization_id" name="organization_id">
+                                <button type="button" onclick="openOrganizationModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
+                            </div>
+                            @error('organization_id')
+                                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         {{-- مخاطب --}}
                         <div>
-                            <label for="contact_id" class="block text-sm font-medium text-gray-700">مخاطب</label>
-                            <select name="contact_id" id="contact_id" class="mt-1 block w-full border border-gray-300 rounded-md shadow-sm">
-                                <option value="">انتخاب کنید</option>
-                                @foreach($contacts as $contact)
-                                    <option value="{{ $contact->id }}" {{ old('contact_id', $opportunity->contact_id) == $contact->id ? 'selected' : '' }}>
-                                        {{ $contact->name }}
-                                    </option>
-                                @endforeach
-                            </select>
-                            @error('contact_id') <div class="text-red-500 text-xs mt-1">{{ $message }}</div> @enderror
+                            <label for="contact_id" class="block font-medium text-sm text-gray-700">مخاطب</label>
+                            <div class="flex items-center gap-2">
+                                <input type="text" id="contact_name" name="contact_name"
+                                    class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                                    placeholder="انتخاب مخاطب" readonly>
+                                <input type="hidden" id="contact_id" name="contact_id">
+                                <button type="button" onclick="openContactModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
+                            </div>
+                            @error('contact_id')
+                                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+                            @enderror
                         </div>
 
                         {{-- نوع --}}
@@ -141,3 +143,115 @@
     </div>
 </div>
 @endsection
+
+{{-- مودال انتخاب مخاطب --}}
+    <div id="contactModal"
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+     style="display: none;">
+        <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold">انتخاب مخاطب</h3>
+                <button onclick="closeContactModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
+            </div>
+
+            <table class="w-full text-sm text-right border border-gray-200">
+                <thead>
+                    <tr class="bg-gray-100 text-gray-700">
+                        <th class="px-4 py-2 border-b border-gray-300">نام مخاطب</th>
+                        <th class="px-4 py-2 border-b border-gray-300">شماره موبایل</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($contacts as $c)
+                        <tr class="cursor-pointer hover:bg-gray-50"
+                            onclick="selectContact({{ $c->id }}, '{{ $c->full_name }}')">
+                            <td class="px-4 py-2 border-b border-gray-200">{{ $c->full_name }}</td>
+                            <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $c->mobile ?? '—' }}</td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+
+    <!-- Organization Modal -->
+    <div id="organizationModal"
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+     style="display: none;">
+             <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+            <h2 class="text-lg font-bold mb-4">انتخاب سازمان</h2>
+            <table class="w-full text-right border">
+                <thead>
+                    <tr class="bg-gray-100">
+                        <th class="p-2 border">نام سازمان</th>
+                        <th class="p-2 border">شماره تماس</th>
+                        <th class="p-2 border">انتخاب</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach($organizations as $org)
+                        <tr class="border-b">
+                            <td class="p-2">{{ $org->name }}</td>
+                            <td class="p-2">{{ $org->phone ?? '---' }}</td>
+                            <td class="p-2">
+                                <button class="text-blue-600 hover:underline" 
+                                        onclick="selectOrganization({{ $org->id }}, '{{ $org->name }}')">
+                                    انتخاب
+                                </button>
+                            </td>
+                        </tr>
+                    @endforeach
+                </tbody>
+            </table>
+            <div class="mt-4 text-left">
+                <button onclick="closeOrganizationModal()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">بستن</button>
+            </div>
+        </div>
+    </div>
+
+
+    
+<script>
+    $(document).ready(function () {
+        $("#next_follow_up_shamsi").persianDatepicker({
+            format: 'YYYY/MM/DD',
+            autoClose: true,
+            initialValue: {{ isset($nextFollowUpDate) && $nextFollowUpDate ? 'true' : 'false' }},
+            onSelect: function (unix) {
+                const pd = new persianDate(unix).toGregorian();
+                const gDate = pd.year + '-' +
+                              String(pd.month).padStart(2, '0') + '-' +
+                              String(pd.day).padStart(2, '0');
+                $("#next_follow_up").val(gDate);
+            }
+        });
+    });
+</script>
+<script>
+        function openContactModal() {
+            const modal = document.getElementById('contactModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeContactModal() {
+            const modal = document.getElementById('contactModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+    </script>
+
+    <script>
+        function openOrganizationModal() {
+            const modal = document.getElementById('organizationModal');
+            modal.classList.remove('hidden');
+            modal.style.display = 'flex';
+        }
+
+        function closeOrganizationModal() {
+            const modal = document.getElementById('organizationModal');
+            modal.classList.add('hidden');
+            modal.style.display = 'none';
+        }
+    </script>
