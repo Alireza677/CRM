@@ -18,37 +18,44 @@ class LeadNoteController extends Controller
             'body' => 'required|string|max:1000',
             'mentions' => 'nullable|array',
         ]);
-        logger('Mentions from request: ' . json_encode($request->mentions));
-        $usernames = $request->mentions ?? [];
 
-        // ساختن متن نهایی یادداشت
+        // دریافت منشن‌ها
+        $usernames = collect($request->input('mentions', []))
+            ->filter()
+            ->unique()
+            ->values()
+            ->toArray();
+
+        // لاگ بگیریم برای تست
+        logger('Parsed mentions:', $usernames);
+
+        // ساخت متن یادداشت
         $finalBody = $request->body;
-        if (!empty($usernames)) {
-            $finalBody .= "\n\nمنشن: ";
-            $finalBody .= collect($usernames)->map(fn($u) => "@{$u}")->implode(' ');
-        }
 
+        if (!empty($usernames)) {
+            $mentionText = collect($usernames)->map(fn($u) => "@{$u}")->implode(' ');
+            $finalBody .= "\n\nمنشن‌شده‌ها: {$mentionText}";
+        }
         // ذخیره یادداشت
         $note = $lead->notes()->create([
             'body' => $finalBody,
             'user_id' => auth()->id(),
         ]);
 
-        // ارسال نوتیفیکیشن به کاربران منشن‌شده
+        // نوتیفیکیشن به کاربران منشن‌شده
         if (!empty($usernames)) {
-            $mentionedUsers = User::whereIn('username', $usernames)
-                                  ->whereNotNull('username')
-                                  ->get();
-        
+            $mentionedUsers = User::whereIn('username', $usernames)->get();
             foreach ($mentionedUsers as $user) {
-                logger("Sending mention notification to: " . $user->username);
                 $user->notify(new MentionedInNote($note));
             }
         }
-        
 
-        return back()->with('success', 'یادداشت با موفقیت ثبت شد.');
+        return redirect()->route('marketing.leads.show', ['lead' => $lead->id])
+            ->with('success', 'یادداشت با موفقیت ثبت شد.');
     }
+
+
+
 
     public function show(SalesLead $lead)
     {

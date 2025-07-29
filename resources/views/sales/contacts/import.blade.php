@@ -5,12 +5,6 @@
 
 <div class="max-w-xl mx-auto mt-10 p-6 bg-white shadow rounded">
     <h2 class="text-xl font-bold mb-4">Import Contacts from Excel</h2>
-    
-    @if(session('success'))
-        <div class="bg-green-100 text-green-800 px-4 py-2 rounded mb-4">
-            {{ session('success') }}
-        </div>
-    @endif
 
     <form method="POST" action="{{ route('sales.contacts.import') }}" enctype="multipart/form-data">
         @csrf
@@ -22,4 +16,27 @@
         </button>
     </form>
 </div>
+
+@if(session('success'))
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({
+                icon: 'success',
+                title: 'ایمپورت موفق!',
+                html: '{{ session('success') }}<br><br>چه کاری می‌خواهید انجام دهید؟',
+                showCancelButton: true,
+                confirmButtonText: 'ایمپورت موارد جدید',
+                cancelButtonText: 'بازگشت به لیست مخاطبین',
+                reverseButtons: true
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    window.location.href = '{{ route("sales.contacts.import") }}';
+                } else {
+                    window.location.href = '{{ route("sales.contacts.index") }}';
+                }
+            });
+        });
+    </script>
+@endif
 @endsection

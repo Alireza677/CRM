@@ -55,8 +55,9 @@ class SalesLead extends Model
     //
     public function notes()
     {
-        return $this->morphMany(\App\Models\Note::class, 'noteable');
+        return $this->morphMany(Note::class, 'noteable');
     }
+
     public function referrer()
     {
         return $this->belongsTo(User::class, 'referred_by');

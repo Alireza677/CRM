@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
 
 class NotificationController extends Controller
 {
@@ -16,7 +17,7 @@ class NotificationController extends Controller
     {
         $notification = auth()->user()->notifications()->where('id', $notificationId)->firstOrFail();
         $notification->markAsRead();
-        return redirect($notification->data['url']);
+        return redirect(Arr::get($notification->data, 'url', route('notifications.index')));
     }
 
     public function markAllAsRead()

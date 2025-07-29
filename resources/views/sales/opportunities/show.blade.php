@@ -160,4 +160,108 @@
         document.querySelector('.load-tab[data-url*="summary"]')?.click();
     });
 </script>
+<script>
+document.addEventListener('click', function (e) {
+    const openBtn = e.target.closest('#openMentionBtn');
+    if (openBtn) {
+        const modal = document.getElementById('mentionModal');
+        if (modal) {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+        }
+
+        // بازگرداندن تیک‌های قبلی
+        const currentMentions = Array.from(document.querySelectorAll('input[name="mentions[]"]'))
+                                     .map(input => input.value);
+        document.querySelectorAll('.mention-checkbox').forEach(cb => {
+            cb.checked = currentMentions.includes(cb.value);
+        });
+    }
+
+    const cancelBtn = e.target.closest('#cancelMentionBtn');
+    if (cancelBtn) {
+        const modal = document.getElementById('mentionModal');
+        if (modal) {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+    }
+
+    const applyBtn = e.target.closest('#applyMentionBtn');
+    if (applyBtn) {
+        const checkboxes = document.querySelectorAll('.mention-checkbox:checked');
+        const selectedUsers = Array.from(checkboxes).map(cb => ({
+            username: cb.value,
+            name: cb.dataset.name || cb.value
+        }));
+        const textarea = document.querySelector('textarea[name="content"]');
+        if (textarea) {
+            const mentionsText = selectedUsers.map(u => '@' + u.username).join(' ');
+            textarea.value = textarea.value.trim() + '\n' + mentionsText;
+        }
+
+        // حذف تمام mentions[] قبلی
+        document.querySelectorAll('input[name="mentions[]"]').forEach(input => input.remove());
+
+        const form = document.getElementById('noteForm');
+        selectedUsers.forEach(u => {
+            const hiddenInput = document.createElement('input');
+            hiddenInput.type = 'hidden';
+            hiddenInput.name = 'mentions[]';
+            hiddenInput.value = u.username;
+            form.appendChild(hiddenInput);
+        });
+
+        // نمایش گرافیکی منشن‌ها
+        const selectedMentions = document.getElementById('selectedMentions');
+        if (selectedMentions) {
+            selectedMentions.innerHTML = selectedUsers.map(u => `
+                <span class="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs ml-1 mb-1">
+                    ${u.name}
+                    <button type="button" class="ml-[5px] text-red-600 hover:text-red-800 font-bold remove-mention" data-username="${u.username}">&times;</button>
+                </span>
+            `).join(' ');
+        }
+
+        const modal = document.getElementById('mentionModal');
+        if (modal) {
+            modal.classList.remove('flex');
+            modal.classList.add('hidden');
+        }
+    }
+
+    // حذف یک منشن
+    if (e.target.classList.contains('remove-mention')) {
+        const username = e.target.dataset.username;
+
+        // حذف input مخفی مربوط به این username
+        document.querySelectorAll(`input[name="mentions[]"]`).forEach(input => {
+            if (input.value === username) {
+                input.remove();
+            }
+        });
+
+        // بروزرسانی گرافیکی
+        const remainingInputs = Array.from(document.querySelectorAll('input[name="mentions[]"]'));
+        const updatedUsers = remainingInputs.map(input => {
+            const cb = document.querySelector(`.mention-checkbox[value="${input.value}"]`);
+            return {
+                username: input.value,
+                name: cb?.dataset.name || input.value
+            };
+        });
+
+        const selectedMentions = document.getElementById('selectedMentions');
+        if (selectedMentions) {
+            selectedMentions.innerHTML = updatedUsers.map(u => `
+                <span class="inline-flex items-center bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full text-xs ml-1 mb-1">
+                    ${u.name}
+                    <button type="button" class="ml-[5px] text-red-600 hover:text-red-800 font-bold remove-mention" data-username="${u.username}">&times;</button>
+                </span>
+            `).join(' ');
+        }
+    }
+});
+</script>
+
 @endpush

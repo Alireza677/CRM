@@ -15,24 +15,36 @@
 
         {{-- اطلاعات پایه --}}
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-6 text-sm text-gray-700">
-            <div><span class="font-semibold">نام:</span> {{ $contact->first_name }} {{ $contact->last_name }}</div>
-            <div><span class="font-semibold">ایمیل:</span> {{ $contact->email ?? '—' }}</div>
-            <div><span class="font-semibold">تلفن:</span> {{ $contact->phone ?? '—' }}</div>
-            <div><span class="font-semibold">موبایل:</span> {{ $contact->mobile ?? '—' }}</div>
+        <div><span class="font-semibold">نام:</span> {{ $contact->first_name }} {{ $contact->last_name }}</div>
+        <div><span class="font-semibold">ایمیل:</span> {{ $contact->email ?? '—' }}</div>
+        <div><span class="font-semibold">تلفن:</span> {{ $contact->phone ?? '—' }}</div>
+        <div><span class="font-semibold">موبایل:</span> {{ $contact->mobile ?? '—' }}</div>
 
-            <div>
-                <span class="font-semibold">سازمان:</span>
-                @if($contact->organization)
-                    <a href="{{ route('sales.organizations.show', $contact->organization->id) }}" class="text-indigo-600 hover:underline">
-                        {{ $contact->organization->name }}
-                    </a>
-                @else
-                    —
-                @endif
-            </div>
+        <div><span class="font-semibold">شهر:</span> {{ $contact->city ?? '—' }}</div>
 
-            <div class="sm:col-span-2"><span class="font-semibold">آدرس:</span> {{ $contact->address ?? '—' }}</div>
+        <div>
+            <span class="font-semibold">سازمان:</span>
+            @if($contact->organization)
+                <a href="{{ route('sales.organizations.show', $contact->organization->id) }}" class="text-indigo-600 hover:underline">
+                    {{ $contact->organization->name }}
+                </a>
+            @else
+                — 
+            @endif
         </div>
+
+        <div class="sm:col-span-2"><span class="font-semibold">آدرس:</span> {{ $contact->address ?? '—' }}</div>
+
+        @if($contact->opportunity)
+            <div class="sm:col-span-2">
+                <span class="font-semibold">مربوط به فرصت فروش:</span>
+                <a href="{{ route('sales.opportunities.show', $contact->opportunity->id) }}" class="text-blue-600 hover:underline">
+                    {{ $contact->opportunity->name }}
+                </a>
+            </div>
+        @endif
+    </div>
+
 
         {{-- دکمه‌ها --}}
         <div class="mt-6 flex justify-between items-center">
