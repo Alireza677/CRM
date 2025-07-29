@@ -14,7 +14,7 @@ class MentionedInNote extends Notification implements ShouldQueue
 
     public $note;
 
-    public function __construct(Note $note)
+    public function __construct($note)  // برای پشتیبانی از انواع مدل‌های Note
     {
         $this->note = $note;
     }
@@ -28,14 +28,25 @@ class MentionedInNote extends Notification implements ShouldQueue
     {
         logger("در حال ارسال نوتیفیکیشن به: " . $notifiable->username);
 
+        $note = $this->note;
+
+        // اطمینان از بارگذاری ریلیشن
+        $note->loadMissing('notable');
+
+        $lead = $note->notable;
+
         return [
-            'message' => "{$this->note->user->name} شما را در یک یادداشت منشن کرد.",
-            'note_id' => $this->note->id,
-            'lead_id' => $this->note->lead_id,
-            'by_user_id' => $this->note->user_id,
-            'by_user_name' => $this->note->user->name,
+            'message' => "{$note->user->name} شما را در یک یادداشت منشن کرد.",
+            'note_id' => $note->id,
+            'lead_id' => $lead->id,
+            'by_user_id' => $note->user_id,
+            'by_user_name' => $note->user->name,
+            'url' => route('marketing.leads.show', ['lead' => $lead->id]),
         ];
     }
+
+
+
 
     // اگر خواستی ایمیل هم ارسال بشه:
     /*

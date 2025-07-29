@@ -80,15 +80,15 @@ Route::middleware(['auth'])->group(function () {
     Route::post('/notifications/bulk-action', [NotificationController::class, 'bulkAction'])->name('notifications.bulkAction');
 
     //// Sales
-Route::prefix('sales')->name('sales.')->group(function () {
-    // فرصت‌های فروش
-    Route::resource('opportunities', OpportunityController::class)->names('opportunities');
-    Route::resource('leads', SalesLeadController::class)->names('leads');
+    Route::prefix('sales')->name('sales.')->group(function () {
+        // فرصت‌های فروش
+        Route::resource('opportunities', OpportunityController::class)->names('opportunities');
+        Route::resource('leads', SalesLeadController::class)->names('leads');
 
-    // نمایش تب‌ها (مثل خلاصه، یادداشت، اطلاعات و ...)
-    Route::get('opportunities/{opportunity}/tab/{tab}', [OpportunityController::class, 'loadTab'])->name('opportunities.tab');
-    // ثبت یادداشت برای فرصت فروش
-    Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])
+        // نمایش تب‌ها (مثل خلاصه، یادداشت، اطلاعات و ...)
+        Route::get('opportunities/{opportunity}/tab/{tab}', [OpportunityController::class, 'loadTab'])->name('opportunities.tab');
+        // ثبت یادداشت برای فرصت فروش
+        Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])
         ->name('opportunities.notes.store');
 
 
@@ -105,9 +105,9 @@ Route::prefix('sales')->name('sales.')->group(function () {
         // مخاطبین
         Route::get('contacts/import', [ContactImportController::class, 'showForm'])->name('contacts.import.form');
         Route::post('contacts/import', [ContactImportController::class, 'import'])->name('contacts.import');
-        
+        Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])->name('contacts.bulk_delete');
         Route::resource('contacts', ContactController::class);
-        
+
         
 
         // سازمان‌ها

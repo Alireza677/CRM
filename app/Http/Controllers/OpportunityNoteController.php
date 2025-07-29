@@ -2,30 +2,36 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Note;
+use App\Models\User;
 use App\Models\Opportunity;
-use App\Models\OpportunityNote;
+use App\Notifications\MentionedInNote;
 use Illuminate\Http\Request;
 
 class OpportunityNoteController extends Controller
 {
-    /**
-     * ذخیره یادداشت جدید برای فرصت فروش
-     */
     public function store(Request $request, Opportunity $opportunity)
     {
         $request->validate([
             'content' => 'required|string|max:2000',
+            'mentions' => 'nullable|array',
         ]);
 
-        $opportunity->notes()->create([
-            'content' => $request->input('content'),
+        $note = $opportunity->notes()->create([
+            'body' => $request->input('content'), // 🔁 تغییر content به body
             'user_id' => auth()->id(),
         ]);
 
-        if ($request->ajax()) {
-            return response()->json(['success' => true]);
+        $usernames = collect($request->input('mentions'))->filter()->unique()->toArray();
+        if (!empty($usernames)) {
+            $mentionedUsers = User::whereIn('username', $usernames)->get();
+            foreach ($mentionedUsers as $user) {
+                $user->notify(new MentionedInNote($note));
+            }
         }
 
-        return back()->with('success', 'یادداشت با موفقیت ذخیره شد.');
+        return $request->ajax()
+            ? response()->json(['success' => true])
+            : back()->with('success', 'یادداشت با موفقیت ذخیره شد.');
     }
 }

@@ -49,11 +49,11 @@
                                         <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200 text-left text-sm font-medium">
                                             <a href="{{ route('settings.users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900 ml-4">ویرایش</a>
                                             @if($user->id !== auth()->id())
-                                            <!-- <button type="button"
+                                            <button type="button"
                                             class="text-red-600 hover:text-red-900"
                                             data-user-id="{{ $user->id }}"
                                             onclick="openReassignModal(this)">حذف
-                                            </button> -->
+                                            </button>
 
                                             @endif
                                         </td>

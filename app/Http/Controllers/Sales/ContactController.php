@@ -20,21 +20,26 @@ class ContactController extends Controller
             ->leftJoin('organizations', 'contacts.organization_id', '=', 'organizations.id')
             ->leftJoin('users', 'contacts.assigned_to', '=', 'users.id');
 
-        // Search functionality
         if ($request->has('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('contacts.first_name', 'like', "%{$search}%")
-                  ->orWhere('contacts.last_name', 'like', "%{$search}%")
-                  ->orWhere('contacts.mobile', 'like', "%{$search}%");
+                ->orWhere('contacts.last_name', 'like', "%{$search}%")
+                ->orWhere('contacts.mobile', 'like', "%{$search}%");
             });
         }
 
-        // Sorting
+        if ($request->filled('assigned_to')) {
+            $query->where('contacts.assigned_to', $request->assigned_to);
+        }
+
+        if ($request->filled('organization')) {
+            $query->where('contacts.organization_id', $request->organization);
+        }
+
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-        
-        // Handle special cases for sorting
+
         if ($sortField === 'organization_name') {
             $query->orderBy('organizations.name', $sortDirection);
         } elseif ($sortField === 'assigned_to_name') {
@@ -45,8 +50,12 @@ class ContactController extends Controller
 
         $contacts = $query->paginate(10)->withQueryString();
 
-        return view('sales.contacts.index', compact('contacts'));
+        $users = \App\Models\User::all(['id', 'name']);
+        $organizations = \App\Models\Organization::all(['id', 'name']);
+
+        return view('sales.contacts.index', compact('contacts', 'users', 'organizations'));
     }
+
 
     public function create(Request $request)
     {
@@ -139,6 +148,17 @@ class ContactController extends Controller
         $contact->update($validated);
 
         return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت ویرایش شد.');
+    }
+    public function bulkDelete(Request $request)
+    {
+        Contact::whereIn('id', $request->input('selected_contacts', []))->delete();
+        return redirect()->route('sales.contacts.index')->with('success', 'مخاطبین انتخاب‌شده با موفقیت حذف شدند.');
+    }
+    
+    public function destroy(Contact $contact)
+    {
+        $contact->delete();
+        return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت حذف شد.');
     }
 
 

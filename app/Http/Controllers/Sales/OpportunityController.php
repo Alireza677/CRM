@@ -96,16 +96,22 @@ class OpportunityController extends Controller
             ->with('success', 'فرصت فروش با موفقیت ایجاد شد.');
     }
 
+    
     public function show(Opportunity $opportunity)
-{
-    $breadcrumb = [
-        ['title' => 'خانه', 'url' => url('/dashboard')],
-        ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
-        ['title' => $opportunity->name ?? 'فرصت #' . $opportunity->id],
-    ];
+    {
+        $breadcrumb = [
+            ['title' => 'خانه', 'url' => url('/dashboard')],
+            ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
+            ['title' => $opportunity->name ?? 'فرصت #' . $opportunity->id],
+        ];
 
-    return view('sales.opportunities.show', compact('opportunity', 'breadcrumb'));
-}
+        $activities = Activity::where('subject_type', Opportunity::class)
+            ->where('subject_id', $opportunity->id)
+            ->latest()
+            ->get();
+
+        return view('sales.opportunities.show', compact('opportunity', 'breadcrumb', 'activities'));
+    }
 
 
     public function edit(Opportunity $opportunity)
@@ -173,23 +179,32 @@ class OpportunityController extends Controller
     }
 
     public function loadTab(Opportunity $opportunity, $tab)
-    {
-        $view = 'sales.opportunities.tabs.' . $tab;
+{
+    $view = "sales.opportunities.tabs.$tab";
 
-        if (!View::exists($view)) {
-            abort(404);
-        }
-
-        if ($tab === 'updates') {
-            $activities = $opportunity->activities()->latest()->get();
-
-
-            return view($view, compact('opportunity', 'activities'));
-        }
-
-        return view($view, compact('opportunity'));
+    if (!view()->exists($view)) {
+        abort(404);
     }
 
+    $data = ['opportunity' => $opportunity];
+
+    // برای تب یادداشت‌ها، کاربران را لود کن
+    if ($tab === 'notes') {
+        $data['allUsers'] = \App\Models\User::whereNotNull('username')->get();
+    }
+
+    // برای تب بروزرسانی‌ها، فعالیت‌ها را لود کن
+    if ($tab === 'updates') {
+        $data['activities'] = \Spatie\Activitylog\Models\Activity::where('subject_type', \App\Models\Opportunity::class)
+            ->where('subject_id', $opportunity->id)
+            ->latest()
+            ->get();
+    }
+
+    return view($view, $data);
+}
+
+    
     public function ajaxTab(Opportunity $opportunity, $tab)
     {
         switch ($tab) {

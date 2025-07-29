@@ -72,17 +72,17 @@ class Opportunity extends Model
         return $this->belongsTo(Organization::class, 'organization_id');
     }
     public function getModelLabel()
-{
-    return 'فرصت';
-}
-public function getNotificationTitle()
-{
-    return $this->name ?? 'بدون عنوان';
-}
-public function notes()
-{
-    return $this->hasMany(OpportunityNote::class);
-}
+    {
+        return 'فرصت';
+    }
+    public function getNotificationTitle()
+    {
+        return $this->name ?? 'بدون عنوان';
+    }
+    public function notes()
+    {
+        return $this->morphMany(Note::class, 'noteable')->latest();
+    }
 
 
 
