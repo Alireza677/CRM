@@ -21,6 +21,14 @@
         <div><span class="font-semibold">موبایل:</span> {{ $contact->mobile ?? '—' }}</div>
 
         <div><span class="font-semibold">شهر:</span> {{ $contact->city ?? '—' }}</div>
+        <div>
+            <span class="font-semibold">ارجاع به:</span>
+            @if($contact->assignedUser)
+                {{ $contact->assignedUser->name ?? ($contact->assignedUser->first_name . ' ' . $contact->assignedUser->last_name) }}
+            @else
+                —
+            @endif
+        </div>
 
         <div>
             <span class="font-semibold">سازمان:</span>

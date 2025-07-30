@@ -34,6 +34,7 @@ class ContactsImport implements ToModel, WithHeadingRow
             'mobile'          => $row['mobile'] ?? null,
             'city'            => $row['city'] ?? null,
             'organization_id' => $organizationId,
+            'assigned_to'   => $assignedUser ? $assignedUser->id : null,
         ]);
     }
 }

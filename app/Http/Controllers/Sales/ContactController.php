@@ -61,9 +61,11 @@ class ContactController extends Controller
     {
         $organizations = \App\Models\Organization::all();
         $opportunityId = $request->get('opportunity_id'); // دریافت opportunity_id از URL
-    
-        return view('sales.contacts.create', compact('organizations', 'opportunityId'));
+        $users = \App\Models\User::all(); // ⬅️ لیست کاربران برای ارجاع به
+
+        return view('sales.contacts.create', compact('organizations', 'opportunityId', 'users'));
     }
+
     
 
     public function store(Request $request)
@@ -117,8 +119,11 @@ class ContactController extends Controller
     public function edit(Contact $contact)
     {
         $organizations = \App\Models\Organization::all();
-        return view('sales.contacts.edit', compact('contact', 'organizations'));
+        $users = \App\Models\User::all(); // لیست کاربران برای کشوی ارجاع به
+    
+        return view('sales.contacts.edit', compact('contact', 'organizations', 'users'));
     }
+    
 
     public function update(Request $request, Contact $contact)
     {
@@ -132,7 +137,7 @@ class ContactController extends Controller
             'city'       => 'nullable|string|max:255',
             'organization_id' => 'nullable|exists:organizations,id',
             'opportunity_id'  => 'nullable|exists:opportunities,id',
-            
+            'assigned_to' => 'nullable|exists:users,id',
         ]);
 
         if ($request->filled('company') && !$request->filled('organization_id')) {

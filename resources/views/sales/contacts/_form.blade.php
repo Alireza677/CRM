@@ -54,6 +54,17 @@
         <label for="city" class="block text-sm font-medium text-gray-700">شهر</label>
         <input type="text" name="city" id="city" value="{{ old('city', $contact->city ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
     </div>
+    <div>
+    <label for="assigned_to" class="block text-sm font-medium text-gray-700">ارجاع به</label>
+    <select name="assigned_to" id="assigned_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <option value=""> انتخاب کاربر </option>
+        @foreach($users as $user)
+            <option value="{{ $user->id }}" {{ old('assigned_to', $contact->assigned_to ?? '') == $user->id ? 'selected' : '' }}>
+                {{ $user->name ?? ($user->first_name . ' ' . $user->last_name) }}
+            </option>
+        @endforeach
+    </select>
+</div>
 </div>
 
 
