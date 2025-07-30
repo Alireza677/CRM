@@ -174,10 +174,6 @@ class SalesLeadController extends Controller
     }
 
 
-
-
-
-
     public function edit(SalesLead $lead)
     {
         $users = User::all();
@@ -203,6 +199,7 @@ class SalesLeadController extends Controller
 
     $validator = Validator::make($request->all(), [
         'prefix' => 'nullable|string|max:10',
+        'full_name' => 'required|string|max:255',
         'company' => 'nullable|string|max:255',
         'email' => 'nullable|email|max:255',
         'mobile' => 'nullable|string|max:20',
@@ -253,7 +250,9 @@ class SalesLeadController extends Controller
         $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
         $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
 
-        return view('marketing.leads.show', compact('lead'));
+        $allUsers = User::whereNotNull('username')->get(); // ✅ این خط اضافه شود
+
+        return view('marketing.leads.show', compact('lead', 'allUsers'));
     }
 
     public function loadTab(SalesLead $lead, $tab)

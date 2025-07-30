@@ -21,7 +21,7 @@ class Contact extends Model
         'address',
         'organization_id',
         'opportunity_id',
-        
+        'assigned_to',
     ];
     
     
@@ -49,6 +49,10 @@ class Contact extends Model
     public function proformas()
     {
         return $this->hasMany(Proforma::class);
+    }
+    public function assignedUser()
+    {
+        return $this->belongsTo(User::class, 'assigned_to');
     }
 
 }
