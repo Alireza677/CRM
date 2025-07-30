@@ -8,6 +8,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Opportunity;
 use App\Models\Organization;
+use Illuminate\Support\Facades\Log;
 
 
 
@@ -15,6 +16,7 @@ class ContactController extends Controller
 {
     public function index(Request $request)
     {
+        
         $query = Contact::query()
             ->select('contacts.*', 'organizations.name as organization_name', 'users.name as assigned_to_name')
             ->leftJoin('organizations', 'contacts.organization_id', '=', 'organizations.id')
@@ -166,5 +168,22 @@ class ContactController extends Controller
         return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت حذف شد.');
     }
 
+    public function import(Request $request)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:xlsx,xls,csv',
+        ]);
 
+        try {
+            Excel::import(new ContactsImport, $request->file('file'));
+
+            Log::info('✅ ایمپورت مخاطبین با موفقیت انجام شد توسط کاربر: ' . auth()->user()->email);
+
+            return redirect()->back()->with('success', 'ایمپورت مخاطبین با موفقیت انجام شد.');
+        } catch (\Exception $e) {
+            Log::error('❌ خطا در ایمپورت مخاطبین: ' . $e->getMessage());
+
+            return redirect()->back()->with('error', 'خطا در ایمپورت مخاطبین: ' . $e->getMessage());
+        }
+    }
 }

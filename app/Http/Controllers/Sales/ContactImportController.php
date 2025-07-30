@@ -9,6 +9,8 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Spatie\SimpleExcel\SimpleExcelReader;
 use App\Http\Controllers\Controller;
+use App\Models\User;
+
 
 class ContactImportController extends Controller
 {
@@ -51,19 +53,24 @@ class ContactImportController extends Controller
             foreach ($rows as $row) {
                 $rowCount++;
                 Log::debug("سطر $rowCount", $row);
-
-                // بررسی وجود ستون ایمیل
+            
                 if (!empty($row['email']) && Contact::where('email', $row['email'])->exists()) {
                     $skipped++;
                     continue;
                 }
-
+            
                 $organization_id = null;
                 if (!empty($row['company'])) {
                     $organization = Organization::firstOrCreate(['name' => $row['company']]);
                     $organization_id = $organization->id;
                 }
-
+            
+                $assignedUser = null;
+                if (!empty($row['assigned_to_email'])) {
+                    $assignedUser = User::where('email', $row['assigned_to_email'])->first();
+                    Log::debug('📌 بررسی کاربر واگذار شده:', ['user' => $assignedUser]);
+                }
+            
                 Contact::create([
                     'first_name'      => $row['first_name'] ?? null,
                     'last_name'       => $row['last_name'] ?? null,
@@ -73,10 +80,12 @@ class ContactImportController extends Controller
                     'company'         => $row['company'] ?? null,
                     'organization_id' => $organization_id,
                     'city'            => $row['city'] ?? null,
+                    'assigned_to'     => $assignedUser?->id,
                 ]);
-
+            
                 $imported++;
             }
+            
 
             Log::info("تعداد کل سطرها: $rowCount");
             Log::info("تعداد ایمپورت شده: $imported");
