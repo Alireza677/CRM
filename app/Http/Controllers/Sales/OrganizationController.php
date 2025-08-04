@@ -110,6 +110,15 @@ class OrganizationController extends Controller
         $organization = Organization::with('contacts')->findOrFail($id);
         return view('sales.organizations.show', compact('organization'));
     }
+    public function bulkDelete(Request $request)
+    {
+        $ids = $request->input('selected', []);
+        if (!empty($ids)) {
+            Organization::whereIn('id', $ids)->delete();
+        }
+
+        return redirect()->route('sales.organizations.index')->with('success', 'سازمان‌های انتخاب‌شده با موفقیت حذف شدند.');
+    }
 
 
 } 

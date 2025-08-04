@@ -41,6 +41,10 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\OpportunityNoteController;
 use App\Http\Controllers\Settings\AutomationController;
+use App\Http\Controllers\Sales\OrganizationImportController;
+
+
+
 Route::get('/', function () {
     return view('welcome');
 });
@@ -111,7 +115,13 @@ Route::middleware(['auth'])->group(function () {
         
 
         // سازمان‌ها
+        Route::get('organizations/import', [OrganizationImportController::class, 'importForm'])->name('organizations.import.form');
+        Route::post('organizations/import', [OrganizationImportController::class, 'import'])->name('organizations.import');
+
+        Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // 👈 این خط بیاد قبل از resource
+
         Route::resource('organizations', OrganizationController::class)->names('organizations');
+
 
         // پیش‌فاکتورها و پیش‌نویس‌ها
         Route::resource('proformas', ProformaController::class);
