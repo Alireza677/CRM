@@ -13,7 +13,7 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-4">لیست سازمان‌ها</h2>
 
         {{-- دکمه ایجاد + فرم جستجو --}}
-        <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
+        <div class="flex flex-row sm:flex-row sm:items-center sm:justify-between mb-4 gap-2">
             {{-- فرم جستجو --}}
             <form method="GET" action="{{ route('sales.organizations.index') }}">
                 <div class="flex gap-3">
@@ -27,68 +27,100 @@
                 </div>
             </form>
 
-            {{-- دکمه ایجاد سازمان جدید --}}
-            <a href="{{ route('sales.organizations.create') }}"
-                class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 whitespace-nowrap">
-                + ایجاد سازمان جدید
-            </a>
+            <div class="flex flex-wrap gap-2">
+                {{-- دکمه ایجاد سازمان جدید --}}
+                <a href="{{ route('sales.organizations.create') }}"
+                    class="inline-flex items-center px-4 py-2 bg-green-600 text-white rounded-md hover:bg-green-700 whitespace-nowrap">
+                    + ایجاد سازمان جدید
+                </a>
+                <a href="{{ route('sales.organizations.import.form') }}"
+                    class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                    📥 ایمپورت از Excel
+                </a>
+            </div>
         </div>
 
-        {{-- جدول --}}
-        <div class="bg-white shadow rounded-lg overflow-x-auto">
-            <table class="min-w-full text-sm divide-y divide-gray-200 text-right">
-                <thead class="bg-gray-100">
-                    <tr>
-                        <th class="px-4 py-2">
-                            <a href="{{ route('sales.organizations.index', ['sort' => 'name', 'direction' => $sort === 'name' ? $opposite : 'asc']) }}">
-                                نام سازمان
-                                @if ($sort === 'name')
-                                    {!! $direction === 'asc' ? '↑' : '↓' !!}
-                                @endif
-                            </a>
-                        </th>
-                        <th class="px-4 py-2">شماره تلفن</th>
-                        <th class="px-4 py-2">شهر</th>
-                        <th class="px-4 py-2">
-                            <a href="{{ route('sales.organizations.index', ['sort' => 'assigned_to_name', 'direction' => $sort === 'assigned_to_name' ? $opposite : 'asc']) }}">
-                                ارجاع‌شده به
-                                @if ($sort === 'assigned_to_name')
-                                    {!! $direction === 'asc' ? '↑' : '↓' !!}
-                                @endif
-                            </a>
-                        </th>
-                        <th class="px-4 py-2">عملیات</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-gray-100">
-                    @forelse ($organizations as $organization)
+        {{-- فرم حذف گروهی --}}
+        <form method="POST" action="{{ route('sales.organizations.bulkDelete') }}" id="bulk-delete-form">
+            @csrf
+            @method('DELETE')
+
+            {{-- دکمه حذف گروهی --}}
+            <div class="mb-3">
+                <button type="submit" onclick="return confirm('آیا از حذف انتخاب‌شده‌ها مطمئن هستید؟');"
+                    class="bg-red-600 text-white px-4 py-2 rounded hover:bg-red-700">
+                    🗑️ حذف انتخاب‌شده‌ها
+                </button>
+            </div>
+
+            {{-- جدول --}}
+            <div class="bg-white shadow rounded-lg overflow-x-auto">
+                <table class="min-w-full text-sm divide-y divide-gray-200 text-right">
+                    <thead class="bg-gray-100">
                         <tr>
-                            <td class="px-4 py-2">
-                                <a href="{{ route('sales.organizations.show', $organization) }}" class="text-indigo-600 hover:underline">
-                                    {{ $organization->name }}
+                            <th class="px-4 py-2">
+                                <input type="checkbox" id="select-all">
+                            </th>
+                            <th class="px-4 py-2">
+                                <a href="{{ route('sales.organizations.index', ['sort' => 'name', 'direction' => $sort === 'name' ? $opposite : 'asc']) }}">
+                                    نام سازمان
+                                    @if ($sort === 'name')
+                                        {!! $direction === 'asc' ? '↑' : '↓' !!}
+                                    @endif
                                 </a>
-                            </td>
-                            <td class="px-4 py-2">{{ $organization->phone }}</td>
-                            <td class="px-4 py-2">{{ $organization->city }}</td>
-                            <td class="px-4 py-2">{{ $organization->assigned_to_name }}</td>
-                            <td class="px-4 py-2">
-                                <a href="{{ route('sales.organizations.edit', $organization) }}" class="text-blue-600 hover:text-blue-800 inline-flex items-center">
-                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M15.232 5.232l3.536 3.536M9 11l6-6 3 3-6 6H9v-3z"/>
-                                        <path stroke-linecap="round" stroke-linejoin="round" d="M16 21H4a1 1 0 01-1-1V4a1 1 0 011-1h12a1 1 0 011 1v6"/>
-                                    </svg>
-                                    ویرایش
+                            </th>
+                            <th class="px-4 py-2">شماره تلفن</th>
+                            <th class="px-4 py-2">شهر</th>
+                            <th class="px-4 py-2">
+                                <a href="{{ route('sales.organizations.index', ['sort' => 'assigned_to_name', 'direction' => $sort === 'assigned_to_name' ? $opposite : 'asc']) }}">
+                                    ارجاع‌شده به
+                                    @if ($sort === 'assigned_to_name')
+                                        {!! $direction === 'asc' ? '↑' : '↓' !!}
+                                    @endif
                                 </a>
-                            </td>
+                            </th>
+                            <th class="px-4 py-2">عملیات</th>
                         </tr>
-                    @empty
-                        <tr>
-                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">هیچ سازمانی پیدا نشد.</td>
-                        </tr>
-                    @endforelse
-                </tbody>
-            </table>
-        </div>
+                    </thead>
+                    <tbody class="divide-y divide-gray-100">
+                        @forelse ($organizations as $organization)
+                            <tr>
+                                <td class="px-4 py-2">
+                                    <input type="checkbox" name="selected[]" value="{{ $organization->id }}">
+                                </td>
+                                <td class="px-4 py-2">
+                                    <a href="{{ route('sales.organizations.show', $organization) }}" class="text-indigo-600 hover:underline">
+                                        {{ $organization->name }}
+                                    </a>
+                                </td>
+                                <td class="px-4 py-2">{{ $organization->phone }}</td>
+                                <td class="px-4 py-2">{{ $organization->city }}</td>
+                                <td class="px-4 py-2">{{ $organization->assigned_to_name }}</td>
+                                <td class="px-4 py-2 flex flex-wrap gap-2">
+                                    <a href="{{ route('sales.organizations.edit', $organization) }}"
+                                       class="text-blue-600 hover:text-blue-800 inline-flex items-center">
+                                        ✏️ ویرایش
+                                    </a>
+                                    <form action="{{ route('sales.organizations.destroy', $organization) }}" method="POST"
+                                          onsubmit="return confirm('آیا از حذف این مورد مطمئن هستید؟');"
+                                          class="inline-block">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800 inline-flex items-center">
+                                            🗑️ حذف
+                                        </button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="6" class="px-4 py-4 text-center text-gray-500">هیچ سازمانی پیدا نشد.</td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </form>
 
         {{-- صفحه‌بندی --}}
         <div class="mt-4">
@@ -97,3 +129,12 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    document.getElementById('select-all').addEventListener('change', function () {
+        const checkboxes = document.querySelectorAll('input[name="selected[]"]');
+        checkboxes.forEach(cb => cb.checked = this.checked);
+    });
+</script>
+@endpush
