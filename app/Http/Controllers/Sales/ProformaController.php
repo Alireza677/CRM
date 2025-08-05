@@ -26,43 +26,41 @@ class ProformaController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Proforma::query()
-            ->select('proformas.*',
-                'users.name as assigned_to_name',
-                'organizations.name as organization_name',
-                DB::raw("contacts.first_name || ' ' || contacts.last_name as contact_name"),
-                'opportunities.name as opportunity_name')
-            ->leftJoin('users', 'proformas.assigned_to', '=', 'users.id')
-            ->leftJoin('organizations', 'proformas.organization_id', '=', 'organizations.id')
-            ->leftJoin('contacts', 'proformas.contact_id', '=', 'contacts.id')
-            ->leftJoin('opportunities', 'proformas.opportunity_id', '=', 'opportunities.id');
+        $organizations = Organization::orderBy('name')->get();
+        $users = User::orderBy('name')->get();
+        $query = Proforma::with(['organization', 'contact', 'opportunity', 'assignedTo']);
 
+        // فیلتر جستجو
         if ($request->has('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('proformas.subject', 'like', "%{$search}%")
-                  ->orWhere('organizations.name', 'like', "%{$search}%");
+            $query->where(function ($q) use ($search) {
+                $q->where('subject', 'like', "%{$search}%")
+                    ->orWhereHas('organization', function ($q) use ($search) {
+                        $q->where('name', 'like', "%{$search}%");
+                    })
+                    ->orWhereHas('contact', function ($q) use ($search) {
+                        $q->where('first_name', 'like', "%{$search}%")
+                            ->orWhere('last_name', 'like', "%{$search}%");
+                    });
             });
         }
+         // فیلتر براساس سازمان
+    if ($request->filled('organization_id')) {
+        $query->where('organization_id', $request->organization_id);
+    }
 
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
+    // فیلتر براساس مرحله
+    if ($request->filled('stage')) {
+        $query->where('proforma_stage', $request->stage);
+    }
 
-        if ($sortField === 'assigned_to_name') {
-            $query->orderBy('users.name', $sortDirection);
-        } elseif ($sortField === 'organization_name') {
-            $query->orderBy('organizations.name', $sortDirection);
-        } elseif ($sortField === 'contact_name') {
-            $query->orderBy(DB::raw("contacts.first_name || ' ' || contacts.last_name"), $sortDirection);
-        } elseif ($sortField === 'opportunity_name') {
-            $query->orderBy('opportunities.name', $sortDirection);
-        } else {
-            $query->orderBy("proformas.{$sortField}", $sortDirection);
-        }
+    // فیلتر براساس ارجاع به
+    if ($request->filled('assigned_to')) {
+        $query->where('assigned_to', $request->assigned_to);
+    }
+        $proformas = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
 
-        $proformas = $query->paginate(10)->withQueryString();
-
-        return view('sales.proformas.index', compact('proformas'));
+        return view('sales.proformas.index', compact('proformas', 'organizations', 'users'));
     }
 
     public function create()
@@ -88,7 +86,6 @@ class ProformaController extends Controller
                 'subject' => 'required|string|max:255',
                 'proforma_date' => 'nullable|string',
                 'contact_name' => 'nullable|string|max:255',
-                'proforma_number' => 'nullable|string|max:255',
                 'proforma_stage' => ['required', Rule::in(array_keys(config('proforma.stages')))],
                 'organization_name' => 'nullable|string|max:255',
                 'address_type' => 'required|in:invoice,product',
@@ -97,11 +94,11 @@ class ProformaController extends Controller
                 'state' => 'nullable|string|max:255',
                 'assigned_to' => 'required|exists:users,id',
                 'opportunity_id' => 'nullable|exists:opportunities,id',
-                'products' => 'required|array|min:1',
-                'products.*.name' => 'required|string|max:255',
-                'products.*.quantity' => 'required|numeric|min:0.01',
-                'products.*.price' => 'required|numeric|min:0',
-                'products.*.unit' => 'required|string|max:50',
+                'products' => 'nullable|array',
+                'products.*.name' => 'nullable|string|max:255',
+                'products.*.quantity' => 'nullable|numeric|min:0.01',
+                'products.*.price' => 'nullable|numeric|min:0',
+                'products.*.unit' => 'nullable|string|max:50',
                 'products.*.discount_type' => 'nullable|in:percentage,fixed',
                 'products.*.discount_value' => 'nullable|numeric|min:0',
                 'products.*.tax_type' => 'nullable|in:percentage,fixed',
@@ -131,7 +128,6 @@ class ProformaController extends Controller
                 'subject' => $validated['subject'],
                 'proforma_date' => $miladiDate,
                 'contact_name' => $validated['contact_name'],
-                'proforma_number' => $validated['proforma_number'],
                 'proforma_stage' => $validated['proforma_stage'],
                 'organization_name' => $validated['organization_name'],
                 'address_type' => $validated['address_type'],
@@ -143,54 +139,59 @@ class ProformaController extends Controller
                 'total_amount' => 0, // مقدار اولیه، بعداً آپدیت می‌کنیم
             ]);
             Log::info('📄 Proforma Created:', ['id' => $proforma->id]);
+            
+            $totalAmount = 0;
 
-            foreach ($validated['products'] as $item) {
-                $unitPrice = floatval($item['price']);
-                $quantity = floatval($item['quantity']);
-                $baseTotal = $unitPrice * $quantity;
-
-                // تخفیف
-                $discountType = $item['discount_type'] ?? null;
-                $discountValue = floatval($item['discount_value'] ?? 0);
-                $discountAmount = 0;
-                if ($discountType === 'percentage') {
-                    $discountAmount = ($baseTotal * $discountValue) / 100;
-                } elseif ($discountType === 'fixed') {
-                    $discountAmount = $discountValue;
+            if (!empty($validated['products'])) {
+                foreach ($validated['products'] as $item) {
+                    $unitPrice = floatval($item['price']);
+                    $quantity = floatval($item['quantity']);
+                    $baseTotal = $unitPrice * $quantity;
+            
+                    // تخفیف
+                    $discountType = $item['discount_type'] ?? null;
+                    $discountValue = floatval($item['discount_value'] ?? 0);
+                    $discountAmount = 0;
+                    if ($discountType === 'percentage') {
+                        $discountAmount = ($baseTotal * $discountValue) / 100;
+                    } elseif ($discountType === 'fixed') {
+                        $discountAmount = $discountValue;
+                    }
+            
+                    $afterDiscount = $baseTotal - $discountAmount;
+            
+                    // مالیات
+                    $taxType = $item['tax_type'] ?? null;
+                    $taxValue = floatval($item['tax_value'] ?? 0);
+                    $taxAmount = 0;
+                    if ($taxType === 'percentage') {
+                        $taxAmount = ($afterDiscount * $taxValue) / 100;
+                    } elseif ($taxType === 'fixed') {
+                        $taxAmount = $taxValue;
+                    }
+            
+                    $totalAfterTax = $afterDiscount + $taxAmount;
+            
+                    // ذخیره آیتم
+                    $proforma->items()->create([
+                        'name' => $item['name'],
+                        'quantity' => $quantity,
+                        'unit_price' => $unitPrice,
+                        'unit_of_use' => $item['unit'],
+                        'total_price' => $baseTotal,
+                        'discount_type' => $discountType,
+                        'discount_value' => $discountValue,
+                        'discount_amount' => $discountAmount,
+                        'tax_type' => $taxType,
+                        'tax_value' => $taxValue,
+                        'tax_amount' => $taxAmount,
+                        'total_after_tax' => $totalAfterTax,
+                    ]);
+            
+                    $totalAmount += $totalAfterTax;
                 }
-
-                $afterDiscount = $baseTotal - $discountAmount;
-
-                // مالیات
-                $taxType = $item['tax_type'] ?? null;
-                $taxValue = floatval($item['tax_value'] ?? 0);
-                $taxAmount = 0;
-                if ($taxType === 'percentage') {
-                    $taxAmount = ($afterDiscount * $taxValue) / 100;
-                } elseif ($taxType === 'fixed') {
-                    $taxAmount = $taxValue;
-                }
-
-                $totalAfterTax = $afterDiscount + $taxAmount;
-
-                // ذخیره آیتم
-                $proforma->items()->create([
-                    'name' => $item['name'],
-                    'quantity' => $quantity,
-                    'unit_price' => $unitPrice,
-                    'unit_of_use' => $item['unit'],
-                    'total_price' => $baseTotal,
-                    'discount_type' => $discountType,
-                    'discount_value' => $discountValue,
-                    'discount_amount' => $discountAmount,
-                    'tax_type' => $taxType,
-                    'tax_value' => $taxValue,
-                    'tax_amount' => $taxAmount,
-                    'total_after_tax' => $totalAfterTax,
-                ]);
-
-                $totalAmount += $totalAfterTax;
             }
+            
 
             $proforma->update(['total_amount' => $totalAmount]);
             Log::debug('🧮 Total Amount Saved:', ['total_amount' => $totalAmount]);
@@ -231,12 +232,33 @@ class ProformaController extends Controller
 
     public function show(Proforma $proforma)
     {
-        $proforma->load(['organization', 'contact', 'opportunity', 'assignedTo', 'items']);
-        return view('sales.proformas.show', compact('proforma'));
+        $proforma->load(['organization', 'contact', 'opportunity', 'assignedTo', 'items', 'approvals.approver']);
+    
+        // گرفتن تأییدیه مرتبط با کاربر جاری، اگر وجود داشته باشد
+        $approval = $proforma->approvals()
+            ->where('user_id', auth()->id())
+            ->where('status', 'pending')
+            ->first();
+    
+        // پیدا کردن اولین تأییدیه‌ی در انتظار تأیید
+        $pendingApproval = $proforma->approvals
+            ->where('status', 'pending')
+            ->first();
+    
+        $pendingApproverName = $pendingApproval?->approver?->name ?? null;
+    
+        return view('sales.proformas.show', compact('proforma', 'approval', 'pendingApproverName'));
     }
+    
+    
 
     public function edit(Proforma $proforma)
     {
+        if ($proforma->proforma_stage === 'send_for_approval') {
+            return redirect()
+                ->route('sales.proformas.show', $proforma)
+                ->with('alert_error', 'پیش‌فاکتور در انتظار تایید است و امکان ویرایش ندارد.');
+        }
         $proforma->load('items');
         $users = User::all();
         $organizations = Organization::all();
@@ -260,7 +282,6 @@ class ProformaController extends Controller
                 'proforma_date' => 'nullable|string',
                 'contact_name' => 'nullable|string|max:255',
                 'inventory_manager' => 'nullable|string|max:255',
-                'proforma_number' => 'nullable|string|max:255',
                 'proforma_stage' => ['required', Rule::in(array_keys(config('proforma.stages')))],
                 'organization_name' => 'nullable|string|max:255',
                 'address_type' => 'required|in:invoice,product',
@@ -345,7 +366,6 @@ class ProformaController extends Controller
                 'proforma_date' => $miladiDate,
                 'contact_name' => $validated['contact_name'],
                 'inventory_manager' => $validated['inventory_manager'],
-                'proforma_number' => $validated['proforma_number'],
                 'proforma_stage' => $validated['proforma_stage'],
                 'organization_name' => $validated['organization_name'],
                 'address_type' => $validated['address_type'],
@@ -403,6 +423,11 @@ class ProformaController extends Controller
 
     public function destroy(Proforma $proforma)
     {
+        if ($proforma->proforma_stage === 'send_for_approval') {
+            return redirect()
+                ->route('sales.proformas.show', $proforma)
+                ->with('alert_error', 'پیش‌فاکتور در انتظار تایید است و امکان حذف ندارد.');
+        }
         try {
             $proforma->delete();
             return redirect()->route('sales.proformas.index')
@@ -428,7 +453,6 @@ class ProformaController extends Controller
                     \App\Models\Approval::create([
                         'approvable_type' => get_class($proforma),
                         'approvable_id' => $proforma->id,
-                        'approver_id' => $user->id,
                         'user_id' => $user->id,
                         'status' => 'pending',
                     ]);
@@ -460,66 +484,50 @@ class ProformaController extends Controller
     {
         $userId = auth()->id();
 
-        $condition = AutomationCondition::where('model_type', 'Proforma')
-            ->where('field', 'proforma_stage')
-            ->where('operator', '=')
-            ->where('value', $proforma->proforma_stage)
-            ->first();
+        // گرفتن تمام تاییدیه‌ها به ترتیب ایجاد
+        $sortedApprovals = $proforma->approvals()
+            ->with('approver')
+            ->orderBy('created_at')
+            ->get();
 
-        if (!$condition) {
-            return back()->with('error', 'هیچ شرطی برای این مرحله تعریف نشده است.');
+        // تاییدیه مربوط به کاربر جاری
+        $currentApproval = $sortedApprovals->firstWhere('user_id', $userId);
+
+        if (! $currentApproval) {
+            return back()->with('error', 'شما مجاز به تایید این پیش‌فاکتور نیستید.');
         }
 
-        if ($userId !== $condition->approver1_id && $userId !== $condition->approver2_id) {
-            return back()->with('error', 'شما مجاز به تأیید این مرحله نیستید.');
+        if ($currentApproval->status !== 'pending') {
+            return back()->with('error', 'شما قبلاً این پیش‌فاکتور را تایید کرده‌اید.');
         }
 
-        $alreadyApprovedByCurrentUser = Approval::where('approvable_id', $proforma->id)
-            ->where('approvable_type', Proforma::class)
-            ->where('user_id', $userId)
-            ->exists();
+        // بررسی اینکه همه تاییدیه‌های قبل از این کاربر انجام شده باشند
+        $index = $sortedApprovals->search(fn($a) => $a->id === $currentApproval->id);
 
-        if ($alreadyApprovedByCurrentUser) {
-            return back()->with('error', 'شما قبلاً این مرحله را تایید کرده‌اید.');
+        $previousUnapproved = $sortedApprovals
+            ->take($index) // همه تاییدیه‌های قبل از این
+            ->firstWhere('status', 'pending');
+
+        if ($previousUnapproved) {
+            return back()->with('error', 'پیش‌فاکتور در انتظار تایید ' . $previousUnapproved->approver->name . ' است. ابتدا باید ایشان تایید کنند.');
         }
 
-        $approval = new Approval();
-        $approval->approvable_id = $proforma->id;
-        $approval->approvable_type = Proforma::class;
-        $approval->user_id = $userId;
-        $approval->status = 'approved';
-        $approval->approved_at = now();
-        $approval->save();
+        // تایید توسط کاربر فعلی
+        $currentApproval->update([
+            'status' => 'approved',
+            'approved_at' => now(),
+        ]);
 
-        $otherApprover = ($userId == $condition->approver1_id) ? $condition->approver2_id : $condition->approver1_id;
+        // بررسی اگر همه تایید شده‌اند، تغییر مرحله
+        $allApproved = $sortedApprovals->every(fn($a) => $a->status === 'approved');
 
-        $alreadyApproved = Approval::where('approvable_id', $proforma->id)
-            ->where('approvable_type', Proforma::class)
-            ->where('user_id', $otherApprover)
-            ->exists();
-
-            if (!$alreadyApproved && $otherApprover) {
-                $user = \App\Models\User::find($otherApprover);
-                if ($user) {
-                    $user->notify(new \App\Notifications\FormApprovalNotification($proforma, auth()->user()));
-                }
-            }
-            
-
-        $totalApprovers = collect([$condition->approver1_id, $condition->approver2_id])->filter()->unique()->count();
-
-        $totalApproved = Approval::where('approvable_id', $proforma->id)
-            ->where('approvable_type', Proforma::class)
-            ->where('status', 'approved')
-            ->distinct('user_id')
-            ->count('user_id');
-
-        if ($totalApproved >= $totalApprovers) {
-            $proforma->proforma_stage = 'approved';
-            $proforma->save();
+        if ($allApproved) {
+            $proforma->update(['proforma_stage' => 'approved']);
         }
 
-        return back()->with('success', 'پیش‌فاکتور با موفقیت تأیید شد.');
+        return back()->with('success', 'پیش‌فاکتور با موفقیت تایید شد.');
     }
+
+
 
 }
