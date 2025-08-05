@@ -11,7 +11,7 @@ class Approval extends Model
     protected $fillable = [
         'approvable_type',
         'approvable_id',
-        'approver_id',
+        'user_id',
         'status',
         'note',
         'approved_at'
@@ -24,7 +24,7 @@ class Approval extends Model
 
     public function approver()
     {
-        return $this->belongsTo(User::class, 'approver_id');
+        return $this->belongsTo(User::class, 'user_id');
     }
 }
 

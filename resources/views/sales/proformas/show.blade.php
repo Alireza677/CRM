@@ -7,9 +7,26 @@
             ['title' => 'جزئیات پیش‌فاکتور']
         ];
     @endphp
+    @if(session('alert_error'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({
+                icon: 'warning',
+                title: 'توجه',
+                text: '{{ session('alert_error') }}',
+                confirmButtonText: 'باشه'
+            });
+        });
+    </script>
+@endif
 
 <div class="container py-6" dir="rtl">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+            @if ($proforma->proforma_stage === 'send_for_approval' && $pendingApproverName)
+                    <div class="mt-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
+                        پیش‌فاکتور در انتظار تایید <strong>{{ $pendingApproverName }}</strong> است.
+                    </div>
+            @endif
 
         {{-- عنوان و دکمه‌ها --}}
         <div class="flex justify-between items-center mb-6">
@@ -170,7 +187,7 @@
                 }
             @endphp
 
-            @if ($canApprove)
+            @if ($approval)
                 <form action="{{ route('sales.proformas.approve', $proforma) }}" method="POST" onsubmit="return confirm('آیا از تایید پیش‌فاکتور مطمئن هستید؟');">
                     @csrf
                     @method('PUT')
@@ -179,6 +196,7 @@
                     </button>
                 </form>
             @endif
+
         </div>
     </div>
 </div>

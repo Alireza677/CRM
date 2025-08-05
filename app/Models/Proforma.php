@@ -16,7 +16,6 @@ class Proforma extends Model
         'proforma_date',
         'contact_name',
         'inventory_manager',
-        'proforma_number',
         'proforma_stage',
         'organization_name',
         'sales_opportunity',
@@ -30,8 +29,10 @@ class Proforma extends Model
         'organization_id',
         'contact_id',
         'opportunity_id',
-        'is_favorite'
+        'is_favorite',
+        'stage_id',
     ];
+    protected $guarded = ['proforma_number'];
 
     protected $casts = [
         'proforma_date' => 'datetime',
@@ -75,5 +76,18 @@ public function approvals()
 {
     return $this->morphMany(Approval::class, 'approvable');
 }
+protected static function boot()
+{
+    parent::boot();
+
+    static::creating(function ($proforma) {
+        // فقط اگر شماره قبلاً تنظیم نشده باشد
+        if (empty($proforma->proforma_number)) {
+            $latestId = self::max('id') + 1;
+            $proforma->proforma_number = 'QU' . str_pad($latestId, 5, '0', STR_PAD_LEFT);
+        }
+    });
+}
+
 
 } 

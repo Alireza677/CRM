@@ -44,15 +44,6 @@
                             @enderror
                         </div>
 
-                        {{-- شماره پیش فاکتور --}}
-                        <div class="form-group">
-                            <label for="proforma_number" class="form-label">شماره پیش فاکتور</label>
-                            <input type="text" class="form-control" id="proforma_number" name="proforma_number">
-                            @error('proforma_number')
-                                <div class="text-danger">{{ $message }}</div>
-                            @enderror
-                        </div>
-
                         <div>
                             <label for="proforma_stage" class="block mb-1 font-medium text-gray-700">
                                 مرحله پیش‌فاکتور <span class="text-red-600">*</span>
@@ -256,40 +247,47 @@
     </div>
 
 
-    <!-- Organization Modal -->
-    <div id="organizationModal"
-     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
-     style="display: none;">
-             <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
-            <h2 class="text-lg font-bold mb-4">انتخاب سازمان</h2>
-            <table class="w-full text-right border">
-                <thead>
-                    <tr class="bg-gray-100">
-                        <th class="p-2 border">نام سازمان</th>
-                        <th class="p-2 border">شماره تماس</th>
-                        <th class="p-2 border">انتخاب</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    @foreach($organizations as $org)
-                        <tr class="border-b">
-                            <td class="p-2">{{ $org->name }}</td>
-                            <td class="p-2">{{ $org->phone ?? '---' }}</td>
-                            <td class="p-2">
-                                <button class="text-blue-600 hover:underline" 
-                                        onclick="selectOrganization({{ $org->id }}, '{{ $org->name }}')">
-                                    انتخاب
-                                </button>
-                            </td>
+        <!-- Organization Modal -->
+        <div id="organizationModal"
+            class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+            style="display: none;">
+            <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow relative">
+
+                <!-- دکمه بستن در بالا -->
+                <button onclick="closeOrganizationModal()"
+                        class="absolute top-2 left-2 bg-gray-200 text-sm px-3 py-1 rounded hover:bg-gray-300">
+                    ✖ بستن
+                </button>
+
+                <h2 class="text-lg font-bold mb-4 text-right">انتخاب سازمان</h2>
+
+                <table class="w-full text-right border">
+                    <thead>
+                        <tr class="bg-gray-100">
+                            <th class="p-2 border">نام سازمان</th>
+                            <th class="p-2 border">شماره تماس</th>
+                            <th class="p-2 border">انتخاب</th>
                         </tr>
-                    @endforeach
-                </tbody>
-            </table>
-            <div class="mt-4 text-left">
-                <button onclick="closeOrganizationModal()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">بستن</button>
+                    </thead>
+                    <tbody>
+                        @foreach($organizations as $org)
+                            <tr class="border-b">
+                                <td class="p-2">{{ $org->name }}</td>
+                                <td class="p-2">{{ $org->phone ?? '---' }}</td>
+                                <td class="p-2">
+                                    <button class="text-blue-600 hover:underline" 
+                                            onclick="selectOrganization({{ $org->id }}, '{{ $org->name }}')">
+                                        انتخاب
+                                    </button>
+                                </td>
+                            </tr>
+                        @endforeach
+                    </tbody>
+                </table>
+
             </div>
         </div>
-    </div>
+
 
     <!-- Opportunity Modal -->
     <div id="opportunityModal"
@@ -342,6 +340,11 @@
             modal.classList.add('hidden');
             modal.style.display = 'none';
         }
+        function selectContact(id, name) {
+            document.getElementById('contact_id').value = id;
+            document.getElementById('contact_name').value = name;
+            closeContactModal();
+        }
     </script>
 
     <script>
@@ -355,6 +358,11 @@
             const modal = document.getElementById('organizationModal');
             modal.classList.add('hidden');
             modal.style.display = 'none';
+        }
+        function selectOrganization(id, name) {
+            document.getElementById('organization_id').value = id;
+            document.getElementById('organization_name').value = name;
+            closeOrganizationModal();
         }
     </script>
 
