@@ -144,53 +144,57 @@ class ProformaController extends Controller
 
             if (!empty($validated['products'])) {
                 foreach ($validated['products'] as $item) {
-                    $unitPrice = floatval($item['price']);
-                    $quantity = floatval($item['quantity']);
-                    $baseTotal = $unitPrice * $quantity;
-            
-                    // تخفیف
-                    $discountType = $item['discount_type'] ?? null;
-                    $discountValue = floatval($item['discount_value'] ?? 0);
-                    $discountAmount = 0;
-                    if ($discountType === 'percentage') {
-                        $discountAmount = ($baseTotal * $discountValue) / 100;
-                    } elseif ($discountType === 'fixed') {
-                        $discountAmount = $discountValue;
-                    }
-            
+                    $unitPrice  = (float) ($item['price'] ?? 0);
+                    $quantity   = (float) ($item['quantity'] ?? 0);
+                    $baseTotal  = $unitPrice * $quantity;
+
+                    // محاسبه تخفیف
+                    $discountType  = $item['discount_type'] ?? null;
+                    $discountValue = (float) ($item['discount_value'] ?? 0);
+                    $discountAmount = match ($discountType) {
+                        'percentage' => ($baseTotal * $discountValue) / 100,
+                        'fixed'      => $discountValue,
+                        default      => 0,
+                    };
+
                     $afterDiscount = $baseTotal - $discountAmount;
-            
-                    // مالیات
-                    $taxType = $item['tax_type'] ?? null;
-                    $taxValue = floatval($item['tax_value'] ?? 0);
-                    $taxAmount = 0;
-                    if ($taxType === 'percentage') {
-                        $taxAmount = ($afterDiscount * $taxValue) / 100;
-                    } elseif ($taxType === 'fixed') {
-                        $taxAmount = $taxValue;
-                    }
-            
+
+                    // محاسبه مالیات
+                    $taxType  = $item['tax_type'] ?? null;
+                    $taxValue = (float) ($item['tax_value'] ?? 0);
+                    $taxAmount = match ($taxType) {
+                        'percentage' => ($afterDiscount * $taxValue) / 100,
+                        'fixed'      => $taxValue,
+                        default      => 0,
+                    };
+
                     $totalAfterTax = $afterDiscount + $taxAmount;
-            
-                    // ذخیره آیتم
+
+                    // ذخیره آیتم پروفرما
                     $proforma->items()->create([
-                        'name' => $item['name'],
-                        'quantity' => $quantity,
-                        'unit_price' => $unitPrice,
-                        'unit_of_use' => $item['unit'],
-                        'total_price' => $baseTotal,
-                        'discount_type' => $discountType,
-                        'discount_value' => $discountValue,
+                        'name'            => $item['name'] ?? '',
+                        'quantity'        => $quantity,
+                        'unit_price'      => $unitPrice,
+                        'unit_of_use'     => $item['unit'] ?? '',
+                        'total_price'     => $baseTotal,
+                        'discount_type'   => $discountType,
+                        'discount_value'  => $discountValue,
                         'discount_amount' => $discountAmount,
-                        'tax_type' => $taxType,
-                        'tax_value' => $taxValue,
-                        'tax_amount' => $taxAmount,
+                        'tax_type'        => $taxType,
+                        'tax_value'       => $taxValue,
+                        'tax_amount'      => $taxAmount,
                         'total_after_tax' => $totalAfterTax,
                     ]);
-            
+
                     $totalAmount += $totalAfterTax;
                 }
+
+                // ذخیره جمع کل در خود پروفرما
+                $proforma->update([
+                    'total_amount' => $totalAmount
+                ]);
             }
+
             
 
             $proforma->update(['total_amount' => $totalAmount]);
@@ -291,11 +295,13 @@ class ProformaController extends Controller
                 'postal_code' => 'nullable|string|max:255',
                 'assigned_to' => 'required|exists:users,id',
                 'opportunity_id' => 'nullable|exists:opportunities,id',
-                'products' => 'required|array|min:1',
-                'products.*.name' => 'required|string|max:255',
-                'products.*.quantity' => 'required|numeric|min:0.01',
-                'products.*.price' => 'required|numeric|min:0',
-                'products.*.unit' => 'required|string|max:50',
+    
+                // محصولات دیگر اجباری نیستند
+                'products' => 'nullable|array',
+                'products.*.name' => 'nullable|string|max:255',
+                'products.*.quantity' => 'nullable|numeric|min:0.01',
+                'products.*.price' => 'nullable|numeric|min:0',
+                'products.*.unit' => 'nullable|string|max:50',
                 'products.*.discount_type' => 'nullable|in:percentage,fixed',
                 'products.*.discount_value' => 'nullable|numeric|min:0',
                 'products.*.tax_type' => 'nullable|in:percentage,fixed',
@@ -528,6 +534,35 @@ class ProformaController extends Controller
         return back()->with('success', 'پیش‌فاکتور با موفقیت تایید شد.');
     }
 
+    public function bulkDestroy(Request $request)
+    {
+        $data = $request->validate([
+            'ids'   => ['required','array','min:1'],
+            'ids.*' => ['integer','distinct'],
+            'force_delete' => ['nullable','boolean'],
+        ]);
 
+        // جلوگیری از حذف آیتم‌های در وضعیت تایید
+        $ids = Proforma::query()
+            ->whereIn('id', $data['ids'])
+            ->where('proforma_stage', '!=', 'send_for_approval')
+            ->pluck('id');
+
+        if ($ids->isEmpty()) {
+            return back()->with('error', 'هیچ آیتم قابل حذفی انتخاب نشده است.');
+        }
+
+        try {
+            DB::transaction(function () use ($ids) {
+                Proforma::query()->whereIn('id', $ids)->delete(); // همین کافی است
+            });
+        } catch (\Throwable $e) {
+            return back()->with('error', 'خطا در حذف گروهی: '.$e->getMessage());
+        }
+
+        return back()->with('success', $ids->count().' مورد حذف شد.');
+    }
+
+    
 
 }

@@ -83,10 +83,48 @@
                 {{-- اطلاعات تماس --}}
                 <div class="space-y-4">
                     <h3 class="text-lg font-semibold mb-4">اطلاعات تماس</h3>
-                    <div><strong>نام مخاطب:</strong> {{ $proforma->contact_name }}</div>
-                    <div><strong>نام سازمان:</strong> {{ $proforma->organization_name }}</div>
+
+                    {{-- مخاطب --}}
+                    <div>
+                        <strong>نام مخاطب:</strong>
+                        @if($proforma->contact)
+                            <a href="{{ route('sales.contacts.show', $proforma->contact) }}" class="text-blue-600 hover:underline">
+                                {{ $proforma->contact->name ?? $proforma->contact_name }}
+                            </a>
+                        @else
+                            {{ $proforma->contact_name }}
+                        @endif
+                    </div>
+
+                    {{-- سازمان --}}
+                    <div>
+                        <strong>نام سازمان:</strong>
+                        @if($proforma->organization)
+                            <a href="{{ route('sales.organizations.show', $proforma->organization) }}" class="text-blue-600 hover:underline">
+                                {{ $proforma->organization->name ?? $proforma->organization_name }}
+                            </a>
+                        @else
+                            {{ $proforma->organization_name }}
+                        @endif
+                    </div>
+
+                    {{-- ارجاع --}}
                     <div><strong>ارجاع به:</strong> {{ $proforma->assignedTo?->name }}</div>
+
+                    {{-- فرصت فروش --}}
+                    <div>
+                        <strong>فرصت فروش:</strong>
+                        @if($proforma->opportunity)
+                            <a href="{{ route('sales.opportunities.show', $proforma->opportunity) }}" class="text-blue-600 hover:underline">
+                                {{ $proforma->opportunity->title ?? ('فرصت #' . $proforma->opportunity->id) }}
+                            </a>
+                        @else
+                            —
+                        @endif
+                    </div>
                 </div>
+
+
 
                 {{-- اطلاعات آدرس --}}
                 <div class="space-y-4 md:col-span-2">
