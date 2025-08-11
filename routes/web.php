@@ -42,7 +42,7 @@ use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\OpportunityNoteController;
 use App\Http\Controllers\Settings\AutomationController;
 use App\Http\Controllers\Sales\OrganizationImportController;
-
+use App\Http\Controllers\Sales\ProformaImportController;
 
 
 Route::get('/', function () {
@@ -73,10 +73,6 @@ Route::middleware(['auth'])->group(function () {
     });
 
     
-
-    
-    
-
     // Notifications
     Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
     Route::get('/notifications/read/{notification}', [NotificationController::class, 'read'])->name('notifications.read');
@@ -96,12 +92,7 @@ Route::middleware(['auth'])->group(function () {
         ->name('opportunities.notes.store');
 
 
-        //pishfaktor
-        Route::resource('proformas', ProformaController::class); 
-        Route::post('proformas/{proforma}/send-for-approval', [ProformaController::class, 'sendForApproval'])
-                ->name('proformas.sendForApproval');
-        Route::put('proformas/{proforma}/approve', [ProformaController::class, 'approve'])->name('proformas.approve');
-
+       
 
         // اسناد
         Route::resource('documents', DocumentController::class);
@@ -122,12 +113,22 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('organizations', OrganizationController::class)->names('organizations');
 
+        // pishfaktor
+        Route::post('/proformas/import', [ProformaImportController::class, 'import'])->name('proformas.import');
+        Route::get('/proformas/import', [ProformaImportController::class, 'Form'])->name('proformas.import.form');
 
-        // پیش‌فاکتورها و پیش‌نویس‌ها
+        Route::delete('/proformas/bulk-delete', [ProformaController::class, 'bulkDestroy'])
+        ->name('proformas.bulk-destroy');    
+        
         Route::resource('proformas', ProformaController::class);
         Route::resource('quotations', QuotationController::class);
-        Route::post('proformas/{proforma}/items', [ProformaController::class, 'storeItems'])->name('proformas.items.store');
 
+        Route::post('proformas/{proforma}/items', [ProformaController::class, 'storeItems'])->name('proformas.items.store');
+        Route::post('proformas/{proforma}/send-for-approval', [ProformaController::class, 'sendForApproval'])->name('proformas.sendForApproval');
+        Route::put('proformas/{proforma}/approve', [ProformaController::class, 'approve'])->name('proformas.approve');
+
+      
+         
         // صفحه اصلی فروش
         Route::get('/', [SalesController::class, 'index'])->name('index');
 
