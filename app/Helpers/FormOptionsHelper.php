@@ -45,6 +45,7 @@ class FormOptionsHelper
         return [
             'draft' => 'پیش‌نویس',
             'send_for_approval' => 'ارسال برای تاییدیه',
+            'awaiting_second_approval' => 'در انتظار تایید نهایی',
             'approved' => 'تایید شده',
             'rejected' => 'رد شده',
             'finalized' => 'نهایی شده',

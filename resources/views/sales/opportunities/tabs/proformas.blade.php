@@ -14,21 +14,44 @@
                     <th class="px-4 py-2">شماره</th>
                     <th class="px-4 py-2">تاریخ</th>
                     <th class="px-4 py-2">مرحله</th>
+                    
                     <th class="px-4 py-2">مبلغ</th>
-                    <th class="px-4 py-2">وضعیت</th>
+                    
                     <th class="px-4 py-2">عملیات</th>
                 </tr>
             </thead>
             <tbody>
                 @foreach ($opportunity->proformas as $proforma)
                     <tr class="border-t hover:bg-gray-50">
-                        <td class="px-4 py-2">{{ $proforma->number ?? '---' }}</td>
-                        <td class="px-4 py-2">{{ jdate($proforma->date)->format('Y/m/d') }}</td>
-                        <td class="px-4 py-2">{{ $proforma->stage }}</td>
-                        <td class="px-4 py-2">{{ number_format($proforma->total_amount) }} تومان</td>
-                        <td class="px-4 py-2">{{ $proforma->status }}</td>
+                        <td class="px-4 py-2">{{ $proforma->proforma_number ?? '---' }}</td>
+
                         <td class="px-4 py-2">
-                            <a href="{{ route('sales.proformas.show', $proforma) }}" class="text-blue-600 hover:underline text-xs">مشاهده</a>
+                            {{ $proforma->proforma_date ? jdate($proforma->proforma_date)->format('Y/m/d') : '---' }}
+                        </td>
+
+                        @php
+                            $stages = \App\Helpers\FormOptionsHelper::proformaStages();
+                        @endphp
+
+                        <td class="px-4 py-2">
+                            {{ $stages[$proforma->proforma_stage] ?? $proforma->proforma_stage ?? '---' }}
+                        </td>
+
+
+                
+
+                        <td class="px-4 py-2">
+                            {{-- اگر می‌خواهید دو رقم اعشار نشان بدهد: number_format(..., 2) --}}
+                            {{ isset($proforma->total_amount) ? number_format((float)$proforma->total_amount, 0) . ' تومان' : '---' }}
+                        </td>
+
+                    
+
+                        <td class="px-4 py-2 space-x-3 space-x-reverse">
+                            <a href="{{ route('sales.proformas.show', $proforma) }}"
+                               class="text-blue-600 hover:underline text-xs">مشاهده</a>
+                            <a href="{{ route('sales.proformas.edit', $proforma) }}"
+                               class="text-amber-600 hover:underline text-xs">ویرایش</a>
                         </td>
                     </tr>
                 @endforeach

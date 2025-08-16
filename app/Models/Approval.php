@@ -14,7 +14,12 @@ class Approval extends Model
         'user_id',
         'status',
         'note',
-        'approved_at'
+        'approved_at',
+        'step'
+    ];
+    protected $casts = [
+        'approved_at' => 'datetime',
+        'step'        => 'integer', 
     ];
 
     public function approvable()

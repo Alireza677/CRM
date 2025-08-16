@@ -2,12 +2,13 @@
 
 @section('content')
 
-    @php
-        $breadcrumb = [
-            ['title' => 'جزئیات پیش‌فاکتور']
-        ];
-    @endphp
-    @if(session('alert_error'))
+@php
+    $breadcrumb = [
+        ['title' => 'جزئیات پیش‌فاکتور']
+    ];
+@endphp
+
+@if(session('alert_error'))
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             Swal.fire({
@@ -22,21 +23,61 @@
 
 <div class="container py-6" dir="rtl">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-            @if ($proforma->proforma_stage === 'send_for_approval' && $pendingApproverName)
-                    <div class="mt-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
-                        پیش‌فاکتور در انتظار تایید <strong>{{ $pendingApproverName }}</strong> است.
-                    </div>
+
+        {{-- وضعیت و برچسب‌ها --}}
+        <div class="flex items-center gap-2 mb-4">
+        @php
+            $stageKey = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
+            $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? 'نامشخص';
+        @endphp
+
+        <span class="px-2 py-1 rounded bg-gray-100 text-gray-800 text-sm">
+            وضعیت: {{ $stageLabel }}
+        </span>
+
+
+            @if(($proforma->approval_mode ?? null) === 'override')
+                <span class="px-2 py-1 rounded bg-yellow-100 text-yellow-800 text-xs">
+                    Override (تأیید ادمین جایگزین)
+                </span>
             @endif
+        </div>
+
+        @php
+            // اگر متد pendingApproval در مدل اضافه شده از همان استفاده می‌کنیم؛
+            // در غیر این صورت، همین‌جا pending را می‌گیریم.
+            $pending = method_exists($proforma, 'pendingApproval')
+                ? $proforma->pendingApproval()
+                : $proforma->approvals()->with('approver')
+                    ->where('status', 'pending')
+                    ->orderBy('step')->orderBy('id')
+                    ->first();
+        @endphp
+
+        @if($pending)
+            <div class="mt-2 mb-4 p-4 bg-yellow-100 border border-yellow-400 text-yellow-800 rounded">
+                پیش‌فاکتور در انتظار تایید
+                <strong>{{ optional($pending->approver)->name ?: ('کاربر #' . $pending->user_id) }}</strong>
+                است.
+            </div>
+        @elseif(($proforma->approval_stage ?? $proforma->proforma_stage) === 'approved')
+            <div class="mt-2 mb-4 p-4 bg-green-100 border border-green-400 text-green-800 rounded">
+                پیش‌فاکتور تایید نهایی شد.
+            </div>
+        @endif
+
 
         {{-- عنوان و دکمه‌ها --}}
         <div class="flex justify-between items-center mb-6">
-            <h2 class="font-semibold text-xl text-gray-800 leading-tight">
-                جزئیات پیش‌فاکتور
-            </h2>
-            <div class="flex space-x-4">
-                <a href="{{ route('sales.proformas.edit', $proforma) }}" class="btn btn-primary">✏️ ویرایش</a>
-                <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت</a>
+            <h2 class="font-semibold text-xl text-gray-800 leading-tight">جزئیات پیش‌فاکتور</h2>
+            <div class="flex gap-3">
 
+                {{-- دکمه ویرایش فقط اگر مجاز باشد (Policy:update) --}}
+                @can('update', $proforma)
+                    <a href="{{ route('sales.proformas.edit', $proforma) }}" class="btn btn-primary">✏️ ویرایش</a>
+                @endcan
+
+                <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت</a>
             </div>
         </div>
 
@@ -60,6 +101,7 @@
                 <div class="space-y-4">
                     <h3 class="text-lg font-semibold mb-4">اطلاعات پایه</h3>
                     <div><strong>موضوع:</strong> {{ $proforma->subject }}</div>
+
                     @php
                         use Morilog\Jalali\Jalalian;
 
@@ -74,9 +116,29 @@
 
                     <div><strong>تاریخ پیش فاکتور:</strong> {{ $shamsiDate }}</div>
                     <div><strong>شماره پیش فاکتور:</strong> {{ $proforma->proforma_number }}</div>
-                    <div><strong>مرحله:</strong> 
-                        {{ config('proforma.stages.' . $proforma->proforma_stage) ?? 'نامشخص' }}
+                    @php
+                        $stageKey   = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
+                        $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? 'نامشخص';
+                    @endphp
+
+                    <div>
+                        <strong>مرحله:</strong> {{ $stageLabel }}
                     </div>
+
+                    {{-- نمایش اطلاعات تایید (در صورت وجود) --}}
+                    @if(!empty($proforma->first_approved_by))
+                        <div>
+                            <strong>تایید مرحله اول توسط:</strong>
+                            {{ optional($proforma->firstApprovedBy)->name ?? '—' }}
+                        </div>
+                    @endif
+
+                    @if(!empty($proforma->approved_by))
+                        <div>
+                            <strong>تایید نهایی توسط:</strong>
+                            {{ optional($proforma->approvedBy)->name ?? '—' }}
+                        </div>
+                    @endif
 
                 </div>
 
@@ -124,12 +186,10 @@
                     </div>
                 </div>
 
-
-
                 {{-- اطلاعات آدرس --}}
                 <div class="space-y-4 md:col-span-2">
                     <h3 class="text-lg font-semibold mb-4">اطلاعات آدرس</h3>
-                    <div><strong>نوع آدرس:</strong> 
+                    <div><strong>نوع آدرس:</strong>
                         {{ $proforma->address_type === 'invoice' ? 'آدرس تحویل صورت‌حساب' : 'آدرس تحویل محصول' }}
                     </div>
                     <div><strong>آدرس:</strong> {{ $proforma->customer_address }}</div>
@@ -162,8 +222,8 @@
                                 @endphp
                                 @foreach($proforma->items as $item)
                                     @php
-                                        $total_discount += $item->discount_amount;
-                                        $total_tax += $item->tax_amount;
+                                        $total_discount += ($item->discount_amount ?? 0);
+                                        $total_tax += ($item->tax_amount ?? 0);
                                     @endphp
                                     <tr>
                                         <td>{{ $item->name }}</td>
@@ -202,39 +262,29 @@
                         </table>
                     </div>
                 </div>
+
             </div>
         </div>
 
-        {{-- دکمه برگشت --}}
-        <div class="mt-6 flex justify-end">
-            <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">
-                ⬅ بازگشت به لیست
-            </a>
-            @php
-                $canApprove = false;
-                $currentStage = $proforma->proforma_stage;
+        {{-- دکمه‌ها پایین صفحه --}}
+        <div class="mt-6 flex justify-end gap-3">
+            <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت به لیست</a>
 
-                $condition = \App\Models\AutomationCondition::where('model_type', 'Proforma')
-                    ->where('field', 'proforma_stage')
-                    ->where('operator', '=')
-                    ->where('value', $currentStage)
-                    ->first();
-
-                if ($condition && (auth()->id() == $condition->approver1_id || auth()->id() == $condition->approver2_id)) {
-                    $canApprove = true;
-                }
-            @endphp
-
-            @if ($approval)
-                <form action="{{ route('sales.proformas.approve', $proforma) }}" method="POST" onsubmit="return confirm('آیا از تایید پیش‌فاکتور مطمئن هستید؟');">
+            {{-- دکمه تایید: فقط وقتی مجاز باشم (Policy:approve) --}}
+            @can('approve', $proforma)
+                <form action="{{ route('sales.proformas.approve', $proforma) }}" method="POST"
+                      onsubmit="return confirm('آیا از تایید پیش‌فاکتور مطمئن هستید؟');">
                     @csrf
-                    @method('PUT')
-                    <button type="submit" class="btn btn-success mt-4 ml-4">
+                    <button type="submit" class="btn btn-success">
                         ✅ تایید پیش‌فاکتور
                     </button>
+                    @if(optional($proforma->automationRule)->emergency_approver_id === auth()->id())
+                        <div class="text-xs text-yellow-700 mt-2">
+                            شما تأییدکنندهٔ جایگزین هستید؛ تایید شما نهایی است.
+                        </div>
+                    @endif
                 </form>
-            @endif
-
+            @endcan
         </div>
     </div>
 </div>
@@ -249,29 +299,12 @@
         border-radius: 0.375rem;
         transition: background-color 0.2s ease-in-out;
     }
-    .btn-primary {
-        color: white;
-        background-color: #2563eb;
-    }
-    .btn-primary:hover {
-        background-color: #1d4ed8;
-    }
-    .btn-secondary {
-        color: white;
-        background-color: #6b7280;
-    }
-    .btn-secondary:hover {
-        background-color: #4b5563;
-    }
-    .btn-success {
-    color: white;
-    background-color: #16a34a;
-    }
-    .btn-success:hover {
-        background-color: #15803d;
-    }
-
+    .btn-primary { color: white; background-color: #2563eb; }
+    .btn-primary:hover { background-color: #1d4ed8; }
+    .btn-secondary { color: white; background-color: #6b7280; }
+    .btn-secondary:hover { background-color: #4b5563; }
+    .btn-success { color: white; background-color: #16a34a; }
+    .btn-success:hover { background-color: #15803d; }
 </style>
 
 @endsection
-
