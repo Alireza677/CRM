@@ -43,6 +43,8 @@ use App\Http\Controllers\OpportunityNoteController;
 use App\Http\Controllers\Settings\AutomationController;
 use App\Http\Controllers\Sales\OrganizationImportController;
 use App\Http\Controllers\Sales\ProformaImportController;
+use App\Http\Controllers\Sales\ProformaApprovalController;
+
 
 
 Route::get('/', function () {
@@ -83,19 +85,15 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('sales')->name('sales.')->group(function () {
         // فرصت‌های فروش
         Route::resource('opportunities', OpportunityController::class)->names('opportunities');
-        Route::resource('leads', SalesLeadController::class)->names('leads');
-
-        // نمایش تب‌ها (مثل خلاصه، یادداشت، اطلاعات و ...)
         Route::get('opportunities/{opportunity}/tab/{tab}', [OpportunityController::class, 'loadTab'])->name('opportunities.tab');
-        // ثبت یادداشت برای فرصت فروش
-        Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])
-        ->name('opportunities.notes.store');
+        Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])->name('opportunities.notes.store');
 
-
-       
+        // سرنخ‌ها
+        Route::resource('leads', SalesLeadController::class)->names('leads');
 
         // اسناد
         Route::resource('documents', DocumentController::class);
+        Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 
         // مخاطبین
         Route::get('contacts/import', [ContactImportController::class, 'showForm'])->name('contacts.import.form');
@@ -103,37 +101,32 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])->name('contacts.bulk_delete');
         Route::resource('contacts', ContactController::class);
 
-        
-
         // سازمان‌ها
         Route::get('organizations/import', [OrganizationImportController::class, 'importForm'])->name('organizations.import.form');
         Route::post('organizations/import', [OrganizationImportController::class, 'import'])->name('organizations.import');
-
-        Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // 👈 این خط بیاد قبل از resource
-
+        Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // قبل از resource
         Route::resource('organizations', OrganizationController::class)->names('organizations');
 
-        // pishfaktor
-        Route::post('/proformas/import', [ProformaImportController::class, 'import'])->name('proformas.import');
-        Route::get('/proformas/import', [ProformaImportController::class, 'Form'])->name('proformas.import.form');
-
-        Route::delete('/proformas/bulk-delete', [ProformaController::class, 'bulkDestroy'])
-        ->name('proformas.bulk-destroy');    
-        
+        // پیش‌فاکتور
+        Route::get('proformas/import', [ProformaImportController::class, 'Form'])->name('proformas.import.form');
+        Route::post('proformas/import', [ProformaImportController::class, 'import'])->name('proformas.import');
+        Route::delete('proformas/bulk-delete', [ProformaController::class, 'bulkDestroy'])->name('proformas.bulk-destroy');
         Route::resource('proformas', ProformaController::class);
-        Route::resource('quotations', QuotationController::class);
-
         Route::post('proformas/{proforma}/items', [ProformaController::class, 'storeItems'])->name('proformas.items.store');
         Route::post('proformas/{proforma}/send-for-approval', [ProformaController::class, 'sendForApproval'])->name('proformas.sendForApproval');
-        Route::put('proformas/{proforma}/approve', [ProformaController::class, 'approve'])->name('proformas.approve');
 
-      
-         
-        // صفحه اصلی فروش
+        // تأیید نهایی (کنترلر تخصصی)
+        Route::post('proformas/{proforma}/approve', [ProformaController::class, 'approve'])
+            ->name('proformas.approve');
+
+        // نقل‌قول‌ها
+        Route::resource('quotations', QuotationController::class);
+
+        // داشبورد فروش
         Route::get('/', [SalesController::class, 'index'])->name('index');
 
-        // نسخه قدیمی پیش‌فاکتور (در صورت نیاز)
-        Route::get('/proforma-invoice', [ProformaInvoiceController::class, 'index'])->name('proforma.index');
+        // نسخه قدیمی (در صورت نیاز)
+        Route::get('proforma-invoice', [ProformaInvoiceController::class, 'index'])->name('proforma.index');
     });
 
     // Inventory

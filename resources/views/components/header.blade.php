@@ -33,23 +33,29 @@
 
     <!-- لوگو در وسط -->
     <a href="{{ route('dashboard') }}" class="flex items-center justify-center">
-        <img src="{{ asset('images/admin-ajax.png') }}" alt="Logo" class="h-10 w-auto">
+        <img src="{{ asset('images/admin-ajax.png') }}" alt="Logo" class="h-12 w-auto">
     </a>
+
+    <!-- تاریخ و ساعت شمسی یک‌خطی -->
+    <div id="datetime-display" class="text-gray-700 text-sm font-medium leading-tight text-center">
+        <div>{{ \Morilog\Jalali\Jalalian::now()->format('l j F Y') }}</div>
+        <div id="time-now" class="font-bold text-base"></div>
+    </div>
 
     <!-- آیکن زنگ و نام کاربر -->
     <div class="flex items-center gap-6">
         <!-- جستجوی سراسری -->
-<form method="GET" action="{{ route('global.search') }}" class="relative hidden md:block">
-    <input 
-        type="text" 
-        name="q" 
-        placeholder="جستجو..." 
-        class="pl-10 pr-3 py-1.5 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring focus:border-blue-400"
-    >
-    <button type="submit" class="absolute left-0 top-1 text-gray-500 hover:text-blue-600 px-2">
-        <i class="fas fa-search"></i>
-    </button>
-</form>
+        <form method="GET" action="{{ route('global.search') }}" class="relative hidden md:block">
+            <input 
+                type="text" 
+                name="q" 
+                placeholder="جستجو..." 
+                class="pl-10 pr-3 py-1.5 rounded-md border border-gray-300 text-sm focus:outline-none focus:ring focus:border-blue-400"
+            >
+            <button type="submit" class="absolute left-0 top-1 text-gray-500 hover:text-blue-600 px-2">
+                <i class="fas fa-search"></i>
+            </button>
+        </form>
 
         <!-- اعلان‌ها -->
 <div class="relative" x-data="{ showNotifications: false }">
@@ -67,13 +73,12 @@
     </button>
     
     <!-- لیست اعلان‌ها -->
-<div
-    x-show="showNotifications"
-    x-cloak
-    @click.away="showNotifications = false"
-    class="absolute left-0 mt-2 w-80 bg-white shadow-lg rounded-lg border border-gray-200 z-50"
-    style="max-height: 400px; overflow-y: auto;"
->
+    <div x-show="showNotifications"
+        x-cloak
+        @click.away="showNotifications = false"
+        class="absolute left-0 mt-2 w-80 bg-white shadow-lg rounded-lg border border-gray-200 z-50"
+        style="max-height: 400px; overflow-y: auto;"
+    >
     <div class="flex justify-between items-center p-4 border-b font-semibold text-gray-700">
         <span>اعلان‌های اخیر</span>
         <button
@@ -108,9 +113,9 @@
     </div>
 </div>
 
-</div>
+    
 
-        
+</div>  
         <!-- نام کاربر و منوی کشویی -->
         <div class="relative" x-data="{ open: false }">
             <button @click="open = !open" class="text-gray-600 hover:text-gray-900 flex items-center gap-2">
@@ -159,4 +164,18 @@
             `;
         }
     }
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function updateTime() {
+            const now = new Date();
+            const hours = String(now.getHours()).padStart(2, '0');
+            const minutes = String(now.getMinutes()).padStart(2, '0');
+            const seconds = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('time-now').textContent = `${hours}:${minutes}:${seconds}`;
+        }
+        updateTime();
+        setInterval(updateTime, 1000);
+    });
 </script>

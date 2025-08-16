@@ -129,8 +129,10 @@ public function approvals()
 // پیش‌فاکتورها
 public function proformas()
 {
-    return $this->hasMany(Proforma::class);
+    return $this->hasMany(\App\Models\Proforma::class)
+        ->orderByDesc('proforma_date'); 
 }
+
 
 // سفارش‌ها
 public function orders()

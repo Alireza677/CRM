@@ -99,16 +99,39 @@ class OpportunityController extends Controller
     
     public function show(Opportunity $opportunity)
     {
+        // نان‌برگه
         $breadcrumb = [
             ['title' => 'خانه', 'url' => url('/dashboard')],
             ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
-            ['title' => $opportunity->name ?? 'فرصت #' . $opportunity->id],
+            ['title' => $opportunity->name ?? ('فرصت #' . $opportunity->id)],
         ];
 
+        // اکتیویتی‌ها (همون قبلی)
         $activities = Activity::where('subject_type', Opportunity::class)
             ->where('subject_id', $opportunity->id)
             ->latest()
             ->get();
+
+        // بارگذاریِ پیش‌فاکتورها با فیلدهای دقیق از جدول proformas
+        // + مرتب‌سازی بر اساس تاریخ پیش‌فاکتور
+        $opportunity->load([
+            'proformas' => function ($q) use ($opportunity) {
+                $q->select(
+                    'id',
+                    'opportunity_id',
+                    'proforma_number',
+                    'proforma_date',
+                    'approval_stage',
+                    'proforma_stage',
+                    'total_amount'
+                )
+                ->where('opportunity_id', $opportunity->id)
+                ->orderByDesc('proforma_date');
+            },
+        ]);
+
+        // اگر به شمارش رکوردها در تب‌ها نیاز داری (اختیاری):
+        // $opportunity->loadCount(['proformas']);
 
         return view('sales.opportunities.show', compact('opportunity', 'breadcrumb', 'activities'));
     }
