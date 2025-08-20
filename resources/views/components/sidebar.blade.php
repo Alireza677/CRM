@@ -43,7 +43,7 @@
         <nav class="p-4 space-y-2">
             <button @click="$store.menu.openSubMenu('marketing')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">بازاریابی</button>
             <button @click="$store.menu.openSubMenu('sales')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">فروش</button>
-            {{-- <button @click="$store.menu.openSubMenu('projects')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">پروژه‌ها</button> --}}
+            <button @click="$store.menu.openSubMenu('projects')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">پروژه‌ها</button>
             <button @click="$store.menu.openSubMenu('inventory')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">موجودی</button>
             {{--<button @click="$store.menu.openSubMenu('print-templates')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">قالب‌های پرینت</button>--}}
             {{--<button @click="$store.menu.openSubMenu('forms')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">فرم‌ها</button>--}}
