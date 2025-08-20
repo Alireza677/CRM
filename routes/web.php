@@ -44,6 +44,9 @@ use App\Http\Controllers\Settings\AutomationController;
 use App\Http\Controllers\Sales\OrganizationImportController;
 use App\Http\Controllers\Sales\ProformaImportController;
 use App\Http\Controllers\Sales\ProformaApprovalController;
+use App\Http\Controllers\ProjectController;
+use App\Http\Controllers\TaskController;
+use App\Http\Controllers\TaskNoteController;
 
 
 
@@ -139,7 +142,6 @@ Route::middleware(['auth'])->group(function () {
 
     // Other Modules
     Route::get('/support', [SupportController::class, 'index'])->name('support');
-    Route::get('/projects', [ProjectsController::class, 'index'])->name('projects');
     Route::get('/tools', [ToolsController::class, 'index'])->name('tools');
     Route::get('/admin', [AdminController::class, 'index'])->name('admin');
     Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
@@ -202,6 +204,45 @@ Route::middleware(['auth'])->group(function () {
 
     // Global search
     Route::get('/global-search', [GlobalSearchController::class, 'index'])->name('global.search');
+
+    Route::scopeBindings()->group(function () {
+
+        // Projects
+        Route::get('/projects',               [ProjectController::class, 'index'])->name('projects.index');
+        Route::get('/projects/create',        [ProjectController::class, 'create'])->name('projects.create');
+        Route::post('/projects',              [ProjectController::class, 'store'])->name('projects.store');
+        Route::get('/projects/{project}',     [ProjectController::class, 'show'])->name('projects.show');
+    
+        // Members
+        Route::post('/projects/{project}/members',          [ProjectController::class, 'addMember'])->name('projects.members.add');
+        Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember'])->name('projects.members.remove');
+    
+        // Tasks: ایجاد (می‌تواند بیرون از گروهِ can:view,project باشد، اما ما می‌بریم زیرش تا یکدست باشد)
+        Route::prefix('projects/{project}')
+            ->name('projects.')
+            ->middleware('can:view,project') // کاربر باید عضو پروژه باشد
+            ->group(function () {
+    
+                // Create task
+                Route::post('tasks',                     [TaskController::class, 'store'])->name('tasks.store');
+    
+                // Task CRUD
+                Route::get('tasks/{task}',              [TaskController::class, 'show'])->name('tasks.show');
+                Route::get('tasks/{task}/edit',         [TaskController::class, 'edit'])->name('tasks.edit');
+                Route::put('tasks/{task}',              [TaskController::class, 'update'])->name('tasks.update');
+                Route::delete('tasks/{task}',           [TaskController::class, 'destroy'])->name('tasks.destroy');
+    
+                // Mark done
+                Route::post('tasks/{task}/done',        [TaskController::class, 'markDone'])->name('tasks.done');
+    
+                // Task notes
+                Route::post('tasks/{task}/notes',                     [TaskNoteController::class, 'store'])->name('tasks.notes.store');
+                Route::delete('tasks/{task}/notes/{note}',            [TaskNoteController::class, 'destroy'])->name('tasks.notes.destroy');
+            });
+    });
+    
+
+
 });
 
 require __DIR__.'/auth.php';

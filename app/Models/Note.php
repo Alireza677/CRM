@@ -13,11 +13,20 @@ class Note extends Model
     {
         return $this->morphTo(null, 'noteable_type', 'noteable_id');
     }
+    public function noteable()
+    {
+        return $this->morphTo();
+    }
+    public function author()
+    {
+        return $this->belongsTo(User::class, 'user_id');
+    }
 
     public function user()
     {
         return $this->belongsTo(User::class);
     }
+
     public function getMentionsAttribute()
     {
         // تمام usernameهایی که با @ شروع می‌شن رو از body جدا می‌کنیم
@@ -30,4 +39,11 @@ class Note extends Model
 
         return collect(); // اگر چیزی نبود، کالکشن خالی برمی‌گردونه
     }
+    public function mentions()
+    {
+        return $this->belongsToMany(\App\Models\User::class, 'note_mentions')
+                    ->withTimestamps()
+                    ->withPivot('notified_at');
+    }
+
 }

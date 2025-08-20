@@ -6,6 +6,8 @@ use App\Models\Proforma;
 use App\Policies\ProformaPolicy;
 use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvider;
 use Illuminate\Support\Facades\Gate;
+use App\Models\Task;
+use App\Policies\TaskPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -16,6 +18,10 @@ class AuthServiceProvider extends ServiceProvider
      */
     protected $policies = [
         Proforma::class => ProformaPolicy::class,
+        \App\Models\Project::class => \App\Policies\ProjectPolicy::class,
+        Task::class => TaskPolicy::class,
+
+
     ];
 
     /**
