@@ -40,10 +40,10 @@ class Note extends Model
         return collect(); // اگر چیزی نبود، کالکشن خالی برمی‌گردونه
     }
     public function mentions()
-    {
-        return $this->belongsToMany(\App\Models\User::class, 'note_mentions')
-                    ->withTimestamps()
-                    ->withPivot('notified_at');
-    }
+{
+    return $this->belongsToMany(\App\Models\User::class, 'note_mentions', 'note_id', 'user_id')
+        ->withTimestamps()
+        ->withPivot('notified_at');
+}
 
 }

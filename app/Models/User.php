@@ -70,7 +70,12 @@ class User extends Authenticatable
             }
         });
     }
-
-    
+    public function mentionedInNotes()
+{
+    return $this->belongsToMany(\App\Models\Note::class, 'note_mentions', 'user_id', 'note_id')
+        ->withTimestamps()
+        ->withPivot('notified_at');
+}
+        
 
 }

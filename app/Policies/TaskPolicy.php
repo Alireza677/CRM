@@ -2,38 +2,59 @@
 
 namespace App\Policies;
 
-use App\Models\User;
+use App\Models\Project;
 use App\Models\Task;
+use App\Models\User;
 
 class TaskPolicy
 {
-    // اگر لازم داری، می‌تونی viewAny/create را هم تنظیم کنی
-    public function view(User $user, Task $task): bool
+    // اگر ادمین داری
+    public function before(User $user)
     {
-        $project = $task->project; // رابطه Task -> project باید تعریف شده باشد
-        if (!$project) {
+        if (property_exists($user, 'is_admin') && $user->is_admin) {
+            return true;
+        }
+    }
+
+    /**
+     * کاربر باید عضو همین پروژه باشد و تسک هم متعلق به همان پروژه.
+     * این نسخه طوری نوشته شده که هم با authorize('view', $task)
+     * و هم با authorize('view', [$task, $project]) کار کند.
+     */
+    public function view(User $user, Task $task, ?Project $project = null): bool
+    {
+        $project ??= $task->project;
+
+        if (!$project || (int)$task->project_id !== (int)$project->id) {
             return false;
         }
 
-        // فرض: پروژه یک owner_id دارد و رابطه members() روی Project تعریف شده
         return $project->owner_id === $user->id
             || $project->members()->whereKey($user->id)->exists();
     }
 
+    /**
+     * اجازه‌ی ثبت یادداشت روی تسک (Ability که در کنترلر استفاده می‌کنی)
+     * امضا باید دقیقاً با [$task, $project] هماهنگ باشد.
+     */
+    public function comment(User $user, Task $task, Project $project): bool
+    {
+        // همان منطق view کافی است
+        return $this->view($user, $task, $project);
+    }
+
     public function create(User $user): bool
     {
-        // ساخت تسک معمولاً در کانتکست پروژه چک می‌شود (can:view,project).
-        // اگر خواستی اینجا هم قید بگذار (مثلاً فقط اعضای پروژه‌ای خاص).
         return true;
     }
 
-    public function update(User $user, Task $task): bool
+    public function update(User $user, Task $task, ?Project $project = null): bool
     {
-        return $this->view($user, $task);
+        return $this->view($user, $task, $project);
     }
 
-    public function delete(User $user, Task $task): bool
+    public function delete(User $user, Task $task, ?Project $project = null): bool
     {
-        return $this->view($user, $task);
+        return $this->view($user, $task, $project);
     }
 }
