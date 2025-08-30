@@ -42,6 +42,9 @@ class FormAssignedNotification extends Notification implements ShouldQueue
         $labels = [
             'Proforma' => 'پیش‌فاکتور',
             'Opportunity' => 'فرصت فروش',
+            'Lead'       => 'سرنخ',
+            'SalesLead'  => 'سرنخ', // ← لازم
+
         ];
         $label = $labels[$modelName] ?? 'فرم';
 
@@ -71,6 +74,10 @@ class FormAssignedNotification extends Notification implements ShouldQueue
                 return route('sales.proformas.show', $id);
             case 'Opportunity':
                 return route('sales.opportunities.show', $id);
+            case 'Lead':
+            case 'SalesLead':   // اگر نام مدل متفاوت است
+                return route('sales.leads.show', $id); // اگر روت شما چیز دیگری است، همان را بگذارید (مثلاً leads.show)
+                
             default:
                 return url('/');
         }

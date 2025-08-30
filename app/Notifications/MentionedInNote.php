@@ -5,63 +5,51 @@ namespace App\Notifications;
 use App\Models\Project;
 use App\Models\Task;
 use App\Models\Note;
+use App\Models\SalesLead;
+use App\Models\SalesOpportunity;
 use Illuminate\Bus\Queueable;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
-use Illuminate\Notifications\Messages\DatabaseMessage;
 use Illuminate\Support\Str;
+use Illuminate\Support\Facades\Route;
 
 class MentionedInNote extends Notification implements ShouldQueue
 {
     use Queueable;
 
-    /**
-     * @var \App\Models\Note
-     */
     public Note $note;
 
-    /**
-     * @param \App\Models\Note $note
-     */
     public function __construct(Note $note)
     {
         $this->note = $note;
     }
 
-    /**
-     * Notification channels.
-     */
     public function via($notifiable): array
     {
-        // در صورت نیاز می‌توانید 'mail' یا 'broadcast' را هم اضافه کنید.
         return ['database'];
     }
 
-    /**
-     * Database payload.
-     */
     public function toDatabase($notifiable): array
     {
-        // برای لاگ بهتر (در صورت داشتن name یا email)
         $who = $notifiable->name ?? $notifiable->email ?? $notifiable->id;
         logger()->info("Sending MentionedInNote to: {$who}");
 
-        // اطمینان از بارگذاری روابطِ لازم
-        $this->note->loadMissing(['noteable', 'author']); // توجه: نام مرف صحیح: noteable
+        // توجه: در مدل شما اسم رابطه ظاهراً "noteable" است
+        $this->note->loadMissing(['noteable', 'author', 'user']);
 
-        $entity = $this->note->noteable;  // می‌تواند Task/Lead/Opportunity یا هر مدل دیگری باشد
-        $author = $this->note->author ?? $this->note->user ?? null; // سازگاری با هر دو نام رابطه
+        $entity = $this->note->noteable;     // می‌تواند Task / SalesLead / SalesOpportunity / Project و ...
+        $author = $this->note->author ?? $this->note->user ?? null;
 
         $authorName = $author?->name ?? $author?->email ?? 'یک کاربر';
         $bodyShort  = Str::limit((string) $this->note->body, 140);
 
-        // ساخت URL مناسب بر اساس نوع موجودیت
-        $url = $this->buildEntityUrl($entity);
+        // URL مقصد براساس نوع موجودیت
+        $baseUrl = $this->buildEntityUrl($entity);
 
         // پیام نمایشی
         $message = "{$authorName} شما را در یک یادداشت منشن کرد.";
 
-        // اگر موجودیت «تسک» بود، اطلاعات پروژه/تسک هم ضمیمه می‌کنیم
+        // متادیتای اضافه برای تسک/پروژه
         $extra = [];
         if ($entity instanceof Task) {
             $entity->loadMissing('project');
@@ -70,6 +58,16 @@ class MentionedInNote extends Notification implements ShouldQueue
                 'project_name' => $entity->project?->name,
                 'task_id'      => $entity->id,
                 'task_title'   => $entity->title,
+            ];
+        } elseif ($entity instanceof SalesLead) {
+            $extra = [
+                'lead_id'   => $entity->id,
+                'lead_name' => $entity->name ?? null,
+            ];
+        } elseif ($entity instanceof SalesOpportunity) {
+            $extra = [
+                'opportunity_id'   => $entity->id,
+                'opportunity_title'=> $entity->title ?? null,
             ];
         }
 
@@ -82,21 +80,17 @@ class MentionedInNote extends Notification implements ShouldQueue
             'by_user_id'      => $author?->id,
             'by_user_name'    => $authorName,
             'body'            => $bodyShort,
-            'url'             => $url ? ($url . '#note-' . $this->note->id) : null,
+            'url'             => $baseUrl ? ($baseUrl . '#note-' . $this->note->id) : null, // *** حیاتی ***
         ] + $extra);
     }
 
-    /**
-     * اگر بخواهید نوع سفارشی برای دیتابیس ثبت شود.
-     */
     public function databaseType($notifiable): string
     {
         return 'mention';
     }
 
     /**
-     * ساخت URL مناسب بر مبنای نوع موجودیت نوت.
-     * در صورت لزوم نام روت‌ها را با پروژه‌ی خودتان تنظیم کنید.
+     * ساخت URL مقصد برای انواع موجودیت‌های نوت
      */
     protected function buildEntityUrl($entity): ?string
     {
@@ -104,50 +98,70 @@ class MentionedInNote extends Notification implements ShouldQueue
             return null;
         }
 
-        // ---- حالت تسک (پروژه‌ها) ----
+        // ---- Task (پروژه‌ها) ----
         if ($entity instanceof Task) {
-            // نیازمند route با نام: projects.tasks.show
-            // و پارامترها: [project, task]
-            $project = $entity->project ?? null;
-            if ($project instanceof Project) {
+            $entity->loadMissing('project');
+            $project = $entity->project;
+            if ($project instanceof Project && Route::has('projects.tasks.show')) {
                 return route('projects.tasks.show', [$project, $entity]);
             }
             return null;
         }
 
-        // ---- حالت سرنخ فروش (Lead) ----
-        // اگر مدل Lead دارید، این بخش را فعال کنید و نام روت را مطابق پروژه خود بگذارید.
-        /*
-        if ($entity instanceof \App\Models\Lead) {
-            return route('marketing.leads.show', ['lead' => $entity->id]);
+        // ---- SalesLead (سرنخ فروش) ----
+        if ($entity instanceof SalesLead) {
+            // اولویت با روت‌های بخش مارکتینگ؛ اگر نبود به روت‌های Sales برگرد
+            if (Route::has('marketing.leads.show')) {
+                return route('marketing.leads.show', $entity->id);
+            }
+            if (Route::has('sales.leads.show')) {
+                return route('sales.leads.show', $entity->id);
+            }
+            return null;
         }
-        */
 
-        // ---- حالت فرصت فروش (Opportunity) ----
-        // اگر مدل Opportunity دارید، این بخش را فعال کنید و نام روت را مطابق پروژه خود بگذارید.
-        /*
-        if ($entity instanceof \App\Models\Opportunity) {
-            return route('sales.opportunities.show', ['opportunity' => $entity->id]);
+        // ---- SalesOpportunity (فرصت فروش) ----
+        if ($entity instanceof SalesOpportunity) {
+            if (Route::has('marketing.opportunities.show')) {
+                return route('marketing.opportunities.show', $entity->id);
+            }
+            if (Route::has('sales.opportunities.show')) {
+                return route('sales.opportunities.show', $entity->id);
+            }
+            return null;
         }
-        */
 
-        // برای سایر مدل‌های احتمالی، در صورت لزوم الگوهای بالا را کپی و ویرایش کنید.
+        // اگر به‌جای کلاس‌های بالا، FQCN یا نام ساده‌ای در morph map دارید:
+        // می‌توان با class_basename سوییچ کرد. نمونه:
+        $base = strtolower(class_basename($entity));
+        switch ($base) {
+            case 'saleslead':
+            case 'lead':
+                if (Route::has('marketing.leads.show')) {
+                    return route('marketing.leads.show', $entity->id);
+                }
+                if (Route::has('sales.leads.show')) {
+                    return route('sales.leads.show', $entity->id);
+                }
+                break;
+
+            case 'salesopportunity':
+            case 'opportunity':
+                if (Route::has('marketing.opportunities.show')) {
+                    return route('marketing.opportunities.show', $entity->id);
+                }
+                if (Route::has('sales.opportunities.show')) {
+                    return route('sales.opportunities.show', $entity->id);
+                }
+                break;
+
+            case 'project':
+                if (Route::has('projects.show')) {
+                    return route('projects.show', $entity->id);
+                }
+                break;
+        }
+
         return null;
     }
-
-    /*
-    // اگر خواستید ایمیل هم ارسال شود:
-    public function toMail($notifiable)
-    {
-        $this->note->loadMissing('noteable', 'author');
-        $entity = $this->note->noteable;
-        $url    = $this->buildEntityUrl($entity);
-
-        return (new \Illuminate\Notifications\Messages\MailMessage)
-            ->subject('شما منشن شده‌اید')
-            ->line('شما در یک یادداشت منشن شده‌اید.')
-            ->action('مشاهده یادداشت', $url ? ($url . '#note-' . $this->note->id) : url('/'))
-            ->line('با تشکر!');
-    }
-    */
 }

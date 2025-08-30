@@ -81,10 +81,14 @@ class Opportunity extends Model
     }
     public function notes()
     {
-        return $this->morphMany(Note::class, 'noteable')->latest();
+        return $this->morphMany(\App\Models\Note::class, 'noteable')->latest();
     }
 
-
+    public function lastNote()
+    {
+        // نیازمند timestamps در جدول notes
+        return $this->morphOne(Note::class, 'noteable')->latestOfMany();
+    }
 
 // فعالیت‌ها (مثلاً Task یا Activity)
 public function activities()

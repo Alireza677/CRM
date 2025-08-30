@@ -79,11 +79,13 @@ Route::middleware(['auth'])->group(function () {
 
     
     // Notifications
-    Route::get('/notifications', [NotificationController::class, 'index'])->name('notifications.index');
-    Route::get('/notifications/read/{notification}', [NotificationController::class, 'read'])->name('notifications.read');
-    Route::post('/notifications/mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('notifications.markAllAsRead');
-    Route::post('/notifications/bulk-action', [NotificationController::class, 'bulkAction'])->name('notifications.bulkAction');
-
+    Route::prefix('notifications')->name('notifications.')->group(function () {
+        Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('read/{notification}', [NotificationController::class, 'read'])->name('read');
+        Route::post('mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('markAllAsRead');
+        Route::post('bulk-action', [NotificationController::class, 'bulkAction'])->name('bulkAction');
+    });
+    
     //// Sales
     Route::prefix('sales')->name('sales.')->group(function () {
         // فرصت‌های فروش
@@ -179,22 +181,16 @@ Route::middleware(['auth'])->group(function () {
         'destroy' => 'forms.destroy',
     ]);
 
-    // Settings
-    Route::prefix('settings')->name('settings.')->group(function () {
+    Route::middleware(['auth','role:Admin'])
+    ->prefix('settings')->name('settings.')
+    ->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
         Route::get('/general', [SettingsController::class, 'general'])->name('general');
-        Route::get('/users', [UserController::class, 'index'])->name('users.index');
-        Route::get('/users/create', [UserController::class, 'create'])->name('users.create');
-        Route::post('/users', [UserController::class, 'store'])->name('users.store');
-        Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit');
-        Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update');
-        Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy');
+        Route::resource('users', UserController::class)->except(['show']);
         Route::get('/workflows', [WorkflowController::class, 'index'])->name('workflows.index');
         Route::get('/automation', [AutomationController::class, 'edit'])->name('automation.edit');
         Route::post('/automation/update', [AutomationController::class, 'update'])->name('automation.update');
         Route::delete('/automation/delete-all', [AutomationController::class, 'destroyAll'])->name('automation.destroyAll');
-
-
     });
 
     // Profile
@@ -242,11 +238,9 @@ Route::middleware(['auth'])->group(function () {
     });
     
 
+    
 
 });
 
 require __DIR__.'/auth.php';
 
-//مسیر دانلود سند
-Route::get('/sales/documents/{document}/download', [DocumentController::class, 'download'])->name('sales.documents.download');
-Route::get('/sales/documents/create', [DocumentController::class, 'create'])->name('sales.documents.create');

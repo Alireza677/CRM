@@ -13,6 +13,11 @@ use App\Helpers\DateHelper;
 
 class SalesLeadController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:Admin')->only('destroy');
+    }
     public function index(Request $request)
     {
         $query = SalesLead::with('assignedUser');
@@ -220,6 +225,10 @@ class SalesLeadController extends Controller
         'address' => 'nullable|string|max:1000',
         'state' => 'nullable|string|max:255',
         'city' => 'nullable|string|max:255',
+
+        // 👇 در آپدیت می‌خوایم اصلاً نادیده بگیریمش؛
+        // پس توی ولیدیشن هم آزاد می‌ذاریم که خطا نده،
+        // ولی بعداً حذفش می‌کنیم.
         'notes' => 'nullable|string',
     ]);
 
@@ -228,6 +237,14 @@ class SalesLeadController extends Controller
     }
 
     $validated = $validator->validated();
+
+    // ✅ یادداشت اولیه در آپدیت نباید تغییر کند
+    if (array_key_exists('notes', $validated)) {
+        \Log::info('🧯 Removing notes from update payload to keep initial note immutable.');
+        unset($validated['notes']);
+    }
+
+    // چک‌باکس
     $validated['do_not_email'] = $request->has('do_not_email');
 
     $lead->update($validated);
@@ -235,6 +252,7 @@ class SalesLeadController extends Controller
     return redirect()->route('marketing.leads.index')
         ->with('success', 'سرنخ فروش با موفقیت بروزرسانی شد.');
 }
+
 
 
     public function destroy(SalesLead $lead)
@@ -247,6 +265,7 @@ class SalesLeadController extends Controller
 
     public function show(SalesLead $lead)
     {
+        $lead->load(['lastNote', 'assignedTo']);
         $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
         $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
 

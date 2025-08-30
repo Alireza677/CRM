@@ -15,6 +15,11 @@ use Morilog\Jalali\Jalalian;
 
 class OpportunityController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:Admin')->only('destroy');
+    }
     public function index(Request $request)
     {
         $query = Opportunity::with(['contact', 'assignedUser', 'organization']);

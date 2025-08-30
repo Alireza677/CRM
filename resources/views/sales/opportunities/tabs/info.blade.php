@@ -62,6 +62,42 @@
                                     @endif
                                 </dd>
                             </div>
+                            @php
+                                $lastNote = $opportunity->lastNote ?? null;
+                                $displayBody = $lastNote?->body ?? '—';
+
+                                if ($lastNote) {
+                                    // استخراج @username ها
+                                    preg_match_all('/@([^\s@]+)/u', $lastNote->body, $matches);
+                                    $mentionedUsernames = array_unique($matches[1] ?? []);
+
+                                    // گرفتن کاربران با username و جایگزینی با نام
+                                    if (!empty($mentionedUsernames)) {
+                                        $mentionedUsers = \App\Models\User::whereIn('username', $mentionedUsernames)->get()->keyBy('username');
+                                        foreach ($mentionedUsers as $username => $user) {
+                                            $displayBody = str_replace("@{$username}", '@' . $user->name, $displayBody);
+                                        }
+                                    }
+                                }
+                            @endphp
+
+                            <div>
+                                <strong>آخرین یادداشت:</strong>
+                                {!! nl2br(e($displayBody)) !!}
+                            </div>
+
+                            <div>
+                                <strong>تاریخ یادداشت:</strong>
+                                {{ $lastNote?->created_at
+                                    ? \App\Helpers\DateHelper::toJalali($lastNote->created_at)
+                                    : '—' }}
+                            </div>
+
+                            <div>
+                                <strong>ثبت‌کننده یادداشت:</strong>
+                                {{ $lastNote?->user?->name ?? '—' }}
+                            </div>
+
                         </dl>
                     </div>
                 </div>

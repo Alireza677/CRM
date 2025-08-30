@@ -5,57 +5,50 @@ namespace App\Http\Controllers\Marketing;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\SalesLead;
-use App\Models\Note;
 use App\Models\User;
 use App\Notifications\MentionedInNote;
-use Illuminate\Support\Facades\Notification;
 
 class LeadNoteController extends Controller
 {
     public function store(Request $request, SalesLead $lead)
     {
         $request->validate([
-            'body' => 'required|string|max:1000',
+            'body'     => 'required|string|max:1000',
             'mentions' => 'nullable|array',
         ]);
 
-        // دریافت منشن‌ها
+        // لیست username ها (از hidden های mentions[])
         $usernames = collect($request->input('mentions', []))
-            ->filter()
-            ->unique()
-            ->values()
-            ->toArray();
+            ->filter()->unique()->values()->toArray();
 
-        // لاگ بگیریم برای تست
-        logger('Parsed mentions:', $usernames);
-
-        // ساخت متن یادداشت
+        // متن نهایی یادداشت (اختیاری: اضافه کردن لیست منشن‌ها)
         $finalBody = $request->body;
-
         if (!empty($usernames)) {
             $mentionText = collect($usernames)->map(fn($u) => "@{$u}")->implode(' ');
-            $finalBody .= "\n\nمنشن‌شده‌ها: {$mentionText}";
+            $finalBody  .= "\n\nمنشن‌شده‌ها: {$mentionText}";
         }
+
         // ذخیره یادداشت
         $note = $lead->notes()->create([
-            'body' => $finalBody,
+            'body'    => $finalBody,
             'user_id' => auth()->id(),
         ]);
 
-        // نوتیفیکیشن به کاربران منشن‌شده
+        // ساخت URL مقصد برای همین یادداشت
+        $noteUrl = route('marketing.leads.show', $lead->id) . '#note-' . $note->id;
+
+        // ارسال نوتیفیکیشن به کاربران منشن‌شده (فقط اگر username معتبر دارند)
         if (!empty($usernames)) {
             $mentionedUsers = User::whereIn('username', $usernames)->get();
+
             foreach ($mentionedUsers as $user) {
                 $user->notify(new MentionedInNote($note));
             }
         }
 
-        return redirect()->route('marketing.leads.show', ['lead' => $lead->id])
-            ->with('success', 'یادداشت با موفقیت ثبت شد.');
+        // بعد از ثبت، برگرد به همان لنگرِ یادداشت
+        return redirect($noteUrl)->with('success', 'یادداشت با موفقیت ثبت شد.');
     }
-
-
-
 
     public function show(SalesLead $lead)
     {
