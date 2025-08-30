@@ -11,6 +11,11 @@ use App\Models\Contact;
 
 class OrganizationController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:Admin')->only('destroy');
+    }
     public function index(Request $request)
     {
         $query = Organization::query()

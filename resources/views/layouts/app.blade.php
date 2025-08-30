@@ -56,8 +56,8 @@
 
     <x-breadcrumb :items="$breadcrumb ?? []" />
 
-    <main class="mr-0 md:mr-64 transition-all duration-300">
-        @yield('content')
+    <main class="mx-[40px] transition-all duration-300">
+    @yield('content')
     </main>
 </div>
 

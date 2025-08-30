@@ -25,6 +25,11 @@ use Exception;
 
 class ProformaController extends Controller
 {
+    public function __construct()
+    {
+        $this->middleware('auth');
+        $this->middleware('role:Admin')->only('destroy');
+    }
     public function index(Request $request)
     {
         $organizations = Organization::orderBy('name')->get();

@@ -36,7 +36,7 @@
                                 <tr>
                                     <th class="px-6 py-3 border-b-2 border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">نام</th>
                                     <th class="px-6 py-3 border-b-2 border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">ایمیل</th>
-                                    <th class="px-6 py-3 border-b-2 border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">تاریخ ثبت نام</th>
+                                    <th class="px-6 py-3 border-b-2 border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">نقش</th>
                                     <th class="px-6 py-3 border-b-2 border-gray-200 bg-gray-50 text-right text-xs font-semibold text-gray-600 uppercase tracking-wider">عملیات</th>
                                 </tr>
                             </thead>
@@ -45,7 +45,7 @@
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">{{ $user->name }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">{{ $user->email }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">{{ $user->created_at->format('Y/m/d') }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">{{ $user->roles->pluck('name')->join(', ') ?: '---' }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200 text-left text-sm font-medium">
                                             <a href="{{ route('settings.users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900 ml-4">ویرایش</a>
                                             @if($user->id !== auth()->id())

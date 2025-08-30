@@ -91,7 +91,7 @@
                                     <td class="px-6 py-4 text-sm text-gray-900">{{ $contact->mobile }}</td>
                                     <td class="px-6 py-4 text-sm text-gray-900">{{ $contact->organization_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-sm text-gray-900">{{ $contact->assigned_to_name ?? '-' }}</td>
-                                    <td class="px-6 py-4 text-sm text-gray-500">{{ $contact->created_at->format('Y/m/d H:i') }}</td>
+                                    <td class="px-6 py-4 text-sm text-gray-500">{{ jdate($contact->created_at)->format('Y/m/d H:i')}}</td>
                                     <td class="px-6 py-4 text-sm text-blue-600 flex items-center gap-2">
                                         <a href="{{ route('sales.contacts.edit', $contact->id) }}" class="hover:underline">
                                             <i class="fas fa-edit ml-1"></i> ویرایش

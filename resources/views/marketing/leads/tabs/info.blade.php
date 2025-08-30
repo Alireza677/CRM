@@ -19,9 +19,38 @@
         <div><strong>استان:</strong> {{ $lead->state }}</div>
         <div><strong>شهر:</strong> {{ $lead->city }}</div>
 
-        <div><strong>یادداشت‌ها:</strong> {{ $lead->notes }}</div>
-        <div><strong>توضیحات:</strong> {{ $lead->description }}</div>
+        @php
+            $lastNote = $lead->lastNote;
+            $displayBody = $lastNote?->body ?? '—';
 
+            if ($lastNote) {
+                // استخراج usernameها
+                preg_match_all('/@([^\s@]+)/u', $lastNote->body, $matches);
+                $mentionedUsernames = array_unique($matches[1] ?? []);
+
+                // گرفتن کاربران با username
+                $mentionedUsers = \App\Models\User::whereIn('username', $mentionedUsernames)->get()->keyBy('username');
+
+                // جایگزینی @username با نام کاربر
+                foreach ($mentionedUsers as $username => $user) {
+                    $displayBody = str_replace("@$username", '@' . $user->name, $displayBody);
+                }
+            }
+        @endphp
+
+        <div>
+            <strong>آخرین یادداشت:</strong>
+            {!! nl2br(e($displayBody)) !!}
+        </div>
+
+        <div><strong>تاریخ یادداشت:</strong>
+            {{ optional($lead->lastNote)->created_at
+                ? \App\Helpers\DateHelper::toJalali($lead->lastNote->created_at)
+                : '—' }}
+        </div>
+        <div><strong>ثبت‌کننده یادداشت:</strong>
+            {{ optional(optional($lead->lastNote)->user)->name ?? '—' }}
+        </div>
         <div><strong>تاریخ ثبت:</strong>
             {{ \App\Helpers\DateHelper::toJalali($lead->lead_date) ?? '—' }}
         </div>

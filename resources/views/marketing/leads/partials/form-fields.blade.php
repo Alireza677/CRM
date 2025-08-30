@@ -36,6 +36,9 @@
         $value = '';
     }
 @endphp
+@php
+    $isEdit = isset($lead) && !empty($lead->id);
+@endphp
 
 
     <div class="{{ in_array($id, ['address', 'notes']) ? 'md:col-span-2' : '' }}">
@@ -54,9 +57,25 @@
         
         {{-- فیلد متنی چندخطی --}}
         @elseif (in_array($id, ['address', 'notes']))
-            <textarea name="{{ $id }}" id="{{ $id }}" rows="2"
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
-                      @if($required) required @endif>{{ $value }}</textarea>
+        @php
+            $isNotes = ($id === 'notes');
+        @endphp
+
+        <textarea
+            name="{{ $id }}"
+            id="{{ $id }}"
+            rows="2"
+            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 {{ $isNotes && $isEdit ? 'bg-gray-100 cursor-not-allowed' : '' }}"
+            @if($required) required @endif
+            @if($isNotes && $isEdit) disabled title="یادداشت اولیه قابل ویرایش نیست." @endif
+        >{{ $value }}</textarea>
+
+        @if($isNotes && $isEdit)
+            <p class="mt-1 text-xs text-gray-500">
+                این یادداشت به عنوان یادداشت اولیه ذخیره شده و فقط قابل مشاهده است.
+            </p>
+        @endif
+
 
         {{-- سایر فیلدهای متنی --}}
         @else
