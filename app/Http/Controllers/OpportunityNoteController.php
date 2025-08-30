@@ -36,7 +36,7 @@ class OpportunityNoteController extends Controller
         }
 
         // آدرس نمایش فرصت + اسکرول به همین نوت
-        $url = route('marketing.opportunities.show', $opportunity->id) . '#note-' . $note->id;
+        $url = route('sales.opportunities.show', $opportunity->id) . '#note-' . $note->id;
 
         if ($request->ajax()) {
             return response()->json(['success' => true, 'url' => $url, 'note_id' => $note->id]);

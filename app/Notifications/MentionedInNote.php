@@ -122,8 +122,8 @@ class MentionedInNote extends Notification implements ShouldQueue
 
         // ---- SalesOpportunity (فرصت فروش) ----
         if ($entity instanceof SalesOpportunity) {
-            if (Route::has('marketing.opportunities.show')) {
-                return route('marketing.opportunities.show', $entity->id);
+            if (Route::has('sales.opportunities.show')) {
+                return route('sales.opportunities.show', $entity->id);
             }
             if (Route::has('sales.opportunities.show')) {
                 return route('sales.opportunities.show', $entity->id);
