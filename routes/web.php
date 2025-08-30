@@ -181,7 +181,7 @@ Route::middleware(['auth'])->group(function () {
         'destroy' => 'forms.destroy',
     ]);
 
-    Route::middleware(['auth','role:Admin'])
+    Route::middleware(['auth','role:admin'])
     ->prefix('settings')->name('settings.')
     ->group(function () {
         Route::get('/', [SettingsController::class, 'index'])->name('index');
@@ -192,6 +192,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/automation/update', [AutomationController::class, 'update'])->name('automation.update');
         Route::delete('/automation/delete-all', [AutomationController::class, 'destroyAll'])->name('automation.destroyAll');
     });
+
 
     // Profile
     Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
