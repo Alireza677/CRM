@@ -7,6 +7,7 @@
         ['title' => 'ایجاد فرصت جدید']
     ];
 @endphp
+@php use Illuminate\Support\Str; @endphp
 
 <div class="py-6">
     <div class="max-w-4xl mx-auto sm:px-6 lg:px-8">
@@ -116,13 +117,7 @@
                     @error('success_rate') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
                 </div>
 
-                <div>
-                    <label for="amount" class="block font-medium text-sm text-gray-700 ">مبلغ</label>
-                    <input id="amount" name="amount" type="number" min="0"
-                           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-                           value="{{ old('amount') }}" required>
-                    @error('amount') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-                </div>
+               
 
                 <div class="md:col-span-2">
                     <label for="next_follow_up" class="block font-medium text-sm text-gray-700">تاریخ پیگیری بعدی</label>
@@ -181,7 +176,7 @@
                 <tbody id="contactTableBody">
                     @foreach($contacts as $c)
                         <tr class="cursor-pointer hover:bg-gray-50"
-                            data-name="{{ Str::lower($c->full_name) }}"
+                            data-name="{{ $c->full_name }}"     {{-- بدون lowercase سمت سرور --}}
                             data-phone="{{ preg_replace('/\D+/', '', (string)($c->mobile ?? '')) }}"
                             onclick="selectContact({{ $c->id }}, @js($c->full_name))">
                             <td class="px-4 py-2 border-b border-gray-200">{{ $c->full_name }}</td>
@@ -198,11 +193,13 @@
 
 
 
-<!-- Organization Modal -->
-<div id="organizationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+<!-- مودال انتخاب سازمان -->
+<div id="organizationModal"
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
     <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-bold">انتخاب سازمان</h2>
+            <h3 class="text-lg font-semibold">انتخاب سازمان</h3>
             <button onclick="closeOrganizationModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
         </div>
 
@@ -218,37 +215,33 @@
             <div class="mt-1 text-xs text-gray-500">با تایپ، فهرست فیلتر می‌شود.</div>
         </div>
 
-        <div class="border rounded overflow-hidden">
-            <table class="w-full text-right">
-                <thead class="bg-gray-100 sticky top-0">
-                    <tr class="text-gray-700">
-                        <th class="p-2 border">نام سازمان</th>
-                        <th class="p-2 border">شماره تماس</th>
-                        <th class="p-2 border">انتخاب</th>
+        <div class="border border-gray-200 rounded overflow-hidden">
+            <table class="w-full text-sm text-right">
+                <thead class="bg-gray-100 text-gray-700 sticky top-0">
+                    <tr>
+                        <th class="px-4 py-2 border-b border-gray-300">نام سازمان</th>
+                        <th class="px-4 py-2 border-b border-gray-300">شماره تماس</th>
                     </tr>
                 </thead>
                 <tbody id="organizationTableBody">
                     @foreach($organizations as $org)
-                        <tr class="border-b"
-                            data-name="{{ Str::lower($org->name) }}"
-                            data-phone="{{ preg_replace('/\D+/', '', (string)($org->phone ?? '')) }}">
-                            <td class="p-2">{{ $org->name }}</td>
-                            <td class="p-2">{{ $org->phone ?? '---' }}</td>
-                            <td class="p-2">
-                                <button class="text-blue-600 hover:underline"
-                                        onclick="selectOrganization({{ $org->id }}, @js($org->name))">
-                                    انتخاب
-                                </button>
-                            </td>
+                        <tr class="cursor-pointer hover:bg-gray-50"
+                            data-name="{{ $org->name }}"        {{-- بدون lowercase سمت سرور --}}
+                            data-phone="{{ preg_replace('/\D+/', '', (string)($org->phone ?? '')) }}"
+                            onclick="selectOrganization({{ $org->id }}, @js($org->name))">
+                            <td class="px-4 py-2 border-b border-gray-200">{{ $org->name }}</td>
+                            <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $org->phone ?? '—' }}</td>
                         </tr>
                     @endforeach
                 </tbody>
+
             </table>
 
             <div id="organizationNoResults" class="hidden p-4 text-center text-sm text-gray-500">موردی یافت نشد.</div>
         </div>
     </div>
 </div>
+
 
 @endsection
 {{-- استایل ستاره قرمز برای فیلدهای الزامی --}}
@@ -268,23 +261,20 @@
     }
 </style>
 
+
+
 <script>
-// helper عمومی برای باز/بستن مودال‌ها
 function toggleModal(modalId, open = true, focusInputId = null) {
     const el = document.getElementById(modalId);
     if (!el) return;
-
     if (open) {
         el.classList.remove('hidden');
-        el.classList.add('flex');   // نمایش به صورت فلکس برای مرکز شدن
+        el.classList.add('flex');
         el.setAttribute('aria-hidden', 'false');
-        if (focusInputId) {
-            // کمی تأخیر برای رندر
-            setTimeout(() => {
-                const inp = document.getElementById(focusInputId);
-                if (inp) inp.focus();
-            }, 10);
-        }
+        if (focusInputId) setTimeout(() => {
+            const inp = document.getElementById(focusInputId);
+            if (inp) inp.focus();
+        }, 10);
     } else {
         el.classList.add('hidden');
         el.classList.remove('flex');
@@ -292,15 +282,32 @@ function toggleModal(modalId, open = true, focusInputId = null) {
     }
 }
 
-// نسخه‌های اختصاصی (برای سازگاری با کد فعلی):
+// open/close helpers
 function openContactModal(){ toggleModal('contactModal', true, 'contactSearchInput'); }
 function closeContactModal(){ toggleModal('contactModal', false); }
 function openOrganizationModal(){ toggleModal('organizationModal', true, 'organizationSearchInput'); }
 function closeOrganizationModal(){ toggleModal('organizationModal', false); }
 
-// بستن با کلیک روی بک‌درُاپ
+// انتخاب مخاطب
+function selectContact(id, name){
+    const idEl   = document.getElementById('contact_id');
+    const textEl = document.getElementById('contact_display');
+    if (idEl)   idEl.value   = id ?? '';
+    if (textEl) textEl.value = name ?? '';
+    closeContactModal();
+}
+
+// انتخاب سازمان
+function selectOrganization(id, name){
+    const idEl   = document.getElementById('organization_id');
+    const textEl = document.getElementById('organization_name');
+    if (idEl)   idEl.value   = id ?? '';
+    if (textEl) textEl.value = name ?? '';
+    closeOrganizationModal();
+}
+
+// بستن با کلیک روی بک‌دراپ
 document.addEventListener('click', function(e){
-    // اگر کلیک روی خودِ بک‌دراپ بود (نه داخل کارت سفید)
     ['contactModal','organizationModal'].forEach(mid => {
         const m = document.getElementById(mid);
         if (!m) return;
@@ -317,68 +324,117 @@ document.addEventListener('keydown', function(e){
         toggleModal('organizationModal', false);
     }
 });
+
+
+
 </script>
-
-
-
-
 <script>
-(function(){
-  // نرمال‌سازی ارقام فارسی/عربی به انگلیسی
-  function normalizeDigits(str){
-    if(!str) return '';
-    const fa = '۰۱۲۳۴۵۶۷۸۹', ar = '٠١٢٣٤٥٦٧٨٩';
-    return String(str).split('').map(ch=>{
-      const iFa = fa.indexOf(ch); if(iFa>-1) return String(iFa);
-      const iAr = ar.indexOf(ch); if(iAr>-1) return String(iAr);
-      return ch;
-    }).join('');
-  }
-  // فقط ارقام (برای موبایل/تلفن)
-  function onlyDigits(str){ return (str||'').replace(/\D+/g,''); }
+// ——— ابزارهای نرمال‌سازی دقیقاً مثل مودال محصول ———
 
-  function makeLiveFilter(inputId, tbodyId, noResId){
+// ارقام فارسی/عربی => انگلیسی
+function normalizeDigits(str) {
+    if (!str) return '';
+    const fa = '۰۱۲۳۴۵۶۷۸۹';
+    const ar = '٠١٢٣٤٥٦٧٨٩';
+    return String(str).split('').map(ch => {
+        const iFa = fa.indexOf(ch);
+        if (iFa > -1) return String(iFa);
+        const iAr = ar.indexOf(ch);
+        if (iAr > -1) return String(iAr);
+        return ch;
+    }).join('');
+}
+
+// حذف جداکننده‌ها/فاصله‌ها برای مقایسه عددی (شماره تلفن)
+function stripSeparators(str) {
+    return String(str)
+        .replace(/[\u200C\u200B\u00A0\s]/g, '') // ZWNJ, ZWSP, NBSP, space
+        .replace(/[,\u060C]/g, '')             // , و ،
+        .replace(/[.\u066B\u066C]/g, '');      // . و جداکننده‌های عربی
+}
+
+// نرمال‌سازی ورودی جستجو
+function normalizeQuery(raw) {
+    const lowered = String(raw || '').toLowerCase().trim();
+    const digitsFixed = normalizeDigits(lowered);
+    return {
+        text: digitsFixed,                      // برای نام
+        numeric: stripSeparators(digitsFixed)   // برای تلفن (فقط ارقام)
+    };
+}
+
+// سازندهٔ فیلتر لایو برای هر جدول
+function makeLiveFilter({inputId, tbodyId, noResultId}) {
     const $input = document.getElementById(inputId);
     const $tbody = document.getElementById(tbodyId);
-    const $noRes = document.getElementById(noResId);
-    if(!$input || !$tbody) return;
+    const $noRes = document.getElementById(noResultId);
+    if (!$input || !$tbody) return;
 
-    let t=null;
-    $input.addEventListener('input', function(){
-      clearTimeout(t);
-      t = setTimeout(apply, 150);
+    let t = null; // debounce
+    $input.addEventListener('input', () => {
+        clearTimeout(t);
+        t = setTimeout(applyFilter, 150);
     });
 
-    function apply(){
-      const raw = $input.value || '';
-      const qLower = normalizeDigits(raw.trim().toLowerCase());
-      const qDigits = onlyDigits(qLower);
+    function applyFilter() {
+        const { text, numeric } = normalizeQuery($input.value);
+        const rows = Array.from($tbody.querySelectorAll('tr'));
 
-      const rows = Array.from($tbody.querySelectorAll('tr'));
-      if(!qLower){
-        rows.forEach(tr=>tr.classList.remove('hidden'));
-        if($noRes) $noRes.classList.add('hidden');
-        return;
-      }
+        if (!text) {
+            rows.forEach(tr => tr.classList.remove('hidden'));
+            if ($noRes) $noRes.classList.add('hidden');
+            return;
+        }
 
-      let visible=0;
-      rows.forEach(tr=>{
-        const name  = (tr.getAttribute('data-name')  || '');
-        const phone = (tr.getAttribute('data-phone') || '');
-        const match = name.includes(qLower) || (qDigits && phone.includes(qDigits));
-        if(match){ tr.classList.remove('hidden'); visible++; }
-        else{ tr.classList.add('hidden'); }
-      });
+        let visible = 0;
+        const isPureNumber = /^[0-9]+$/.test(numeric);
 
-      if($noRes){
-        if(visible===0) $noRes.classList.remove('hidden');
-        else $noRes.classList.add('hidden');
-      }
+        rows.forEach(tr => {
+            const name = String(tr.getAttribute('data-name') || '').toLowerCase();
+            const phone = String(tr.getAttribute('data-phone') || ''); // قبلاً digits-only شده در Blade
+
+            // منطق: اگر ورودی تماماً عدد بود ⇒ جستجو روی phone
+            // وگرنه ⇒ روی name (و اگر کاربر در متن عدد هم داشت، phone هم چک می‌شود)
+            const byName  = name.includes(text);
+            const byPhone = isPureNumber ? phone.includes(numeric)
+                                         : (numeric ? phone.includes(numeric) : false);
+
+            const match = byName || byPhone;
+
+            if (match) { tr.classList.remove('hidden'); visible++; }
+            else { tr.classList.add('hidden'); }
+        });
+
+        if ($noRes) {
+            if (visible === 0) $noRes.classList.remove('hidden');
+            else $noRes.classList.add('hidden');
+        }
     }
-  }
+}
 
-  // فعال‌سازی روی هر دو مدال:
-  makeLiveFilter('contactSearchInput', 'contactTableBody', 'contactNoResults');
-  makeLiveFilter('organizationSearchInput', 'organizationTableBody', 'organizationNoResults');
-})();
+// فعال‌سازی فیلتر برای هر دو مودال
+document.addEventListener('DOMContentLoaded', function () {
+    makeLiveFilter({
+        inputId: 'contactSearchInput',
+        tbodyId: 'contactTableBody',
+        noResultId: 'contactNoResults'
+    });
+    makeLiveFilter({
+        inputId: 'organizationSearchInput',
+        tbodyId: 'organizationTableBody',
+        noResultId: 'organizationNoResults'
+    });
+});
+
+// اگر می‌خواهی با باز شدن مودال، فیلتر فوراً اعمال شود (مثلاً بعد از تایپ قبلی):
+function openContactModal(){
+    toggleModal('contactModal', true, 'contactSearchInput');
+    const i = document.getElementById('contactSearchInput');
+    if (i) i.dispatchEvent(new Event('input'));
+}
+function openOrganizationModal(){
+    toggleModal('organizationModal', true, 'organizationSearchInput');
+    const i = document.getElementById('organizationSearchInput');
+    if (i) i.dispatchEvent(new Event('input'));
+}
 </script>
