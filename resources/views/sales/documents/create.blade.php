@@ -1,38 +1,84 @@
 @extends('layouts.app')
 
 @section('content')
-    <div class="p-6 bg-white rounded shadow max-w-xl mx-auto">
+<div class="max-w-2xl mx-auto p-6">
+    <div class="bg-white rounded-2xl shadow p-6 space-y-6">
 
         {{-- عنوان صفحه --}}
-        <h1 class="text-xl font-bold mb-6 text-gray-700">ثبت سند جدید</h1>
-
-        <form method="POST" action="{{ route('sales.documents.store') }}" enctype="multipart/form-data">
+        <h1 class="text-2xl font-bold text-gray-800 border-b pb-4">
+            ثبت سند جدید
+        </h1>
+        
+        <form method="POST"
+      action="{{ route('sales.documents.store') }}"
+      enctype="multipart/form-data"
+      class="space-y-5">
     @csrf
+
+    {{-- فرصت فروش --}}
+    @if(!empty($defaultOpportunityId))
+        {{-- ارسال خودکار فرصت از صفحه خودش --}}
+        <input type="hidden" name="opportunity_id" value="{{ $defaultOpportunityId }}">
+        <div class="p-3 rounded bg-green-50 text-green-700 text-sm">
+            این سند برای فرصت شماره {{ $defaultOpportunityId }} ثبت خواهد شد.
+            <a class="underline" href="{{ route('sales.opportunities.show', $defaultOpportunityId) }}">نمایش فرصت</a>
+        </div>
+    @else
+        <div>
+            <label class="block font-medium text-sm text-gray-700 mb-1">فرصت فروش</label>
+            <select name="opportunity_id"
+                    class="mt-1 block w-full border-gray-300 rounded-md shadow-sm text-sm focus:ring-blue-500 focus:border-blue-500">
+                <option value="">— انتخاب کنید —</option>
+                @foreach($opportunities as $op)
+                    <option value="{{ $op->id }}"
+                        {{ old('opportunity_id') == $op->id ? 'selected' : '' }}>
+                        {{ $op->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('opportunity_id')
+                <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+            @enderror
+        </div>
+    @endif
+
+    {{-- عنوان --}}
     <div>
-        <label>عنوان</label>
-        <input type="text" name="title" value="{{ old('title') }}" required>
-        @error('title') <small class="text-red-500">{{ $message }}</small> @enderror
+        <label for="title" class="block text-sm font-medium text-gray-700">عنوان</label>
+        <input type="text"
+               name="title"
+               id="title"
+               value="{{ old('title') }}"
+               required
+               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 text-sm">
+        @error('title')
+            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+        @enderror
     </div>
 
+    {{-- فایل --}}
     <div>
-        <label>فایل</label>
-        <input type="file" name="file" required>
-        @error('file') <small class="text-red-500">{{ $message }}</small> @enderror
+        <label for="file" class="block text-sm font-medium text-gray-700">فایل</label>
+        <input type="file"
+               name="file"
+               id="file"
+               required
+               accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
+               class="mt-1 block w-full text-sm text-gray-700 border border-gray-300 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+        @error('file')
+            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+        @enderror
     </div>
 
-    <div>
-        <label>فرصت فروش (اختیاری)</label>
-        <select name="opportunity_id">
-            <option value="">— انتخاب کنید —</option>
-            @foreach($opportunities as $opp)
-                <option value="{{ $opp->id }}" @selected(old('opportunity_id')==$opp->id)>{{ $opp->title }}</option>
-            @endforeach
-        </select>
-        @error('opportunity_id') <small class="text-red-500">{{ $message }}</small> @enderror
+    {{-- دکمه ثبت --}}
+    <div class="pt-2">
+        <button type="submit"
+                class="w-full bg-blue-600 hover:bg-blue-700 text-white font-medium py-2 px-4 rounded-lg shadow transition">
+            ثبت سند
+        </button>
     </div>
-
-    <button type="submit">ثبت</button>
 </form>
 
     </div>
+</div>
 @endsection

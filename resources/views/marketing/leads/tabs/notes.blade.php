@@ -77,10 +77,10 @@
         <div class="space-y-2">
             @foreach($allUsers as $user)
                 @if($user->username)
-                    <label class="flex items-center space-x-2">
+                <label class="flex items-center space-x-2">
                     <input type="checkbox" class="mention-checkbox" value="{{ $user->username }}" data-name="{{ $user->name }}">
-                    <span>{{ $user->name }} <span class="text-gray-400 text-xs">(@{{ $user->username }})</span></span>
-                    </label>
+                    <span>{{ $user->name }}</span>
+                </label>
                 @endif
             @endforeach
         </div>

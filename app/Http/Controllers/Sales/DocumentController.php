@@ -7,6 +7,8 @@ use Illuminate\Http\Request;
 use App\Models\Document;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use App\Models\Opportunity;
+
 
 class DocumentController extends Controller
 {
@@ -36,7 +38,7 @@ class DocumentController extends Controller
     /**
      * فرم ایجاد
      */
-    public function create()
+    public function create(Request $request)
     {
         $breadcrumb = [
             ['title' => 'داشبورد', 'url' => route('dashboard')],
@@ -44,38 +46,50 @@ class DocumentController extends Controller
             ['title' => 'ایجاد سند'],
         ];
 
-        // اگر فرصت فروش (opportunity) لازم داری، اینجا پاس بده
-        $opportunities = \App\Models\Sales\Opportunity::select('id','title')->latest()->get();
+        // اگر timestamps نداری از orderByDesc('id') استفاده کن
+        $opportunities = Opportunity::select('id','name')->latest()->get();
 
-        return view('sales.documents.create', compact('breadcrumb','opportunities'));
+        // فرصت پیش‌فرض وقتی از صفحه خودش می‌آییم
+        $defaultOpportunityId = null;
+        if ($request->filled('opportunity_id')) {
+            $id = (int) $request->query('opportunity_id');
+            if (Opportunity::whereKey($id)->exists()) {
+                $defaultOpportunityId = $id;
+            }
+        }
+
+        return view('sales.documents.create',
+            compact('breadcrumb','opportunities','defaultOpportunityId'));
     }
 
-    /**
-     * ذخیره فایل
-     */
     public function store(Request $request)
     {
         $request->validate([
-            'title'           => ['required','string','max:255'],
-            'file'            => ['required','file','max:10240', 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png'],
-            'opportunity_id'  => ['nullable','integer','exists:opportunities,id'],
+            'title'          => ['required','string','max:255'],
+            'file'           => ['required','file','max:10240','mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png'],
+            'opportunity_id' => ['nullable','integer','exists:opportunities,id'],
         ]);
 
-        // آپلود امن در storage/app/public/documents
         $path = $request->file('file')->store('documents', 'public');
 
         $data = [
-            'title'          => $request->input('title'),
+            'title'          => $request->string('title'),
             'file_path'      => $path,
-            'opportunity_id' => $request->input('opportunity_id'),
+            'opportunity_id' => $request->integer('opportunity_id') ?: null,
         ];
 
-        // فقط اگر ستون user_id وجود دارد ست کن
         if (Schema::hasColumn('documents', 'user_id')) {
             $data['user_id'] = $request->user()->id;
         }
 
         $document = Document::create($data);
+
+        // اگر از صفحه یک فرصت آمده‌ایم، برگرد همانجا (UX بهتر)
+        if ($document->opportunity_id) {
+            return redirect()
+                ->route('sales.opportunities.show', $document->opportunity_id)
+                ->with('success', 'سند برای این فرصت ثبت شد.');
+        }
 
         return redirect()
             ->route('sales.documents.index')
