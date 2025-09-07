@@ -28,10 +28,10 @@
             </div>
 
             <div class="flex items-center gap-3 text-sm">
-                <a href="{{ asset('storage/' . $doc->file_path) }}" target="_blank" class="text-gray-600 hover:text-blue-600" title="مشاهده">
+                <a href="{{ route('sales.documents.view', $doc) }}" target="_blank" title="مشاهده">
                     <i class="fas fa-eye"></i>
                 </a>
-                <a href="{{ asset('storage/' . $doc->file_path) }}" download class="text-gray-600 hover:text-green-600" title="دانلود">
+                <a href="{{ route('sales.documents.download', $doc) }}" title="دانلود">
                     <i class="fas fa-download"></i>
                 </a>
             </div>

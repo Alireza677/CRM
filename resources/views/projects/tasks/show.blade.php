@@ -65,12 +65,21 @@
 
             <div>
                 <label class="block mb-2 font-medium">منشن کاربران</label>
-                <div class="max-h-[150px] overflow-y-auto border rounded p-2 space-y-1">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="text-sm text-gray-600">انتخاب کاربران</span>
+                    <button type="button" id="select-all" class="text-blue-600 text-xs hover:underline">
+                        منشن همه
+                    </button>
+                    <button type="button" id="deselect-all" class="text-gray-500 text-xs hover:underline">
+                        حذف انتخاب همه
+                    </button>
+                </div>
+                <div id="mentions-list" class="max-h-[150px] overflow-y-auto border rounded p-2 space-y-1">
                     @foreach($users as $u)
                         <label class="flex items-center gap-2 text-sm">
                             <input type="checkbox" name="mentions[]" value="{{ $u->id }}"
                                 @checked(collect(old('mentions', []))->contains($u->id))
-                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                class="rounded border-gray-300 text-blue-600 focus:ring-blue-500 mention-checkbox">
                             <span>{{ $u->name ?? $u->email }}</span>
                         </label>
                     @endforeach
@@ -84,12 +93,12 @@
                 </button>
             </div>
             @if ($errors->any())
-  <div class="alert alert-danger">
-    @foreach ($errors->all() as $error)
-      <div>{{ $error }}</div>
-    @endforeach
-  </div>
-@endif
+                <div class="alert alert-danger">
+                    @foreach ($errors->all() as $error)
+                    <div>{{ $error }}</div>
+                    @endforeach
+                </div>
+            @endif
         </form>
 
         
@@ -112,17 +121,24 @@
                     </div>
 
                     <div class="mt-2 text-gray-800 whitespace-pre-line">{{ $note->body }}</div>
+                    @php
+                        // اگر رابطه لود نشده بود، یک‌بار از DB بگیر
+                        $mentions = $note->relationLoaded('mentions')
+                            ? $note->mentions
+                            : $note->mentions()->select('users.id','users.name','users.email')->get();
+                    @endphp
 
-                    @if($note->mentions->isNotEmpty())
-                        <div class="mt-2 text-xs text-gray-600">
-                            منشن:
-                            @foreach($note->mentions as $m)
+                    @if($mentions->isNotEmpty())
+                        <div class="mt-2 text-[12px] text-gray-500">
+                            <span class="font-medium">کاربران منشن‌شده:</span>
+                            @foreach($mentions as $m)
                                 <span class="inline-block bg-gray-100 rounded px-2 py-0.5 ml-1 mb-1">
                                     {{ $m->name ?? $m->email }}
                                 </span>
                             @endforeach
                         </div>
                     @endif
+                    
                 </div>
             @empty
                 <div class="text-gray-500">هنوز یادداشتی ثبت نشده است.</div>
@@ -131,3 +147,14 @@
     </div>
 </div>
 @endsection
+@push('scripts')
+<script>
+    document.getElementById('select-all').addEventListener('click', () => {
+        document.querySelectorAll('.mention-checkbox').forEach(cb => cb.checked = true);
+    });
+
+    document.getElementById('deselect-all').addEventListener('click', () => {
+        document.querySelectorAll('.mention-checkbox').forEach(cb => cb.checked = false);
+    });
+</script>
+@endpush

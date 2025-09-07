@@ -2,8 +2,8 @@
     <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-700">پیش‌فاکتورها</h3>
         <a href="{{ route('sales.proformas.create', ['opportunity_id' => $opportunity->id]) }}"
-           class="bg-blue-600 text-white px-4 py-2 text-sm rounded hover:bg-blue-700 transition">
-            افزودن پیش‌فاکتور
+            class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+                ایجاد پیش‌فاکتور
         </a>
     </div>
 
@@ -37,15 +37,10 @@
                             {{ $stages[$proforma->proforma_stage] ?? $proforma->proforma_stage ?? '---' }}
                         </td>
 
-
-                
-
                         <td class="px-4 py-2">
                             {{-- اگر می‌خواهید دو رقم اعشار نشان بدهد: number_format(..., 2) --}}
                             {{ isset($proforma->total_amount) ? number_format((float)$proforma->total_amount, 0) . ' تومان' : '---' }}
                         </td>
-
-                    
 
                         <td class="px-4 py-2 space-x-3 space-x-reverse">
                             <a href="{{ route('sales.proformas.show', $proforma) }}"

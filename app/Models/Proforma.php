@@ -41,6 +41,11 @@ class Proforma extends Model
         'first_approved_by',
         'first_approved_at',
         'approved_by',
+        'product_name',
+        'quantity',
+        'price',
+        'unit',
+        'total',
     ];
 
     protected $guarded = ['proforma_number'];

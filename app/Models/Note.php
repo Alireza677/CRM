@@ -42,6 +42,7 @@ class Note extends Model
     public function mentions()
     {
         return $this->belongsToMany(\App\Models\User::class, 'note_mentions', 'note_id', 'user_id')
+            ->withoutGlobalScopes()  // اینجا اضافه شد
             ->withTimestamps()
             ->withPivot('notified_at');
     }

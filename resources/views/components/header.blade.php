@@ -58,7 +58,7 @@
         </form>
 
         <!-- اعلان‌ها -->
-<div class="relative" x-data="{ showNotifications: false }">
+    <div class="relative" x-data="{ showNotifications: false }">
     <button @click="showNotifications = !showNotifications" class="relative text-gray-600 hover:text-gray-800 focus:outline-none">
         <!-- آیکن زنگ -->
         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
