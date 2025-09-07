@@ -178,7 +178,7 @@
                         <strong>فرصت فروش:</strong>
                         @if($proforma->opportunity)
                             <a href="{{ route('sales.opportunities.show', $proforma->opportunity) }}" class="text-blue-600 hover:underline">
-                                {{ $proforma->opportunity->title ?? ('فرصت #' . $proforma->opportunity->id) }}
+                                {{ $proforma->opportunity->name ?? ('فرصت #' . $proforma->opportunity->id) }}
                             </a>
                         @else
                             —
