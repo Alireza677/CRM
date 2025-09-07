@@ -34,16 +34,31 @@ class TaskController extends Controller
     public function show(Project $project, Task $task)
     {
         $this->authorize('view', [$task, $project]);
-
-        $task->load(['assignee', 'notes.author', 'notes.mentions']);
-        $project->load('members');
+    
+        $task = \App\Models\Task::query()
+            ->with([
+                'assignee:id,name,email',
+                'notes' => function ($q) {
+                    $q->latest()
+                      ->with([
+                          'author:id,name,email',
+                          // انتخاب ستون برای users تا ابهام id پیش نیاید
+                          'mentions:id,name'
+                      ]);
+                },
+            ])
+            ->findOrFail($task->id);
+    
+        $project->load('members:id,name,email');
 
         return view('projects.tasks.show', [
             'project' => $project,
             'task'    => $task,
-            'users'   => $project->members, // برای منشن
+            'users'   => $project->members,
         ]);
+
     }
+    
 
 
     // مارک کردن تسک به «انجام شد»

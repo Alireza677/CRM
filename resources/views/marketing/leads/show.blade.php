@@ -110,8 +110,8 @@
         </aside>
 
         {{-- محتوای اصلی --}}
-        <main class="flex-1 px-4 md:px-8 pb-8 md:mr-0 md:ml-64">
-            {{-- هدر دسکتاپ --}}
+        <main class="flex-1 px-4 md:px-8 pb-8 md:mr-0 ml-[10px]">
+        {{-- هدر دسکتاپ --}}
             <div class="hidden md:flex justify-between items-center mb-6 mt-8">
                 <h1 class="text-2xl font-bold text-gray-800">سرنخ فروش: {{ $lead->full_name }}</h1>
                 <div class="flex space-x-4 rtl:space-x-reverse">

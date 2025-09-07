@@ -47,6 +47,8 @@ use App\Http\Controllers\Sales\ProformaApprovalController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskNoteController;
+use App\Http\Controllers\Inventory\ProductImportController;
+
 
 
 
@@ -98,6 +100,7 @@ Route::middleware(['auth'])->group(function () {
 
         // اسناد
         Route::resource('documents', DocumentController::class);
+        Route::get('documents/{document}/view', [DocumentController::class, 'view'])->name('documents.view');
         Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 
         // مخاطبین
@@ -134,11 +137,16 @@ Route::middleware(['auth'])->group(function () {
         Route::get('proforma-invoice', [ProformaInvoiceController::class, 'index'])->name('proforma.index');
     });
 
-    // Inventory
-    Route::get('/inventory', [InventoryController::class, 'index'])->name('inventory');
+    
     Route::prefix('inventory')->name('inventory.')->group(function () {
-        Route::resource('products', ProductController::class);
-        Route::resource('suppliers', SupplierController::class);
+        // --- Import routes (قبل از resource ها) ---
+        Route::get('products/import', [ProductImportController::class, 'create'])->name('products.import');
+        Route::post('products/import/dry-run', [ProductImportController::class, 'dryRun'])->name('products.import.dryrun');
+        Route::post('products/import/confirm', [ProductImportController::class, 'store'])->name('products.import.store');
+    
+        // --- Resources ---
+        Route::resource('products', ProductController::class)->except(['show'])->whereNumber('product');
+        Route::resource('suppliers', SupplierController::class);          // => inventory.suppliers.index
         Route::resource('purchase-orders', PurchaseOrderController::class);
     });
 
@@ -214,28 +222,76 @@ Route::middleware(['auth'])->group(function () {
         Route::post('/projects/{project}/members',          [ProjectController::class, 'addMember'])->name('projects.members.add');
         Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember'])->name('projects.members.remove');
     
-        // Tasks: ایجاد (می‌تواند بیرون از گروهِ can:view,project باشد، اما ما می‌بریم زیرش تا یکدست باشد)
         Route::prefix('projects/{project}')
-            ->name('projects.')
-            ->middleware('can:view,project') // کاربر باید عضو پروژه باشد
-            ->group(function () {
-    
-                // Create task
-                Route::post('tasks',                     [TaskController::class, 'store'])->name('tasks.store');
-    
-                // Task CRUD
-                Route::get('tasks/{task}',              [TaskController::class, 'show'])->name('tasks.show');
-                Route::get('tasks/{task}/edit',         [TaskController::class, 'edit'])->name('tasks.edit');
-                Route::put('tasks/{task}',              [TaskController::class, 'update'])->name('tasks.update');
-                Route::delete('tasks/{task}',           [TaskController::class, 'destroy'])->name('tasks.destroy');
-    
-                // Mark done
-                Route::post('tasks/{task}/done',        [TaskController::class, 'markDone'])->name('tasks.done');
-    
-                // Task notes
-                Route::post('tasks/{task}/notes',                     [TaskNoteController::class, 'store'])->name('tasks.notes.store');
-                Route::delete('tasks/{task}/notes/{note}',            [TaskNoteController::class, 'destroy'])->name('tasks.notes.destroy');
-            });
+    ->name('projects.')
+    ->middleware('can:view,project')  // کاربر باید عضو پروژه باشد
+    ->scopeBindings()                 // بایندینگ تو در تو: task متعلق به project و note متعلق به task
+    ->group(function () {
+
+        /*
+        |-------------------------
+        | Tasks (CRUD + Done)
+        |-------------------------
+        */
+
+        // ایجاد تسک
+        Route::post('tasks', [TaskController::class, 'store'])
+            ->name('tasks.store')
+            ->whereNumber('project');
+
+        // نمایش تسک (با یادداشت‌ها) => به TaskNoteController منتقل شد
+        Route::get('tasks/{task}', [TaskNoteController::class, 'show'])
+            ->name('tasks.show')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        // ویرایش/به‌روزرسانی/حذف توسط TaskController
+        Route::get('tasks/{task}/edit', [TaskController::class, 'edit'])
+            ->middleware('can:update,task')
+            ->name('tasks.edit')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        Route::put('tasks/{task}', [TaskController::class, 'update'])
+            ->middleware('can:update,task')
+            ->name('tasks.update')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        Route::delete('tasks/{task}', [TaskController::class, 'destroy'])
+            ->middleware('can:delete,task')
+            ->name('tasks.destroy')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        // علامت زدن به‌عنوان انجام‌شده
+        Route::post('tasks/{task}/done', [TaskController::class, 'markDone'])
+            ->middleware('can:update,task')
+            ->name('tasks.done')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        /*
+        |-------------------------
+        | Task Notes (Store/Destroy)
+        |-------------------------
+        */
+
+        // ثبت یادداشتِ جدید برای تسک
+        Route::post('tasks/{task}/notes', [TaskNoteController::class, 'store'])
+            ->middleware('can:view,task') // یا can:create, App\Models\Note اگر پالیسی جدا دارید
+            ->name('tasks.notes.store')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        // حذف یادداشت
+        Route::delete('tasks/{task}/notes/{note}', [TaskNoteController::class, 'destroy'])
+            ->middleware('can:delete,note')
+            ->name('tasks.notes.destroy')
+            ->whereNumber('project')
+            ->whereNumber('task')
+            ->whereNumber('note');
+    });
     });
     
 

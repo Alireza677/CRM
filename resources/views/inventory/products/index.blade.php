@@ -20,22 +20,33 @@
                             <form action="{{ route('inventory.products.index') }}" method="GET">
                                 <div class="relative">
                                     <input type="text" name="search" value="{{ request('search') }}" 
-                                           class="w-full pr-10 pl-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-                                           placeholder="{{ __('جستجو...') }}">
+                                        class="w-full pr-10 pl-4 py-2 border rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+                                        placeholder="{{ __('جستجو...') }}">
                                     <button type="submit" class="absolute left-0 inset-y-0 flex items-center pl-3">
                                         <svg class="h-5 w-5 text-gray-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                                  d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />
+                                                d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0z" />
                                         </svg>
                                     </button>
                                 </div>
                             </form>
                         </div>
-                        <a href="{{ route('inventory.products.create') }}" 
-                           class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
-                            {{ __('افزودن محصول جدید') }}
-                        </a>
+
+                        <div class="flex space-x-2 space-x-reverse">
+                            {{-- دکمه ایمپورت محصولات --}}
+                            <a href="{{ route('inventory.products.import') }}" 
+                            class="bg-green-500 hover:bg-green-600 text-white font-bold py-2 px-4 rounded">
+                                📥 {{ __('ایمپورت محصولات') }}
+                            </a>
+
+                            {{-- دکمه افزودن محصول جدید --}}
+                            <a href="{{ route('inventory.products.create') }}" 
+                            class="bg-blue-500 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">
+                                ➕ {{ __('افزودن محصول جدید') }}
+                            </a>
+                        </div>
                     </div>
+
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">

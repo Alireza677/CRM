@@ -1,4 +1,41 @@
-@php($isEdit = isset($proforma) && $proforma)
+{{-- همیشه این‌ها را در اولین خطوط پارشیال بگذار --}}
+@php
+    // تعیین حالت صفحه: ایجاد یا ویرایش
+    $isEdit = $isEdit
+        ?? (isset($proforma) && $proforma && method_exists($proforma, 'getKey') && $proforma->getKey());
+
+    // جلوگیری از Undefined array key روی $prefill وقتی از create نیومده
+    $prefill = $prefill ?? [];
+
+    // مقادیر پیش‌فرض نمایش/شناسه‌ها
+    $orgNameDefault = $isEdit
+        ? optional($proforma->organization)->name
+        : ($prefill['organization_name'] ?? '');
+
+    $orgIdDefault = $isEdit
+        ? ($proforma->organization_id ?? '')
+        : ($prefill['organization_id'] ?? '');
+
+    // ساخت نام کامل مخاطب در حالت edit؛ در حالت create از prefill می‌گیریم
+    $cntNameDefault = $isEdit
+        ? ( optional($proforma->contact)->full_name
+            ?? trim( (optional($proforma->contact)->first_name ?? '').' '.(optional($proforma->contact)->last_name ?? '') )
+          )
+        : ($prefill['contact_name'] ?? '');
+
+    $cntIdDefault = $isEdit
+        ? ($proforma->contact_id ?? '')
+        : ($prefill['contact_id'] ?? '');
+
+    $oppNameDefault = $isEdit
+        ? optional($proforma->opportunity)->name
+        : ($prefill['opportunity_name'] ?? '');
+
+    $oppIdDefault = $isEdit
+        ? ($proforma->opportunity_id ?? '')
+        : ($prefill['opportunity_id'] ?? '');
+@endphp
+
 
 {{-- دسته اول: اطلاعات پیش‌فاکتور --}}
 <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -55,11 +92,11 @@
         <label for="organization_id" class="block font-medium text-sm text-gray-700">سازمان</label>
         <div class="flex items-center gap-2">
             <input type="text" id="organization_name" name="organization_name"
-                   class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
-                   placeholder="انتخاب سازمان" readonly
-                   value="{{ old('organization_name', $isEdit ? optional($proforma->organization)->name : '') }}">
+                class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                placeholder="انتخاب سازمان" readonly
+                value="{{ old('organization_name', $orgNameDefault) }}">
             <input type="hidden" id="organization_id" name="organization_id"
-                   value="{{ old('organization_id', $isEdit ? $proforma->organization_id : '') }}">
+                value="{{ old('organization_id', $orgIdDefault) }}">
             <button type="button" onclick="openOrganizationModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
         </div>
         @error('organization_id')
@@ -72,11 +109,11 @@
         <label for="contact_id" class="block font-medium text-sm text-gray-700">مخاطب</label>
         <div class="flex items-center gap-2">
             <input type="text" id="contact_name" name="contact_name"
-                   class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
-                   placeholder="انتخاب مخاطب" readonly
-                   value="{{ old('contact_name', $isEdit ? optional($proforma->contact)->full_name : '') }}">
+                class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                placeholder="انتخاب مخاطب" readonly
+                value="{{ old('contact_name', $cntNameDefault) }}">
             <input type="hidden" id="contact_id" name="contact_id"
-                   value="{{ old('contact_id', $isEdit ? $proforma->contact_id : '') }}">
+                value="{{ old('contact_id', $cntIdDefault) }}">
             <button type="button" onclick="openContactModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
         </div>
         @error('contact_id')
@@ -89,11 +126,11 @@
         <label for="opportunity_id" class="block font-medium text-sm text-gray-700">فرصت فروش</label>
         <div class="flex items-center gap-2">
             <input type="text" id="opportunity_name" name="opportunity_name"
-                   class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
-                   placeholder="انتخاب فرصت فروش" readonly
-                   value="{{ old('opportunity_name', $isEdit ? optional($proforma->opportunity)->name : '') }}">
+                class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                placeholder="انتخاب فرصت فروش" readonly
+                value="{{ old('opportunity_name', $oppNameDefault) }}">
             <input type="hidden" id="opportunity_id" name="opportunity_id"
-                   value="{{ old('opportunity_id', $isEdit ? $proforma->opportunity_id : '') }}">
+                value="{{ old('opportunity_id', $oppIdDefault) }}">
             <button type="button" onclick="openOpportunityModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
         </div>
         @error('opportunity_id')
@@ -190,6 +227,7 @@
     </div>
 </div>
 
+
 {{-- مودال انتخاب مخاطب --}}
 <div id="contactModal"
      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
@@ -197,7 +235,7 @@
     <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold">انتخاب مخاطب</h3>
-            <button onclick="closeContactModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
+            <button type="button" onclick="closeContactModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
         </div>
 
         <table class="w-full text-sm text-right border border-gray-200">
@@ -209,9 +247,10 @@
             </thead>
             <tbody>
                 @foreach($contacts as $c)
+                    @php($full = trim(($c->full_name ?? '') !== '' ? $c->full_name : trim(($c->first_name ?? '').' '.($c->last_name ?? ''))))
                     <tr class="cursor-pointer hover:bg-gray-50"
-                        onclick="selectContact({{ $c->id }}, '{{ $c->full_name }}')">
-                        <td class="px-4 py-2 border-b border-gray-200">{{ $c->full_name }}</td>
+                        onclick='selectContact({{ $c->id }}, @json($full))'>
+                        <td class="px-4 py-2 border-b border-gray-200">{{ $full ?: '—' }}</td>
                         <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $c->mobile ?? '—' }}</td>
                     </tr>
                 @endforeach
@@ -225,7 +264,7 @@
      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
      style="display: none;">
     <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow relative">
-        <button onclick="closeOrganizationModal()"
+        <button type="button" onclick="closeOrganizationModal()"
                 class="absolute top-2 left-2 bg-gray-200 text-sm px-3 py-1 rounded hover:bg-gray-300">
             ✖ بستن
         </button>
@@ -246,8 +285,8 @@
                         <td class="p-2">{{ $org->name }}</td>
                         <td class="p-2">{{ $org->phone ?? '---' }}</td>
                         <td class="p-2">
-                            <button class="text-blue-600 hover:underline"
-                                    onclick="selectOrganization({{ $org->id }}, '{{ $org->name }}')">
+                            <button type="button" class="text-blue-600 hover:underline"
+                                    onclick='selectOrganization({{ $org->id }}, @json($org->name))'>
                                 انتخاب
                             </button>
                         </td>

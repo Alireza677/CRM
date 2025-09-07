@@ -8,6 +8,8 @@ use Illuminate\Foundation\Support\Providers\AuthServiceProvider as ServiceProvid
 use Illuminate\Support\Facades\Gate;
 use App\Models\Task;
 use App\Policies\TaskPolicy;
+use App\Models\Document;
+use App\Models\User;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -30,5 +32,12 @@ class AuthServiceProvider extends ServiceProvider
     public function boot(): void
     {
         $this->registerPolicies();
+        Gate::define('documents.view', function (User $user, Document $doc) {
+            return ($user->is_admin ?? false) || $doc->user_id === $user->id;
+        });
+    
+        Gate::define('documents.download', function (User $user, Document $doc) {
+            return ($user->is_admin ?? false) || $doc->user_id === $user->id;
+        });
     }
 }

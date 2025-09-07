@@ -6,33 +6,33 @@
         {{-- عنوان صفحه --}}
         <h1 class="text-xl font-bold mb-6 text-gray-700">ثبت سند جدید</h1>
 
-        <form action="{{ route('sales.documents.store') }}" method="POST" enctype="multipart/form-data">
-            @csrf
+        <form method="POST" action="{{ route('sales.documents.store') }}" enctype="multipart/form-data">
+    @csrf
+    <div>
+        <label>عنوان</label>
+        <input type="text" name="title" value="{{ old('title') }}" required>
+        @error('title') <small class="text-red-500">{{ $message }}</small> @enderror
+    </div>
 
-            <input type="hidden" name="opportunity_id" value="{{ $opportunityId }}">
+    <div>
+        <label>فایل</label>
+        <input type="file" name="file" required>
+        @error('file') <small class="text-red-500">{{ $message }}</small> @enderror
+    </div>
 
-            <div class="mb-4">
-                <label for="title" class="block text-sm font-medium text-gray-700">عنوان سند</label>
-                <input type="text" name="title" id="title" class="mt-1 block w-full border-gray-300 rounded shadow-sm" required>
-            </div>
+    <div>
+        <label>فرصت فروش (اختیاری)</label>
+        <select name="opportunity_id">
+            <option value="">— انتخاب کنید —</option>
+            @foreach($opportunities as $opp)
+                <option value="{{ $opp->id }}" @selected(old('opportunity_id')==$opp->id)>{{ $opp->title }}</option>
+            @endforeach
+        </select>
+        @error('opportunity_id') <small class="text-red-500">{{ $message }}</small> @enderror
+    </div>
 
-            
+    <button type="submit">ثبت</button>
+</form>
 
-            <div class="mb-6">
-                <label for="file" class="block text-sm font-medium text-gray-700">فایل</label>
-                <input type="file" name="file" id="file" class="mt-1 block w-full" required>
-            </div>
-
-            <div class="flex justify-end space-x-2 rtl:space-x-reverse">
-                <a href="{{ route('sales.documents.index') }}"
-                   class="bg-gray-200 text-gray-700 px-4 py-2 rounded hover:bg-gray-300 text-sm">
-                    انصراف
-                </a>
-                <button type="submit"
-                        class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
-                    ذخیره سند
-                </button>
-            </div>
-        </form>
     </div>
 @endsection

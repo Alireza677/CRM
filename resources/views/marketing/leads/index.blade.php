@@ -120,67 +120,72 @@
             </div>
 
             <!-- جدول -->
-            <div class="overflow-x-auto">
-                <table class="min-w-full divide-y divide-gray-200 text-sm">
-                    <thead class="bg-gray-50">
-                        <tr>
-                            <th class="px-2 py-2 text-center">
-                                <input type="checkbox" id="select-all" class="form-checkbox">
-                            </th>
-                            <th class="px-2 py-2 text-right">نام کامل</th>
-                            <th class="px-2 py-2 text-right">موبایل</th>
-                            <th class="px-2 py-2 text-right">منبع سرنخ</th>
-                            <th class="px-2 py-2 text-right">وضعیت</th>
-                            <th class="px-2 py-2 text-right">ارجاع به</th>
-                            <th class="px-2 py-2 text-center">عملیات</th>
-                        </tr>
-                    </thead>
-                    <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse($leads as $lead)
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="px-2 py-2 text-center">
-                                <input type="checkbox" name="selected_leads[]" value="{{ $lead->id }}" class="form-checkbox row-checkbox">
-                            </td>
-                            <td class="px-6 py-2 text-sm text-blue-700 hover:underline">
-                                <a href="{{ route('marketing.leads.show', $lead) }}">
-                                    {{ $lead->full_name }}
-                                </a>
-                            </td>
-                            <td class="px-6 py-2 text-sm text-gray-500">{{ $lead->mobile ?? $lead->phone }}</td>
-                            <td class="px-6 py-2 text-sm text-gray-500">
-                                {{ \App\Helpers\FormOptionsHelper::getLeadSourceLabel($lead->lead_source) }}
-                            </td>
-                            <td class="px-6 py-2">
-                                <span class="px-2 inline-flex text-xs font-semibold rounded-full
-                                    @if($lead->lead_status === 'new') bg-blue-100 text-blue-800
-                                    @elseif($lead->lead_status === 'contacted') bg-yellow-100 text-yellow-800
-                                    @elseif($lead->lead_status === 'qualified') bg-green-100 text-green-800
-                                    @else bg-red-100 text-red-800
-                                    @endif">
-                                    {{ \App\Helpers\FormOptionsHelper::getLeadStatusLabel($lead->lead_status) }}
-                                </span>
-                            </td>
-                            <td class="px-6 py-2 text-sm text-gray-500">
-                                @if($lead->assignedUser)
-                                    {{ $lead->assignedUser->name }}
-                                @elseif($lead->assigned_to)
-                                    (کاربر حذف شده) [ID: {{ $lead->assigned_to }}]
-                                @else
-                                    بدون مسئول
-                                @endif
-                            </td>
-                            <td class="px-6 py-2 text-center">
-                                <a href="{{ route('marketing.leads.edit', $lead) }}" class="text-blue-500 hover:underline">ویرایش</a>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="7" class="px-6 py-4 text-center text-sm text-gray-500">هیچ سرنخی ثبت نشده است.</td>
-                        </tr>
-                    @endforelse
-                    </tbody>
-                </table>
-            </div>
+<div class="overflow-x-auto">
+    <table class="min-w-full divide-y divide-gray-200 text-sm">
+        <thead class="bg-gray-50">
+            <tr>
+                <th class="px-2 py-2 text-center">
+                    <input type="checkbox" id="select-all" class="form-checkbox">
+                </th>
+                <th class="px-2 py-2 text-right">نام کامل</th>
+                <th class="px-2 py-2 text-right">تاریخ</th>
+                <th class="px-2 py-2 text-right">موبایل</th>
+                <th class="px-2 py-2 text-right">منبع سرنخ</th>
+                <th class="px-2 py-2 text-right">وضعیت</th>
+                <th class="px-2 py-2 text-right">ارجاع به</th>
+                <th class="px-2 py-2 text-center">عملیات</th>
+            </tr>
+        </thead>
+        <tbody class="bg-white divide-y divide-gray-200">
+        @forelse($leads as $lead)
+            <tr class="hover:bg-gray-50 transition">
+                <td class="px-2 py-2 text-center">
+                    <input type="checkbox" name="selected_leads[]" value="{{ $lead->id }}" class="form-checkbox row-checkbox">
+                </td>
+                <td class="px-6 py-2 text-sm text-blue-700 hover:underline">
+                    <a href="{{ route('marketing.leads.show', $lead) }}">
+                        {{ $lead->full_name }}
+                    </a>
+                </td>
+                <td class="px-6 py-2 text-sm text-gray-500">
+                    {{ \Morilog\Jalali\Jalalian::forge($lead->created_at)->format('Y/m/d') }}
+                </td>
+                <td class="px-6 py-2 text-sm text-gray-500">{{ $lead->mobile ?? $lead->phone }}</td>
+                <td class="px-6 py-2 text-sm text-gray-500">
+                    {{ \App\Helpers\FormOptionsHelper::getLeadSourceLabel($lead->lead_source) }}
+                </td>
+                <td class="px-6 py-2">
+                    <span class="px-2 inline-flex text-xs font-semibold rounded-full
+                        @if($lead->lead_status === 'new') bg-blue-100 text-blue-800
+                        @elseif($lead->lead_status === 'contacted') bg-yellow-100 text-yellow-800
+                        @elseif($lead->lead_status === 'qualified') bg-green-100 text-green-800
+                        @else bg-red-100 text-red-800
+                        @endif">
+                        {{ \App\Helpers\FormOptionsHelper::getLeadStatusLabel($lead->lead_status) }}
+                    </span>
+                </td>
+                <td class="px-6 py-2 text-sm text-gray-500">
+                    @if($lead->assignedUser)
+                        {{ $lead->assignedUser->name }}
+                    @elseif($lead->assigned_to)
+                        (کاربر حذف شده) [ID: {{ $lead->assigned_to }}]
+                    @else
+                        بدون مسئول
+                    @endif
+                </td>
+                <td class="px-6 py-2 text-center">
+                    <a href="{{ route('marketing.leads.edit', $lead) }}" class="text-blue-500 hover:underline">ویرایش</a>
+                </td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="8" class="px-6 py-4 text-center text-sm text-gray-500">هیچ سرنخی ثبت نشده است.</td>
+            </tr>
+        @endforelse
+        </tbody>
+    </table>
+</div>
+
 
             <div class="mt-4">
                 {{ $leads->links() }}

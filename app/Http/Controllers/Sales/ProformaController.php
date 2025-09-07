@@ -69,17 +69,41 @@ class ProformaController extends Controller
         return view('sales.proformas.index', compact('proformas', 'organizations', 'users'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
-        $organizations = Organization::all();
-        $contacts = Contact::all();
-        $opportunities = Opportunity::all();
-        $users = User::all();
-        $products = Product::where('is_active', true)->orderBy('name')->get();
-        $proformaStages = config('proforma.stages'); 
+        $prefill = [];
+
+        // اگر از صفحه فرصت وارد شده‌ایم
+        if ($request->filled('opportunity_id')) {
+            $opportunity = Opportunity::with(['organization','contact'])->find($request->opportunity_id);
+
+            if ($opportunity) {
+                $contactFullName = trim(
+                    ($opportunity->contact->first_name ?? '').' '.($opportunity->contact->last_name ?? '')
+                );
+
+                $prefill = [
+                    'opportunity_id'     => $opportunity->id,
+                    'organization_id'    => optional($opportunity->organization)->id,
+                    'organization_name'  => optional($opportunity->organization)->name,
+                    'contact_id'         => optional($opportunity->contact)->id,
+                    'contact_name'       => $contactFullName ?: ($opportunity->contact->last_name ?? ''),
+                    'customer_address'   => optional($opportunity->organization)->address ?: '',
+                    'city'               => optional($opportunity->organization)->city   ?: '',
+                    'state'              => optional($opportunity->organization)->state  ?: '',
+                ];
+            }
+        }
+
+        $organizations   = Organization::orderBy('name')->get();
+        $contacts        = Contact::orderBy('id','desc')->get();
+        $opportunities   = Opportunity::orderBy('id','desc')->get();
+        $users           = User::orderBy('id')->get();
+        $products        = Product::where('is_active', true)->orderBy('name')->get();
+        $proformaStages  = config('proforma.stages'); 
 
         return view('sales.proformas.create', compact(
-            'organizations', 'contacts', 'opportunities', 'users', 'products',  'proformaStages'
+            'organizations', 'contacts', 'opportunities', 'users', 'products', 'proformaStages', 'prefill'
         ));
     }
 
