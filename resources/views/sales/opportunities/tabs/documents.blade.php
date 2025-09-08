@@ -27,11 +27,10 @@
                             <td class="px-4 py-2">{{ $document->type ?? '---' }}</td>
                             <td class="px-4 py-2">{{ jdate($document->created_at)->format('Y/m/d') }}</td>
                             <td class="px-4 py-2">
-                                <a href="{{ asset('storage/' . $document->file_path) }}" 
-                                   target="_blank"
-                                   class="text-blue-600 hover:underline text-xs">
-                                    مشاهده
-                                </a>
+                            <a href="{{ route('sales.documents.view', $document) }}" target="_blank" class="text-blue-600 hover:underline">
+                                مشاهده سند
+                            </a>
+
                             </td>
                             <td class="px-4 py-2">
                                 <a href="{{ route('sales.documents.download', $document->id) }}"
