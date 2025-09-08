@@ -268,7 +268,7 @@ class SalesLeadController extends Controller
         $lead->load(['lastNote', 'assignedTo']);
         $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
         $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
-
+        
         $allUsers = User::whereNotNull('username')->get(); // ✅ این خط اضافه شود
 
         return view('marketing.leads.show', compact('lead', 'allUsers'));
