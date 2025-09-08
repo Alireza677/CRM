@@ -143,28 +143,30 @@ class OpportunityController extends Controller
 
     public function edit(Opportunity $opportunity)
     {
-        $organizations = Organization::all();
-        $contacts = Contact::all();
-        $users = User::all();
-
-        // تبدیل تاریخ پیگیری بعدی به شمسی
+        // eager load؛ اگر قبلاً لود شده بود دوباره کوئری نزن
+        $opportunity->loadMissing(['organization', 'contact']);
+    
+        // اگر لیست‌ها بزرگ نیستند همین ok است؛ وگرنه ستون‌های لازم را select کنید
+        $organizations = Organization::query()->orderBy('name')->get(['id','name','phone']);
+        $contacts      = Contact::query()->orderBy('last_name')->get(['id','first_name','last_name','mobile']);
+        $users         = User::query()->orderBy('name')->get(['id','name']);
+    
+        // تاریخ شمسی نمایشی
         $nextFollowUpDate = '';
-            if ($opportunity->next_follow_up && strtotime($opportunity->next_follow_up)) {
-                try {
-                    $nextFollowUpDate = Jalalian::fromDateTime($opportunity->next_follow_up)->format('Y/m/d');
-                } catch (\Exception $e) {
-                    $nextFollowUpDate = '';
-                }
+        if (!empty($opportunity->next_follow_up)) {
+            try {
+                $nextFollowUpDate = \Morilog\Jalali\Jalalian::fromDateTime($opportunity->next_follow_up)->format('Y/m/d');
+            } catch (\Throwable $e) {
+                $nextFollowUpDate = '';
             }
-
+        }
+    
         return view('sales.opportunities.edit', compact(
-            'opportunity',
-            'organizations',
-            'contacts',
-            'users',
-            'nextFollowUpDate'
+            'opportunity', 'organizations', 'contacts', 'users', 'nextFollowUpDate'
         ));
     }
+    
+
 
     public function update(Request $request, Opportunity $opportunity)
     {
