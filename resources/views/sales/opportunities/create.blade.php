@@ -426,15 +426,5 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 
-// // اگر می‌خواهی با باز شدن مودال، فیلتر فوراً اعمال شود (مثلاً بعد از تایپ قبلی):
-// function openContactModal(){
-//     toggleModal('contactModal', true, 'contactSearchInput');
-//     const i = document.getElementById('contactSearchInput');
-//     if (i) i.dispatchEvent(new Event('input'));
-// }
-// function openOrganizationModal(){
-//     toggleModal('organizationModal', true, 'organizationSearchInput');
-//     const i = document.getElementById('organizationSearchInput');
-//     if (i) i.dispatchEvent(new Event('input'));
-// }
+
 </script>

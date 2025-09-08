@@ -228,112 +228,139 @@
 </div>
 
 
-{{-- مودال انتخاب مخاطب --}}
+{{-- ============== مودال انتخاب مخاطب ============== --}}
 <div id="contactModal"
      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
-     style="display: none;">
-    <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
-        <div class="flex justify-between items-center mb-4">
-            <h3 class="text-lg font-semibold">انتخاب مخاطب</h3>
-            <button type="button" onclick="closeContactModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
-        </div>
-
-        <table class="w-full text-sm text-right border border-gray-200">
-            <thead>
-                <tr class="bg-gray-100 text-gray-700">
-                    <th class="px-4 py-2 border-b border-gray-300">نام مخاطب</th>
-                    <th class="px-4 py-2 border-b border-gray-300">شماره موبایل</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($contacts as $c)
-                    @php($full = trim(($c->full_name ?? '') !== '' ? $c->full_name : trim(($c->first_name ?? '').' '.($c->last_name ?? ''))))
-                    <tr class="cursor-pointer hover:bg-gray-50"
-                        onclick='selectContact({{ $c->id }}, @json($full))'>
-                        <td class="px-4 py-2 border-b border-gray-200">{{ $full ?: '—' }}</td>
-                        <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $c->mobile ?? '—' }}</td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
+     aria-hidden="true">
+  <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold">انتخاب مخاطب</h3>
+      <button type="button" onclick="closeContactModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
     </div>
+
+    {{-- نوار جستجو --}}
+    <div class="mb-3">
+      <input id="contactSearchInput" type="text" placeholder="جستجوی نام یا موبایل…"
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+             autocomplete="off">
+      <div class="mt-1 text-xs text-gray-500">با تایپ، فهرست فیلتر می‌شود.</div>
+    </div>
+
+    <div class="border border-gray-200 rounded overflow-hidden">
+      <table class="w-full text-sm text-right">
+        <thead class="bg-gray-100 text-gray-700 sticky top-0">
+          <tr>
+            <th class="px-4 py-2 border-b border-gray-300">نام مخاطب</th>
+            <th class="px-4 py-2 border-b border-gray-300">شماره موبایل</th>
+          </tr>
+        </thead>
+        <tbody id="contactTableBody">
+          @foreach($contacts as $c)
+            @php($full = trim(($c->full_name ?? '') !== '' ? $c->full_name : trim(($c->first_name ?? '').' '.($c->last_name ?? ''))))
+            <tr class="cursor-pointer hover:bg-gray-50"
+                data-id="{{ $c->id }}"
+                data-name="{{ $full }}"
+                data-phone="{{ preg_replace('/\D+/', '', (string)($c->mobile ?? '')) }}">
+              <td class="px-4 py-2 border-b border-gray-200">{{ $full ?: '—' }}</td>
+              <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $c->mobile ?? '—' }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+      <div id="contactNoResults" class="hidden p-4 text-center text-sm text-gray-500">موردی یافت نشد.</div>
+    </div>
+  </div>
 </div>
 
-{{-- مودال انتخاب سازمان --}}
+{{-- ============== مودال انتخاب سازمان ============== --}}
 <div id="organizationModal"
      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
-     style="display: none;">
-    <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow relative">
-        <button type="button" onclick="closeOrganizationModal()"
-                class="absolute top-2 left-2 bg-gray-200 text-sm px-3 py-1 rounded hover:bg-gray-300">
-            ✖ بستن
-        </button>
-
-        <h2 class="text-lg font-bold mb-4 text-right">انتخاب سازمان</h2>
-
-        <table class="w-full text-right border">
-            <thead>
-                <tr class="bg-gray-100">
-                    <th class="p-2 border">نام سازمان</th>
-                    <th class="p-2 border">شماره تماس</th>
-                    <th class="p-2 border">انتخاب</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($organizations as $org)
-                    <tr class="border-b">
-                        <td class="p-2">{{ $org->name }}</td>
-                        <td class="p-2">{{ $org->phone ?? '---' }}</td>
-                        <td class="p-2">
-                            <button type="button" class="text-blue-600 hover:underline"
-                                    onclick='selectOrganization({{ $org->id }}, @json($org->name))'>
-                                انتخاب
-                            </button>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-
+     aria-hidden="true">
+  <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold">انتخاب سازمان</h3>
+      <button type="button" onclick="closeOrganizationModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
     </div>
+
+    {{-- نوار جستجو --}}
+    <div class="mb-3">
+      <input id="organizationSearchInput" type="text" placeholder="جستجوی نام سازمان یا شماره تماس…"
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+             autocomplete="off">
+      <div class="mt-1 text-xs text-gray-500">با تایپ، فهرست فیلتر می‌شود.</div>
+    </div>
+
+    <div class="border border-gray-200 rounded overflow-hidden">
+      <table class="w-full text-sm text-right">
+        <thead class="bg-gray-100 text-gray-700 sticky top-0">
+          <tr>
+            <th class="px-4 py-2 border-b border-gray-300">نام سازمان</th>
+            <th class="px-4 py-2 border-b border-gray-300">شماره تماس</th>
+          </tr>
+        </thead>
+        <tbody id="organizationTableBody">
+          @foreach($organizations as $org)
+            <tr class="cursor-pointer hover:bg-gray-50"
+                data-id="{{ $org->id }}"
+                data-name="{{ $org->name }}"
+                data-phone="{{ preg_replace('/\D+/', '', (string)($org->phone ?? '')) }}">
+              <td class="px-4 py-2 border-b border-gray-200">{{ $org->name }}</td>
+              <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $org->phone ?? '—' }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+      <div id="organizationNoResults" class="hidden p-4 text-center text-sm text-gray-500">موردی یافت نشد.</div>
+    </div>
+  </div>
 </div>
 
-{{-- مودال انتخاب فرصت فروش --}}
+{{-- ============== مودال انتخاب فرصت فروش ============== --}}
 <div id="opportunityModal"
      class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
-     style="display: none;">
-    <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
-        <h2 class="text-lg font-bold mb-4">انتخاب فرصت فروش</h2>
-        <table class="w-full text-right border">
-            <thead>
-                <tr class="bg-gray-100">
-                    <th class="p-2 border">نام فرصت</th>
-                    <th class="p-2 border">مشتری</th>
-                    <th class="p-2 border">وضعیت</th>
-                    <th class="p-2 border">انتخاب</th>
-                </tr>
-            </thead>
-            <tbody>
-                @foreach($opportunities as $opp)
-                    <tr class="border-b">
-                        <td class="p-2">{{ $opp->name }}</td>
-                        <td class="p-2">{{ $opp->contact->full_name ?? '---' }}</td>
-                        <td class="p-2">{{ $opp->status_label ?? '---' }}</td>
-                        <td class="p-2">
-                            <button class="text-blue-600 hover:underline"
-                                    onclick="selectOpportunity({{ $opp->id }}, '{{ $opp->name }}')">
-                                انتخاب
-                            </button>
-                        </td>
-                    </tr>
-                @endforeach
-            </tbody>
-        </table>
-        <div class="mt-4 text-left">
-            <button onclick="closeOpportunityModal()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400">بستن</button>
-        </div>
+     aria-hidden="true">
+  <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+    <div class="flex justify-between items-center mb-4">
+      <h3 class="text-lg font-semibold">انتخاب فرصت فروش</h3>
+      <button type="button" onclick="closeOpportunityModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
     </div>
+
+    {{-- نوار جستجو --}}
+    <div class="mb-3">
+      <input id="opportunitySearchInput" type="text" placeholder="جستجوی نام فرصت یا نام مشتری…"
+             class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+             autocomplete="off">
+      <div class="mt-1 text-xs text-gray-500">با تایپ، فهرست فیلتر می‌شود.</div>
+    </div>
+
+    <div class="border border-gray-200 rounded overflow-hidden">
+      <table class="w-full text-sm text-right">
+        <thead class="bg-gray-100 text-gray-700 sticky top-0">
+          <tr>
+            <th class="px-4 py-2 border-b border-gray-300">نام فرصت</th>
+            <th class="px-4 py-2 border-b border-gray-300">مشتری</th>
+            <th class="px-4 py-2 border-b border-gray-300">وضعیت</th>
+          </tr>
+        </thead>
+        <tbody id="opportunityTableBody">
+          @foreach($opportunities as $opp)
+            <tr class="cursor-pointer hover:bg-gray-50"
+                data-id="{{ $opp->id }}"
+                data-name="{{ $opp->name }}"
+                data-customer="{{ trim(($opp->contact->full_name ?? '')) }}"
+                data-status="{{ $opp->status_label ?? '' }}">
+              <td class="px-4 py-2 border-b border-gray-200">{{ $opp->name }}</td>
+              <td class="px-4 py-2 border-b border-gray-200 text-gray-600">{{ $opp->contact->full_name ?? '—' }}</td>
+              <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $opp->status_label ?? '—' }}</td>
+            </tr>
+          @endforeach
+        </tbody>
+      </table>
+      <div id="opportunityNoResults" class="hidden p-4 text-center text-sm text-gray-500">موردی یافت نشد.</div>
+    </div>
+  </div>
 </div>
+
 
 {{-- مقداردهی اولیه محصولات در حالت ویرایش --}}
 @if($isEdit)
@@ -358,22 +385,192 @@
 @endif
 
 @push('scripts')
-    <script>
-        // Contact modal
-        function openContactModal(){ const m=document.getElementById('contactModal'); m.classList.remove('hidden'); m.style.display='flex'; }
-        function closeContactModal(){ const m=document.getElementById('contactModal'); m.classList.add('hidden'); m.style.display='none'; }
-        function selectContact(id,name){ document.getElementById('contact_id').value=id; document.getElementById('contact_name').value=name; closeContactModal(); }
+<script>
+/* ---------- باز/بستن مودال با فوکوس ---------- */
+function toggleModal(modalId, open = true, focusInputId = null) {
+  const el = document.getElementById(modalId);
+  if (!el) return;
+  if (open) {
+    el.classList.remove('hidden'); el.classList.add('flex');
+    el.setAttribute('aria-hidden', 'false');
+    if (focusInputId) setTimeout(() => {
+      const inp = document.getElementById(focusInputId);
+      if (inp) inp.focus();
+    }, 10);
+  } else {
+    el.classList.add('hidden'); el.classList.remove('flex');
+    el.setAttribute('aria-hidden', 'true');
+  }
+}
 
-        // Organization modal
-        function openOrganizationModal(){ const m=document.getElementById('organizationModal'); m.classList.remove('hidden'); m.style.display='flex'; }
-        function closeOrganizationModal(){ const m=document.getElementById('organizationModal'); m.classList.add('hidden'); m.style.display='none'; }
-        function selectOrganization(id,name){ document.getElementById('organization_id').value=id; document.getElementById('organization_name').value=name; closeOrganizationModal(); }
+/* ---------- هلسپرهای باز/بستن ---------- */
+function openContactModal(){ toggleModal('contactModal', true, 'contactSearchInput'); }
+function closeContactModal(){ toggleModal('contactModal', false); }
 
-        // Opportunity modal
-        function openOpportunityModal(){ const m=document.getElementById('opportunityModal'); m.classList.remove('hidden'); m.style.display='flex'; }
-        function closeOpportunityModal(){ const m=document.getElementById('opportunityModal'); m.classList.add('hidden'); m.style.display='none'; }
-        function selectOpportunity(id,name){ document.getElementById('opportunity_id').value=id; document.getElementById('opportunity_name').value=name; closeOpportunityModal(); }
-    </script>
+function openOrganizationModal(){ toggleModal('organizationModal', true, 'organizationSearchInput'); }
+function closeOrganizationModal(){ toggleModal('organizationModal', false); }
+
+function openOpportunityModal(){ toggleModal('opportunityModal', true, 'opportunitySearchInput'); }
+function closeOpportunityModal(){ toggleModal('opportunityModal', false); }
+
+/* ---------- نوشتن مقادیر در فیلدهای مقصد ---------- */
+function setValueAndNotify(el, val) {
+  if (!el) return;
+  el.value = val ?? '';
+  el.dispatchEvent(new Event('input',  { bubbles: true }));
+  el.dispatchEvent(new Event('change', { bubbles: true }));
+}
+function pick(idOrName) {
+  return document.getElementById(idOrName) || document.querySelector(`[name="${idOrName}"]`);
+}
+// انتخاب سازمان
+function selectOrganization(id, name){
+  setValueAndNotify(pick('organization_id'),   id);
+  setValueAndNotify(pick('organization_name'), name);
+  closeOrganizationModal();
+}
+
+// انتخاب مخاطب
+function selectContact(id, name){
+  setValueAndNotify(pick('contact_id'),   id);
+  setValueAndNotify(pick('contact_name'), name);
+  closeContactModal();
+}
+
+// انتخاب فرصت فروش
+function selectOpportunity(id, name){
+  setValueAndNotify(pick('opportunity_id'),   id);
+  setValueAndNotify(pick('opportunity_name'), name);
+  closeOpportunityModal();
+}
+
+/* ---------- بستن با کلیک روی بک‌دراپ ---------- */
+document.addEventListener('click', function(e){
+  ['contactModal','organizationModal','opportunityModal'].forEach(mid => {
+    const m = document.getElementById(mid);
+    if (!m) return;
+    if (!m.classList.contains('hidden') && e.target === m) {
+      toggleModal(mid, false);
+    }
+  });
+});
+
+/* ---------- بستن با ESC ---------- */
+document.addEventListener('keydown', function(e){
+  if (e.key === 'Escape') {
+    toggleModal('contactModal', false);
+    toggleModal('organizationModal', false);
+    toggleModal('opportunityModal', false);
+  }
+});
+
+/* ---------- نرمال‌سازی ارقام و جستجو ---------- */
+function normalizeDigits(str) {
+  if (!str) return '';
+  const fa = '۰۱۲۳۴۵۶۷۸۹';
+  const ar = '٠١٢٣٤٥٦٧٨٩';
+  return String(str).split('').map(ch => {
+    const iFa = fa.indexOf(ch);
+    if (iFa > -1) return String(iFa);
+    const iAr = ar.indexOf(ch);
+    if (iAr > -1) return String(iAr);
+    return ch;
+  }).join('');
+}
+function stripSeparators(str) {
+  return String(str)
+    .replace(/[\u200C\u200B\u00A0\s]/g, '')
+    .replace(/[,\u060C]/g, '')
+    .replace(/[.\u066B\u066C]/g, '');
+}
+function normalizeQuery(raw) {
+  const lowered = String(raw || '').toLowerCase().trim();
+  const digitsFixed = normalizeDigits(lowered);
+  return { text: digitsFixed, numeric: stripSeparators(digitsFixed) };
+}
+
+/* ---------- سازنده‌ی فیلتر لایو ---------- */
+function makeLiveFilter({inputId, tbodyId, noResultId, nameAttr='data-name', phoneAttr='data-phone', extraAttrs=[]}) {
+  const $input = document.getElementById(inputId);
+  const $tbody = document.getElementById(tbodyId);
+  const $noRes = document.getElementById(noResultId);
+  if (!$input || !$tbody) return;
+
+  let t = null;
+  $input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(applyFilter, 150); });
+
+  function applyFilter() {
+    const { text, numeric } = normalizeQuery($input.value);
+    const rows = Array.from($tbody.querySelectorAll('tr'));
+    if (!text) {
+      rows.forEach(tr => tr.classList.remove('hidden'));
+      if ($noRes) $noRes.classList.add('hidden');
+      return;
+    }
+    let visible = 0;
+    const isPureNumber = /^[0-9]+$/.test(numeric);
+
+    rows.forEach(tr => {
+      const name   = String(tr.getAttribute(nameAttr)  || '').toLowerCase();
+      const phone  = String(tr.getAttribute(phoneAttr) || '');
+      const extras = extraAttrs.map(a => String(tr.getAttribute(a) || '').toLowerCase()).join(' | ');
+
+      const byName   = name.includes(text) || (extras && extras.includes(text));
+      const byPhone  = isPureNumber ? phone.includes(numeric) : (numeric ? phone.includes(numeric) : false);
+      const match = byName || byPhone;
+
+      if (match) { tr.classList.remove('hidden'); visible++; }
+      else { tr.classList.add('hidden'); }
+    });
+
+    if ($noRes) $noRes.classList.toggle('hidden', visible !== 0);
+  }
+}
+
+/* ---------- کلیک روی ردیف‌ها (بدون inline onclick) ---------- */
+function enableRowClickSelect(tbodyId, onPick) {
+  const $tbody = document.getElementById(tbodyId);
+  if (!$tbody) return;
+  $tbody.addEventListener('click', (e) => {
+    const tr = e.target.closest('tr');
+    if (!tr) return;
+    const id = tr.getAttribute('data-id');
+    const name = tr.getAttribute('data-name');
+    if (id && onPick) onPick(id, name);
+  });
+}
+
+/* ---------- فعال‌سازی پس از لود ---------- */
+document.addEventListener('DOMContentLoaded', function () {
+  // مخاطب
+  makeLiveFilter({
+    inputId: 'contactSearchInput',
+    tbodyId: 'contactTableBody',
+    noResultId: 'contactNoResults'
+  });
+  enableRowClickSelect('contactTableBody', selectContact);
+
+  // سازمان
+  makeLiveFilter({
+    inputId: 'organizationSearchInput',
+    tbodyId: 'organizationTableBody',
+    noResultId: 'organizationNoResults'
+  });
+  enableRowClickSelect('organizationTableBody', selectOrganization);
+
+  // فرصت فروش (با فیلدهای اضافه برای جستجو: customer/status)
+  makeLiveFilter({
+    inputId: 'opportunitySearchInput',
+    tbodyId: 'opportunityTableBody',
+    noResultId: 'opportunityNoResults',
+    nameAttr: 'data-name',
+    phoneAttr: 'data-customer', // برای اینکه ورودی عددی مشتری نزنیم، اما ساختار یکسان بماند
+    extraAttrs: ['data-customer','data-status']
+  });
+  enableRowClickSelect('opportunityTableBody', selectOpportunity);
+});
+</script>
+
 
     {{-- اسکریپت محاسبات و مدیریت ردیف‌ها --}}
     @include('sales.proformas.partials.product-scripts')

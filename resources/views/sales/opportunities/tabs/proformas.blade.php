@@ -1,10 +1,15 @@
 <div class="bg-white p-6 rounded shadow">
     <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-700">پیش‌فاکتورها</h3>
-        <a href="{{ route('sales.proformas.create', ['opportunity_id' => $opportunity->id]) }}"
-            class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
-                ایجاد پیش‌فاکتور
-        </a>
+        <a href="{{ route('sales.proformas.create', [
+        'opportunity_id' => $opportunity->id,
+        'contact_id' => $opportunity->contact_id,
+        'organization_id' => $opportunity->organization_id
+    ]) }}"
+   class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+    ایجاد پیش‌فاکتور
+</a>
+
     </div>
 
     @if ($opportunity->proformas && $opportunity->proformas->count())
