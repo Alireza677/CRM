@@ -182,4 +182,7 @@ class SalesLead extends Model
 
         return "سرنخ #{$this->id}";
     }
+
+   
+
 }

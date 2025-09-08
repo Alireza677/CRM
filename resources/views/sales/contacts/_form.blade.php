@@ -79,9 +79,13 @@
     <div class="bg-white rounded-lg shadow-lg w-96 max-h-[80vh] overflow-y-auto p-4">
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold">انتخاب سازمان</h2>
-            <button id="close-org-modal" class="text-red-500 text-xl">×</button>
+            <button id="close-org-modal" type="button" class="text-red-500 text-xl">×</button>
         </div>
-        
+
+        <!-- فیلد جستجو -->
+        <input type="text" id="org-search" placeholder="جستجوی سازمان..."
+               class="w-full mb-3 px-3 py-2 border rounded-md focus:ring-indigo-500 focus:border-indigo-500">
+
         <ul id="org-list" class="space-y-2">
             @foreach($organizations as $org)
                 <li>
@@ -95,6 +99,17 @@
         </ul>
     </div>
 </div>
+
+<script>
+document.getElementById('org-search').addEventListener('keyup', function () {
+    let search = this.value.toLowerCase();
+    document.querySelectorAll('#org-list li').forEach(function (item) {
+        let text = item.innerText.toLowerCase();
+        item.style.display = text.includes(search) ? '' : 'none';
+    });
+});
+</script>
+
 
 
 

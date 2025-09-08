@@ -20,7 +20,6 @@ class Organization extends Model
         'notes',
         'state',
         'city',
-        'contact_id',      // ← اضافه کن
         'assigned_to',     // ← اضافه کن
     ];
 

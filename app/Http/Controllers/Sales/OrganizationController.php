@@ -7,6 +7,7 @@ use App\Models\Organization;
 use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\Contact;
+use Illuminate\Support\Arr;
 
 
 class OrganizationController extends Controller
@@ -59,24 +60,31 @@ class OrganizationController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'phone' => 'nullable|string|max:20',
-            'website' => 'nullable|url|max:255',
-            'address' => 'nullable|string',
+            'name'        => 'required|string|max:255',
+            'phone'       => 'nullable|string|max:20',
+            'website'     => 'nullable|url|max:255',
+            'address'     => 'nullable|string',
             'description' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
-            'contact_id' => 'nullable|exists:contacts,id',
-
+    
+            // می‌تونیم صحت مخاطب را چک کنیم، اما در create استفاده‌اش نمی‌کنیم
+            'contact_id'  => 'nullable|exists:contacts,id',
         ], [
-            'name.required' => 'نام سازمان الزامی است.',
-            'website.url' => 'فرمت آدرس وب‌سایت نامعتبر است.',
+            'name.required'      => 'نام سازمان الزامی است.',
+            'website.url'        => 'فرمت آدرس وب‌سایت نامعتبر است.',
             'assigned_to.exists' => 'کاربر انتخاب شده معتبر نیست.',
-            'contact_id.exists' => 'مخاطب انتخاب شده معتبر نیست.',
-
+            'contact_id.exists'  => 'مخاطب انتخاب شده معتبر نیست.',
         ]);
-
-        Organization::create($validated);
-
+    
+        // مهم: contact_id را از داده‌های ساخت سازمان حذف کن
+        $org = Organization::create(Arr::except($validated, ['contact_id']));
+    
+        // اگر مخاطب انتخاب شده بود، به این سازمان وصلش کن
+        if (!empty($validated['contact_id'])) {
+            Contact::whereKey($validated['contact_id'])
+                ->update(['organization_id' => $org->id]);
+        }
+    
         return redirect()->route('sales.organizations.index')
             ->with('success', 'سازمان با موفقیت ایجاد شد.');
     }

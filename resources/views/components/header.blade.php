@@ -42,7 +42,6 @@
         <div id="time-now" class="font-bold text-base"></div>
     </div>
 
-    <!-- آیکن زنگ و نام کاربر -->
     <div class="flex items-center gap-6">
         <!-- جستجوی سراسری -->
         <form method="GET" action="{{ route('global.search') }}" class="relative hidden md:block">

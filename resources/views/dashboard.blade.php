@@ -69,6 +69,74 @@
                 </a>
             </div>
         </div>
+        {{-- آخرین ۱۰ اعلان (باکس مربعی با اسکرول) --}}
+<div class="mt-10">
+    <div class="w-full max-w-[400px] h-[400px] bg-white border border-gray-200 shadow rounded-none flex flex-col">
+        {{-- هدر --}}
+        <div class="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
+            <h3 class="text-sm font-semibold text-gray-800">آخرین اعلانات</h3>
+            <a href="{{ route('notifications.index') }}" class="text-xs text-blue-600 hover:text-blue-800">
+                مشاهده همه
+            </a>
+        </div>
+
+        {{-- لیست اسکرولی با لینک مقصد هر اعلان --}}
+        <div class="flex-1 overflow-y-auto">
+            @if($notifications->isEmpty())
+                <p class="px-4 py-3 text-xs text-gray-500">اعلانی وجود ندارد.</p>
+            @else
+                <ul class="divide-y divide-gray-100">
+                    @foreach($notifications as $notification)
+                        @php
+                            $data = $notification->data ?? [];
+                            // اولویت: url صریح → route + params → صفحه فهرست اعلان‌ها
+                            $itemUrl = $data['url']
+                                ?? (isset($data['route']) && \Illuminate\Support\Facades\Route::has($data['route'])
+                                    ? route($data['route'], $data['params'] ?? [])
+                                    : ( \Illuminate\Support\Facades\Route::has('notifications.index')
+                                        ? route('notifications.index')
+                                        : '#' ));
+
+                            $title = $data['message'] ?? $data['title'] ?? 'اعلان جدید';
+                        @endphp
+
+                        <li>
+                            <a href="{{ $itemUrl }}"
+                            class="block px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 transition outline-none"
+                            aria-label="مشاهده اعلان">
+                                <div class="flex items-start justify-between gap-3">
+                                    <div class="min-w-0">
+                                        <p class="text-[13px] text-gray-700 truncate">{{ $title }}</p>
+                                        <span class="text-[11px] text-gray-400">
+                                            {{ $notification->created_at->diffForHumans() }}
+                                        </span>
+                                    </div>
+
+                                    @if(is_null($notification->read_at))
+                                        <span class="mt-0.5 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded bg-yellow-100 text-yellow-800">
+                                            <span class="w-1.5 h-1.5 rounded-full bg-yellow-600"></span> جدید
+                                        </span>
+                                    @endif
+                                </div>
+                            </a>
+                        </li>
+                    @endforeach
+                </ul>
+            @endif
+        </div>
+
+
+        {{-- فوتر (دکمه تمام‌عرض) --}}
+        <div class="p-3 border-t border-gray-200">
+            <a href="{{ route('notifications.index') }}"
+               class="w-full inline-flex items-center justify-center text-[12px] font-medium px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition">
+                مشاهده همه اعلانات
+            </a>
+        </div>
+    </div>
+</div>
+
+
     </div>
 </div>
 @endsection
