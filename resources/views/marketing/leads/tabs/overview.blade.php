@@ -45,8 +45,9 @@
     </div>
 
     {{-- یادداشت‌ها --}}
-    <div class="bg-blue-50 rounded-lg p-4 shadow flex items-center justify-between">
-        <div>
+    <div class="bg-blue-50 rounded-lg p-4 shadow flex items-center justify-between hover:shadow-md transition cursor-pointer"
+    data-card-tab="notes" role="button" tabindex="0">
+            <div>
             <h3 class="text-lg font-semibold text-blue-800">یادداشت‌ها</h3>
             <p class="text-sm text-blue-600 mt-1">تعداد یادداشت‌ها: {{ $lead->notes_count ?? 0 }}</p>
 
@@ -55,7 +56,8 @@
     </div>
 
     {{-- فعالیت‌ها --}}
-    <div class="bg-green-50 rounded-lg p-4 shadow flex items-center justify-between">
+    <div class="bg-green-50 rounded-lg p-4 shadow flex items-center justify-between cursor-pointer"
+     data-card-tab="updates" role="button" tabindex="0">
         <div>
             <h3 class="text-lg font-semibold text-green-800">فعالیت‌ها</h3>
             <p class="text-sm text-green-600 mt-1">در حال انجام: 0</p>
@@ -81,13 +83,6 @@
         <i class="fas fa-user-friends text-3xl text-yellow-400"></i>
     </div>
 
-    {{-- پیش‌فاکتورها --}}
-    <div class="bg-pink-50 rounded-lg p-4 shadow flex items-center justify-between">
-        <div>
-            <h3 class="text-lg font-semibold text-pink-800">پیش‌فاکتورها</h3>
-            <p class="text-sm text-pink-600 mt-1">تعداد: 0</p>
-        </div>
-        <i class="fas fa-file-invoice text-3xl text-pink-400"></i>
-    </div>
+    
 
 </div>

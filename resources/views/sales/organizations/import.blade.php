@@ -1,5 +1,10 @@
 @extends('layouts.app')
-
+@php
+    $breadcrumb = [
+        ['title' => 'سازمان‌ها', 'url' => route('sales.organizations.index')],
+        ['title' => 'ایمپورت سازمان']
+    ];
+@endphp
 @section('content')
     <div class="max-w-2xl mx-auto mt-10 bg-white p-6 rounded shadow">
         <h1 class="text-xl font-bold mb-4 text-right">ایمپورت سازمان‌ها از فایل Excel</h1>

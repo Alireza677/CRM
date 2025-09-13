@@ -87,3 +87,72 @@ document.addEventListener('DOMContentLoaded', function () {
     makeLiveFilter({ inputId:'organizationSearchInput', tbodyId:'organizationTableBody', noResultId:'organizationNoResults' });
 });
 </script>
+
+
+<!-- کنترل غیرفعال/پاک کردن تاریخ پیگیری وقتی مرحله = برنده -->
+<style>
+  /* استایل ملایم برای وقتی غیرفعال می‌کنیم */
+  .is-disabled {
+    background-color: #f3f4f6; /* gray-100 */
+    color: #9ca3af;           /* gray-400 */
+    cursor: not-allowed;
+    pointer-events: none;
+  }
+</style>
+
+<script>
+(function (){
+  const stageEl   = document.getElementById('stage');
+  const shamsiEl  = document.getElementById('next_follow_up_shamsi');
+  const hiddenEl  = document.getElementById('next_follow_up');
+
+  function isWon(val){
+    const v = (val || '').trim();
+    return v === 'برنده' || v.toLowerCase() === 'won';
+  }
+
+  function disableFollowup(){
+    // پاک کردن هر دو ورودی
+    if (shamsiEl) shamsiEl.value = '';
+    if (hiddenEl) hiddenEl.value = '';
+    // غیرفعال کردن ورودی نمایشی (hidden را فعال می‌گذاریم تا مقدار خالی ارسال شود)
+    if (shamsiEl){
+      shamsiEl.setAttribute('readonly','readonly');
+      shamsiEl.classList.add('is-disabled');
+      shamsiEl.setAttribute('aria-disabled','true');
+    }
+  }
+
+  function enableFollowup(){
+    if (shamsiEl){
+      shamsiEl.removeAttribute('readonly');
+      shamsiEl.classList.remove('is-disabled');
+      shamsiEl.removeAttribute('aria-disabled');
+    }
+  }
+
+  function toggleFollowup(){
+    if (!stageEl) return;
+    if (isWon(stageEl.value)){
+      disableFollowup();
+    } else {
+      enableFollowup();
+    }
+  }
+
+  // اجرا در لود اولیه و روی تغییر مرحله
+  document.addEventListener('DOMContentLoaded', toggleFollowup);
+  if (stageEl) stageEl.addEventListener('change', toggleFollowup);
+
+  // امنیت بیشتر: هنگام سابمیت هم اگر برنده بود، مقدار را پاک کنیم
+  const formEl = stageEl ? stageEl.form : null;
+  if (formEl){
+    formEl.addEventListener('submit', function(){
+      if (isWon(stageEl.value)){
+        if (shamsiEl) shamsiEl.value = '';
+        if (hiddenEl) hiddenEl.value = '';
+      }
+    });
+  }
+})();
+</script>

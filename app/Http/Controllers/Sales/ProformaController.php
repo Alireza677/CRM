@@ -31,43 +31,59 @@ class ProformaController extends Controller
         $this->middleware('role:Admin')->only('destroy');
     }
     public function index(Request $request)
-    {
-        $organizations = Organization::orderBy('name')->get();
-        $users = User::orderBy('name')->get();
-        $query = Proforma::with(['organization', 'contact', 'opportunity', 'assignedTo']);
+{
+    // ورودی‌ها
+    $search          = trim((string) $request->get('search', ''));
+    $organizationId  = $request->get('organization_id');
+    $stage           = $request->get('stage');
+    $assignedTo      = $request->get('assigned_to');
 
-        // فیلتر جستجو
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('subject', 'like', "%{$search}%")
-                    ->orWhereHas('organization', function ($q) use ($search) {
-                        $q->where('name', 'like', "%{$search}%");
-                    })
-                    ->orWhereHas('contact', function ($q) use ($search) {
-                        $q->where('first_name', 'like', "%{$search}%")
-                            ->orWhere('last_name', 'like', "%{$search}%");
-                    });
-            });
-        }
-         // فیلتر براساس سازمان
-    if ($request->filled('organization_id')) {
-        $query->where('organization_id', $request->organization_id);
-    }
+    // دیتای کم‌حجم برای ویو (فقط فیلدهای لازم)
+    $organizations = Organization::select('id', 'name')->orderBy('name')->get();
+    $users         = User::select('id', 'name')->orderBy('name')->get();
 
-    // فیلتر براساس مرحله
-    if ($request->filled('stage')) {
-        $query->where('proforma_stage', $request->stage);
-    }
+    // کوئری اصلی
+    $query = Proforma::query()
+        ->with(['organization', 'contact', 'opportunity', 'assignedTo'])
+        ->orderByDesc('created_at');
 
-    // فیلتر براساس ارجاع به
-    if ($request->filled('assigned_to')) {
-        $query->where('assigned_to', $request->assigned_to);
-    }
-        $proformas = $query->orderBy('created_at', 'desc')->paginate(10)->withQueryString();
+    // جستجو
+    $query->when($search !== '', function ($q) use ($search) {
+        $q->where(function ($qq) use ($search) {
+            $qq->where('subject', 'like', "%{$search}%")
+               ->orWhereHas('organization', function ($q2) use ($search) {
+                   $q2->where('name', 'like', "%{$search}%");
+               })
+               ->orWhereHas('contact', function ($q3) use ($search) {
+                   $q3->where('first_name', 'like', "%{$search}%")
+                      ->orWhere('last_name',  'like', "%{$search}%");
+                   // اگر مدل contact ستون full_name دارد، می‌توانی این را هم اضافه کنی:
+                   // ->orWhere('full_name', 'like', "%{$search}%");
+               });
+        });
+    });
 
-        return view('sales.proformas.index', compact('proformas', 'organizations', 'users'));
-    }
+    // فیلتر سازمان (هماهنگ با input hidden[name=organization_id])
+    $query->when(!empty($organizationId), function ($q) use ($organizationId) {
+        $q->where('organization_id', (int) $organizationId);
+    });
+
+    // فیلتر مرحله
+    $query->when(!empty($stage), function ($q) use ($stage) {
+        $q->where('proforma_stage', $stage);
+    });
+
+    // فیلتر ارجاع‌به (کاربر)
+    $query->when(!empty($assignedTo), function ($q) use ($assignedTo) {
+        $q->where('assigned_to', (int) $assignedTo);
+    });
+
+    // صفحه‌بندی + حفظ کوئری‌استرینگ
+    $proformas = $query->paginate(10)->withQueryString();
+
+    return view('sales.proformas.index', compact('proformas', 'organizations', 'users'));
+}
+
 
     public function create(Request $request)
     {

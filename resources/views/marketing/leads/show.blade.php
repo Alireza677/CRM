@@ -76,6 +76,7 @@
                 <nav class="space-y-1">
                     {{-- فقط تب خلاصه پیش‌فرض انتخاب باشد --}}
                     <a href="#"
+                    data-tab="overview"       
                        data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'overview']) }}"
                        class="load-tab flex items-center justify-between px-3 py-2 rounded bg-blue-100 text-blue-800 font-semibold">
                         <span class="flex items-center space-x-2 rtl:space-x-reverse">
@@ -85,6 +86,8 @@
                     </a>
 
                     <a href="#"
+                    data-tab="info"
+
                        data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'info']) }}"
                        class="load-tab flex items-center justify-between px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
                         <span class="flex items-center space-x-2 rtl:space-x-reverse">
@@ -94,6 +97,8 @@
                     </a>
 
                     <a href="#"
+                    data-tab="updates"
+
                        data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'updates']) }}"
                        class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-sync-alt text-gray-500"></i>
@@ -101,6 +106,8 @@
                     </a>
 
                     <a href="#"
+                    data-tab="notes"
+
                        data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'notes']) }}"
                        class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-sticky-note text-gray-500"></i>

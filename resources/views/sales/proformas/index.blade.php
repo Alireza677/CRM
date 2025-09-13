@@ -72,14 +72,64 @@
                     >
 
                     <!-- فیلتر سازمان -->
-                    <select name="organization_id" class="border rounded px-2 py-1">
-                        <option value="">همه سازمان‌ها</option>
-                        @foreach($organizations as $org)
-                            <option value="{{ $org->id }}" {{ request('organization_id') == $org->id ? 'selected' : '' }}>
-                                {{ $org->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                    {{-- فیلتر سازمان (لایو) --}}
+                        @php
+                            $selectedOrgId   = request('organization_id');
+                            $selectedOrgName = null;
+                            if ($selectedOrgId) {
+                                $selected = $organizations->firstWhere('id', (int) $selectedOrgId);
+                                $selectedOrgName = $selected?->name;
+                            }
+                        @endphp
+
+                        <div class="relative w-full md:max-w-sm">
+                            <!-- <label for="org-live-input" class="block text-sm font-medium text-gray-700">سازمان</label> -->
+
+                            <div class="mt-1 relative">
+                                <input
+                                    id="org-live-input"
+                                    type="text"
+                                    class="block w-full rounded-md border-gray-300 shadow-sm pr-10 focus:border-primary focus:ring-primary"
+                                    placeholder="نام سازمان را تایپ کنید…"
+                                    autocomplete="off"
+                                    value="{{ $selectedOrgName ?? '' }}"
+                                >
+
+                                {{-- دکمه پاک کردن --}}
+                                <button
+                                    type="button"
+                                    id="org-live-clear"
+                                    class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600"
+                                    aria-label="پاک کردن"
+                                    title="پاک کردن"
+                                >×</button>
+
+                                {{-- مقدار ارسالی (ID) --}}
+                                <input type="hidden" name="organization_id" id="org-live-hidden" value="{{ $selectedOrgId ?? '' }}">
+
+                                {{-- لیست نتایج --}}
+                                <ul
+                                    id="org-live-list"
+                                    class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow max-h-60 overflow-y-auto hidden"
+                                >
+                                    {{-- گزینه «همه سازمان‌ها» برای پاک کردن سریع --}}
+                                    <li class="px-3 py-2 cursor-pointer hover:bg-gray-100" data-id="" data-name="">
+                                        همه سازمان‌ها
+                                    </li>
+
+                                    @foreach($organizations as $org)
+                                        <li
+                                            class="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                                            data-id="{{ $org->id }}"
+                                            data-name="{{ $org->name }}"
+                                        >
+                                            {{ $org->name }}
+                                        </li>
+                                    @endforeach
+                                </ul>
+                            </div>
+                        </div>
+
 
                     <!-- فیلتر مرحله -->
                     <select name="stage" class="border rounded px-2 py-1">
@@ -241,7 +291,9 @@
             </div>
         </div>
     </div>
-@endsection
+
+
+    
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const form       = document.getElementById('proformas-bulk-form');
@@ -313,4 +365,167 @@ document.addEventListener('DOMContentLoaded', function () {
     refresh();
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const form    = document.querySelector('form[action*="sales/proformas"]');
+  const $input  = document.getElementById('org-live-input');
+  const $list   = document.getElementById('org-live-list');
+  const $hidden = document.getElementById('org-live-hidden');
+  const $clear  = document.getElementById('org-live-clear');
+
+  if (!($input && $list && $hidden && $clear)) return;
+
+  // --- Utils ----------------------------------------------------
+  const norm = (s='') => {
+    // حذف نیم‌فاصله/کنترل‌های جهت و یکسان‌سازی ي/ی و ك/ک
+    return String(s)
+      .replace(/[\u200c\u200d\u200e\u200f]/g, '')
+      .replace(/ي/g,'ی').replace(/ك/g,'ک').trim().toLowerCase();
+  };
+
+  const getItems = () => Array.from($list.querySelectorAll('li[data-id]'));
+  const visibleItems = () => getItems().filter(li => li.style.display !== 'none');
+
+  let highlightIndex = -1; // برای ناوبری کیبورد
+
+  const clearHighlight = () => getItems().forEach(li => li.classList.remove('bg-gray-100'));
+  const setHighlight = (idx) => {
+    clearHighlight();
+    const vis = visibleItems();
+    if (!vis.length) { highlightIndex = -1; return; }
+    highlightIndex = Math.max(0, Math.min(idx, vis.length - 1));
+    vis[highlightIndex].classList.add('bg-gray-100');
+    // اسکرول به آیتم هایلایت‌شده
+    const el = vis[highlightIndex];
+    const parent = $list;
+    const top = el.offsetTop, bottom = top + el.offsetHeight;
+    if (top < parent.scrollTop) parent.scrollTop = top;
+    else if (bottom > parent.scrollTop + parent.clientHeight) parent.scrollTop = bottom - parent.clientHeight;
+  };
+
+  function showList()  { $list.classList.remove('hidden'); }
+  function hideList()  { $list.classList.add('hidden');  }
+  function updateClearVisibility() {
+    $clear.classList.toggle('hidden', !$hidden.value);
+  }
+
+  function filterList(raw) {
+    const q = norm(raw);
+    let anyVisible = false;
+
+    // اولین آیتم (همه سازمان‌ها) را هم نگه می‌داریم
+    const allItem = $list.querySelector('li[data-id=""]');
+    if (allItem) { allItem.style.display = q ? 'none' : 'block'; }
+
+    getItems().forEach(li => {
+      const name = li.dataset.name || li.textContent || '';
+      const match = !q || norm(name).includes(q);
+      li.style.display = match ? 'block' : 'none';
+      if (match) anyVisible = true;
+    });
+
+    if (!anyVisible && !q) {
+      // اگر جستجو خالی است ولی به هر دلیلی آیتمی نیست
+      hideList();
+    }
+    // ریست هایلایت
+    clearHighlight();
+    highlightIndex = -1;
+  }
+
+  function selectLi(li) {
+    if (!li) return;
+    $input.value  = (li.dataset.name || '');
+    $hidden.value = (li.dataset.id   || '');
+    hideList();
+    updateClearVisibility();
+  }
+
+  // --- رویدادها -------------------------------------------------
+
+  // نمایش لیست هنگام فوکوس
+  $input.addEventListener('focus', () => {
+    filterList($input.value);
+    showList();
+  });
+
+  // فیلتر با تایپ
+  $input.addEventListener('input', () => {
+    filterList($input.value);
+    showList();
+    // انتخاب قبلی را دست‌نخورده می‌گذاریم؛ در submit بررسی می‌کنیم
+  });
+
+  // ناوبری کیبورد
+  $input.addEventListener('keydown', (e) => {
+    const vis = visibleItems();
+    if (e.key === 'ArrowDown') {
+      e.preventDefault();
+      if (vis.length) setHighlight(highlightIndex + 1);
+    } else if (e.key === 'ArrowUp') {
+      e.preventDefault();
+      if (vis.length) {
+        if (highlightIndex <= 0) { clearHighlight(); highlightIndex = -1; }
+        else setHighlight(highlightIndex - 1);
+      }
+    } else if (e.key === 'Enter') {
+      const visNow = visibleItems();
+      if (visNow.length) {
+        e.preventDefault();
+        // اگر آیتمی هایلایت است همان، وگرنه اگر فقط یکی دیده می‌شود همان
+        const li = (highlightIndex >= 0 ? visNow[highlightIndex] : (visNow.length === 1 ? visNow[0] : null));
+        if (li) selectLi(li);
+        else hideList(); // بگذار با جستجوی متنی ارسال شود
+      }
+    } else if (e.key === 'Escape') {
+      hideList();
+    }
+  });
+
+  // انتخاب با کلیک
+  $list.addEventListener('click', (e) => {
+    const li = e.target.closest('li[data-id]');
+    if (!li) return;
+    selectLi(li);
+  });
+
+  // پاک کردن انتخاب
+  $clear.addEventListener('click', () => {
+    $input.value  = '';
+    $hidden.value = '';
+    filterList('');
+    updateClearVisibility();
+    $input.focus();
+    showList();
+  });
+
+  // بستن با کلیک بیرون
+  document.addEventListener('click', (e) => {
+    const wrap = $input.closest('.relative');
+    if (!wrap || !wrap.contains(e.target)) hideList();
+  });
+
+  // پیش از ارسال فرم: اگر hidden خالی است ولی تایپ شده،
+  // تلاش برای Exact Match (بعد از نرمال‌سازی) و ست‌کردن ID
+  if (form) {
+    form.addEventListener('submit', () => {
+      if ($hidden.value || !$input.value.trim()) return;
+      const q = norm($input.value);
+      const exact = getItems().find(li => norm(li.dataset.name || '') === q);
+      if (exact) {
+        $hidden.value = exact.dataset.id || '';
+      }
+      // اگر exact نبود، ارسال می‌شود تا جستجوی متنی کار کند
+    });
+  }
+
+  // وضعیت اولیه
+  filterList($input.value);
+  updateClearVisibility();
+  if ($hidden.value) hideList();
+});
+</script>
+
+
+@endsection
 
