@@ -12,4 +12,6 @@ return [
     'amount' => 'مبلغ',
     'next_follow_up' => 'پیگیری بعدی',
     'description' => 'توضیحات',
+    'building_usage' => 'کاربری ساختمان',
+
 ];

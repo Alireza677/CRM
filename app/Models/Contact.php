@@ -17,6 +17,7 @@ class Contact extends Model
         'phone',
         'mobile',
         'company',
+        'state',
         'city',
         'address',
         'organization_id',

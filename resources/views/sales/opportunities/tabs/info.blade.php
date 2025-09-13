@@ -17,6 +17,11 @@
                                 <dt class="text-sm font-medium text-gray-500">مخاطب</dt>
                                 <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->contact->name ?? '-' }}</dd>
                             </div>
+                            <div>
+                                <dt class="text-sm font-medium text-gray-500">کاربری ساختمان</dt>
+                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->building_usage ?? '-' }}</dd>
+                            </div>
+
                             <!-- مرحله فروش -->
                             <div class="mb-2">
                                 <div class="text-sm text-gray-600">مرحله فروش</div>

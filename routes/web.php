@@ -48,6 +48,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskNoteController;
 use App\Http\Controllers\Inventory\ProductImportController;
+use App\Http\Controllers\CalendarController;
 
 
 
@@ -294,6 +295,8 @@ Route::middleware(['auth'])->group(function () {
     });
     });
     
+    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+
 
     
 

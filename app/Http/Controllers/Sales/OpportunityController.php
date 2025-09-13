@@ -15,49 +15,50 @@ use Morilog\Jalali\Jalalian;
 
 class OpportunityController extends Controller
 {
-    public function __construct()
-    {
-        $this->middleware('auth');
-        $this->middleware('role:Admin')->only('destroy');
-    }
     public function index(Request $request)
-    {
-        $query = Opportunity::with(['contact', 'assignedUser', 'organization']);
+{
+    $query = Opportunity::with(['contact', 'assignedUser', 'organization']);
 
-        if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
-        }
-
-        if ($request->filled('contact')) {
-            $query->whereHas('contact', function ($q) use ($request) {
-                $q->where('first_name', 'like', '%' . $request->contact . '%')
-                  ->orWhere('last_name', 'like', '%' . $request->contact . '%')
-                  ->orWhereRaw("(first_name || ' ' || last_name) LIKE ?", ['%' . $request->contact . '%']);
-            });
-        }
-
-        if ($request->filled('source')) {
-            $query->where('source', 'like', '%' . $request->source . '%');
-        }
-
-        if ($request->filled('assigned_to')) {
-            $query->whereHas('assignedUser', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->assigned_to . '%');
-            });
-        }
-
-        if ($request->filled('stage')) {
-            $query->where('stage', 'like', '%' . $request->stage . '%');
-        }
-
-        if ($request->filled('created_at')) {
-            $query->whereDate('created_at', $request->created_at);
-        }
-
-        $opportunities = $query->latest()->paginate(15)->withQueryString();
-
-        return view('sales.opportunities.index', compact('opportunities'));
+    if ($request->filled('name')) {
+        $query->where('name', 'like', '%' . $request->name . '%');
     }
+
+    if ($request->filled('contact')) {
+        $query->whereHas('contact', function ($q) use ($request) {
+            $q->where('first_name', 'like', '%' . $request->contact . '%')
+              ->orWhere('last_name', 'like', '%' . $request->contact . '%')
+              ->orWhereRaw("(first_name || ' ' || last_name) LIKE ?", ['%' . $request->contact . '%']);
+        });
+    }
+
+    if ($request->filled('source')) {
+        $query->where('source', 'like', '%' . $request->source . '%');
+    }
+
+    if ($request->filled('building_usage')) {
+        $query->where('building_usage', 'like', '%' . $request->building_usage . '%');
+    }
+
+    if ($request->filled('assigned_to')) {
+        $query->whereHas('assignedUser', function ($q) use ($request) {
+            $q->where('name', 'like', '%' . $request->assigned_to . '%');
+        });
+    }
+
+    if ($request->filled('stage')) {
+        $query->where('stage', 'like', '%' . $request->stage . '%');
+    }
+
+    if ($request->filled('created_at')) {
+        $query->whereDate('created_at', $request->created_at);
+    }
+
+    $opportunities = $query->latest()->paginate(15)->withQueryString();
+
+    return view('sales.opportunities.index', compact('opportunities'));
+}
+
+
 
     public function create(Request $request)
     {
@@ -65,7 +66,6 @@ class OpportunityController extends Controller
         $contacts = Contact::all();
         $users = User::all();
 
-        // بررسی اینکه آیا contact_id در URL هست یا نه
         $contactId = $request->input('contact_id');
         $defaultContact = $contactId ? Contact::find($contactId) : null;
 
@@ -77,120 +77,114 @@ class OpportunityController extends Controller
         ));
     }
 
+public function store(Request $request)
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'organization_id' => 'nullable|exists:organizations,id',
+        'contact_id' => 'nullable|exists:contacts,id',
+        'type' => 'required|string|in:کسب و کار موجود,کسب و کار جدید',
+        'source' => 'required|string|in:وب سایت,مشتریان قدیمی,نمایشگاه,بازاریابی حضوری',
+        'building_usage' => 'required|string|in:کارگاه و یا کارخانه,فضای باز و رستوران,تعمیرگاه و سالن صنعتی,گلخانه و پرورش گیاه,مرغداری و پرورش دام و طیور,فروشگاه و مراکز خرید,سالن و باشگاه های ورزشی,سالن های نمایش,مدارس و محیط های آموزشی,سایر',
+        'assigned_to' => 'nullable|exists:users,id',
+        'success_rate' => 'required|numeric|min:0|max:100',
+        'next_follow_up' => 'required|date',
+        'description' => 'nullable|string',
+        'stage' => 'nullable|string|max:255',
+    ]);
 
-    public function store(Request $request)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'organization_id' => 'nullable|exists:organizations,id',
-            'contact_id' => 'nullable|exists:contacts,id',
-            'type' => 'required|string|in:کسب و کار موجود,کسب و کار جدید',
-            'source' => 'required|string|in:وب سایت,مشتریان قدیمی,نمایشگاه,بازاریابی حضوری',
-            'assigned_to' => 'nullable|exists:users,id',
-            'success_rate' => 'required|numeric|min:0|max:100',
-            'next_follow_up' => 'required|date',
-            'description' => 'nullable|string',
-            'stage' => 'nullable|string|max:255',
-        ]);
+    $opportunity = Opportunity::create($validated);
+    $opportunity->notifyIfAssigneeChanged(null);
 
-        $opportunity = Opportunity::create($validated);
-        $opportunity->notifyIfAssigneeChanged(null);
+    return redirect()->route('sales.opportunities.index')
+        ->with('success', 'فرصت فروش با موفقیت ایجاد شد.');
+}
 
-        return redirect()->route('sales.opportunities.index')
-            ->with('success', 'فرصت فروش با موفقیت ایجاد شد.');
-    }
 
     
-    public function show(Opportunity $opportunity)
-    {
-        // نان‌برگه
-        $breadcrumb = [
-            ['title' => 'خانه', 'url' => url('/dashboard')],
-            ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
-            ['title' => $opportunity->name ?? ('فرصت #' . $opportunity->id)],
-        ];
+public function show(Opportunity $opportunity)
+{
+    $breadcrumb = [
+        ['title' => 'خانه', 'url' => url('/dashboard')],
+        ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
+        ['title' => $opportunity->name ?? ('فرصت #' . $opportunity->id)],
+    ];
 
-        // اکتیویتی‌ها (همون قبلی)
-        $activities = Activity::where('subject_type', Opportunity::class)
-            ->where('subject_id', $opportunity->id)
-            ->latest()
-            ->get();
+    $activities = Activity::where('subject_type', Opportunity::class)
+        ->where('subject_id', $opportunity->id)
+        ->latest()
+        ->get();
 
-        // بارگذاریِ پیش‌فاکتورها با فیلدهای دقیق از جدول proformas
-        // + مرتب‌سازی بر اساس تاریخ پیش‌فاکتور
-        $opportunity->load([
-            'proformas' => function ($q) use ($opportunity) {
-                $q->select(
-                    'id',
-                    'opportunity_id',
-                    'proforma_number',
-                    'proforma_date',
-                    'approval_stage',
-                    'proforma_stage',
-                    'total_amount'
-                )
-                ->where('opportunity_id', $opportunity->id)
-                ->orderByDesc('proforma_date');
-            },
-        ]);
+    $opportunity->load([
+        'proformas' => function ($q) use ($opportunity) {
+            $q->select(
+                'id',
+                'opportunity_id',
+                'proforma_number',
+                'proforma_date',
+                'approval_stage',
+                'proforma_stage',
+                'total_amount'
+            )
+            ->where('opportunity_id', $opportunity->id)
+            ->orderByDesc('proforma_date');
+        },
+    ]);
 
-        // اگر به شمارش رکوردها در تب‌ها نیاز داری (اختیاری):
-        // $opportunity->loadCount(['proformas']);
-
-        return view('sales.opportunities.show', compact('opportunity', 'breadcrumb', 'activities'));
-    }
+    return view('sales.opportunities.show', compact('opportunity', 'breadcrumb', 'activities'));
+}
 
 
-    public function edit(Opportunity $opportunity)
-    {
-        // eager load؛ اگر قبلاً لود شده بود دوباره کوئری نزن
-        $opportunity->loadMissing(['organization', 'contact']);
-    
-        // اگر لیست‌ها بزرگ نیستند همین ok است؛ وگرنه ستون‌های لازم را select کنید
-        $organizations = Organization::query()->orderBy('name')->get(['id','name','phone']);
-        $contacts      = Contact::query()->orderBy('last_name')->get(['id','first_name','last_name','mobile']);
-        $users         = User::query()->orderBy('name')->get(['id','name']);
-    
-        // تاریخ شمسی نمایشی
-        $nextFollowUpDate = '';
-        if (!empty($opportunity->next_follow_up)) {
-            try {
-                $nextFollowUpDate = \Morilog\Jalali\Jalalian::fromDateTime($opportunity->next_follow_up)->format('Y/m/d');
-            } catch (\Throwable $e) {
-                $nextFollowUpDate = '';
-            }
+public function edit(Opportunity $opportunity)
+{
+    $opportunity->loadMissing(['organization', 'contact']);
+
+    $organizations = Organization::orderBy('name')->get(['id','name','phone']);
+    $contacts      = Contact::orderBy('last_name')->get(['id','first_name','last_name','mobile']);
+    $users         = User::orderBy('name')->get(['id','name']);
+
+    $nextFollowUpDate = '';
+    if (!empty($opportunity->next_follow_up)) {
+        try {
+            $nextFollowUpDate = \Morilog\Jalali\Jalalian::fromDateTime($opportunity->next_follow_up)->format('Y/m/d');
+        } catch (\Throwable $e) {
+            $nextFollowUpDate = '';
         }
-    
-        return view('sales.opportunities.edit', compact(
-            'opportunity', 'organizations', 'contacts', 'users', 'nextFollowUpDate'
-        ));
     }
+
+    return view('sales.opportunities.edit', compact(
+        'opportunity', 'organizations', 'contacts', 'users', 'nextFollowUpDate'
+    ));
+}
+
     
 
 
-    public function update(Request $request, Opportunity $opportunity)
-    {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'organization_id' => 'nullable|exists:organizations,id',
-            'contact_id' => 'nullable|exists:contacts,id',
-            'type' => 'nullable|string|max:255',
-            'source' => 'nullable|string|max:255',
-            'assigned_to' => 'nullable|exists:users,id',
-            'success_rate' => 'nullable|numeric|min:0|max:100',
-            'next_follow_up' => 'nullable|date',
-            'description' => 'nullable|string',
-            'stage' => 'nullable|string|max:255',
-        ]);
+public function update(Request $request, Opportunity $opportunity)
+{
+    $validated = $request->validate([
+        'name' => 'required|string|max:255',
+        'organization_id' => 'nullable|exists:organizations,id',
+        'contact_id' => 'nullable|exists:contacts,id',
+        'type' => 'nullable|string|max:255',
+        'source' => 'nullable|string|max:255',
+        'building_usage' => 'nullable|string|in:کارگاه و یا کارخانه,فضای باز و رستوران,تعمیرگاه و سالن صنعتی,گلخانه و پرورش گیاه,مرغداری و پرورش دام و طیور,فروشگاه و مراکز خرید,سالن و باشگاه های ورزشی,سالن های نمایش,مدارس و محیط های آموزشی,سایر',
+        'assigned_to' => 'nullable|exists:users,id',
+        'success_rate' => 'nullable|numeric|min:0|max:100',
+        'next_follow_up' => 'nullable|date',
+        'description' => 'nullable|string',
+        'stage' => 'nullable|string|max:255',
+    ]);
 
-        $oldAssignedTo = $opportunity->assigned_to;
+    $oldAssignedTo = $opportunity->assigned_to;
 
-        $opportunity->update($validated);
-        $opportunity->notifyIfAssigneeChanged($oldAssignedTo);
+    $opportunity->update($validated);
+    $opportunity->notifyIfAssigneeChanged($oldAssignedTo);
 
-        return redirect()->route('sales.opportunities.show', $opportunity)
-            ->with('success', 'فرصت فروش با موفقیت بروزرسانی شد.');
-    }
+    return redirect()->route('sales.opportunities.show', $opportunity)
+        ->with('success', 'فرصت فروش با موفقیت بروزرسانی شد.');
+}
+
 
     public function documents()
     {

@@ -8,7 +8,7 @@
     @endphp
 
     <div class="py-6">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        <div class="w-full px-4">
             <h2 class="text-2xl font-semibold text-gray-800 mb-6">
                 {{ __('پیش‌فاکتورها') }}
             </h2>

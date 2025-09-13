@@ -33,37 +33,53 @@
                     $attributes = $activity->getExtraProperty('attributes');
                     $old = $activity->getExtraProperty('old') ?? [];
                     $new = $attributes ?? [];
+
+                    // نرمالایز برای مقایسه‌ی دقیق (Null/خالی، Trim، تاریخ)
+                    $normalize = function ($v, $k) {
+                        if (is_string($v)) { $v = trim($v); if ($v === '') $v = null; }
+                        if ($k === 'next_follow_up_date' && !empty($v)) {
+                            try { return \Carbon\Carbon::parse($v)->startOfDay()->toDateString(); } catch (\Exception $e) {}
+                        }
+                        return $v;
+                    };
+
+                    // تبدیل برای نمایش زیباتر (نام کاربر/تاریخ/…)
+                    $display = function ($v, $k) use ($users) {
+                        if ($k === 'assigned_to' && is_numeric($v)) {
+                            return $users[$v] ?? $v;
+                        }
+                        if ($k === 'next_follow_up_date' && !empty($v)) {
+                            try { return jdate($v)->format('Y/m/d'); } catch (\Exception $e) { /* ignore */ }
+                        }
+                        return \App\Helpers\UpdateHelper::beautify($v ?? '-', $k);
+                    };
                 @endphp
 
                 @if (!empty($new))
                     <ul class="mt-2 text-sm space-y-1 text-gray-700">
-                        @foreach($new as $key => $value)
-                            @if(isset($fields[$key]))
-                                <li class="flex flex-row-reverse justify-end items-center gap-1 flex-wrap">
+                        @foreach($new as $key => $newRaw)
+                            @continue(!isset($fields[$key])) {{-- فقط فیلدهای تعریف‌شده --}}
+                            @php
+                                $oldRaw = $old[$key] ?? null;
+
+                                // مقایسه‌ی نرمالایز شده؛ اگر برابر باشند، نمایش نده
+                                $oldNorm = $normalize($oldRaw, $key);
+                                $newNorm = $normalize($newRaw, $key);
+                            @endphp
+                            @continue($oldNorm === $newNorm)
+
+                            <li class="flex flex-row-reverse justify-end items-center gap-1 flex-wrap">
                                 <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">
-                                    {{ $key === 'next_follow_up_date' && !empty($value)
-                                        ? jdate($value)->format('Y/m/d ')
-                                        : (is_numeric($value) && $key === 'assigned_to'
-                                            ? ($users[$value] ?? $value)
-                                            : \App\Helpers\UpdateHelper::beautify($value, $key)) }}
+                                    {{ $display($newRaw, $key) }}
                                 </span>
-
                                 <span>به</span>
-
                                 <span class="bg-red-100 text-red-800 px-2 py-0.5 rounded text-xs">
-                                    {{ $key === 'next_follow_up_date' && isset($old[$key]) && !empty($old[$key])
-                                        ? jdate($old[$key])->format('Y/m/d ')
-                                        : (is_numeric($old[$key] ?? '') && $key === 'assigned_to'
-                                            ? ($users[$old[$key]] ?? $old[$key])
-                                            : \App\Helpers\UpdateHelper::beautify($old[$key] ?? '-', $key)) }}
+                                    {{ $display($oldRaw, $key) }}
                                 </span>
-
-
-                                    <span>از</span>
-                                    <span class="text-gray-600">{{ $fields[$key] }}</span>
-                                    <span>تغییر یافت</span>
-                                </li>
-                            @endif
+                                <span>از</span>
+                                <span class="text-gray-600">{{ $fields[$key] }}</span>
+                                <span>تغییر یافت</span>
+                            </li>
                         @endforeach
                     </ul>
                 @endif
