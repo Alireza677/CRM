@@ -1,8 +1,10 @@
 import './bootstrap';
 
+import './plugins/jdp-global.js';
 
 import Alpine from 'alpinejs';
-
+import geoPicker from './components/geo-picker';
+window.geoPicker = geoPicker;
 window.Alpine = Alpine;
 
 // Initialize Alpine.js store
@@ -13,3 +15,7 @@ Alpine.store('menu', {
 });
 
 Alpine.start();
+
+if (document.getElementById('calendar')) {
+    import('./calendar.js');
+  }

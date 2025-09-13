@@ -156,19 +156,51 @@
     </div>
 </div>
 
-{{-- دسته سوم: اطلاعات آدرس --}}
-<div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-    @foreach([['city','شهر'],['state','استان']] as [$id, $label])
-        <div class="form-group">
-            <label for="{{ $id }}" class="form-label">{{ $label }}</label>
-            <input type="text" class="form-control" id="{{ $id }}" name="{{ $id }}"
-                   value="{{ old($id, $isEdit ? $proforma->{$id} : '') }}">
-            @error($id)
-                <div class="text-danger">{{ $message }}</div>
-            @enderror
-        </div>
-    @endforeach
-</div>
+  {{-- دسته سوم: اطلاعات آدرس --}}
+  <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {{-- استان --}}
+      <div class="form-group">
+          <label for="stateSelect" class="form-label">استان <span class="text-red-600">*</span></label>
+          <select name="state" id="stateSelect" class="form-control mt-1">
+              <option value="">انتخاب استان</option>
+              @foreach(\App\Helpers\FormOptionsHelper::iranLocations() as $st => $cities)
+                  <option value="{{ $st }}" 
+                      {{ old('state', $isEdit ? $proforma->state ?? '' : '') === $st ? 'selected' : '' }}>
+                      {{ $st }}
+                  </option>
+              @endforeach
+          </select>
+          @error('state') 
+              <p class="mt-1 text-sm text-red-600">{{ $message }}</p> 
+          @enderror
+      </div>
+
+      {{-- شهر --}}
+      <div class="form-group">
+          <label for="citySelect" class="form-label">شهر</label>
+          <select name="city" id="citySelect" class="form-control mt-1" 
+              {{ old('state', $isEdit ? $proforma->state ?? '' : '') ? '' : 'disabled' }}>
+              <option value="{{ old('state', $isEdit ? $proforma->state ?? '' : '') ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}">
+                  {{ old('state', $isEdit ? $proforma->state ?? '' : '') ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}
+              </option>
+              @php
+                  $state = old('state', $isEdit ? $proforma->state ?? '' : '');
+                  $city  = old('city', $isEdit ? $proforma->city ?? '' : '');
+                  $all   = \App\Helpers\FormOptionsHelper::iranLocations();
+                  $list  = $state && isset($all[$state]) ? $all[$state] : [];
+              @endphp
+              @foreach($list as $c)
+                  <option value="{{ $c }}" {{ $city === $c ? 'selected' : '' }}>{{ $c }}</option>
+              @endforeach
+          </select>
+          @error('city') 
+              <p class="mt-1 text-sm text-red-600">{{ $message }}</p> 
+          @enderror
+      </div>
+  </div>
+
+  
+
 
 <div class="form-group">
     <label for="customer_address" class="form-label">آدرس مشتری</label>
@@ -571,6 +603,39 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
+<script>
+  (function(){
+      const locations = @json(\App\Helpers\FormOptionsHelper::iranLocations());
+      const stateEl = document.getElementById('stateSelect');
+      const cityEl  = document.getElementById('citySelect');
+
+      function fillCities(st, preset = '') {
+          cityEl.innerHTML = '';
+          if (!st || !locations[st]) {
+              cityEl.disabled = true;
+              cityEl.insertAdjacentHTML('beforeend','<option value="">ابتدا استان را انتخاب کنید</option>');
+              return;
+          }
+          cityEl.disabled = false;
+          cityEl.insertAdjacentHTML('beforeend','<option value="">انتخاب شهر</option>');
+          locations[st].forEach(function(c){
+              const opt = document.createElement('option');
+              opt.value = c; 
+              opt.textContent = c;
+              if (preset && preset === c) opt.selected = true;
+              cityEl.appendChild(opt);
+          });
+      }
+
+      stateEl.addEventListener('change', function(){
+          fillCities(this.value);
+      });
+
+      // اگر حالت ویرایش بود
+      fillCities(stateEl.value, @json(old('city', $isEdit ? $proforma->city ?? '' : '')));
+  })();
+  </script>
+ 
 
     {{-- اسکریپت محاسبات و مدیریت ردیف‌ها --}}
     @include('sales.proformas.partials.product-scripts')

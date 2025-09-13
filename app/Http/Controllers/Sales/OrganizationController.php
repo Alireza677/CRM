@@ -64,6 +64,8 @@ class OrganizationController extends Controller
             'phone'       => 'nullable|string|max:20',
             'website'     => 'nullable|url|max:255',
             'address'     => 'nullable|string',
+            'state' => 'nullable|string|max:255',
+            'city'  => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
     
@@ -103,6 +105,8 @@ class OrganizationController extends Controller
             'phone' => 'nullable|string|max:20',
             'website' => 'nullable|url|max:255',
             'address' => 'nullable|string',
+            'state' => 'nullable|string|max:255',
+            'city'  => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
         ], [

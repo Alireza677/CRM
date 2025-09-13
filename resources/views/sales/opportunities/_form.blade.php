@@ -60,6 +60,35 @@
         </select>
         @error('type') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
+    {{-- کاربری ساختمان --}}
+    <div>
+        <label for="building_usage" class="block font-medium text-sm text-gray-700 required">
+            کاربری ساختمان
+        </label>
+        @php $buildingUsage = old('building_usage', $opportunity->building_usage ?? ''); @endphp
+        <select id="building_usage" name="building_usage" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">انتخاب کنید...</option>
+            @foreach([
+                'کارگاه و یا کارخانه',
+                'فضای باز و رستوران',
+                'تعمیرگاه و سالن صنعتی',
+                'گلخانه و پرورش گیاه',
+                'مرغداری و پرورش دام و طیور',
+                'فروشگاه و مراکز خرید',
+                'سالن و باشگاه های ورزشی',
+                'سالن های نمایش',
+                'مدارس و محیط های آموزشی',
+                'سایر'
+            ] as $opt)
+                <option value="{{ $opt }}" {{ $buildingUsage === $opt ? 'selected' : '' }}>
+                    {{ $opt }}
+                </option>
+            @endforeach
+        </select>
+        @error('building_usage') 
+            <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+        @enderror
+    </div>
 
     {{-- مرحله فروش --}}
     <div>
@@ -111,15 +140,38 @@
         @error('success_rate') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
 
+    
     {{-- تاریخ پیگیری بعدی (نمایش شمسی + hidden میلادی) --}}
-    <div class="md:col-span-2">
-        <label for="next_follow_up_shamsi" class="block font-medium text-sm text-gray-700">تاریخ پیگیری بعدی</label>
-        <input type="text" id="next_follow_up_shamsi" class="form-control" placeholder="انتخاب تاریخ"
-               value="{{ old('next_follow_up_shamsi', $nextFollowUpDate ?? '') }}">
-        <input type="hidden" name="next_follow_up" id="next_follow_up"
-               value="{{ old('next_follow_up', $opportunity->next_follow_up ?? '') }}">
-        @error('next_follow_up') <span class="text-danger text-xs">{{ $message }}</span> @enderror
-    </div>
+<div class="md:col-span-2">
+    <label for="next_follow_up_shamsi" class="block font-medium text-sm text-gray-700">
+        تاریخ پیگیری بعدی
+    </label>
+
+    {{-- ورودی نمایشی شمسی (فقط name + data-jdp کافیست) --}}
+    <input
+        type="text"
+        id="next_follow_up_shamsi"
+        name="next_follow_up_shamsi"
+        data-jdp
+        dir="ltr"
+        class="form-control"
+        placeholder="انتخاب تاریخ"
+        value="{{ old('next_follow_up_shamsi') }}"
+    >
+
+    {{-- hidden میلادی که به دیتابیس می‌رود --}}
+    <input
+        type="hidden"
+        name="next_follow_up"
+        id="next_follow_up"
+        value="{{ old('next_follow_up', $opportunity->next_follow_up ?? '') }}"
+    >
+
+    @error('next_follow_up')
+        <span class="text-danger text-xs">{{ $message }}</span>
+    @enderror
+</div>
+
 
     {{-- توضیحات --}}
     <div class="md:col-span-2">

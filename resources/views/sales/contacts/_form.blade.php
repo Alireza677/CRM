@@ -49,11 +49,81 @@
     </div>
 
 
-
     <div>
-        <label for="city" class="block text-sm font-medium text-gray-700">شهر</label>
-        <input type="text" name="city" id="city" value="{{ old('city', $contact->city ?? '') }}" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-    </div>
+    <label for="stateSelect" class="block font-medium text-sm text-gray-700">استان <span class="text-red-600">*</span></label>
+    <select name="state" id="stateSelect" 
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <option value="">انتخاب استان</option>
+        @foreach(\App\Helpers\FormOptionsHelper::iranLocations() as $st => $cities)
+            <option value="{{ $st }}" 
+                {{ old('state', $contact->state ?? '') === $st ? 'selected' : '' }}>
+                {{ $st }}
+            </option>
+        @endforeach
+    </select>
+    @error('state') 
+        <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+    @enderror
+</div>
+
+<div>
+    <label for="citySelect" class="block text-sm font-medium text-gray-700">شهر</label>
+    <select name="city" id="citySelect" 
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        {{ old('state', $contact->state ?? '') ? '' : 'disabled' }}>
+        <option value="{{ old('state', $contact->state ?? '') ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}">
+            {{ old('state', $contact->state ?? '') ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}
+        </option>
+        @php
+            $state = old('state', $contact->state ?? '');
+            $city  = old('city', $contact->city ?? '');
+            $all   = \App\Helpers\FormOptionsHelper::iranLocations();
+            $list  = $state && isset($all[$state]) ? $all[$state] : [];
+        @endphp
+        @foreach($list as $c)
+            <option value="{{ $c }}" {{ $city === $c ? 'selected' : '' }}>{{ $c }}</option>
+        @endforeach
+    </select>
+    @error('city') 
+        <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+    @enderror
+</div>
+
+@push('scripts')
+<script>
+(function(){
+    const locations = @json(\App\Helpers\FormOptionsHelper::iranLocations());
+    const stateEl = document.getElementById('stateSelect');
+    const cityEl  = document.getElementById('citySelect');
+
+    function fillCities(st, preset = '') {
+        cityEl.innerHTML = '';
+        if (!st || !locations[st]) {
+            cityEl.disabled = true;
+            cityEl.insertAdjacentHTML('beforeend','<option value="">ابتدا استان را انتخاب کنید</option>');
+            return;
+        }
+        cityEl.disabled = false;
+        cityEl.insertAdjacentHTML('beforeend','<option value="">انتخاب شهر</option>');
+        locations[st].forEach(function(c){
+            const opt = document.createElement('option');
+            opt.value = c; 
+            opt.textContent = c;
+            if (preset && preset === c) opt.selected = true;
+            cityEl.appendChild(opt);
+        });
+    }
+
+    stateEl.addEventListener('change', function(){
+        fillCities(this.value);
+    });
+
+    // اگر حالت ویرایش بود
+    fillCities(stateEl.value, @json(old('city', $contact->city ?? '')));
+})();
+</script>
+@endpush
+
     <div>
     <label for="assigned_to" class="block text-sm font-medium text-gray-700">ارجاع به</label>
     <select name="assigned_to" id="assigned_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
@@ -110,6 +180,39 @@ document.getElementById('org-search').addEventListener('keyup', function () {
 });
 </script>
 
+
+<script>
+(function(){
+    const locations = @json(\App\Helpers\FormOptionsHelper::iranLocations());
+    const stateEl = document.getElementById('stateSelect');
+    const cityEl  = document.getElementById('citySelect');
+
+    function fillCities(st, preset = '') {
+        cityEl.innerHTML = '';
+        if (!st || !locations[st]) {
+            cityEl.disabled = true;
+            cityEl.insertAdjacentHTML('beforeend','<option value="">ابتدا استان را انتخاب کنید</option>');
+            return;
+        }
+        cityEl.disabled = false;
+        cityEl.insertAdjacentHTML('beforeend','<option value="">انتخاب شهر</option>');
+        locations[st].forEach(function(c){
+            const opt = document.createElement('option');
+            opt.value = c; 
+            opt.textContent = c;
+            if (preset && preset === c) opt.selected = true;
+            cityEl.appendChild(opt);
+        });
+    }
+
+    stateEl.addEventListener('change', function(){
+        fillCities(this.value);
+    });
+
+    // اگر حالت ویرایش بود
+    fillCities(stateEl.value, @json(old('city', $contact->city ?? '')));
+})();
+</script>
 
 
 

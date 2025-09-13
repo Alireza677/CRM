@@ -9,7 +9,7 @@
                 <form action="{{ route('marketing.leads.update', $lead) }}" method="POST" class="space-y-6">
                     @csrf
                     @method('PUT')
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1  gap-6">
                         @include('marketing.leads.partials.form-fields', ['lead' => $lead])
                     </div>
                     <div class="flex justify-end space-x-3 space-x-reverse mt-6">

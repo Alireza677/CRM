@@ -29,18 +29,46 @@
         </div>
 
         <div>
-            <label for="state" class="block font-medium text-sm text-gray-700">{{ __('استان') }}</label>
-            <input id="state" name="state" type="text" value="{{ old('state', $organization->state ?? '') }}" 
-                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-            @error('state') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-        </div>
+    <label for="stateSelect" class="block font-medium text-sm text-gray-700">{{ __('استان') }} <span class="text-red-600">*</span></label>
+    <select name="state" id="stateSelect" 
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        <option value="">انتخاب استان</option>
+        @foreach(\App\Helpers\FormOptionsHelper::iranLocations() as $st => $cities)
+            <option value="{{ $st }}" 
+                {{ old('state', $organization->state ?? '') === $st ? 'selected' : '' }}>
+                {{ $st }}
+            </option>
+        @endforeach
+    </select>
+    @error('state') 
+        <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+    @enderror
+</div>
 
-        <div>
-            <label for="city" class="block font-medium text-sm text-gray-700">{{ __('شهر') }}</label>
-            <input id="city" name="city" type="text" value="{{ old('city', $organization->city ?? '') }}" 
-                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500" />
-            @error('city') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-        </div>
+<div>
+    <label for="citySelect" class="block font-medium text-sm text-gray-700">{{ __('شهر') }}</label>
+    <select name="city" id="citySelect" 
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+        {{ old('state', $organization->state ?? '') ? '' : 'disabled' }}>
+        <option value="{{ old('state', $organization->state ?? '') ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}">
+            {{ old('state', $organization->state ?? '') ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}
+        </option>
+        @php
+            $state = old('state', $organization->state ?? '');
+            $city  = old('city', $organization->city ?? '');
+            $all   = \App\Helpers\FormOptionsHelper::iranLocations();
+            $list  = $state && isset($all[$state]) ? $all[$state] : [];
+        @endphp
+        @foreach($list as $c)
+            <option value="{{ $c }}" {{ $city === $c ? 'selected' : '' }}>{{ $c }}</option>
+        @endforeach
+    </select>
+    @error('city') 
+        <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+    @enderror
+</div>
+
+
 
         <div>
             <label for="assigned_to" class="block font-medium text-sm text-gray-700">{{ __('ارجاع به') }}</label>
@@ -89,6 +117,8 @@
         <button type="submit" class="inline-flex items-center px-4 py-2 bg-blue-600 border border-transparent rounded-md font-semibold text-xs text-white uppercase tracking-widest hover:bg-blue-700">
             {{ __('ذخیره') }}
         </button>
+      <a href="{{ route('sales.organizations.index') }}" class="btn btn-secondary">انصراف</a>
+
     </div>
 </form>
 
@@ -269,5 +299,38 @@ function normalizeQuery(raw) {
 
   // شمارش اولیه
   apply();
+})();
+</script>
+
+<script>
+(function(){
+    const locations = @json(\App\Helpers\FormOptionsHelper::iranLocations());
+    const stateEl = document.getElementById('stateSelect');
+    const cityEl  = document.getElementById('citySelect');
+
+    function fillCities(st, preset = '') {
+        cityEl.innerHTML = '';
+        if (!st || !locations[st]) {
+            cityEl.disabled = true;
+            cityEl.insertAdjacentHTML('beforeend','<option value="">ابتدا استان را انتخاب کنید</option>');
+            return;
+        }
+        cityEl.disabled = false;
+        cityEl.insertAdjacentHTML('beforeend','<option value="">انتخاب شهر</option>');
+        locations[st].forEach(function(c){
+            const opt = document.createElement('option');
+            opt.value = c; 
+            opt.textContent = c;
+            if (preset && preset === c) opt.selected = true;
+            cityEl.appendChild(opt);
+        });
+    }
+
+    stateEl.addEventListener('change', function(){
+        fillCities(this.value);
+    });
+
+    // حالت ویرایش
+    fillCities(stateEl.value, @json(old('city', $organization->city ?? '')));
 })();
 </script>
