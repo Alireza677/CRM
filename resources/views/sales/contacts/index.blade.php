@@ -21,7 +21,8 @@
 
         <!-- Search / Filter Form -->
         <form method="GET" action="{{ route('sales.contacts.index') }}" class="bg-white shadow-sm rounded p-4 mb-4 flex flex-wrap gap-4 items-end">
-            <input type="text" name="search" placeholder="نام یا موبایل..." value="{{ request('search') }}"
+
+        <input type="text" name="search" placeholder="نام یا موبایل..." value="{{ request('search') }}"
                 class="border rounded px-3 py-2 w-52">
 
             <select name="assigned_to" class="border rounded px-3 py-2 w-52">
@@ -33,14 +34,59 @@
                 @endforeach
             </select>
 
-            <select name="organization" class="border rounded px-3 py-2 w-52">
-                <option value="">همه سازمان‌ها</option>
-                @foreach($organizations as $org)
-                    <option value="{{ $org->id }}" {{ request('organization') == $org->id ? 'selected' : '' }}>
-                        {{ $org->name }}
-                    </option>
-                @endforeach
-            </select>
+            @php
+                // برای پرکردن پیش‌فرض اگر کوئری 'organization' وجود دارد
+                $selectedOrgId = request('organization');
+                $selectedOrgName = '';
+                if ($selectedOrgId) {
+                    $selected = collect($organizations)->firstWhere('id', (int) $selectedOrgId);
+                    $selectedOrgName = $selected ? $selected->name : '';
+                }
+            @endphp
+
+            {{-- Organization live filter (سبکِ مدال) --}}
+            <div class="relative w-64">
+                <input
+                    type="text"
+                    id="org-filter-input"
+                    placeholder="جستجوی سازمان..."
+                    class="border rounded px-3 py-2 w-full"
+                    value="{{ $selectedOrgName }}"
+                    autocomplete="off"
+                />
+                {{-- مقدار واقعی که ارسال می‌شود --}}
+                <input type="hidden" name="organization" id="org-id-input" value="{{ $selectedOrgId }}"/>
+
+                {{-- دکمه پاک‌سازی انتخاب --}}
+                <button type="button" id="org-clear"
+                        class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 hidden">
+                    ×
+                </button>
+
+                {{-- لیست قابل جستجو --}}
+                <ul id="org-filter-list"
+                    class="absolute z-20 mt-1 w-full bg-white border rounded shadow max-h-60 overflow-y-auto hidden">
+                    <li>
+                        <button type="button"
+                                class="org-item w-full text-right px-3 py-2 hover:bg-gray-100"
+                                data-id=""
+                                data-name="">
+                            همه سازمان‌ها
+                        </button>
+                    </li>
+                    @foreach($organizations as $org)
+                        <li>
+                            <button type="button"
+                                    class="org-item w-full text-right px-3 py-2 hover:bg-gray-100"
+                                    data-id="{{ $org->id }}"
+                                    data-name="{{ $org->name }}">
+                                {{ $org->name }}
+                            </button>
+                        </li>
+                    @endforeach
+                </ul>
+            </div>
+
 
             <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">جستجو</button>
             <a href="{{ route('sales.contacts.index') }}" class="px-4 py-2 bg-gray-200 rounded hover:bg-gray-300">پاکسازی</a>
@@ -120,12 +166,85 @@
     </div>
 </div>
 
-@push('scripts')
+
+
 <script>
     document.getElementById('select-all')?.addEventListener('change', function () {
         document.querySelectorAll('.select-contact').forEach(cb => cb.checked = this.checked);
     });
 </script>
-@endpush
+<script>
+(function () {
+  const input   = document.getElementById('org-filter-input');
+  const hidden  = document.getElementById('org-id-input');
+  const list    = document.getElementById('org-filter-list');
+  const clearBtn= document.getElementById('org-clear');
+
+  if (!input || !hidden || !list) return;
+
+  const items = Array.from(list.querySelectorAll('.org-item')).map(btn => ({
+    el: btn,
+    id: btn.getAttribute('data-id') || '',
+    name: (btn.getAttribute('data-name') || btn.textContent || '').trim()
+  }));
+
+  function showList() { list.classList.remove('hidden'); }
+  function hideList() { list.classList.add('hidden'); }
+  function updateClearVisibility() {
+    if (hidden.value) clearBtn.classList.remove('hidden');
+    else clearBtn.classList.add('hidden');
+  }
+
+  function filterList(term) {
+    const q = (term || '').toLowerCase().trim();
+    items.forEach(({el, name}) => {
+      el.parentElement.style.display = (!q || name.toLowerCase().includes(q)) ? '' : 'none';
+    });
+  }
+
+  // انتخاب آیتم
+  list.addEventListener('click', function (e) {
+    const btn = e.target.closest('.org-item');
+    if (!btn) return;
+    const id   = btn.getAttribute('data-id') || '';
+    const name = (btn.getAttribute('data-name') || '').trim();
+
+    hidden.value = id;       // مقدار واقعی برای ارسال
+    input.value  = name;     // نمایش نام انتخاب‌شده
+    updateClearVisibility();
+    hideList();
+  });
+
+  // تایپ برای فیلتر
+  input.addEventListener('input', function () {
+    filterList(this.value);
+    showList();
+    // اگر کاربر تایپ کرد، انتخاب قبلی را باطل نکن—فقط موقع سابمیت مهم است.
+  });
+
+  // فوکوس/بلور برای نمایش/مخفی‌سازی لیست
+  input.addEventListener('focus', function () {
+    filterList(this.value);
+    showList();
+  });
+  document.addEventListener('click', function (e) {
+    if (!list.contains(e.target) && e.target !== input) hideList();
+  });
+
+  // پاک کردن انتخاب
+  clearBtn.addEventListener('click', function () {
+    hidden.value = '';
+    input.value  = '';
+    filterList('');
+    updateClearVisibility();
+    input.focus();
+    showList();
+  });
+
+  // وضعیت اولیه
+  filterList(input.value);
+  updateClearVisibility();
+})();
+</script>
 
 @endsection

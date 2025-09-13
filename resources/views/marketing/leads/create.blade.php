@@ -1,5 +1,11 @@
 @extends('layouts.app')
-
+@php
+    // بردکرامب صفحه ایجاد
+    $breadcrumb = [
+        ['title' => 'سرنخ‌های فروش', 'url' => route('marketing.leads.index')],
+        ['title' => 'ایجاد سرنخ'],
+    ];
+@endphp
 @section('content')
 <div class="container py-6" dir="rtl">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
@@ -9,7 +15,7 @@
                 <form action="{{ route('marketing.leads.store') }}" method="POST" class="space-y-6">
                     @csrf
                     @php if (!isset($lead)) $lead = new \App\Models\SalesLead(); @endphp
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="grid grid-cols-1 md:grid-cols-1 gap-6">
                         @include('marketing.leads.partials.form-fields')
                     </div>
                     <div class="flex justify-end space-x-3 space-x-reverse mt-6">

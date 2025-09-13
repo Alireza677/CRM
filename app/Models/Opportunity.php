@@ -152,6 +152,15 @@ public function documents()
     return $this->hasMany(Document::class);
 }
 
+protected static function booted()
+{
+    static::saving(function (Opportunity $op) {
+        $wonValues = ['won', 'برنده'];
+        if (in_array($op->stage, $wonValues, true)) {
+            $op->next_follow_up = null;
+        }
+    });
+}
 
 
 
