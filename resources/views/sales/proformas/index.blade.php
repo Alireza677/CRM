@@ -210,13 +210,13 @@
                                 @endphp
 
                                 @foreach($proformas as $proforma)
-                                    @php
-                                        $stageKey   = $proforma->proforma_stage ?? 'unknown';
-                                        $stageClass = $stageColors[$stageKey] ?? 'bg-gray-100 text-gray-800';
-                                        $stageLabel = config('proforma.stages.' . $stageKey) ?? $stageKey;
+                                @php
+                                    $stageKey   = $proforma->proforma_stage ?? 'unknown';
+                                    $stageClass = $stageColors[$stageKey] ?? 'bg-gray-100 text-gray-800';
+                                    $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? $stageKey;
 
-                                        $locked = ($proforma->proforma_stage === 'send_for_approval'); // قابل حذف نیست
-                                    @endphp
+                                    $locked = ($proforma->proforma_stage === 'send_for_approval'); // قابل حذف نیست
+                                @endphp
 
                                     <tr>
                                         <td class="px-6 py-4">

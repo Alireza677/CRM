@@ -267,25 +267,36 @@
         </div>
 
         {{-- دکمه‌ها پایین صفحه --}}
-        <div class="mt-6 flex justify-end gap-3">
-            <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت به لیست</a>
+            <div class="mt-6 flex justify-end gap-3">
+                <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت به لیست</a>
 
-            {{-- دکمه تایید: فقط وقتی مجاز باشم (Policy:approve) --}}
-            @can('approve', $proforma)
-                <form action="{{ route('sales.proformas.approve', $proforma) }}" method="POST"
-                      onsubmit="return confirm('آیا از تایید پیش‌فاکتور مطمئن هستید؟');">
-                    @csrf
-                    <button type="submit" class="btn btn-success">
-                        ✅ تایید پیش‌فاکتور
-                    </button>
-                    @if(optional($proforma->automationRule)->emergency_approver_id === auth()->id())
-                        <div class="text-xs text-yellow-700 mt-2">
-                            شما تأییدکنندهٔ جایگزین هستید؛ تایید شما نهایی است.
-                        </div>
-                    @endif
-                </form>
-            @endcan
-        </div>
+                {{-- دکمه تایید: فقط وقتی مجاز باشم (Policy:approve) --}}
+                @can('approve', $proforma)
+                    <form action="{{ route('sales.proformas.approve', $proforma) }}" method="POST"
+                        onsubmit="return confirm('آیا از تایید پیش‌فاکتور مطمئن هستید؟');">
+                        @csrf
+                        <button type="submit" class="btn btn-success">
+                            ✅ تایید پیش‌فاکتور
+                        </button>
+                        @if(optional($proforma->automationRule)->emergency_approver_id === auth()->id())
+                            <div class="text-xs text-yellow-700 mt-2">
+                                شما تأییدکنندهٔ جایگزین هستید؛ تایید شما نهایی است.
+                            </div>
+                        @endif
+                    </form>
+
+                    {{-- دکمه رد --}}
+                    <form action="{{ route('sales.proformas.reject', $proforma) }}" method="POST"
+                        onsubmit="return confirm('آیا از رد این پیش‌فاکتور مطمئن هستید؟ با رد کردن، کل فرایند متوقف می‌شود.');"
+                        class="ml-2">
+                        @csrf
+                        <button type="submit" class="btn btn-danger">
+                            ❌ رد پیش‌فاکتور
+                        </button>
+                    </form>
+                @endcan
+            </div>
+
     </div>
 </div>
 

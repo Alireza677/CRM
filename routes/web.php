@@ -124,7 +124,15 @@ Route::middleware(['auth'])->group(function () {
         Route::post('proformas/{proforma}/items', [ProformaController::class, 'storeItems'])->name('proformas.items.store');
         Route::post('proformas/{proforma}/send-for-approval', [ProformaController::class, 'sendForApproval'])->name('proformas.sendForApproval');
 
-        // تأیید نهایی (کنترلر تخصصی)
+        // تصمیم‌گیری مرحله‌ای: approve | reject
+        Route::post('proformas/{proforma}/approvals/{step}/{decision}', [ProformaApprovalController::class, 'decide'])
+        ->whereNumber('step')
+        ->whereIn('decision', ['approve','reject'])
+        ->name('proformas.approvals.decide');
+        Route::post('proformas/{proforma}/reject', [ProformaController::class, 'reject'])
+        ->name('proformas.reject');
+
+        // روت قدیمی برای تأیید نهایی (در صورت استفاده جاهای دیگر)
         Route::post('proformas/{proforma}/approve', [ProformaController::class, 'approve'])
             ->name('proformas.approve');
 
