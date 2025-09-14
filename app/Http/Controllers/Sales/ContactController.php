@@ -83,42 +83,51 @@ class ContactController extends Controller
         $validated = $request->validate([
             'first_name' => 'nullable|string|max:255',
             'last_name'  => 'nullable|string|max:255',
-            'email'      => 'nullable|string|email|max:255|unique:contacts',
+            'email'      => 'nullable|string|email|max:255|unique:contacts,email',
             'phone'      => 'nullable|string|max:20',
             'mobile'     => 'nullable|string|max:20',
             'address'    => 'nullable|string',
             'company'    => 'nullable|string|max:255',
             'city'       => 'nullable|string|max:255',
+            'state'      => 'nullable|string|max:255',            // ✅ اضافه شد
+            'assigned_to'=> 'nullable|exists:users,id',           // (اختیاری) اگر فیلد داری
             'organization_id' => 'nullable|exists:organizations,id',
             'opportunity_id'  => 'nullable|exists:opportunities,id',
             'do_not_send_email' => 'nullable|boolean',
             'is_portal_user'    => 'nullable|boolean',
         ]);
-
+    
+        // اگر ورودی شما به اسم province است، بریج کن به state:
+        if (!$request->filled('state') && $request->filled('province')) {
+            $validated['state'] = trim($request->input('province'));
+        }
+    
         // ساخت سازمان جدید در صورت نیاز
         if ($request->filled('company') && !$request->filled('organization_id')) {
             $organization = Organization::firstOrCreate([
-                'name' => $request->input('company'),
+                'name' => trim($request->input('company')),
             ]);
             $validated['organization_id'] = $organization->id;
         }
-
+    
+        // بولین‌ها
         $validated['do_not_send_email'] = $request->has('do_not_send_email');
-        $validated['is_portal_user'] = $request->has('is_portal_user');
-
+        $validated['is_portal_user']    = $request->has('is_portal_user');
+    
         $contact = Contact::create($validated);
-
+    
         if ($request->filled('opportunity_id')) {
             Opportunity::where('id', $request->opportunity_id)
                 ->update(['contact_id' => $contact->id]);
-
+    
             return redirect()
                 ->route('sales.opportunities.show', $request->opportunity_id)
                 ->with('success', 'مخاطب با موفقیت ایجاد و به فرصت فروش متصل شد.');
         }
-
+    
         return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت ایجاد شد.');
     }
+    
 
 
     public function show(Contact $contact)
@@ -136,34 +145,49 @@ class ContactController extends Controller
     
 
     public function update(Request $request, Contact $contact)
-    {
-        $validated = $request->validate([
-            'first_name' => 'nullable|string|max:255',
-            'last_name'  => 'nullable|string|max:255',
-            'email'      => 'nullable|email|max:255|unique:contacts,email,' . $contact->id,
-            'phone'      => 'nullable|string|max:20',
-            'mobile'     => 'nullable|string|max:20',
-            'company'    => 'nullable|string|max:255',
-            'city'       => 'nullable|string|max:255',
-            'organization_id' => 'nullable|exists:organizations,id',
-            'opportunity_id'  => 'nullable|exists:opportunities,id',
-            'assigned_to' => 'nullable|exists:users,id',
-        ]);
+{
+    $validated = $request->validate([
+        'first_name'       => 'nullable|string|max:255',
+        'last_name'        => 'nullable|string|max:255',
+        'email'            => 'nullable|email|max:255|unique:contacts,email,' . $contact->id,
+        'phone'            => 'nullable|string|max:20',
+        'mobile'           => 'nullable|string|max:20',
+        'address'          => 'nullable|string',
+        'company'          => 'nullable|string|max:255',
+        'city'             => 'nullable|string|max:255',
+        'state'            => 'nullable|string|max:255',  // ✅ استان اضافه شد
+        'organization_id'  => 'nullable|exists:organizations,id',
+        'opportunity_id'   => 'nullable|exists:opportunities,id',
+        'assigned_to'      => 'nullable|exists:users,id',
+        'do_not_send_email'=> 'nullable|boolean',
+        'is_portal_user'   => 'nullable|boolean',
+    ]);
 
-        if ($request->filled('company') && !$request->filled('organization_id')) {
-            $organization = Organization::firstOrCreate([
-                'name' => $request->input('company'),
-            ]);
-            $validated['organization_id'] = $organization->id;
-        }
-
-        $validated['do_not_send_email'] = $request->has('do_not_send_email');
-        $validated['is_portal_user'] = $request->has('is_portal_user');
-
-        $contact->update($validated);
-
-        return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت ویرایش شد.');
+    // اگر ورودی province باشه ولی state نباشه → بریج کن
+    if (!$request->filled('state') && $request->filled('province')) {
+        $validated['state'] = trim($request->input('province'));
     }
+
+    // اگر سازمان انتخاب نشده ولی company پر شده → ایجاد سازمان
+    if ($request->filled('company') && !$request->filled('organization_id')) {
+        $organization = Organization::firstOrCreate([
+            'name' => trim($request->input('company')),
+        ]);
+        $validated['organization_id'] = $organization->id;
+    }
+
+    // مقداردهی بولین‌ها
+    $validated['do_not_send_email'] = $request->has('do_not_send_email');
+    $validated['is_portal_user']    = $request->has('is_portal_user');
+
+    // آپدیت رکورد
+    $contact->update($validated);
+
+    return redirect()
+        ->route('sales.contacts.index')
+        ->with('success', 'مخاطب با موفقیت ویرایش شد.');
+}
+
     public function bulkDelete(Request $request)
     {
         Contact::whereIn('id', $request->input('selected_contacts', []))->delete();

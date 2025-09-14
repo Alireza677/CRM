@@ -128,7 +128,7 @@
                     <input type="checkbox" id="select-all" class="form-checkbox">
                 </th>
                 <th class="px-2 py-2 text-right">نام کامل</th>
-                <th class="px-2 py-2 text-right">تاریخ</th>
+                <th class="px-2 py-2 text-right">تاریخ ایجاد</th>
                 <th class="px-2 py-2 text-right">موبایل</th>
                 <th class="px-2 py-2 text-right">منبع سرنخ</th>
                 <th class="px-2 py-2 text-right">وضعیت</th>

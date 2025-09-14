@@ -21,6 +21,8 @@
         <div><span class="font-semibold">موبایل:</span> {{ $contact->mobile ?? '—' }}</div>
 
         <div><span class="font-semibold">شهر:</span> {{ $contact->city ?? '—' }}</div>
+        <div><span class="font-semibold">استان:</span> {{ $contact->state ?? '—' }}</div>
+
         <div>
             <span class="font-semibold">ارجاع به:</span>
             @if($contact->assignedUser)
