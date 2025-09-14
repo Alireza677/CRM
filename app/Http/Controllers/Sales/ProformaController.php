@@ -341,28 +341,39 @@ class ProformaController extends Controller
 
     public function edit(Proforma $proforma)
     {
-        if ($proforma->proforma_stage === 'send_for_approval') {
+        // 1) قانون اصلی: فقط در پیش‌نویس
+        if (! $proforma->canEdit()) {
             return redirect()
                 ->route('sales.proformas.show', $proforma)
-                ->with('alert_error', 'پیش‌فاکتور در انتظار تایید است و امکان ویرایش ندارد.');
+                ->with('alert_error', 'فقط در وضعیت «پیش‌نویس» قابل ویرایش است.');
         }
+    
+        // 2) احراز مجوز (ادمین/کاربرِ assign‌شده و ...)
+        $this->authorize('update', $proforma);
+    
+        // 3) لود داده‌های لازم برای فرم
         $proforma->load('items');
-        $users = User::all();
-        $organizations = Organization::all();
-        $contacts = Contact::all();
-        $opportunities = Opportunity::all();
-        $products = Product::where('is_active', true)->orderBy('name')->get();
-        $proformaStages = config('proforma.stages'); 
-
+        $users         = User::select('id','name')->get();
+        $organizations = Organization::select('id','name')->get();
+        $contacts      = Contact::select('id','first_name','last_name')->get();
+        $opportunities = Opportunity::select('id','title')->get();
+        $products      = Product::where('is_active', true)->orderBy('name')->get();
+        $proformaStages = config('proforma.stages');
+    
         return view('sales.proformas.edit', compact(
-            'proforma', 'users', 'organizations', 'contacts', 'opportunities', 'products',  'proformaStages'
+            'proforma','users','organizations','contacts','opportunities','products','proformaStages'
         ));
     }
+    
 
     public function update(Request $request, Proforma $proforma)
     {
         Log::debug('✏️ Update Request Payload:', $request->all());
-    
+        $this->authorize('update', $proforma);
+        if (! $proforma->canEdit()) {
+            return back()->with('error', 'فقط در وضعیت پیش‌نویس قابل ویرایش است.');
+        }
+
         try {
             $validated = $request->validate([
                 'subject' => 'required|string|max:255',
@@ -512,19 +523,43 @@ class ProformaController extends Controller
 
     public function destroy(Proforma $proforma)
     {
-        if ($proforma->proforma_stage === 'send_for_approval') {
-            return redirect()
-                ->route('sales.proformas.show', $proforma)
-                ->with('alert_error', 'پیش‌فاکتور در انتظار تایید است و امکان حذف ندارد.');
-        }
+        // تصمیم نهایی با Policy
+        $this->authorize('delete', $proforma);
+    
         try {
-            $proforma->delete();
-            return redirect()->route('sales.proformas.index')
+            \DB::transaction(function () use ($proforma) {
+                // اگر FKها cascade نیست، روابط را دستی پاک کن
+                if (method_exists($proforma, 'items')) {
+                    $proforma->items()->delete();
+                }
+                if (method_exists($proforma, 'approvals')) {
+                    $proforma->approvals()->delete();
+                }
+                // اگر notes/attachments/activitylog داری، اینجا هندل کن:
+                // $proforma->notes()->delete();
+                // $proforma->media()->delete();
+                // activity()...
+    
+                // اگر SoftDeletes داری:
+                $proforma->delete();
+    
+                // اگر SoftDeletes نداری و می‌خواهی حذف قطعی باشد:
+                // $proforma->forceDelete();
+            });
+    
+            return redirect()
+                ->route('sales.proformas.index')
                 ->with('success', 'پیش‌فاکتور با موفقیت حذف شد.');
-        } catch (\Exception $e) {
-            return back()->with('error', 'خطا در حذف پیش‌فاکتور. لطفا دوباره تلاش کنید.');
+        } catch (\Throwable $e) {
+            \Log::error('❌ Proforma delete failed', [
+                'proforma_id' => $proforma->id,
+                'error'       => $e->getMessage(),
+            ]);
+    
+            return back()->with('error', 'خطا در حذف پیش‌فاکتور. لطفاً دوباره تلاش کنید.');
         }
     }
+    
 
     
     private function runAutomationRulesIfNeeded(\App\Models\Proforma $proforma): void
@@ -774,99 +809,100 @@ class ProformaController extends Controller
         }
         
     }
-    public function reject(Proforma $proforma)
-{
-    $this->authorize('approve', $proforma); // همان policy که برای approve استفاده می‌کنی
 
-    try {
-        \DB::transaction(function () use ($proforma) {
-            $userId = auth()->id();
+        public function reject(Proforma $proforma)
+    {
+        $this->authorize('approve', $proforma); // همان policy که برای approve استفاده می‌کنی
 
-            // اگر قبلاً نهایی شده (approved/rejected) ادامه نده
-            if (in_array($proforma->approval_stage, ['approved','rejected'], true)) {
-                throw new \RuntimeException('این پیش‌فاکتور قبلاً نهایی شده است.');
-            }
+        try {
+            \DB::transaction(function () use ($proforma) {
+                $userId = auth()->id();
 
-            // approvals را با لاک بخوان
-            $approvals = $proforma->approvals()
-                ->with('approver')
-                ->orderBy('created_at')
-                ->lockForUpdate()
-                ->get();
-
-            // مرحله‌ی در انتظار
-            $pending = $approvals->firstWhere('status', 'pending');
-            if (! $pending) {
-                throw new \RuntimeException('هیچ مرحله‌ی در انتظاری برای رد وجود ندارد.');
-            }
-
-            // حالت 1: تاییدکننده/ردکننده اصلی همین pending است
-            $current = $approvals->firstWhere('user_id', $userId);
-
-            // حالت 2: اگر اصلی نبود، بررسی emergency approver برای همان pending
-            $asEmergency = false;
-            if (! $current) {
-                $rule = $proforma->automationRule()->first();
-                if ($rule && (int) $rule->emergency_approver_id === (int) $userId) {
-                    $current = $pending;   // اجازه بده اضطراری همان pending را رد کند
-                    $asEmergency = true;
+                // اگر قبلاً نهایی شده (approved/rejected) ادامه نده
+                if (in_array($proforma->approval_stage, ['approved','rejected'], true)) {
+                    throw new \RuntimeException('این پیش‌فاکتور قبلاً نهایی شده است.');
                 }
-            }
 
-            if (! $current) {
-                throw new \RuntimeException('شما مجاز به رد این پیش‌فاکتور نیستید.');
-            }
+                // approvals را با لاک بخوان
+                $approvals = $proforma->approvals()
+                    ->with('approver')
+                    ->orderBy('created_at')
+                    ->lockForUpdate()
+                    ->get();
 
-            // فقط روی pending می‌توان تصمیم گرفت
-            if ($current->status !== 'pending') {
-                throw new \RuntimeException('برای این مرحله قبلاً تصمیم‌گیری شده است.');
-            }
+                // مرحله‌ی در انتظار
+                $pending = $approvals->firstWhere('status', 'pending');
+                if (! $pending) {
+                    throw new \RuntimeException('هیچ مرحله‌ی در انتظاری برای رد وجود ندارد.');
+                }
 
-            // رعایت ترتیب مراحل (اگر قبل از این رکورد، آیتمی هنوز approved نشده، بلوکه)
-            $idx     = $approvals->search(fn ($a) => (int) $a->id === (int) $current->id);
-            $blocker = $approvals->take($idx)->first(fn ($a) => $a->status !== 'approved');
-            if ($blocker) {
-                $who = optional($blocker->approver)->name ?: ('کاربر #' . $blocker->user_id);
-                throw new \RuntimeException("رد امکان‌پذیر نیست؛ پیش‌فاکتور در انتظار تصمیم {$who} است.");
-            }
+                // حالت 1: تاییدکننده/ردکننده اصلی همین pending است
+                $current = $approvals->firstWhere('user_id', $userId);
 
-            // رد همین مرحله
-            $current->update([
-                'status'      => 'rejected',
-                'approved_at' => now(),
-                'approved_by' => $userId,
+                // حالت 2: اگر اصلی نبود، بررسی emergency approver برای همان pending
+                $asEmergency = false;
+                if (! $current) {
+                    $rule = $proforma->automationRule()->first();
+                    if ($rule && (int) $rule->emergency_approver_id === (int) $userId) {
+                        $current = $pending;   // اجازه بده اضطراری همان pending را رد کند
+                        $asEmergency = true;
+                    }
+                }
+
+                if (! $current) {
+                    throw new \RuntimeException('شما مجاز به رد این پیش‌فاکتور نیستید.');
+                }
+
+                // فقط روی pending می‌توان تصمیم گرفت
+                if ($current->status !== 'pending') {
+                    throw new \RuntimeException('برای این مرحله قبلاً تصمیم‌گیری شده است.');
+                }
+
+                // رعایت ترتیب مراحل (اگر قبل از این رکورد، آیتمی هنوز approved نشده، بلوکه)
+                $idx     = $approvals->search(fn ($a) => (int) $a->id === (int) $current->id);
+                $blocker = $approvals->take($idx)->first(fn ($a) => $a->status !== 'approved');
+                if ($blocker) {
+                    $who = optional($blocker->approver)->name ?: ('کاربر #' . $blocker->user_id);
+                    throw new \RuntimeException("رد امکان‌پذیر نیست؛ پیش‌فاکتور در انتظار تصمیم {$who} است.");
+                }
+
+                // رد همین مرحله
+                $current->update([
+                    'status'      => 'rejected',
+                    'approved_at' => now(),
+                    'approved_by' => $userId,
+                ]);
+
+                // ست کردن وضعیت کلی پروفورما به رد‌شده
+                $proforma->fill([
+                    'approval_stage' => 'rejected',
+                    'proforma_stage' => 'rejected',
+                ])->save();
+
+                // پاک کردن تمام pendingهای دیگر تا فرایند متوقف شود
+                $proforma->approvals()
+                    ->where('status', 'pending')
+                    ->delete();
+
+                \Log::info('⛔ Proforma rejected', [
+                    'proforma_id' => $proforma->id,
+                    'by_user'     => $userId,
+                    'step'        => (int) ($current->step ?? 1),
+                    'as_emergency'=> $asEmergency,
+                ]);
+            });
+
+            return back()->with('success', 'پیش‌فاکتور با موفقیت رد شد.');
+
+        } catch (\Throwable $e) {
+            \Log::error('❌ Proforma reject failed', [
+                'proforma_id' => $proforma->id ?? null,
+                'error'       => $e->getMessage(),
             ]);
 
-            // ست کردن وضعیت کلی پروفورما به رد‌شده
-            $proforma->fill([
-                'approval_stage' => 'rejected',
-                'proforma_stage' => 'rejected',
-            ])->save();
-
-            // پاک کردن تمام pendingهای دیگر تا فرایند متوقف شود
-            $proforma->approvals()
-                ->where('status', 'pending')
-                ->delete();
-
-            \Log::info('⛔ Proforma rejected', [
-                'proforma_id' => $proforma->id,
-                'by_user'     => $userId,
-                'step'        => (int) ($current->step ?? 1),
-                'as_emergency'=> $asEmergency,
-            ]);
-        });
-
-        return back()->with('success', 'پیش‌فاکتور با موفقیت رد شد.');
-
-    } catch (\Throwable $e) {
-        \Log::error('❌ Proforma reject failed', [
-            'proforma_id' => $proforma->id ?? null,
-            'error'       => $e->getMessage(),
-        ]);
-
-        return back()->with('error', $e->getMessage());
+            return back()->with('error', $e->getMessage());
+        }
     }
-}
 
 
 

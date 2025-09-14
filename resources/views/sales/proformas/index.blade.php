@@ -259,24 +259,43 @@
                                         </td>
                                         <td class="px-6 py-4">{{ $proforma->opportunity->name ?? '-' }}</td>
                                         <td class="px-6 py-4">{{ $proforma->assignedTo->name ?? '-' }}</td>
+                                        @php
+                                            $canEdit = method_exists($proforma, 'canEdit')
+                                                ? $proforma->canEdit()
+                                                : (strtolower((string)($proforma->approval_stage ?? $proforma->proforma_stage ?? '')) === 'draft');
+                                        @endphp
 
                                         <td class="px-6 py-4">
-                                            <div class="flex items-center space-x-reverse space-x-3">
-                                                <a href="{{ route('sales.proformas.show', $proforma) }}" class="text-blue-600 hover:text-blue-900">مشاهده</a>
+                                        <div class="flex items-center space-x-reverse space-x-3">
+                                            <a href="{{ route('sales.proformas.show', $proforma) }}" class="text-blue-600 hover:text-blue-900">مشاهده</a>
 
-                                                @if($locked)
-                                                    <button onclick="showApprovalAlert()" class="text-gray-500 cursor-not-allowed" disabled>ویرایش</button>
-                                                    <button onclick="showApprovalAlert()" class="text-gray-500 cursor-not-allowed" disabled>حذف</button>
-                                                @else
-                                                    <a href="{{ route('sales.proformas.edit', $proforma) }}" class="text-indigo-600 hover:text-indigo-900">ویرایش</a>
+                                            {{-- ویرایش: فقط در پیش‌نویس --}}
+                                            @if($canEdit)
+                                            <a href="{{ route('sales.proformas.edit', $proforma) }}" class="text-indigo-600 hover:text-indigo-900">ویرایش</a>
+                                            @else
+                                            <button type="button"
+                                                    onclick="showEditDeleteAlert('ویرایش فقط در وضعیت «پیش‌نویس» مجاز است.')"
+                                                    class="text-gray-500 cursor-not-allowed opacity-60">
+                                                ویرایش
+                                            </button>
+                                            @endif
 
-                                                    <form action="{{ route('sales.proformas.destroy', $proforma) }}" method="POST" onsubmit="return confirm('آیا از حذف این پیش‌فاکتور اطمینان دارید؟')">
-                                                        @csrf
-                                                        @method('DELETE')
-                                                        <button type="submit" class="text-red-600 hover:text-red-900">حذف</button>
-                                                    </form>
-                                                @endif
-                                            </div>
+                                            {{-- حذف: فقط اگر طبق Policy مجاز باشد (ادمین همیشه مجاز) --}}
+                                            @can('delete', $proforma)
+                                            <form action="{{ route('sales.proformas.destroy', $proforma) }}" method="POST"
+                                                    onsubmit="return confirm('آیا از حذف این پیش‌فاکتور اطمینان دارید؟ این عملیات قابل بازگشت نیست.')">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-900">حذف</button>
+                                            </form>
+                                            @else
+                                            <button type="button"
+                                                    onclick="showEditDeleteAlert('حذف فقط برای ادمین مجاز است.')"
+                                                    class="text-gray-500 cursor-not-allowed opacity-60">
+                                                حذف
+                                            </button>
+                                            @endcan
+                                        </div>
                                         </td>
                                     </tr>
                                 @endforeach
@@ -526,6 +545,11 @@ document.addEventListener('DOMContentLoaded', function () {
 });
 </script>
 
-
+<script>
+  // توجه: اگر button را disabled کنی، onclick اجرا نمی‌شود.
+  function showEditDeleteAlert(msg) {
+    alert(msg);
+  }
+</script>
 @endsection
 

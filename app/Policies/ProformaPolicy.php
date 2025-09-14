@@ -32,19 +32,13 @@ class ProformaPolicy
         return true; // هر کاربر مجاز به ایجاد (در صورت نیاز محدود کن)
     }
 
-    /**
-     * اجازهٔ ویرایش
-     * - در وضعیت "ارسال برای تاییدیه" ویرایش ممنوع است.
-     * - در غیر این‌صورت: ادمین یا شخصِ assign شده.
-     */
     public function update(User $user, Proforma $proforma): bool
     {
-        $stage = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
-
-        if ($stage === 'sent_for_approval') {
+        // ❗ فقط در پیش‌نویس اجازه بده
+        if (! $proforma->canEdit()) {
             return false;
         }
-
+        // ادمین یا شخص assign‌شده
         return $this->isAdmin($user) || (int)$proforma->assigned_to === (int)$user->id;
     }
 
@@ -55,14 +49,18 @@ class ProformaPolicy
      */
     public function delete(User $user, Proforma $proforma): bool
     {
-        $stage = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
-
-        if ($stage === 'sent_for_approval') {
-            return false;
+        // ادمین همیشه می‌تواند حذف کند (draft یا هر مرحله‌ی دیگر)
+        if ($this->isAdmin($user)) {
+            return true;
         }
 
-        return $this->isAdmin($user);
+        // غیرادمین‌ها اجازه حذف ندارند
+        return false;
+
+        // اگر خواستی غیرادمین فقط در draft حذف کند، این را جایگزین خط بالا کن:
+        // return $proforma->canEdit() && (int)$proforma->assigned_to === (int)$user->id;
     }
+
 
     /**
      * بازگردانی از سطل زباله (در صورت استفاده از SoftDeletes)
@@ -85,41 +83,35 @@ class ProformaPolicy
      * - فقط وقتی مجاز است که رکورد در وضعیت "ارسال برای تاییدیه" باشد.
      * - مجاز هستند: approver_1 یا approver_2 یا emergency_approver_id.
      */
-    public function approve(User $user, \App\Models\Proforma $proforma): bool
-{
-    $userId = (int) $user->id;
+    public function approve(User $user, Proforma $proforma): bool
+    {
+        $userId = (int) $user->id;
 
-    // 1) فقط در مراحل قابل تایید اجازه بده
-    $stage = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
-    if (! in_array($stage, ['send_for_approval', 'awaiting_approval', 'awaiting_second_approval'], true)) {
-        return false;
+        // ✅ فقط وقتی در مراحل قابل تأیید هست
+        $stage = strtolower((string)($proforma->approval_stage ?? $proforma->proforma_stage ?? ''));
+        if (! in_array($stage, ['send_for_approval','awaiting_second_approval'], true)) {
+            return false;
+        }
+
+        // ✅ همین مرحله pending داشته باشد
+        $pending = $proforma->approvals()
+            ->where('status','pending')
+            ->orderBy('step')->orderBy('id')
+            ->first();
+
+        if (! $pending) {
+            return false;
+        }
+
+        // تاییدکننده اصلی مرحله
+        if ((int)$pending->user_id === $userId) {
+            return true;
+        }
+
+        // یا emergency approver
+        $rule = $proforma->automationRule()->first();
+        return $rule && (int)$rule->emergency_approver_id === $userId;
     }
-
-    // 2) رکورد pending مرحله‌ی جاری
-    $pending = $proforma->approvals()
-        ->where('status', 'pending')
-        ->orderBy('step')
-        ->orderBy('id')
-        ->first();
-
-    if (! $pending) {
-        return false;
-    }
-
-    // 3) خودِ کاربر approver همین مرحله است
-    if ((int) $pending->user_id === $userId) {
-        return true;
-    }
-
-    // 4) جایگزین اضطراری تعریف‌شده در قانون اتوماسیون
-    $rule = $proforma->automationRule()->first();
-    if ($rule && (int) $rule->emergency_approver_id === $userId) {
-        return true;
-    }
-
-    // 5) در غیر این صورت مجاز نیست
-    return false;
-}
 
 
     /**
@@ -133,17 +125,41 @@ class ProformaPolicy
             return (bool) $user->isAdmin();
         }
 
-        // Fallback های رایج
-        // 1) اگر رابطه role روی User داری و name در آن ذخیره می‌شود
-        if (property_exists($user, 'role') && is_object($user->role) && property_exists($user->role, 'name')) {
-            return strtolower((string)$user->role->name) === 'admin';
+        // Spatie (اگر داری)
+        if (method_exists($user, 'hasAnyRole') && $user->hasAnyRole(['admin','super-admin'])) {
+            return true;
+        }
+        if (method_exists($user, 'hasPermissionTo') && $user->hasPermissionTo('delete proformas')) {
+            return true;
         }
 
-        // 2) اگر مستقیماً فیلدی مثل role_name روی User داری
-        if (isset($user->role_name)) {
-            return strtolower((string)$user->role_name) === 'admin';
+        // role_name تکی
+        if (!empty($user->role_name) && in_array(strtolower($user->role_name), ['admin','super-admin'], true)) {
+            return true;
         }
+
+        // رابطه role
+        try {
+            $role = $user->role ?? null;
+            $name = is_object($role) ? ($role->name ?? null) : (is_string($role) ? $role : null);
+            if (!empty($name) && in_array(strtolower($name), ['admin','super-admin'], true)) {
+                return true;
+            }
+        } catch (\Throwable $e) {}
+
+        // رابطه roles چندتایی
+        try {
+            if (isset($user->roles)) {
+                foreach ($user->roles as $r) {
+                    $n = is_object($r) ? ($r->name ?? null) : (is_string($r) ? $r : null);
+                    if (!empty($n) && in_array(strtolower($n), ['admin','super-admin'], true)) {
+                        return true;
+                    }
+                }
+            }
+        } catch (\Throwable $e) {}
 
         return false;
     }
+
 }

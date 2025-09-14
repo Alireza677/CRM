@@ -73,11 +73,46 @@ class User extends Authenticatable
         });
     }
     public function mentionedInNotes()
-{
-    return $this->belongsToMany(\App\Models\Note::class, 'note_mentions', 'user_id', 'note_id')
-        ->withTimestamps()
-        ->withPivot('notified_at');
-}
-        
+    {
+        return $this->belongsToMany(\App\Models\Note::class, 'note_mentions', 'user_id', 'note_id')
+            ->withTimestamps()
+            ->withPivot('notified_at');
+    }
+
+    // app/Models/User.php
+        public function isAdmin(): bool
+        {
+            // 1) فلگ دیتابیس
+            if ((bool) $this->getAttribute('is_admin')) {
+                return true;
+            }
+
+            // 2) نقش‌های Spatie (بدون چکِ permission)
+            if (method_exists($this, 'hasAnyRole')) {
+                try {
+                    if ($this->hasAnyRole(['admin', 'super-admin'])) {
+                        return true;
+                    }
+                } catch (\Throwable $e) { /* ignore */ }
+            }
+
+            // 3) فallbackهای احتمالی پروژه
+            if (isset($this->role_name) && in_array(strtolower($this->role_name), ['admin','super-admin'], true)) {
+                return true;
+            }
+            if (method_exists($this, 'roles')) {
+                try {
+                    if ($this->roles()->whereIn('name', ['admin','super-admin'])->exists()) {
+                        return true;
+                    }
+                } catch (\Throwable $e) { /* ignore */ }
+            }
+            if (isset($this->role) && is_object($this->role) && isset($this->role->name)) {
+                return in_array(strtolower($this->role->name), ['admin','super-admin'], true);
+            }
+
+            return false;
+        }
+
 
 }

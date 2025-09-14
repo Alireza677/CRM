@@ -212,4 +212,23 @@ class Proforma extends Model
             'final_attr' => $this->attributes['total_amount'],
         ]);
     }
+
+    public function stage(): string
+    {
+        return strtolower((string)($this->approval_stage ?? $this->proforma_stage ?? ''));
+    }
+
+    public function canEdit(): bool
+    {
+        // فقط در پیش‌نویس
+        return $this->stage() === 'draft';
+    }
+
+    public function isLockedForEditing(): bool
+    {
+        // قفل برای تمام مراحل به جز پیش‌نویس
+        return ! $this->canEdit();
+    }
+
+   
 }
