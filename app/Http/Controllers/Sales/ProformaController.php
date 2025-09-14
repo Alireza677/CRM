@@ -522,43 +522,48 @@ class ProformaController extends Controller
 
 
     public function destroy(Proforma $proforma)
-    {
-        // تصمیم نهایی با Policy
+{
+    \Log::info('🟢 Destroy called', [
+        'route_parameters' => request()->route()->parameters(),
+        'proforma_id'      => $proforma->id ?? null,
+        'proforma_number'  => $proforma->number ?? null,
+    ]);
+
+    // تصمیم نهایی با Policy
+    try {
         $this->authorize('delete', $proforma);
-    
-        try {
-            \DB::transaction(function () use ($proforma) {
-                // اگر FKها cascade نیست، روابط را دستی پاک کن
-                if (method_exists($proforma, 'items')) {
-                    $proforma->items()->delete();
-                }
-                if (method_exists($proforma, 'approvals')) {
-                    $proforma->approvals()->delete();
-                }
-                // اگر notes/attachments/activitylog داری، اینجا هندل کن:
-                // $proforma->notes()->delete();
-                // $proforma->media()->delete();
-                // activity()...
-    
-                // اگر SoftDeletes داری:
-                $proforma->delete();
-    
-                // اگر SoftDeletes نداری و می‌خواهی حذف قطعی باشد:
-                // $proforma->forceDelete();
-            });
-    
-            return redirect()
-                ->route('sales.proformas.index')
-                ->with('success', 'پیش‌فاکتور با موفقیت حذف شد.');
-        } catch (\Throwable $e) {
-            \Log::error('❌ Proforma delete failed', [
-                'proforma_id' => $proforma->id,
-                'error'       => $e->getMessage(),
-            ]);
-    
-            return back()->with('error', 'خطا در حذف پیش‌فاکتور. لطفاً دوباره تلاش کنید.');
-        }
+        \Log::info('✅ Authorization passed', ['proforma_id' => $proforma->id]);
+
+        \DB::transaction(function () use ($proforma) {
+            \Log::info('🛠 Deleting relations', ['proforma_id' => $proforma->id]);
+
+            if (method_exists($proforma, 'items')) {
+                $deleted = $proforma->items()->delete();
+                \Log::info('🔸 Items deleted', ['count' => $deleted]);
+            }
+            if (method_exists($proforma, 'approvals')) {
+                $deleted = $proforma->approvals()->delete();
+                \Log::info('🔸 Approvals deleted', ['count' => $deleted]);
+            }
+
+            $proforma->delete();
+            \Log::info('🗑 Proforma deleted (soft)', ['proforma_id' => $proforma->id]);
+        });
+
+        return redirect()
+            ->route('sales.proformas.index')
+            ->with('success', 'پیش‌فاکتور با موفقیت حذف شد.');
+    } catch (\Throwable $e) {
+        \Log::error('❌ Proforma delete failed', [
+            'proforma_id' => $proforma->id ?? null,
+            'error'       => $e->getMessage(),
+            'trace'       => $e->getTraceAsString(),
+        ]);
+
+        return back()->with('error', 'خطا در حذف پیش‌فاکتور. لطفاً دوباره تلاش کنید.');
     }
+}
+
     
 
     

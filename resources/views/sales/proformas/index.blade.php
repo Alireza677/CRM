@@ -41,20 +41,22 @@
                     <i class="fas fa-file-import mr-2"></i> ایمپورت پیش‌فاکتورها
                 </a>
 
-                {{-- دکمه حذف گروهی --}}
-                    <button
-                        id="bulk-delete-btn"
-                        form="proformas-bulk-form"
-                        type="submit"
-                        class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
-                        disabled
-                    >
-                        <i class="fas fa-trash mr-2"></i>
-                        حذف گروهی
-                        <span id="selected-count-badge" class="ml-2 hidden px-2 py-0.5 text-xs rounded-full bg-white/20">
-                            0
-                        </span>
-                    </button>
+                @role('admin')
+    <button
+        id="bulk-delete-btn"
+        form="proformas-bulk-form"
+        type="submit"
+        class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
+        disabled
+    >
+        <i class="fas fa-trash mr-2"></i>
+        حذف گروهی
+        <span id="selected-count-badge" class="ml-2 hidden px-2 py-0.5 text-xs rounded-full bg-white/20">
+            0
+        </span>
+    </button>
+@endrole
+
 
                     
             </div>
@@ -266,37 +268,46 @@
                                         @endphp
 
                                         <td class="px-6 py-4">
-                                        <div class="flex items-center space-x-reverse space-x-3">
-                                            <a href="{{ route('sales.proformas.show', $proforma) }}" class="text-blue-600 hover:text-blue-900">مشاهده</a>
+                                                <div class="flex items-center space-x-reverse space-x-3">
+                                                    {{-- مشاهده --}}
+                                                    <a href="{{ route('sales.proformas.show', $proforma->id) }}" 
+                                                    class="text-blue-600 hover:text-blue-900">
+                                                        مشاهده
+                                                    </a>
 
-                                            {{-- ویرایش: فقط در پیش‌نویس --}}
-                                            @if($canEdit)
-                                            <a href="{{ route('sales.proformas.edit', $proforma) }}" class="text-indigo-600 hover:text-indigo-900">ویرایش</a>
-                                            @else
-                                            <button type="button"
-                                                    onclick="showEditDeleteAlert('ویرایش فقط در وضعیت «پیش‌نویس» مجاز است.')"
-                                                    class="text-gray-500 cursor-not-allowed opacity-60">
-                                                ویرایش
-                                            </button>
-                                            @endif
+                                                    {{-- ویرایش: فقط در پیش‌نویس --}}
+                                                    @if($canEdit)
+                                                        <a href="{{ route('sales.proformas.edit', $proforma->id) }}" 
+                                                        class="text-indigo-600 hover:text-indigo-900">
+                                                            ویرایش
+                                                        </a>
+                                                    @else
+                                                        <button type="button"
+                                                                onclick="showEditDeleteAlert('ویرایش فقط در وضعیت «پیش‌نویس» مجاز است.')"
+                                                                class="text-gray-500 cursor-not-allowed opacity-60">
+                                                            ویرایش
+                                                        </button>
+                                                    @endif
 
-                                            {{-- حذف: فقط اگر طبق Policy مجاز باشد (ادمین همیشه مجاز) --}}
-                                            @can('delete', $proforma)
-                                            <form action="{{ route('sales.proformas.destroy', $proforma) }}" method="POST"
-                                                    onsubmit="return confirm('آیا از حذف این پیش‌فاکتور اطمینان دارید؟ این عملیات قابل بازگشت نیست.')">
-                                                @csrf
-                                                @method('DELETE')
-                                                <button type="submit" class="text-red-600 hover:text-red-900">حذف</button>
-                                            </form>
-                                            @else
-                                            <button type="button"
-                                                    onclick="showEditDeleteAlert('حذف فقط برای ادمین مجاز است.')"
-                                                    class="text-gray-500 cursor-not-allowed opacity-60">
-                                                حذف
-                                            </button>
-                                            @endcan
-                                        </div>
-                                        </td>
+                                                    <!-- {{-- حذف: فقط اگر طبق Policy مجاز باشد --}}
+                                                    @can('delete', $proforma)
+                                                        <button type="submit"
+                                                                form="single-delete-form"
+                                                                formaction="{{ route('sales.proformas.destroy', $proforma->id) }}"
+                                                                class="text-red-600 hover:underline"
+                                                                onclick="return confirm('آیا از حذف این پیش‌فاکتور مطمئن هستید؟')">
+                                                            حذف
+                                                        </button>
+                                                    @else
+                                                        <button type="button"
+                                                                onclick="showEditDeleteAlert('شما مجاز به حذف این پیش‌فاکتور نیستید.')"
+                                                                class="text-gray-500 cursor-not-allowed opacity-60">
+                                                            حذف
+                                                        </button>
+                                                    @endcan -->
+                                                </div>
+                                            </td>
+
                                     </tr>
                                 @endforeach
                             </tbody>
@@ -311,6 +322,10 @@
         </div>
     </div>
 
+    <form id="single-delete-form" method="POST" class="hidden">
+    @csrf
+    @method('DELETE')
+</form>
 
     
 <script>
@@ -551,5 +566,20 @@ document.addEventListener('DOMContentLoaded', function () {
     alert(msg);
   }
 </script>
+<script>
+function deleteSingleProforma(id) {
+  if (!confirm('آیا از حذف این پیش‌فاکتور مطمئن هستید؟')) return;
+
+  const form = document.getElementById('single-delete-form');
+
+  // URL روت با نام صحیح + توکن امن برای جایگزینی
+  form.action = "{{ route('sales.proformas.destroy', ['proforma' => '__ID__']) }}"
+                  .replace('__ID__', id);
+
+  form.submit();
+}
+</script>
+
+
 @endsection
 
