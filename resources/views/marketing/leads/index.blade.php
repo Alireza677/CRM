@@ -91,33 +91,32 @@
         <form method="POST" action="{{ route('marketing.leads.bulk-delete') }}" onsubmit="return confirm('آیا مطمئنید؟')">
             @csrf
 
-            <div class="flex justify-between items-center mb-4">
+            <div class="flex justify-start items-center mb-4">
                 <div></div>
                 <div class="flex gap-2">
+                    {{-- دکمه ایجاد سرنخ --}}
                     <a href="{{ route('marketing.leads.create') }}"
-                    class="group relative"
-                    title="ایجاد سرنخ جدید">ایجاد سرنخ
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-blue-600 hover:text-blue-800"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M12 4v16m8-8H4" />
-                        </svg>
-                        <span class="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
-                            ایجاد سرنخ
-                        </span>
+                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">
+                        <i class="fas fa-plus ml-2"></i>
+                        ایجاد سرنخ
                     </a>
-                      <button type="submit" title="حذف انتخاب‌شده‌ها" class="group relative">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="w-6 h-6 text-red-600 hover:text-red-800"
-                            fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5-4h4m-4 0a1 1 0 00-1 1v1h6V4a1 1 0 00-1-1m-4 0h4" />
-                        </svg>
-                        <span class="absolute bottom-full right-0 mb-1 hidden group-hover:block bg-gray-800 text-white text-xs rounded py-1 px-2">
+
+                    {{-- دکمه حذف انتخاب‌شده‌ها: فقط برای ادمین --}}
+                    @role('admin')
+                        <button type="submit"
+                                form="leads-bulk-form"
+                                id="bulk-delete-btn"
+                                class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
+                                disabled>
+                            <i class="fas fa-trash ml-2"></i>
                             حذف انتخاب‌شده‌ها
-                        </span>
-                    </button> 
+                            <span id="selected-count-badge"
+                                class="ml-2 hidden px-2 py-0.5 text-xs rounded-full bg-white/20">0</span>
+                        </button>
+                    @endrole
                 </div>
             </div>
+
 
             <!-- جدول -->
 <div class="overflow-x-auto">

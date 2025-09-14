@@ -35,27 +35,27 @@
                 <a href="{{ route('sales.proformas.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
                     <i class="fas fa-plus mr-2"></i> ایجاد پیش‌فاکتور
                 </a>
-
+                @role('admin')
                 {{-- دکمه رفتن به صفحه ایمپورت --}}
                 <a href="{{ route('sales.proformas.import.form') }}" class="inline-flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600">
                     <i class="fas fa-file-import mr-2"></i> ایمپورت پیش‌فاکتورها
                 </a>
 
-                @role('admin')
-    <button
-        id="bulk-delete-btn"
-        form="proformas-bulk-form"
-        type="submit"
-        class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
-        disabled
-    >
-        <i class="fas fa-trash mr-2"></i>
-        حذف گروهی
-        <span id="selected-count-badge" class="ml-2 hidden px-2 py-0.5 text-xs rounded-full bg-white/20">
-            0
-        </span>
-    </button>
-@endrole
+                
+                    <button
+                        id="bulk-delete-btn"
+                        form="proformas-bulk-form"
+                        type="submit"
+                        class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
+                        disabled
+                    >
+                        <i class="fas fa-trash mr-2"></i>
+                        حذف گروهی
+                        <span id="selected-count-badge" class="ml-2 hidden px-2 py-0.5 text-xs rounded-full bg-white/20">
+                            0
+                        </span>
+                    </button>
+                @endrole
 
 
                     
