@@ -73,7 +73,7 @@ class DocumentController extends Controller
         $path = $request->file('file')->store('documents', 'public');
 
         $data = [
-            'title'          => $request->string('title'),
+            'title' => $request->input('title'),
             'file_path'      => $path,
             'opportunity_id' => $request->integer('opportunity_id') ?: null,
         ];
@@ -101,7 +101,7 @@ class DocumentController extends Controller
      */
     public function view(Document $document)
     {
-        $this->authorizeDocument($document);
+        $this->authorizeViewDocument($document); 
 
         if (! $document->file_path || ! Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'فایل یافت نشد.');
@@ -118,8 +118,7 @@ class DocumentController extends Controller
      */
     public function download(Document $document)
     {
-        $this->authorizeDocument($document);
-
+        $this->authorizeViewDocument($document);
         if (! $document->file_path || ! Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'فایل یافت نشد.');
         }
@@ -134,7 +133,7 @@ class DocumentController extends Controller
      */
     public function edit(Document $document)
     {
-        $this->authorizeDocument($document);
+        $this->authorizeManageDocument($document); // ⬅ فقط مالک/ادمین
 
         $breadcrumb = [
             ['title' => 'داشبورد', 'url' => route('dashboard')],
@@ -142,7 +141,7 @@ class DocumentController extends Controller
             ['title' => 'ویرایش سند'],
         ];
 
-        $opportunities = \App\Models\Sales\Opportunity::select('id','title')->latest()->get();
+        $opportunities = Opportunity::select('id','title')->latest()->get();
 
         return view('sales.documents.edit', compact('document','breadcrumb','opportunities'));
     }
@@ -152,7 +151,7 @@ class DocumentController extends Controller
      */
     public function update(Request $request, Document $document)
     {
-        $this->authorizeDocument($document);
+        $this->authorizeManageDocument($document); // ⬅ فقط مالک/ادمین
 
         $request->validate([
             'title'           => ['required','string','max:255'],
@@ -185,7 +184,7 @@ class DocumentController extends Controller
      */
     public function destroy(Document $document)
     {
-        $this->authorizeDocument($document);
+        $this->authorizeManageDocument($document); // ⬅ فقط مالک/ادمین
 
         if ($document->file_path && Storage::disk('public')->exists($document->file_path)) {
             Storage::disk('public')->delete($document->file_path);
@@ -202,20 +201,31 @@ class DocumentController extends Controller
      * مجوز ساده: فقط لاگین بودن/درصورت نیاز مالکیت.
      * اگر خواستی شرط‌های بیشتر بگذاری اینجاست.
      */
-    private function authorizeDocument(Document $document): void
+    private function authorizeViewDocument(Document $document): void
     {
-        // نمونه‌ی ساده: اگر ستون user_id هست، فقط مالک یا ادمین ببیند.
-        if (Schema::hasColumn('documents', 'user_id') && $document->user_id) {
-            $user = auth()->user();
-            if (! $user) abort(403);
-
-            $isOwner = (int)$document->user_id === (int)$user->id;
-            $isAdmin = method_exists($user,'hasRole') ? $user->hasRole('admin') : $user->is_admin ?? false;
-
-            if (! $isOwner && ! $isAdmin) {
-                abort(403, 'شما امکان دسترسی ندارید.');
-            }
+        // فقط لاگین بودن کافی است؛ نیازی به مالکیت نیست
+        if (!auth()->check()) {
+            abort(403, 'برای مشاهده باید وارد شوید.');
         }
-        // در غیر این صورت، اجازه بده (فقط auth middleware کفایت می‌کند)
+    
+        // اگر بعداً خواستی حالت خصوصی داشته باشی:
+        // if (Schema::hasColumn('documents', 'is_private') && $document->is_private) {
+        //     $this->authorizeManageDocument($document); // فقط مالک/ادمین
+        // }
     }
+    private function authorizeManageDocument(Document $document): void
+    {
+        $user = auth()->user();
+        if (!$user) abort(403);
+
+        $isAdmin = method_exists($user,'hasRole') ? $user->hasRole('admin') : ($user->is_admin ?? false);
+        $isOwner = Schema::hasColumn('documents', 'user_id') && $document->user_id
+            ? ((int)$document->user_id === (int)$user->id)
+            : false;
+
+        if (!$isAdmin && !$isOwner) {
+            abort(403, 'شما امکان انجام این عملیات را ندارید.');
+        }
+    }
+
 }

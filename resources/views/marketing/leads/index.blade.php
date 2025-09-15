@@ -88,7 +88,7 @@
         </form>
 
         <!-- فرم حذف گروهی + جدول -->
-        <form method="POST" action="{{ route('marketing.leads.bulk-delete') }}" onsubmit="return confirm('آیا مطمئنید؟')">
+        <form id="leads-bulk-form" method="POST" action="{{ route('marketing.leads.bulk-delete') }}" onsubmit="return confirm('آیا مطمئنید؟')">
             @csrf
 
             <div class="flex justify-start items-center mb-4">
@@ -193,10 +193,39 @@
     </div>
 </div>
 
-<script>
-    document.getElementById('select-all').addEventListener('change', function () {
-        const checkboxes = document.querySelectorAll('.row-checkbox');
-        checkboxes.forEach(cb => cb.checked = this.checked);
-    });
+<<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const bulkBtn   = document.getElementById('bulk-delete-btn');
+    const countBadge= document.getElementById('selected-count-badge');
+    const selectAll = document.getElementById('select-all');
+    const rowBoxes  = () => Array.from(document.querySelectorAll('.row-checkbox'));
+
+    function refreshBulkState() {
+        const boxes = rowBoxes();
+        const count = boxes.filter(b => b.checked).length;
+
+        if (bulkBtn) bulkBtn.disabled = (count === 0);
+
+        if (countBadge) {
+            countBadge.textContent = count;
+            countBadge.classList.toggle('hidden', count === 0);
+        }
+    }
+
+    // انتخاب همه
+    if (selectAll) {
+        selectAll.addEventListener('change', function () {
+            rowBoxes().forEach(cb => cb.checked = this.checked);
+            refreshBulkState();
+        });
+    }
+
+    // هر ردیف
+    rowBoxes().forEach(cb => cb.addEventListener('change', refreshBulkState));
+
+    // بار اول
+    refreshBulkState();
+});
 </script>
+
 @endsection
