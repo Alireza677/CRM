@@ -235,10 +235,52 @@
 {{-- مودال انتخاب محصول --}}
 @include('sales.proformas.partials.product-modal')
 
-{{-- جمع کل --}}
-<div class="mt-6 text-lg font-semibold text-right">
-    جمع کل پیش‌فاکتور: <span id="invoice-total">۰</span> تومان
+<div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 bg-white p-6 rounded-xl shadow-md border border-gray-200">
+  <!-- نوع تخفیف -->
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">نوع تخفیف</label>
+    <select id="discountType" name="global_discount_type"
+      class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
+      <option value="">بدون تخفیف</option>
+      <option value="percentage">درصدی</option>
+      <option value="fixed">عدد ثابت</option>
+    </select>
+  </div>
+
+  <!-- مقدار تخفیف -->
+  <div id="discountValueWrapper">
+    <label class="block text-sm font-medium text-gray-700 mb-2">مقدار تخفیف</label>
+    <input type="number" name="global_discount_value" min="0" value="0"
+      class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
+  </div>
+
+  <!-- نوع مالیات -->
+  <div>
+    <label class="block text-sm font-medium text-gray-700 mb-2">نوع مالیات</label>
+    <select id="taxType" name="global_tax_type"
+      class="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
+      <option value="">بدون مالیات</option>
+      <option value="percentage">درصدی</option>
+      <option value="fixed">عدد ثابت</option>
+    </select>
+  </div>
+
+  <!-- مقدار مالیات -->
+  <div id="taxValueWrapper">
+    <label class="block text-sm font-medium text-gray-700 mb-2">مقدار مالیات</label>
+    <input type="number" name="global_tax_value" min="0" value="0"
+      class="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
+  </div>
 </div>
+
+
+<div class="mt-6 text-right space-y-1">
+  <div>جمع جزء آیتم‌ها: <span id="items-subtotal">۰</span></div>
+  <div>تخفیف سراسری: <span id="global-discount-amount">۰</span></div>
+  <div>مالیات سراسری: <span id="global-tax-amount">۰</span></div>
+  <div class="text-lg font-semibold">جمع کل پیش‌فاکتور: <span id="invoice-total">۰</span> ریال</div>
+</div>
+
 
 {{-- مودال تأیید ارسال برای تاییدیه --}}
 <div class="modal fade" id="automationConfirmModal" tabindex="-1" aria-labelledby="automationConfirmLabel" aria-hidden="true">
@@ -405,13 +447,24 @@
                     'name'           => optional($it->product)->name,
                     'unit'           => $it->unit,
                     'qty'            => $it->qty,
-                    'price'          => $it->price,
+                    'qty'            => (int) ($it->qty ?? 0),
+                    'price'          => (int) ($it->price ?? 0),
                     'tax_type'       => $it->tax_type,
-                    'tax_value'      => $it->tax_value,
+                    'tax_value'      => (int) ($it->tax_value ?? 0),
                     'discount_type'  => $it->discount_type,
-                    'discount_value' => $it->discount_value,
+                    'discount_value' => (int) ($it->discount_value ?? 0),
                 ])
             , JSON_UNESCAPED_UNICODE) !!};
+            (function () {
+              if (!Array.isArray(window.initialProducts)) return;
+              window.initialProducts = window.initialProducts.map(p => ({
+                ...p,
+                qty:            parseInt(p?.qty ?? 0) || 0,
+                price:          parseInt(p?.price ?? 0) || 0,
+                tax_value:      parseInt(p?.tax_value ?? 0) || 0,
+                discount_value: parseInt(p?.discount_value ?? 0) || 0,
+              }));
+            })();
         </script>
     @endpush
 @endif
@@ -635,7 +688,28 @@ document.addEventListener('DOMContentLoaded', function () {
       fillCities(stateEl.value, @json(old('city', $isEdit ? $proforma->city ?? '' : '')));
   })();
   </script>
- 
+ <script>
+  const discountType = document.getElementById('discountType');
+  const discountValueWrapper = document.getElementById('discountValueWrapper');
+  const taxType = document.getElementById('taxType');
+  const taxValueWrapper = document.getElementById('taxValueWrapper');
+
+  function toggleField(selectEl, wrapperEl) {
+    if (!selectEl.value) {
+      wrapperEl.style.display = 'none';
+    } else {
+      wrapperEl.style.display = '';
+    }
+  }
+
+  // بار اول صفحه لود میشه
+  toggleField(discountType, discountValueWrapper);
+  toggleField(taxType, taxValueWrapper);
+
+  // تغییر مقدار
+  discountType.addEventListener('change', () => toggleField(discountType, discountValueWrapper));
+  taxType.addEventListener('change', () => toggleField(taxType, taxValueWrapper));
+</script>
 
     {{-- اسکریپت محاسبات و مدیریت ردیف‌ها --}}
     @include('sales.proformas.partials.product-scripts')

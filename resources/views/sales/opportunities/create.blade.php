@@ -17,11 +17,17 @@
 
             @include('sales.opportunities._form')
 
-            <div class="mt-6">
+            <div class="mt-6 flex items-center space-x-4 space-x-reverse">
                 <button type="submit" class="bg-green-500 text-white px-6 py-2 rounded hover:bg-green-600">
                     ذخیره
                 </button>
+
+                <a href="{{ route('sales.opportunities.index') }}" 
+                class="bg-gray-300 text-gray-800 px-6 py-2 rounded hover:bg-gray-400">
+                    انصراف
+                </a>
             </div>
+
         </form>
     </div>
 </div>

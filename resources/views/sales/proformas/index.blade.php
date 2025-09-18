@@ -250,7 +250,7 @@
 
                                         <td class="px-6 py-4">{{ $proforma->organization_name ?? '-' }}</td>
                                         <td class="px-6 py-4">{{ $proforma->contact_name ?? '-' }}</td>
-                                        <td class="px-6 py-4">{{ number_format($proforma->total_amount) }} تومان</td>
+                                        <td class="px-6 py-4">{{ number_format($proforma->total_amount) }} ریال</td>
                                         <td class="px-6 py-4">
                                             {{ $proforma->proforma_date
                                                 ? \Morilog\Jalali\Jalalian::fromCarbon(

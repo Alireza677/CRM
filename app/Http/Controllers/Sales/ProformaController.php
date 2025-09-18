@@ -126,162 +126,259 @@ class ProformaController extends Controller
     
 
     public function store(Request $request)
-    {
-        \Log::info('Creating Proforma', [
-            'stage' => $request->proforma_stage,
-            'data' => $request->all()
-        ]);
-        
-        try {
-            $validated = $request->validate([
-                'subject' => 'required|string|max:255',
-                'proforma_date' => 'nullable|string',
-                'contact_name' => 'nullable|string|max:255',
-                'proforma_stage' => ['required', Rule::in(array_keys(config('proforma.stages')))],
-                'organization_name' => 'nullable|string|max:255',
-                'address_type' => 'required|in:invoice,product',
-                'customer_address' => 'nullable|string',
-                'city' => 'nullable|string|max:255',
-                'state' => 'nullable|string|max:255',
-                'assigned_to' => 'required|exists:users,id',
-                'opportunity_id' => 'nullable|exists:opportunities,id',
-                'products' => 'nullable|array',
-                'products.*.name' => 'nullable|string|max:255',
-                'products.*.quantity' => 'nullable|numeric|min:0.01',
-                'products.*.price' => 'nullable|numeric|min:0',
-                'products.*.unit' => 'nullable|string|max:50',
-                'products.*.discount_type' => 'nullable|in:percentage,fixed',
-                'products.*.discount_value' => 'nullable|numeric|min:0',
-                'products.*.tax_type' => 'nullable|in:percentage,fixed',
-                'products.*.tax_value' => 'nullable|numeric|min:0',
-            ]);
-            Log::debug('✅ Passed validation:', $validated);
+{
+    \Log::info('Creating Proforma (global discount/tax)', [
+        'stage' => $request->proforma_stage,
+        'data'  => $request->all(),
+    ]);
 
-            // تاریخ میلادی از تاریخ شمسی
-            $miladiDate = null;
-            if (!empty($validated['proforma_date'])) {
-                try {
-                    $jalaliDate = str_replace('-', '/', $validated['proforma_date']);
-                    if (preg_match('/^\d{4}\/\d{2}\/\d{2}$/', $jalaliDate)) {
-                        $miladiDate = Jalalian::fromFormat('Y/m/d', $jalaliDate)->toCarbon();
-                    }
-                } catch (\Exception $e) {
-                    Log::error('❌ Invalid Jalali Date:', ['exception' => $e->getMessage()]);
-                    return back()->withInput()->with('error', 'تاریخ وارد شده معتبر نیست.');
-                }
+    try {
+        // -------------------- 1) HARD PRE-CLEAN: اعداد فارسی/جداکننده‌ها قبل از validate --------------------
+        $in = $request->all();
+
+        $removeJunk = static function ($v) {
+            if ($v === null || $v === '') return $v;
+            $v = (string) $v;
+
+            // حذف فاصله‌های نامرئی/غیراستاندارد
+            $v = str_replace(
+                ["\u{200C}", "\u{200B}", "\u{00A0}", "\u{FEFF}", " "],
+                '',
+                $v
+            );
+
+            // تبدیل ارقام فارسی/عربی و جداکننده‌ها
+            $mapFrom = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩','٬','٫','،',','];
+            $mapTo   = ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9','','.','',''];
+            $v = str_replace($mapFrom, $mapTo, $v);
+
+            // نگه‌داشتن فقط عدد/نقطه/منفی
+            $v = preg_replace('/[^0-9.\-]/', '', $v) ?? '';
+
+            // اگر چند نقطه بود، به یک نقطه تقلیل یابد
+            if (substr_count($v, '.') > 1) {
+                $first = strpos($v, '.');
+                $v = substr($v, 0, $first + 1) . str_replace('.', '', substr($v, $first + 1));
             }
 
-            DB::beginTransaction();
+            return ($v === '' || $v === '-') ? null : $v;
+        };
 
-            $totalAmount = 0;
+        // فیلدهای عددی سراسری
+        foreach (['global_discount_value','global_tax_value','total_subtotal','total_discount','total_tax','total_amount'] as $f) {
+            if (array_key_exists($f, $in)) {
+                $in[$f] = $removeJunk($in[$f]);
+            }
+        }
 
-            $proforma = Proforma::create([
-                'subject' => $validated['subject'],
-                'proforma_date' => $miladiDate,
-                'contact_name' => $validated['contact_name'],
-                'proforma_stage' => $validated['proforma_stage'],
-                'organization_name' => $validated['organization_name'],
-                'address_type' => $validated['address_type'],
-                'customer_address' => $validated['customer_address'],
-                'city' => $validated['city'],
-                'state' => $validated['state'],
-                'assigned_to' => $validated['assigned_to'],
-                'opportunity_id' => $validated['opportunity_id'] ?? null,
-                'total_amount' => 0, // مقدار اولیه، بعداً آپدیت می‌کنیم
-            ]);
-            Log::info('📄 Proforma Created:', ['id' => $proforma->id]);
-            
-            $totalAmount = 0;
-
-            if (!empty($validated['products'])) {
-                foreach ($validated['products'] as $item) {
-                    $unitPrice  = (float) ($item['price'] ?? 0);
-                    $quantity   = (float) ($item['quantity'] ?? 0);
-                    $baseTotal  = $unitPrice * $quantity;
-
-                    // محاسبه تخفیف
-                    $discountType  = $item['discount_type'] ?? null;
-                    $discountValue = (float) ($item['discount_value'] ?? 0);
-                    $discountAmount = match ($discountType) {
-                        'percentage' => ($baseTotal * $discountValue) / 100,
-                        'fixed'      => $discountValue,
-                        default      => 0,
-                    };
-
-                    $afterDiscount = $baseTotal - $discountAmount;
-
-                    // محاسبه مالیات
-                    $taxType  = $item['tax_type'] ?? null;
-                    $taxValue = (float) ($item['tax_value'] ?? 0);
-                    $taxAmount = match ($taxType) {
-                        'percentage' => ($afterDiscount * $taxValue) / 100,
-                        'fixed'      => $taxValue,
-                        default      => 0,
-                    };
-
-                    $totalAfterTax = $afterDiscount + $taxAmount;
-
-                    // ذخیره آیتم پروفرما
-                    $proforma->items()->create([
-                        'name'            => $item['name'] ?? '',
-                        'quantity'        => $quantity,
-                        'unit_price'      => $unitPrice,
-                        'unit_of_use'     => $item['unit'] ?? '',
-                        'total_price'     => $baseTotal,
-                        'discount_type'   => $discountType,
-                        'discount_value'  => $discountValue,
-                        'discount_amount' => $discountAmount,
-                        'tax_type'        => $taxType,
-                        'tax_value'       => $taxValue,
-                        'tax_amount'      => $taxAmount,
-                        'total_after_tax' => $totalAfterTax,
-                    ]);
-
-                    $totalAmount += $totalAfterTax;
+        // فیلدهای عددی محصولات
+        if (!empty($in['products']) && is_array($in['products'])) {
+            $cleanProducts = [];
+            foreach ($in['products'] as $k => $p) {
+                $p = is_array($p) ? $p : (array) $p;
+                foreach (['price','quantity','discount_value','tax_value'] as $nf) {
+                    if (array_key_exists($nf, $p)) {
+                        $p[$nf] = $removeJunk($p[$nf]);
+                    }
                 }
+                $cleanProducts[$k] = $p;
+            }
+            $in['products'] = $cleanProducts;
+        }
 
-                // ذخیره جمع کل در خود پروفرما
-                $proforma->update([
-                    'total_amount' => $totalAmount
+        $request->replace($in);
+        // -------------------- END PRE-CLEAN --------------------
+
+        // -------------------- 2) VALIDATE --------------------
+        $validated = $request->validate([
+            'subject'           => 'required|string|max:255',
+            'proforma_date'     => 'nullable|string',
+            'contact_name'      => 'nullable|string|max:255',
+            'proforma_stage'    => ['required', Rule::in(array_keys(config('proforma.stages')))],
+            'organization_name' => 'nullable|string|max:255',
+            'address_type'      => 'required|in:invoice,product',
+            'customer_address'  => 'nullable|string',
+            'city'              => 'nullable|string|max:255',
+            'state'             => 'nullable|string|max:255',
+            'assigned_to'       => 'required|exists:users,id',
+            'opportunity_id'    => 'nullable|exists:opportunities,id',
+
+            // محصولات
+            'products'                 => 'nullable|array',
+            'products.*.name'          => 'nullable|string|max:255',
+            'products.*.quantity'      => 'nullable|numeric|min:0.01',
+            'products.*.price'         => 'nullable|numeric|min:0',
+            'products.*.unit'          => 'nullable|string|max:50',
+            // (چون قرار است تخفیف/مالیات سراسری باشد، فیلدهای سطری اجباری نیستند)
+            'products.*.discount_type' => 'nullable|in:percentage,fixed',
+            'products.*.discount_value'=> 'nullable|numeric|min:0',
+            'products.*.tax_type'      => 'nullable|in:percentage,fixed',
+            'products.*.tax_value'     => 'nullable|numeric|min:0',
+
+            // کنترل‌های سراسری (اختیاری)
+            'global_discount_type' => 'nullable|in:none,percentage,fixed',
+            'global_discount_value'=> 'nullable|numeric|min:0',
+            'global_tax_type'      => 'nullable|in:none,percentage,fixed',
+            'global_tax_value'     => 'nullable|numeric|min:0',
+        ]);
+        \Log::debug('✅ Passed validation (store)', $validated);
+
+        // -------------------- 3) تاریخ شمسی → میلادی --------------------
+        $miladiDate = null;
+        if (!empty($validated['proforma_date'])) {
+            try {
+                $jalaliDate = str_replace('-', '/', $validated['proforma_date']);
+                if (preg_match('/^\d{4}\/\d{2}\/\d{2}$/', $jalaliDate)) {
+                    $miladiDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $jalaliDate)->toCarbon();
+                }
+            } catch (\Exception $e) {
+                \Log::error('❌ Invalid Jalali Date', ['exception' => $e->getMessage()]);
+                return back()->withInput()->with('error', 'تاریخ وارد شده معتبر نیست.');
+            }
+        }
+
+        // -------------------- 4) DB & محاسبات --------------------
+        DB::beginTransaction();
+
+        $proforma = Proforma::create([
+            'subject'           => $validated['subject'],
+            'proforma_date'     => $miladiDate,
+            'contact_name'      => $validated['contact_name']      ?? null,
+            'proforma_stage'    => $validated['proforma_stage'],
+            'organization_name' => $validated['organization_name'] ?? null,
+            'address_type'      => $validated['address_type'],
+            'customer_address'  => $validated['customer_address']  ?? null,
+            'city'              => $validated['city']              ?? null,
+            'state'             => $validated['state']             ?? null,
+            'assigned_to'       => $validated['assigned_to'],
+            'opportunity_id'    => $validated['opportunity_id']    ?? null,
+            'total_amount'      => 0, // بعداً آپدیت می‌کنیم
+        ]);
+        \Log::info('📄 Proforma Created', ['id' => $proforma->id]);
+
+        // استراتژی: تخفیف/مالیات سراسری روی مجموع اقلام اعمال می‌شود
+        $subtotal = 0.0;
+
+        if (!empty($validated['products'])) {
+            foreach ($validated['products'] as $item) {
+                $unitPrice = (float) ($item['price']    ?? 0);
+                $quantity  = (float) ($item['quantity'] ?? 0);
+                $lineBase  = $unitPrice * $quantity;
+
+                // جمع پایه
+                $subtotal += $lineBase;
+
+                // ذخیره آیتم؛ تخفیف/مالیات سطری را صفر می‌گذاریم تا دوباره اعمال نشود
+                $proforma->items()->create([
+                    'name'            => $item['name'] ?? '',
+                    'quantity'        => $quantity,
+                    'unit_price'      => $unitPrice,
+                    'unit_of_use'     => $item['unit'] ?? '',
+                    'total_price'     => $lineBase,
+                    'discount_type'   => null,
+                    'discount_value'  => 0,
+                    'discount_amount' => 0,
+                    'tax_type'        => null,
+                    'tax_value'       => 0,
+                    'tax_amount'      => 0,
+                    'total_after_tax' => $lineBase, // فعلاً برابر با خط پایه
                 ]);
             }
+        }
 
-            
+        // تخفیف/مالیات سراسری
+        $gDiscType  = $validated['global_discount_type'] ?? 'none';
+        $gDiscVal   = (float) ($validated['global_discount_value'] ?? 0);
+        $gTaxType   = $validated['global_tax_type'] ?? 'none';
+        $gTaxVal    = (float) ($validated['global_tax_value'] ?? 0);
 
-            $proforma->update(['total_amount' => $totalAmount]);
-            Log::debug('🧮 Total Amount Saved:', ['total_amount' => $totalAmount]);
+        $globalDiscount = 0.0;
+        if ($gDiscType === 'percentage') {
+            $globalDiscount = ($subtotal * $gDiscVal) / 100;
+        } elseif ($gDiscType === 'fixed') {
+            $globalDiscount = $gDiscVal;
+        }
+        // جلوگیری از منفی شدن
+        $globalDiscount = min($globalDiscount, $subtotal);
+        $afterDiscount  = $subtotal - $globalDiscount;
 
-            $proforma->notifyIfAssigneeChanged(null);
+        $globalTax = 0.0;
+        if ($gTaxType === 'percentage') {
+            $globalTax = ($afterDiscount * $gTaxVal) / 100;
+        } elseif ($gTaxType === 'fixed') {
+            $globalTax = $gTaxVal;
+        }
+        $globalTax = max($globalTax, 0);
 
-            if ($proforma->proforma_stage === 'send_for_approval') {
-                $condition = AutomationCondition::where('model_type', 'Proforma')
-                    ->where('field', 'proforma_stage')
-                    ->where('operator', '=')
-                    ->where('value', 'send_for_approval')
-                    ->first();
+        $grandTotal = $afterDiscount + $globalTax;
 
-                if ($condition) {
-                    Log::info('🔔 Automation condition matched for send_for_approval');
-                    $sender = Auth::user();
-                    foreach ([$condition->approver1_id, $condition->approver2_id] as $approverId) {
-                        if ($approverId && ($user = User::find($approverId))) {
-                            $user->notify(new \App\Notifications\FormApprovalNotification($proforma, $sender));
-                        }
+       // تبدیل safe به عدد صحیح (ریال)
+        $toInt = fn($x) => (int) round((float) $x, 0);
+
+        // اگر enum دیتابیس 'none' نداره، none => null
+        $dbDiscType = ($gDiscType === 'none') ? null : $gDiscType;
+        $dbTaxType  = ($gTaxType  === 'none') ? null : $gTaxType;
+
+        $proforma->update([
+            'items_subtotal'        => $toInt($subtotal),
+
+            'global_discount_type'  => $dbDiscType,
+            'global_discount_value' => $toInt($gDiscVal),        // اگر درصد بود، همون عدد درصد ذخیره می‌شود
+            'global_discount_amount'=> $toInt($globalDiscount),  // مبلغ واقعی تخفیف اعمال‌شده
+
+            'global_tax_type'       => $dbTaxType,
+            'global_tax_value'      => $toInt($gTaxVal),         // اگر درصد بود، همون عدد درصد ذخیره می‌شود
+            'global_tax_amount'     => $toInt($globalTax),       // مبلغ واقعی مالیات اعمال‌شده
+
+            'total_amount'          => $toInt($grandTotal),
+        ]);
+
+        \Log::debug('🧮 Totals (global mode)', [
+            'subtotal'        => $subtotal,
+            'global_discount' => $globalDiscount,
+            'after_discount'  => $afterDiscount,
+            'global_tax'      => $globalTax,
+            'grand_total'     => $grandTotal,
+        ]);
+
+        // نوتیفیکیشن «ارجاع به»
+        $proforma->notifyIfAssigneeChanged(null);
+
+        // اتوماسیون "ارسال برای تاییدیه"
+        if ($proforma->proforma_stage === 'send_for_approval') {
+            $condition = AutomationCondition::where('model_type', 'Proforma')
+                ->where('field', 'proforma_stage')
+                ->where('operator', '=')
+                ->where('value', 'send_for_approval')
+                ->first();
+
+            if ($condition) {
+                \Log::info('🔔 Automation condition matched for send_for_approval');
+                $sender = \Auth::user();
+                foreach ([$condition->approver1_id, $condition->approver2_id] as $approverId) {
+                    if ($approverId && ($user = User::find($approverId))) {
+                        $user->notify(new \App\Notifications\FormApprovalNotification($proforma, $sender));
                     }
                 }
             }
-
-            DB::commit();
-            $proforma->refresh();
-            $this->runAutomationRulesIfNeeded($proforma);
-
-            return redirect()->route('sales.proformas.index')->with('success', 'پیش‌فاکتور با موفقیت ایجاد شد.');
-        } catch (\Exception $e) {
-            DB::rollBack();
-            Log::error('❌ Error Creating Proforma:', ['exception' => $e->getMessage()]);
-            return back()->withInput()->with('error', 'خطا در ایجاد پیش‌فاکتور. لطفا دوباره تلاش کنید.');
         }
+
+        DB::commit();
+
+        // اجرای هر Rule دیگری که به state پایدار نیاز دارد
+        $proforma->refresh();
+        $this->runAutomationRulesIfNeeded($proforma);
+
+        return redirect()->route('sales.proformas.index')->with('success', 'پیش‌فاکتور با موفقیت ایجاد شد.');
+    } catch (\Exception $e) {
+        DB::rollBack();
+        \Log::error('❌ Error Creating Proforma:', ['exception' => $e->getMessage()]);
+        return back()->withInput()->with('error', 'خطا در ایجاد پیش‌فاکتور. لطفا دوباره تلاش کنید.');
     }
+}
+
+
+
 
 
 

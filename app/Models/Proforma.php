@@ -20,9 +20,9 @@ class Proforma extends Model
         'proforma_date',
         'contact_name',
         'inventory_manager',
-        'proforma_stage',   // اگر از این فیلد برای وضعیت استفاده می‌کنی، بماند
-        'approval_stage',   // وضعیت تأیید: draft | sent_for_approval | approved | rejected
-        'approval_mode',    // standard | override
+        'proforma_stage',       // اگر از این فیلد برای وضعیت استفاده می‌کنی
+        'approval_stage',       // وضعیت تأیید: draft | sent_for_approval | approved | rejected
+        'approval_mode',        // standard | override
         'organization_name',
         'sales_opportunity',
         'assigned_to',
@@ -31,12 +31,19 @@ class Proforma extends Model
         'postal_code',
         'customer_address',
         'address_type',
-        'total_amount',
+        'items_subtotal',       // جمع جزء آیتم‌ها
+        'global_discount_type', // percentage | fixed
+        'global_discount_value',
+        'global_discount_amount',
+        'global_tax_type',      // percentage | fixed
+        'global_tax_value',
+        'global_tax_amount',
+        'total_amount',         // جمع کل نهایی
         'organization_id',
         'contact_id',
         'opportunity_id',
         'is_favorite',
-        'stage_id',         // اگر سیستم stage جداگانه داری
+        'stage_id',             // اگر سیستم stage جداگانه داری
         'automation_rule_id',
         'first_approved_by',
         'first_approved_at',
@@ -47,21 +54,25 @@ class Proforma extends Model
         'unit',
         'total',
     ];
-
+    
     protected $guarded = ['proforma_number'];
-
+    
     protected $casts = [
-        'proforma_date'      => 'datetime',
-        'first_approved_at'  => 'datetime',
-        'total_amount'       => 'decimal:2',
-        'is_favorite'        => 'boolean',
-        // اگر ستون approval_stage داری، این Cast کمک می‌کند
-        'approval_stage'     => 'string',
-        'approval_mode'      => 'string',
-        'proforma_stage'     => 'string',
-        'status'             => 'string',
-
+        'proforma_date'        => 'datetime',
+        'first_approved_at'    => 'datetime',
+        'total_amount'         => 'integer',
+        'items_subtotal'       => 'integer',
+        'global_discount_value'=> 'integer',
+        'global_discount_amount'=> 'integer',
+        'global_tax_value'     => 'integer',
+        'global_tax_amount'    => 'integer',
+        'is_favorite'          => 'boolean',
+        'approval_stage'       => 'string',
+        'approval_mode'        => 'string',
+        'proforma_stage'       => 'string',
+        'status'               => 'string',
     ];
+    
 
     /*
     |--------------------------------------------------------------------------

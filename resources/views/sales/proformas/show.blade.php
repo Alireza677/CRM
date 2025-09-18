@@ -1,12 +1,20 @@
 @extends('layouts.app')
 
 @section('content')
-
 @php
     $breadcrumb = [
-        ['title' => 'جزئیات پیش‌فاکتور']
+        [
+            'title' => 'پیش‌فاکتورها',
+            'url'   => route('sales.proformas.index')
+        ],
+        [
+            'title' => 'جزئیات پیش‌فاکتور ' . ($proforma->subject ?? '#'.$proforma->id)
+        ]
     ];
 @endphp
+
+
+
 
 @if(session('alert_error'))
     <script>
@@ -201,7 +209,10 @@
 
                 {{-- اطلاعات محصول --}}
                 <div class="space-y-4 md:col-span-2">
-                    <h3 class="text-lg font-semibold mb-4">اطلاعات محصول</h3>
+                <h3 class="text-lg font-semibold mb-4">
+                    اطلاعات محصول 
+                    <span style="font-size:14px">(قیمت‌ها به ریال می‌باشد)</span>
+                    </h3>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 text-center">
                             <thead class="bg-gray-50">
@@ -210,20 +221,18 @@
                                     <th>تعداد</th>
                                     <th>واحد</th>
                                     <th>قیمت واحد</th>
-                                    <th>تخفیف</th>
-                                    <th>مالیات</th>
-                                    <th>مجموع</th>
+                                    <th> جمع ردیف</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 @php
-                                    $total_discount = 0;
-                                    $total_tax = 0;
+                                    // جمع سطری‌ها فقط برای نمایش ردیف‌ها
+                                    $subtotal = 0;
                                 @endphp
+
                                 @foreach($proforma->items as $item)
                                     @php
-                                        $total_discount += ($item->discount_amount ?? 0);
-                                        $total_tax += ($item->tax_amount ?? 0);
+                                        $subtotal += (float)($item->total_price ?? 0);
                                     @endphp
                                     <tr>
                                         <td>{{ $item->name }}</td>
@@ -231,34 +240,69 @@
                                         <td>
                                             @switch($item->unit_of_use)
                                                 @case('device') دستگاه @break
-                                                @case('piece') عدد @break
-                                                @case('meter') متر @break
+                                                @case('piece')  عدد    @break
+                                                @case('meter')  متر    @break
                                                 @default {{ $item->unit_of_use }}
                                             @endswitch
                                         </td>
-                                        <td>{{ number_format($item->unit_price, 2) }}</td>
-                                        <td class="text-red-600">{{ number_format($item->discount_amount, 2) }}</td>
-                                        <td class="text-green-600">{{ number_format($item->tax_amount, 2) }}</td>
-                                        <td>{{ number_format($item->total_price, 2) }}</td>
+                                        <td>{{ number_format((float)$item->unit_price, 0) }}</td>
+                                        
+                                        <td>{{ number_format((float)$item->total_price, 0) }}</td>
                                     </tr>
                                 @endforeach
                             </tbody>
+
+                            @php
+                                // اگر در هدر ذخیره شده، همان را بخوان؛ در غیر این‌صورت محاسبه کن
+                                $discType = $proforma->global_discount_type ?? null;
+                                $discVal  = (float)($proforma->global_discount_value ?? 0);
+                                $taxType  = $proforma->global_tax_type ?? null;
+                                $taxVal   = (float)($proforma->global_tax_value ?? 0);
+
+                                // مقدار نهایی تخفیف
+                                if (isset($proforma->global_discount_amount)) {
+                                    $discount = (float)$proforma->global_discount_amount;
+                                } else {
+                                    $discount = $discType === 'percentage' ? ($subtotal * $discVal) / 100
+                                            : ($discType === 'fixed' ? $discVal : 0);
+                                }
+                                $discount = min($discount, $subtotal);
+                                $afterDiscount = $subtotal - $discount;
+
+                                // مقدار نهایی مالیات
+                                if (isset($proforma->global_tax_amount)) {
+                                    $tax = (float)$proforma->global_tax_amount;
+                                } else {
+                                    $tax = $taxType === 'percentage' ? ($afterDiscount * $taxVal) / 100
+                                        : ($taxType === 'fixed' ? $taxVal : 0);
+                                }
+                                $tax = max($tax, 0);
+
+                                // مجموع کل
+                                $grand = isset($proforma->total_amount)
+                                    ? (float)$proforma->total_amount
+                                    : ($afterDiscount + $tax);
+                            @endphp
+
                             <tfoot class="bg-gray-50">
                                 <tr>
-                                    <td colspan="4" class="font-bold text-right">جمع تخفیف:</td>
-                                    <td class="font-bold text-red-600">{{ number_format($total_discount, 2) }}</td>
-                                    <td colspan="2"></td>
+                                    <td colspan="6" class="font-bold text-right">جمع پایه (بدون تخفیف/مالیات):</td>
+                                    <td class="font-bold">{{ number_format($subtotal, 0) }}</td>
                                 </tr>
                                 <tr>
-                                    <td colspan="5" class="font-bold text-right">جمع مالیات:</td>
-                                    <td class="font-bold text-green-600">{{ number_format($total_tax, 2) }}</td>
-                                    <td></td>
+                                    <td colspan="6" class="font-bold text-right">جمع تخفیف (سراسری):</td>
+                                    <td class="font-bold text-red-600">{{ number_format($discount, 0) }}</td>
+                                </tr>
+                                <tr>
+                                    <td colspan="6" class="font-bold text-right">جمع مالیات (سراسری):</td>
+                                    <td class="font-bold text-green-600">{{ number_format($tax, 0) }}</td>
                                 </tr>
                                 <tr>
                                     <td colspan="6" class="font-bold text-right">مجموع کل:</td>
-                                    <td class="font-bold">{{ number_format($proforma->total_amount, 2) }}</td>
+                                    <td class="font-bold">{{ number_format($grand, 0) }}</td>
                                 </tr>
                             </tfoot>
+
                         </table>
                     </div>
                 </div>

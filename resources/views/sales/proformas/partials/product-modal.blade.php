@@ -24,7 +24,7 @@
                         <tr>
                             <th class="px-4 py-2">انتخاب</th>
                             <th class="px-4 py-2">نام محصول</th>
-                            <th class="px-4 py-2">قیمت (تومان)</th>
+                            <th class="px-4 py-2">قیمت (ریال)</th>
                         </tr>
                     </thead>
                     <tbody id="productTableBody">
