@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Proforma;
 use App\Models\Opportunity;
 use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 
@@ -27,8 +28,7 @@ class FormApprovalNotification extends Notification implements ShouldQueue
 
     public function via($notifiable): array
     {
-        // برای تست فقط دیتابیس؛ بعداً mail/broadcast را هم اضافه کن
-        return ['database'];
+        return ['database', 'mail']; // ← اضافه شد
     }
 
     public function toDatabase($notifiable): array
@@ -57,7 +57,16 @@ class FormApprovalNotification extends Notification implements ShouldQueue
             default       => 'فرم',
         };
     }
-
+    public function toMail($notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject('تایید پیش فاکتور')
+            ->greeting('سلام ' . ($notifiable->name ?? ''))
+            ->line("یک {$this->modelType} جدید برای شما ارسال شده:")
+            ->line("«{$this->title}»")
+            ->action('مشاهده در CRM', $this->url)
+            ->line('این ایمیل به صورت خودکار ارسال شده است.');
+    }
     /**
      * عنوان و لینک نمایش را بر اساس نوع فرم برمی‌گرداند.
      */

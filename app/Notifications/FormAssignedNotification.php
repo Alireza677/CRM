@@ -3,8 +3,9 @@
 namespace App\Notifications;
 
 use Illuminate\Bus\Queueable;
-use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
+use Illuminate\Notifications\Messages\MailMessage;
+use Illuminate\Notifications\Notification;
 
 class FormAssignedNotification extends Notification implements ShouldQueue
 {
@@ -33,7 +34,7 @@ class FormAssignedNotification extends Notification implements ShouldQueue
 
     public function via($notifiable)
     {
-        return ['database'];
+        return ['database', 'mail'];
     }
 
     public function toDatabase($notifiable)
@@ -60,6 +61,16 @@ class FormAssignedNotification extends Notification implements ShouldQueue
             'title' => $this->customTitle ?? null,
             'url' => $this->generateFormUrl($modelName, $this->form->id),
         ];
+    }
+    public function toMail($notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject('مورد جدید به شما ارجاع شد')
+            ->greeting('سلام ' . ($notifiable->name ?? ''))
+            ->line("یک {$this->modelType} جدید برای شما ارجاع شد:")
+            ->line("«{$this->title}»")
+            ->action('مشاهده در CRM', $this->url)
+            ->line('این ایمیل به صورت خودکار ارسال شده است.');
     }
 
     public function toArray($notifiable)

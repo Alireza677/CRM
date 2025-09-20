@@ -48,42 +48,55 @@ function handleProductSelection() {
     row.id = 'product-row-' + productId;
 
     row.innerHTML = `
-      <div class="space-y-3">
-        <div class="grid grid-cols-1 md:grid-cols-6 gap-4 items-end">
-          <input type="hidden" name="products[${productId}][id]" value="${productId}">
-          <div class="md:col-span-2">
-            <label class="form-label">نام محصول</label>
-            <input type="text" class="form-control" value="${name}" readonly>
-            <input type="hidden" name="products[${productId}][name]" value="${name}">
-          </div>
-          <div>
-            <label class="form-label">قیمت واحد</label>
-            <input type="text" name="products[${productId}][price]" value="${price}" class="form-control price-field" required>
-          </div>
-          <div>
-            <label class="form-label">تعداد</label>
-            <input type="number" name="products[${productId}][quantity]" class="form-control qty-field" value="${quantity}" min="0" step="1">
-          </div>
-          <div>
-            <label class="form-label">واحد</label>
-            <select name="products[${productId}][unit]" class="form-control">
-              <option value="device">دستگاه</option>
-              <option value="piece">عدد</option>
-              <option value="meter">متر</option>
-            </select>
-          </div>
-          <div class="flex items-end justify-between">
-            <div class="text-sm text-gray-600">
-              مبلغ ردیف:
-              <span class="line-total font-semibold" data-item-total="0">۰</span>
-            </div>
-            <button type="button" onclick="removeProductRow('${productId}')" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
-              حذف
-            </button>
-          </div>
-        </div>
+  <div class="space-y-3">
+    <!-- کنترل دقیق‌تر با 12 ستون -->
+    <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+      <input type="hidden" name="products[${productId}][id]" value="${productId}">
+      
+      <!-- نام محصول -->
+      <div class="md:col-span-4">
+        <label class="form-label">نام محصول</label>
+        <input type="text" class="form-control h-9" value="${name}" readonly>
+        <input type="hidden" name="products[${productId}][name]" value="${name}">
       </div>
-    `;
+      
+      <!-- قیمت واحد -->
+      <div class="md:col-span-2">
+        <label class="form-label">قیمت واحد</label>
+        <input type="text" name="products[${productId}][price]" value="${price}" class="form-control h-9 price-field" required>
+      </div>
+      
+      <!-- تعداد (کوچک‌تر) -->
+      <div class="md:col-span-1">
+        <label class="form-label">تعداد</label>
+        <input type="number" name="products[${productId}][quantity]" class="form-control h-9 qty-field w-20 text-center" value="${quantity}" min="0" step="1">
+      </div>
+      
+      <!-- واحد (کوچک‌تر) -->
+      <div class="md:col-span-2">
+        <label class="form-label">واحد</label>
+        <select name="products[${productId}][unit]" class="form-control h-9 w-28">
+          <option value="device">دستگاه</option>
+          <option value="piece">عدد</option>
+          <option value="meter">متر</option>
+        </select>
+      </div>
+      
+      <!-- مبلغ ردیف (بزرگ‌تر) + حذف -->
+      <div class="md:col-span-3 flex items-end justify-between">
+        <div class="text-sm md:text-base text-gray-700 leading-6">
+          مبلغ ردیف:
+          <span class="line-total font-semibold" data-item-total="0">۰</span>
+          <span>ریال</span>
+        </div>
+        <button type="button" onclick="removeProductRow('${productId}')" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
+          حذف
+        </button>
+      </div>
+    </div>
+  </div>
+`;
+
 
     container.appendChild(row);
 

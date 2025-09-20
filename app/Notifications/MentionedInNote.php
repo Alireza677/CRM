@@ -8,6 +8,7 @@ use App\Models\Note;
 use App\Models\SalesLead;
 use App\Models\SalesOpportunity;
 use Illuminate\Bus\Queueable;
+use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Str;
@@ -26,7 +27,7 @@ class MentionedInNote extends Notification implements ShouldQueue
 
     public function via($notifiable): array
     {
-        return ['database'];
+        return ['database', 'mail']; // ← اضافه شد
     }
 
     public function toDatabase($notifiable): array
@@ -84,6 +85,17 @@ class MentionedInNote extends Notification implements ShouldQueue
         ] + $extra);
     }
 
+    public function toMail($notifiable): MailMessage
+    {
+        return (new MailMessage)
+            ->subject('منشن جدید در پروژه ها')
+            ->greeting('سلام ' . ($notifiable->name ?? ''))
+            ->line("شما {$this->modelType} در پروژه منشن شدید:")
+            ->line("«{$this->title}»")
+            ->action('مشاهده در CRM', $this->url)
+            ->line('این ایمیل به صورت خودکار ارسال شده است.');
+    }
+    
     public function databaseType($notifiable): string
     {
         return 'mention';
