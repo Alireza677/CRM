@@ -18,7 +18,6 @@ use App\Http\Controllers\SupportController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\AdminController;
-use App\Http\Controllers\DocumentsController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\CustomizeController;
 use App\Http\Controllers\SalesLeadController;
@@ -163,7 +162,6 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/support', [SupportController::class, 'index'])->name('support');
     Route::get('/tools', [ToolsController::class, 'index'])->name('tools');
     Route::get('/admin', [AdminController::class, 'index'])->name('admin');
-    Route::get('/documents', [DocumentsController::class, 'index'])->name('documents');
     Route::get('/customize', [CustomizeController::class, 'index'])->name('customize');
 
     // approval
