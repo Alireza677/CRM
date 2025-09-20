@@ -70,7 +70,7 @@ class FormAssignedNotification extends Notification implements ShouldQueue
             ->greeting('سلام ' . ($notifiable->name ?? ''))
             ->line($intro)
             ->line("«{$formTitle}»")
-            ->action('مشاهده در CRM', $url)
+            ->action('مشاهده  ', $url)
             ->line('این ایمیل به صورت خودکار ارسال شده است.');
     }
 
@@ -88,14 +88,23 @@ class FormAssignedNotification extends Notification implements ShouldQueue
         if ($this->form instanceof \App\Models\Proforma) {
             return ['sales.proformas.show', 'پیش‌فاکتور', 'proforma'];
         }
+
         if ($this->form instanceof \App\Models\Opportunity) {
             return ['sales.opportunities.show', 'فرصت فروش', 'opportunity'];
         }
-        if ($this->form instanceof \App\Models\Lead) {
+
+        // پوشش هر دو کلاس ممکن برای سرنخ
+        if (
+            $this->form instanceof \App\Models\Lead ||
+            $this->form instanceof \App\Models\SalesLead
+        ) {
             return ['sales.leads.show', 'سرنخ', 'lead'];
         }
-        return [null, 'فرم', 'id'];
+
+        // پیش‌فرض: «مورد» (دیگه «فرم» نمایش داده نشه)
+        return [null, 'مورد', 'id'];
     }
+
 
     protected function formTitle(): string
     {
