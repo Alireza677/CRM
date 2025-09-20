@@ -41,17 +41,18 @@ class FormAssignedNotification extends Notification implements ShouldQueue
 
     public function toDatabase($notifiable): array
     {
-        [$routeName, $label] = $this->routeMeta();
-        $formTitle = $this->formTitle();
-        $url       = $routeName ? route($routeName, $this->form) : url('/');
 
+        [$routeName, $label, $param] = $this->routeMeta();
+        $formTitle = $this->formTitle();
+        
         return [
-            'message'     => $this->customMessage ?? "{$label} «{$formTitle}» به شما ارجاع داده شد.",
-            'form_id'     => (string) $this->form->getKey(),
-            'assigned_by' => $this->assignedBy ? $this->assignedBy->name : null,
-            'title'       => $this->customTitle ?? null,
-            'url'         => $url,
-            'model'       => class_basename($this->form),
+            'message'      => $this->customMessage ?? "{$label} «{$formTitle}» به شما ارجاع داده شد.",
+            'form_id'      => (string) $this->form->getKey(),
+            'form_type'    => get_class($this->form),
+            'assigned_by'  => $this->assignedBy ? $this->assignedBy->name : null,
+            'title'        => $this->customTitle ?? null,
+            'route_name'   => $routeName,
+            'url'          => $routeName ? route($routeName, [$param => $this->form->getRouteKey()]) : null,
         ];
     }
 
@@ -84,18 +85,16 @@ class FormAssignedNotification extends Notification implements ShouldQueue
      */
     protected function routeMeta(): array
     {
-        if ($this->form instanceof Proforma) {
-            return ['sales.proformas.show', 'پیش‌فاکتور'];
+        if ($this->form instanceof \App\Models\Proforma) {
+            return ['sales.proformas.show', 'پیش‌فاکتور', 'proforma'];
         }
-        if ($this->form instanceof Opportunity) {
-            return ['sales.opportunities.show', 'فرصت فروش'];
+        if ($this->form instanceof \App\Models\Opportunity) {
+            return ['sales.opportunities.show', 'فرصت فروش', 'opportunity'];
         }
-        if ($this->form instanceof Lead) {
-            return ['sales.leads.show', 'سرنخ'];
+        if ($this->form instanceof \App\Models\Lead) {
+            return ['sales.leads.show', 'سرنخ', 'lead'];
         }
-
-        // fallback
-        return [null, 'فرم'];
+        return [null, 'فرم', 'id'];
     }
 
     protected function formTitle(): string
