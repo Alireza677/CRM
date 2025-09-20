@@ -59,14 +59,22 @@ class FormApprovalNotification extends Notification implements ShouldQueue
     }
     public function toMail($notifiable): MailMessage
     {
+        $label = $this->labelFor($this->formType);              // پیش‌فاکتور | فرصت فروش | ...
+        [$title, $url] = $this->resolveTitleAndUrl($this->formType, $this->formId);
+
+        $sender = User::query()->find($this->sentById);
+        $senderName = $sender?->name ?? 'سیستم';
+
         return (new MailMessage)
-            ->subject('تایید پیش فاکتور')
+            ->subject("درخواست تأیید {$label}")
             ->greeting('سلام ' . ($notifiable->name ?? ''))
-            ->line("یک {$this->modelType} جدید برای شما ارسال شده:")
-            ->line("«{$this->title}»")
-            ->action('مشاهده در CRM', $this->url)
+            ->line("{$label} زیر برای تأیید شما ارسال شده است:")
+            ->line("«{$title}»")
+            ->line("ارسال‌کننده: {$senderName}")
+            ->action('مشاهده در CRM', $url ?: url('/'))
             ->line('این ایمیل به صورت خودکار ارسال شده است.');
     }
+
     /**
      * عنوان و لینک نمایش را بر اساس نوع فرم برمی‌گرداند.
      */

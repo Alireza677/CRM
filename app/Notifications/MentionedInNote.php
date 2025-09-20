@@ -87,15 +87,52 @@ class MentionedInNote extends Notification implements ShouldQueue
 
     public function toMail($notifiable): MailMessage
     {
+        // مطمئن شو رابطه‌ها لود هستند
+        $this->note->loadMissing(['noteable', 'author', 'user']);
+
+        $entity = $this->note->noteable;
+        [$modelType, $title] = $this->resolveMailMeta($entity);
+
+        $url = $this->buildEntityUrl($entity);
+        if ($url) {
+            // برای اسکرول دقیق روی نوت
+            $url .= '#note-' . $this->note->id;
+        }
+
         return (new MailMessage)
-            ->subject('منشن جدید در پروژه ها')
+            ->subject('منشن جدید در پروژه‌ها')
             ->greeting('سلام ' . ($notifiable->name ?? ''))
-            ->line("شما {$this->modelType} در پروژه منشن شدید:")
-            ->line("«{$this->title}»")
-            ->action('مشاهده در CRM', $this->url)
+            ->line("شما در {$modelType} منشن شدید:")
+            ->line("«{$title}»")
+            ->action('مشاهده در CRM', $url ?: url('/'))
             ->line('این ایمیل به صورت خودکار ارسال شده است.');
     }
-    
+    protected function resolveMailMeta($entity): array
+    {
+        $modelType = 'سیستم';
+        $title     = (string) \Illuminate\Support\Str::limit((string) $this->note->body, 70);
+
+        if ($entity instanceof \App\Models\Task) {
+            $modelType = 'تسک';
+            $title     = $entity->title ?? $title;
+        } elseif ($entity instanceof \App\Models\Project) {
+            $modelType = 'پروژه';
+            $title     = $entity->name ?? $title;
+        } elseif ($entity instanceof \App\Models\SalesLead) {
+            $modelType = 'سرنخ فروش';
+            $title     = $entity->name ?? $title;
+        } elseif ($entity instanceof \App\Models\SalesOpportunity) {
+            $modelType = 'فرصت فروش';
+            $title     = $entity->title ?? $title;
+        } else {
+            // اگر morph map یا کلاس دیگری بود
+            $base      = strtolower(class_basename($entity));
+            $modelType = $base ?: $modelType;
+            $title     = $entity->title ?? $entity->name ?? $title;
+        }
+
+        return [$modelType, (string) $title];
+    }
     public function databaseType($notifiable): string
     {
         return 'mention';
