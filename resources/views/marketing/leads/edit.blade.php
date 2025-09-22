@@ -28,40 +28,69 @@ $breadcrumb = [
 @endsection
 @push('scripts')
 <script>
-    $(function () {
-    $('.persian-datepicker').each(function () {
-        const shamsiInput = $(this);
-        const altId = shamsiInput.data('alt-field');
-        const gDateVal = $('#' + altId).val();
+$(function () {
+  function toEnDigits(s){
+    if (s == null) return s;
+    return String(s)
+      .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+      .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+  }
 
-        // اگر مقدار میلادی موجود بود، تبدیل کن به شمسی و مقدار input رو مقداردهی کن
-        if (gDateVal && altId && !shamsiInput.val()) {
-            try {
-                const jalali = new persianDate(new Date(gDateVal)).format('YYYY/MM/DD');
-                shamsiInput.val(jalali);
-            } catch (e) {
-                console.warn('خطا در تبدیل تاریخ میلادی به شمسی:', e);
-            }
-        }
+  $('.persian-datepicker').each(function () {
+    const $ui   = $(this);
+    const altId = $ui.data('alt-field');
+    const $alt  = altId ? $('#' + altId) : $();
 
-        // مقداردهی نهایی تقویم شمسی
-        shamsiInput.persianDatepicker({
-            format: 'YYYY/MM/DD',
-            initialValueType: 'persian',
-            initialValue: true,
-            autoClose: true,
-            observer: true,
-            altField: '#' + altId,
-            altFormat: 'YYYY-MM-DD',
-            onSelect: function (unix) {
-                if (altId) {
-                    const gDate = new persianDate(unix).toLocale('en').format('YYYY-MM-DD');
-                    $('#' + altId).val(gDate);
-                }
-            }
-        });
+    // اگر hidden میلادی داشت و UI خالی بود، UI را شمسی کن (با ورودی Gregorian صریح)
+    const gDateVal = altId ? toEnDigits($alt.val()) : '';
+    if (altId && gDateVal && !$ui.val()) {
+      try {
+        const [gy, gm, gd] = gDateVal.split('-').map(Number);
+        const j = new persianDate([gy, gm, gd])
+          .calendar('gregorian')
+          .toCalendar('persian');
+        $ui.val(j.format('YYYY/MM/DD'));
+      } catch (e) { console.warn('init sync error', e); }
+    }
+
+    // راه‌اندازی دیت‌پیکر با تقویم رسمی ایران
+    $ui.persianDatepicker({
+      format: 'YYYY/MM/DD',
+      initialValueType: 'persian',
+      initialValue: true,
+      autoClose: true,
+      observer: true,
+      calendar: {
+        persian:   { locale: 'fa', leapYearMode: 'astronomical' }, // مهم
+        gregorian: { locale: 'en' }
+      },
+      altField: altId ? '#' + altId : undefined, // برای اتصال خودکار
+      altFormat: 'YYYY-MM-DD',
+      onSelect: function (unix) {
+        // مقدار hidden را حتماً میلادیِ لاتین ذخیره کن
+        if (!altId) return;
+        const g = new persianDate(unix)
+          .toCalendar('gregorian')
+          .toLocale('en')
+          .format('YYYY-MM-DD');
+        $('#' + altId).val(g);
+      }
     });
-});
 
+    // اگر کاربر تایپ/پاک کرد، hidden را دوباره میلادی کن
+    $ui.on('input blur', function(){
+      if (!altId) return;
+      const raw = (toEnDigits($ui.val()||'')).trim();
+      const m = raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+      if (!m) return;
+      const g = new persianDate([+m[1], +m[2], +m[3]])
+        .calendar('persian')
+        .toCalendar('gregorian')
+        .toLocale('en')
+        .format('YYYY-MM-DD');
+      $('#' + altId).val(g);
+    });
+  });
+});
 </script>
 @endpush

@@ -69,36 +69,89 @@
 <!-- Bootstrap Bundle -->
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
 
-<!-- Datepicker Config -->
+<!-- Datepicker Config (fixed) -->
 <script>
-    $(function () {
-        // تاریخ پیگیری بعدی (مثلاً در فرم فرصت فروش)
-        if ($('#next_follow_up_shamsi').length) {
-            $('#next_follow_up_shamsi').persianDatepicker({
-                format: 'YYYY/MM/DD',
-                autoClose: true,
-                initialValue: false,
-                onSelect: function (unix) {
-                    const gDate = new persianDate(unix).toLocale('en').format('YYYY-MM-DD');
-                    $('#next_follow_up').val(gDate);
-                }
-            });
-        }
+  $(function () {
 
-        // تاریخ پیش‌فاکتور (در صفحه ایجاد پیش‌فاکتور)
-        if ($('#proforma_date_shamsi').length) {
-            $('#proforma_date_shamsi').persianDatepicker({
-                format: 'YYYY/MM/DD',
-                autoClose: true,
-                initialValue: false,
-                onSelect: function (unix) {
-                    const gDate = new persianDate(unix).toLocale('en').format('YYYY-MM-DD');
-                    $('#proforma_date').val(gDate);
-                }
-            });
+    function toEnDigits(s){
+      if (s == null) return s;
+      return String(s)
+        .replace(/[۰-۹]/g, d => '۰۱۲۳۴۵۶۷۸۹'.indexOf(d))
+        .replace(/[٠-٩]/g, d => '٠١٢٣٤٥٦٧٨٩'.indexOf(d));
+    }
+
+    function initPicker($input, altSel){
+      if (!$input.length) return;
+
+      // اگر قبلاً مقداردهی شده، نابودش کن تا با گزینه‌های جدید بسازیم
+      try { $input.persianDatepicker('destroy'); } catch(e){}
+
+      // اگر hidden میلادی از قبل مقدار داشت و UI خالی است، UI را شمسی کن
+      if (altSel) {
+        const gVal = toEnDigits($(altSel).val() || '');
+        if (gVal && !$input.val()) {
+          try {
+            const [gy, gm, gd] = gVal.split('-').map(Number);
+            const j = new persianDate([gy, gm, gd])
+              .calendar('gregorian')
+              .toCalendar('persian');
+            $input.val(j.format('YYYY/MM/DD'));
+          } catch(e){}
         }
+      }
+
+      // مقداردهی دیت‌پیکر با تقویم رسمی ایران
+      $input.persianDatepicker({
+        format: 'YYYY/MM/DD',
+        initialValueType: 'persian',
+        initialValue: !!$input.val(),
+        autoClose: true,
+        observer: true,
+        calendar: {
+          persian:   { locale: 'fa', leapYearMode: 'astronomical' },
+          gregorian: { locale: 'en' }
+        },
+        altField: altSel || undefined,
+        altFormat: 'YYYY-MM-DD',
+        onSelect(unix){
+          if (!altSel) return;
+          const g = new persianDate(unix)
+            .toCalendar('gregorian')
+            .toLocale('en')
+            .format('YYYY-MM-DD');
+          $(altSel).val(g);
+        }
+      });
+
+      // همگام‌سازی هنگام تایپ/پاک‌کردن دستی
+      if (altSel) {
+        $input.on('input blur', function(){
+          const raw = toEnDigits(($input.val()||'').trim());
+          const m = raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
+          if (!m) return;
+          const g = new persianDate([+m[1], +m[2], +m[3]])
+            .calendar('persian')
+            .toCalendar('gregorian')
+            .toLocale('en')
+            .format('YYYY-MM-DD');
+          $(altSel).val(g);
+        });
+      }
+    }
+
+    // فیلدهای مشخصی که در لایه مقداردهی می‌کردی:
+    initPicker($('#next_follow_up_shamsi'), '#next_follow_up');
+    initPicker($('#proforma_date_shamsi'), '#proforma_date');
+
+    // پشتیبانی عمومی برای هر input با کلاس persian-datepicker و data-alt-field / data-target
+    $('.persian-datepicker').each(function(){
+      const $i = $(this);
+      const altId = $i.data('alt-field') || $i.data('target');
+      if (altId) initPicker($i, '#' + altId); else initPicker($i, null);
     });
+  });
 </script>
+
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 

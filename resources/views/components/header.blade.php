@@ -55,9 +55,41 @@
                 <i class="fas fa-search"></i>
             </button>
         </form>
+        <!-- آیکن‌های میانبر: تقویم و وظیفه‌ها -->
+            <div class="hidden md:flex items-center gap-2">
+                <!-- تقویم -->
+                {{-- تقویم --}}
+            <a href="{{ route('calendar.index') }}"
+               class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
+               title="تقویم">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                    <line x1="16" y1="2" x2="16" y2="6"></line>
+                    <line x1="8" y1="2" x2="8" y2="6"></line>
+                    <line x1="3" y1="10" x2="21" y2="10"></line>
+                    <rect x="7" y="14" width="4" height="4" rx="1"></rect>
+                </svg>
+                <span class="text-[13px] leading-none text-gray-600 mt-0.5">تقویم</span>
+            </a>
+
+            {{-- وظیفه --}}
+            <a href="{{ route('activities.index') }}"
+               class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
+               title="وظیفه">
+                <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none"
+                     stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                    <path d="M9 11l3 3L22 4"></path>
+                    <path d="M21 10v10a2 2 0 0 1-2 2H7l-4-4V6a2 2 0 0 1 2-2h4"></path>
+                    <path d="M8 6h.01"></path>
+                </svg>
+                <span class="text-[13px] leading-none text-gray-600 mt-0.5">وظیفه</span>
+            </a>
+            </div>
 
         {{-- اعلان‌ها و منوی کاربر فقط برای کاربران لاگین --}}
             @auth
+            
                 <!-- اعلان‌ها -->
                 <div class="relative" x-data="{ showNotifications: false }">
 
@@ -80,6 +112,7 @@
                             </span>
                         @endif
                     </button>
+                       
 
                     <!-- لیست اعلان‌ها -->
                     <div x-show="showNotifications"

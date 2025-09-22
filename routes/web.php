@@ -47,6 +47,7 @@ use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskNoteController;
 use App\Http\Controllers\Inventory\ProductImportController;
+use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\CalendarController;
 
 
@@ -301,8 +302,17 @@ Route::middleware(['auth'])->group(function () {
     });
     });
     
-    Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
-
+    Route::middleware(['auth'])->group(function () {
+        Route::resource('activities', ActivityController::class);
+    
+        // دکمه تغییر وضعیت به تکمیل شده
+        Route::patch('activities/{activity}/complete', [\App\Http\Controllers\ActivityController::class, 'markComplete'])
+            ->name('activities.complete');
+    
+        Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+        Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events'); // فید ایونت‌ها
+    });
+    
 
     
 

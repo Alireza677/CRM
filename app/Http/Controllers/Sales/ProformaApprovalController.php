@@ -78,19 +78,7 @@ class ProformaApprovalController extends Controller
                 $proforma->save();
             }
 
-            // (اختیاری) ثبت رکورد در جدول approvals (اگر داری)
-            // اگر جدول/مدل Approval داری، اینجا create/update کن
-            // Example (pseudo):
-            // Approval::updateOrCreate([
-            //     'approvable_type' => Proforma::class,
-            //     'approvable_id'   => $proforma->id,
-            //     'step'            => $step,
-            // ], [
-            //     'decision'        => $decision,
-            //     'decided_by'      => auth()->id(),
-            //     'decided_at'      => now(),
-            //     'reason'          => $reason,
-            // ]);
+           
         });
 
         // برگشت به صفحه قبل با پیام موفقیت
