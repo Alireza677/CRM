@@ -113,15 +113,17 @@
                                 class="ml-2 hidden px-2 py-0.5 text-xs rounded-full bg-white/20">0</span>
                         </button>
                     @endrole
-                    <a href="{{ route('sales.leads.export.format', ['format' => 'csv']) }}"
-                    class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
-                    اکسپورت (CSV)
-                    </a>
+                    @role('admin')
+                        <a href="{{ route('sales.contacts.export.format', ['format' => 'csv']) }}"
+                            class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
+                            <i class="fas fa-file-csv ml-1"></i> اکسپورت (CSV)
+                        </a>
 
-                    <a href="{{ route('sales.leads.export.format', ['format' => 'xlsx']) }}"
-                    class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold">
-                    اکسپورت (XLSX)
-                    </a>
+                        <a href="{{ route('sales.contacts.export.format', ['format' => 'xlsx']) }}"
+                            class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold">
+                            <i class="fas fa-file-excel ml-1"></i> اکسپورت (XLSX)
+                        </a>
+                    @endrole
 
                 </div>
             </div>
