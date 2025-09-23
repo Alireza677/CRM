@@ -45,29 +45,29 @@ class ActivityController extends Controller
     }
 
     public function create()
-{
-    $contacts = \DB::table('contacts')
-        ->selectRaw("
-            id, mobile,
-            CASE
-              WHEN TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,''))) <> ''
-                THEN TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,'')))
-              WHEN COALESCE(company,'') <> '' THEN company
-              ELSE 'بدون نام'
-            END AS full_name
-        ")
-        ->orderBy('full_name')
-        ->get();
+    {
+        $contacts = \DB::table('contacts')
+            ->selectRaw("
+                id, mobile,
+                CASE
+                WHEN TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,''))) <> ''
+                    THEN TRIM(CONCAT(COALESCE(first_name,''),' ',COALESCE(last_name,'')))
+                WHEN COALESCE(company,'') <> '' THEN company
+                ELSE 'بدون نام'
+                END AS full_name
+            ")
+            ->orderBy('full_name')
+            ->get();
 
-    $organizations = \DB::table('organizations')
-        ->select('id','name','phone')
-        ->orderBy('name')
-        ->get();
+        $organizations = \DB::table('organizations')
+            ->select('id','name','phone')
+            ->orderBy('name')
+            ->get();
 
-    $users = \App\Models\User::select('id','name')->orderBy('name')->get();
+        $users = \App\Models\User::select('id','name')->orderBy('name')->get();
 
-    return view('activities.create', compact('contacts','organizations','users'));
-}
+        return view('activities.create', compact('contacts','organizations','users'));
+    }
 
     public function store(Request $request)
     {

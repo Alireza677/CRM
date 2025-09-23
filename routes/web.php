@@ -49,6 +49,8 @@ use App\Http\Controllers\TaskNoteController;
 use App\Http\Controllers\Inventory\ProductImportController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\CalendarController;
+use App\Http\Controllers\Marketing\LeadExportController;
+
 
 
 
@@ -97,18 +99,36 @@ Route::middleware(['auth'])->group(function () {
         Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])->name('opportunities.notes.store');
 
         // سرنخ‌ها
+        Route::get('leads/export', [LeadExportController::class, 'export'])
+        ->name('leads.export');
+        // اکسپورت با فرمت در مسیر: /sales/leads/export/xlsx
+        Route::get('leads/export/{format}', [LeadExportController::class, 'export'])
+            ->whereIn('format', ['csv', 'xlsx'])
+            ->name('leads.export.format');
+        // سرنخ‌ها (موجود)
         Route::resource('leads', SalesLeadController::class)->names('leads');
+
 
         // اسناد
         Route::resource('documents', DocumentController::class);
         Route::get('documents/{document}/view', [DocumentController::class, 'view'])->name('documents.view');
         Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 
+
         // مخاطبین
-        Route::get('contacts/import', [ContactImportController::class, 'showForm'])->name('contacts.import.form');
-        Route::post('contacts/import', [ContactImportController::class, 'import'])->name('contacts.import');
-        Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])->name('contacts.bulk_delete');
+        Route::get('contacts/import', [ContactImportController::class, 'showForm'])
+        ->name('contacts.import.form');
+        Route::post('contacts/import', [ContactImportController::class, 'import'])
+            ->name('contacts.import');
+        Route::get('contacts/export', [ContactImportController::class, 'export'])
+            ->name('contacts.export');
+        Route::get('contacts/export/{format}', [ContactImportController::class, 'export'])
+            ->whereIn('format', ['csv', 'xlsx'])
+            ->name('contacts.export.format');
+        Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])
+            ->name('contacts.bulk_delete');
         Route::resource('contacts', ContactController::class);
+
 
         // سازمان‌ها
         Route::get('organizations/import', [OrganizationImportController::class, 'importForm'])->name('organizations.import.form');

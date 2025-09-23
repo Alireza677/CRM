@@ -8,16 +8,32 @@
 <div class="py-6">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
         <h2 class="text-2xl font-semibold text-gray-800 mb-6">مخاطبین</h2>
+                <!-- Create, Import & Export Buttons -->
+                <div class="mb-4 flex items-center gap-2">
+                    <a href="{{ route('sales.contacts.create') }}"
+                    class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
+                        <i class="fas fa-plus ml-1"></i> ایجاد مخاطب جدید
+                    </a>
 
-        <!-- Create & Import Buttons -->
-        <div class="mb-4 flex items-center gap-2">
-            <a href="{{ route('sales.contacts.create') }}" class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
-                <i class="fas fa-plus ml-1"></i> ایجاد مخاطب جدید
-            </a>
-            <a href="{{ url('/sales/contacts/import') }}" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-semibold">
-                <i class="fas fa-arrow-down ml-1"></i> ایمپورت مخاطبین
-            </a>
-        </div>
+                    <a href="{{ route('sales.contacts.import.form') }}"
+                    class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-semibold">
+                        <i class="fas fa-arrow-down ml-1"></i> ایمپورت مخاطبین
+                    </a>
+
+                   
+                        <a href="{{ route('sales.contacts.export.format', ['format' => 'csv']) }}"
+                        class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
+                            <i class="fas fa-file-csv ml-1"></i> اکسپورت (CSV)
+                        </a>
+
+                        {{-- XLSX --}}
+                        <a href="{{ route('sales.contacts.export.format', ['format' => 'xlsx']) }}"
+                        class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold">
+                            <i class="fas fa-file-excel ml-1"></i> اکسپورت (XLSX)
+                        </a>
+
+                </div>
+
 
         <!-- Search / Filter Form -->
         <form method="GET" action="{{ route('sales.contacts.index') }}" class="bg-white shadow-sm rounded p-4 mb-4 flex flex-wrap gap-4 items-end">

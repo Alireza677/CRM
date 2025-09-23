@@ -29,7 +29,7 @@ class Lead extends Model
         'next_follow_up_date',
         'assigned_to',
     ];
-
+    protected $table = 'sales_leads';
     public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assigned_to');

@@ -100,7 +100,6 @@
                         <i class="fas fa-plus ml-2"></i>
                         ایجاد سرنخ
                     </a>
-
                     {{-- دکمه حذف انتخاب‌شده‌ها: فقط برای ادمین --}}
                     @role('admin')
                         <button type="submit"
@@ -114,6 +113,16 @@
                                 class="ml-2 hidden px-2 py-0.5 text-xs rounded-full bg-white/20">0</span>
                         </button>
                     @endrole
+                    <a href="{{ route('sales.leads.export.format', ['format' => 'csv']) }}"
+                    class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
+                    اکسپورت (CSV)
+                    </a>
+
+                    <a href="{{ route('sales.leads.export.format', ['format' => 'xlsx']) }}"
+                    class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold">
+                    اکسپورت (XLSX)
+                    </a>
+
                 </div>
             </div>
 
@@ -193,7 +202,7 @@
     </div>
 </div>
 
-<<script>
+<script>
 document.addEventListener('DOMContentLoaded', function () {
     const bulkBtn   = document.getElementById('bulk-delete-btn');
     const countBadge= document.getElementById('selected-count-badge');

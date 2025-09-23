@@ -84,7 +84,7 @@ public function store(Request $request)
         'organization_id' => 'nullable|exists:organizations,id',
         'contact_id' => 'nullable|exists:contacts,id',
         'type' => 'required|string|in:کسب و کار موجود,کسب و کار جدید',
-        'source' => 'required|string|in:وب سایت,مشتریان قدیمی,نمایشگاه,بازاریابی حضوری',
+        'source' => 'required|string|in:وب سایت,مشتریان قدیمی,نمایشگاه,بازاریابی حضوری,مناقصه',
         'building_usage' => 'required|string|in:کارگاه و یا کارخانه,فضای باز و رستوران,تعمیرگاه و سالن صنعتی,گلخانه و پرورش گیاه,مرغداری و پرورش دام و طیور,فروشگاه و مراکز خرید,سالن و باشگاه های ورزشی,سالن های نمایش,مدارس و محیط های آموزشی,سایر',
         'assigned_to' => 'nullable|exists:users,id',
         'success_rate' => 'required|numeric|min:0|max:100',
@@ -92,6 +92,7 @@ public function store(Request $request)
         'description' => 'nullable|string',
         'stage' => 'nullable|string|max:255',
     ]);
+    
 
     $opportunity = Opportunity::create($validated);
     $opportunity->notifyIfAssigneeChanged(null);

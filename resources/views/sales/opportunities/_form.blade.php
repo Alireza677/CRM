@@ -104,17 +104,19 @@
     </div>
 
     {{-- منبع سرنخ --}}
-    <div>
-        <label for="source" class="block font-medium text-sm text-gray-700 required">منبع سرنخ</label>
-        @php $source = old('source', $opportunity->source ?? ''); @endphp
-        <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-            <option value="">انتخاب کنید</option>
-            @foreach(['وب سایت','مشتریان قدیمی','نمایشگاه','بازاریابی حضوری'] as $opt)
-                <option value="{{ $opt }}" {{ $source === $opt ? 'selected' : '' }}>{{ $opt }}</option>
-            @endforeach
-        </select>
-        @error('source') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-    </div>
+        <div>
+            <label for="source" class="block font-medium text-sm text-gray-700 required">منبع سرنخ</label>
+            @php $source = old('source', $opportunity->source ?? ''); @endphp
+            <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                <option value="">انتخاب کنید</option>
+                @foreach(['وب سایت','مشتریان قدیمی','نمایشگاه','بازاریابی حضوری','مناقصه'] as $opt)
+                    <option value="{{ $opt }}" {{ $source === $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                @endforeach
+            </select>
+            @error('source') 
+                <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+            @enderror
+        </div>
 
     {{-- ارجاع به --}}
     <div>

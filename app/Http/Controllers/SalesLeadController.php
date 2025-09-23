@@ -188,70 +188,70 @@ class SalesLeadController extends Controller
 
     
     public function update(Request $request, SalesLead $lead)
-{
-    \Log::info('🔵 update() reached');
-    \Log::info('🔵 Request all:', $request->all());
+    {
+        \Log::info('🔵 update() reached');
+        \Log::info('🔵 Request all:', $request->all());
 
-    // 🟢 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
-    $request->merge([
-        'lead_date' => DateHelper::toGregorian($request->lead_date),
-        'next_follow_up_date' => DateHelper::toGregorian($request->next_follow_up_date),
-    ]);
-    \Log::info('🔁 Converted dates:', [
-        'lead_date' => $request->lead_date,
-        'next_follow_up_date' => $request->next_follow_up_date,
-    ]);
+        // 🟢 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
+        $request->merge([
+            'lead_date' => DateHelper::toGregorian($request->lead_date),
+            'next_follow_up_date' => DateHelper::toGregorian($request->next_follow_up_date),
+        ]);
+        \Log::info('🔁 Converted dates:', [
+            'lead_date' => $request->lead_date,
+            'next_follow_up_date' => $request->next_follow_up_date,
+        ]);
 
-    $validator = Validator::make($request->all(), [
-        'prefix' => 'nullable|string|max:10',
-        'full_name' => 'required|string|max:255',
-        'company' => 'nullable|string|max:255',
-        'email' => 'nullable|email|max:255',
-        'mobile' => 'nullable|string|max:20',
-        'phone' => 'nullable|string|max:20',
-        'website' => 'nullable|url|max:255',
-        'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
-        'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
-        'assigned_to' => 'required|exists:users,id',
-        'referred_to' => 'nullable|exists:users,id',
-        'lead_date' => 'required|date',
-        'next_follow_up_date' => 'required|date|after_or_equal:today',
-        'do_not_email' => 'boolean',
-        'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
-        'industry' => 'nullable|string|max:255',
-        'nationality' => 'nullable|string|max:255',
-        'main_test_field' => 'nullable|string|max:255',
-        'dependent_test_field' => 'nullable|string|max:255',
-        'address' => 'nullable|string|max:1000',
-        'state' => 'nullable|string|max:255',
-        'city' => 'nullable|string|max:255',
+        $validator = Validator::make($request->all(), [
+            'prefix' => 'nullable|string|max:10',
+            'full_name' => 'required|string|max:255',
+            'company' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'mobile' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20',
+            'website' => 'nullable|url|max:255',
+            'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
+            'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
+            'assigned_to' => 'required|exists:users,id',
+            'referred_to' => 'nullable|exists:users,id',
+            'lead_date' => 'required|date',
+            'next_follow_up_date' => 'required|date|after_or_equal:today',
+            'do_not_email' => 'boolean',
+            'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
+            'industry' => 'nullable|string|max:255',
+            'nationality' => 'nullable|string|max:255',
+            'main_test_field' => 'nullable|string|max:255',
+            'dependent_test_field' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:1000',
+            'state' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
 
-        // 👇 در آپدیت می‌خوایم اصلاً نادیده بگیریمش؛
-        // پس توی ولیدیشن هم آزاد می‌ذاریم که خطا نده،
-        // ولی بعداً حذفش می‌کنیم.
-        'notes' => 'nullable|string',
-    ]);
+            // 👇 در آپدیت می‌خوایم اصلاً نادیده بگیریمش؛
+            // پس توی ولیدیشن هم آزاد می‌ذاریم که خطا نده،
+            // ولی بعداً حذفش می‌کنیم.
+            'notes' => 'nullable|string',
+        ]);
 
-    if ($validator->fails()) {
-        return redirect()->back()->withErrors($validator)->withInput();
+        if ($validator->fails()) {
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
+
+        // ✅ یادداشت اولیه در آپدیت نباید تغییر کند
+        if (array_key_exists('notes', $validated)) {
+            \Log::info('🧯 Removing notes from update payload to keep initial note immutable.');
+            unset($validated['notes']);
+        }
+
+        // چک‌باکس
+        $validated['do_not_email'] = $request->has('do_not_email');
+
+        $lead->update($validated);
+
+        return redirect()->route('marketing.leads.index')
+            ->with('success', 'سرنخ فروش با موفقیت بروزرسانی شد.');
     }
-
-    $validated = $validator->validated();
-
-    // ✅ یادداشت اولیه در آپدیت نباید تغییر کند
-    if (array_key_exists('notes', $validated)) {
-        \Log::info('🧯 Removing notes from update payload to keep initial note immutable.');
-        unset($validated['notes']);
-    }
-
-    // چک‌باکس
-    $validated['do_not_email'] = $request->has('do_not_email');
-
-    $lead->update($validated);
-
-    return redirect()->route('marketing.leads.index')
-        ->with('success', 'سرنخ فروش با موفقیت بروزرسانی شد.');
-}
 
 
 
