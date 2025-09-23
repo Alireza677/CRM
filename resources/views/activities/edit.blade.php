@@ -146,4 +146,4 @@
 @include('activities.modals') 
 @endsection
 
-@vite(['resources/js/activities/create.js'])
+@vite(['resources/js/create.js'])
