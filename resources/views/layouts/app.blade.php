@@ -55,7 +55,10 @@
     <x-sidebar />
 
     <x-breadcrumb :items="$breadcrumb ?? []" />
-
+    <div class="mx-[40px] mt-4">
+        @yield('header')
+    </div>
+    
     <main class="mx-[40px] transition-all duration-300">
     @yield('content')
     </main>

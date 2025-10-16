@@ -1,0 +1,9 @@
+public function store(Request $request)
+{
+    if ($request->filled('source')) {
+        $request->merge([
+            'source' => \App\Helpers\FormOptionsHelper::getLeadSourceLabel($request->input('source')),
+        ]);
+    }
+    $validated = $request->validate([
+        'name' => 'required|string|

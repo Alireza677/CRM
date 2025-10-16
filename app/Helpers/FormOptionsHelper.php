@@ -4,18 +4,19 @@ namespace App\Helpers;
 
 class FormOptionsHelper
 {
+    // ---------------- Lead: Status & Source ----------------
     public static function getLeadStatusLabel($status): string
     {
         $statuses = self::leadStatuses();
-        $status = strtolower(trim($status));
-        return $statuses[$status] ?? $status;
+        $status = strtolower(trim((string)$status));
+        return $statuses[$status] ?? (string)$status;
     }
 
     public static function getLeadSourceLabel($source): string
     {
         $sources = self::leadSources();
-        $source = strtolower(trim($source));
-        return $sources[$source] ?? $source;
+        $source = strtolower(trim((string)$source));
+        return $sources[$source] ?? (string)$source;
     }
 
     public static function leadStatuses(): array
@@ -24,22 +25,25 @@ class FormOptionsHelper
             'new' => 'جدید',
             'contacted' => 'تماس گرفته شده',
             'qualified' => 'واجد شرایط',
-            'lost' => 'از دست رفته',
+            'lost' => 'سرکاری',
         ];
     }
 
     public static function leadSources(): array
     {
-        return [
+        $src = [
             'website' => 'وب‌سایت',
             'phone' => 'تماس تلفنی',
             'referral' => 'معرفی',
             'event' => 'نمایشگاه / رویداد',
             'representative' => 'نماینده',
-            'old_customer' => 'مشتری قدیمی', // برای پشتیبانی از منابع قدیمی‌تر
+            'old_customer' => 'مشتری قدیمی',
         ];
+        $src['tender'] = 'مناقصه';
+        return $src;
     }
 
+    // ---------------- Proforma: Stages ----------------
     public static function proformaStages(): array
     {
         return [
@@ -55,12 +59,48 @@ class FormOptionsHelper
     public static function getProformaStageLabel($stage): string
     {
         $stages = self::proformaStages();
-        $stage = strtolower(trim($stage));
-        return $stages[$stage] ?? $stage;
+        $stage = strtolower(trim((string)$stage));
+        return $stages[$stage] ?? (string)$stage;
     }
+
+    // ---------------- Opportunity: Sources & Stages ----------------
+    public static function opportunitySources(): array
+    {
+        // Same choices as lead sources
+        return self::leadSources();
+    }
+
+    public static function getOpportunitySourceLabel($source): string
+    {
+        $sources = self::opportunitySources();
+        $key = strtolower(trim((string)$source));
+        return $sources[$key] ?? (string)$source;
+    }
+
+    public static function opportunityStages(): array
+    {
+        return [
+            'new'           => 'جدید',
+            'qualification' => 'ارزیابی صلاحیت',
+            'qualified'     => 'واجد شرایط',
+            'proposal'      => 'پیشنهاد/پیش‌فاکتور',
+            'negotiation'   => 'مذاکره',
+            'won'           => 'برنده',
+            'lost'          => 'از دست رفته',
+        ];
+    }
+
+    public static function getOpportunityStageLabel($stage): string
+    {
+        $stages = self::opportunityStages();
+        $key = strtolower(trim((string)$stage));
+        return $stages[$key] ?? (string)$stage;
+    }
+
+    // ---------------- Iran locations (subset) ----------------
     public static function iranLocations(): array
     {
-        // برای اختصار چند شهر گذاشتم؛ هر زمان خواستی می‌تونی کاملش کنی.
+        // برای اختصار چند شهر گذاشته شده؛ در صورت نیاز کامل‌تر کن.
         return [
             'تهران' => ['تهران','ری','اسلامشهر','قدس','ملارد','پردیس','بهارستان','پاکدشت','ورامین'],
             'البرز' => ['کرج','فردیس','نظرآباد','اشتهارد','ماهدشت'],
@@ -94,14 +134,10 @@ class FormOptionsHelper
             'کردستان' => ['سنندج','سقز','بانه','مریوان','قروه','بیجار','کامیاران'],
             'مرکزی' => ['اراک','ساوه','خمین','محلات','شازند','دلیجان'],
         ];
-        
     }
-    
+
     public static function iranStates(): array
     {
         return array_keys(self::iranLocations());
     }
-    
 }
-
-

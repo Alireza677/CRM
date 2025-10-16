@@ -3,6 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\SalesLead;
+use App\Models\Opportunity;
+use App\Models\Organization;
+use App\Models\Contact;
+use Illuminate\Support\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -129,8 +133,12 @@ class SalesLeadController extends Controller
 
             $validated['created_by'] = Auth::id();
             $validated['do_not_email'] = $request->has('do_not_email');
-            $validated['lead_date'] = DateHelper::toGregorian($validated['lead_date']);
-            $validated['next_follow_up_date'] = DateHelper::toGregorian($validated['next_follow_up_date']);
+            $validated['lead_date'] = DateHelper::toGregorian((string)($validated['lead_date'] ?? ''));
+            if (strtolower((string)($validated['lead_status'] ?? '')) === 'lost') {
+                $validated['next_follow_up_date'] = null; // سرکاری → تاریخ پیگیری بعدی لازم نیست
+            } else {
+                $validated['next_follow_up_date'] = DateHelper::toGregorian((string)($validated['next_follow_up_date'] ?? ''));
+            }
 
             \Log::info('🔵 Final data before create:', $validated);
 
@@ -193,9 +201,16 @@ class SalesLeadController extends Controller
         \Log::info('🔵 Request all:', $request->all());
 
         // 🟢 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
+        $leadDateConv = DateHelper::toGregorian((string)($request->lead_date ?? ''));
+        $statusVal = (string)($request->lead_status ?? '');
+        if (strtolower($statusVal) === 'lost') {
+            $nextFollowUpConv = null;
+        } else {
+            $nextFollowUpConv = DateHelper::toGregorian((string)($request->next_follow_up_date ?? ''));
+        }
         $request->merge([
-            'lead_date' => DateHelper::toGregorian($request->lead_date),
-            'next_follow_up_date' => DateHelper::toGregorian($request->next_follow_up_date),
+            'lead_date' => $leadDateConv,
+            'next_follow_up_date' => $nextFollowUpConv,
         ]);
         \Log::info('🔁 Converted dates:', [
             'lead_date' => $request->lead_date,
@@ -215,7 +230,7 @@ class SalesLeadController extends Controller
             'assigned_to' => 'required|exists:users,id',
             'referred_to' => 'nullable|exists:users,id',
             'lead_date' => 'required|date',
-            'next_follow_up_date' => 'required|date|after_or_equal:today',
+            'next_follow_up_date' => 'nullable|date|after_or_equal:today|required_unless:lead_status,lost',
             'do_not_email' => 'boolean',
             'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
             'industry' => 'nullable|string|max:255',
@@ -277,6 +292,81 @@ class SalesLeadController extends Controller
     public function loadTab(SalesLead $lead, $tab)
     {
         return view("marketing.leads.tabs.{$tab}", compact('lead'));
+    }
+
+    public function convertToOpportunity(Request $request, SalesLead $lead)
+    {
+        if (!empty($lead->converted_at)) {
+            return redirect()->back()->with('error', 'این سرنخ قبلاً به فرصت تبدیل شده است.');
+        }
+
+        try {
+            $organization = null;
+            if (!empty($lead->company)) {
+                $organization = Organization::firstOrCreate(
+                    ['name' => $lead->company],
+                    [
+                        'phone' => $lead->phone ?? $lead->mobile,
+                        'city' => $lead->city,
+                        'state' => $lead->state,
+                        'address' => $lead->address,
+                    ]
+                );
+            }
+
+            $firstName = null;
+            $lastName = null;
+            if (!empty($lead->full_name)) {
+                $parts = preg_split('/\s+/', trim($lead->full_name));
+                $lastName = array_pop($parts);
+                $firstName = trim(implode(' ', $parts));
+                if ($firstName === '') {
+                    $firstName = $lastName;
+                    $lastName = '';
+                }
+            }
+
+            $contact = null;
+            if (!empty($firstName) || !empty($lastName)) {
+                $contact = Contact::create([
+                    'first_name' => $firstName,
+                    'last_name'  => $lastName,
+                    'email'      => $lead->email,
+                    'mobile'     => $lead->mobile,
+                    'phone'      => $lead->phone,
+                    'company'    => $lead->company,
+                    'city'       => $lead->city,
+                    'state'      => $lead->state,
+                    'address'    => $lead->address,
+                    'organization_id' => $organization?->id,
+                    'assigned_to' => $lead->assigned_to,
+                ]);
+            }
+
+            $name = $lead->company ? ('فرصت - ' . $lead->company) : ('فرصت - ' . ($lead->full_name ?: ('سرنخ #' . $lead->id)));
+
+            $opportunity = Opportunity::create([
+                'name'             => $name,
+                'organization_id'  => $organization?->id,
+                'contact_id'       => $contact?->id,
+                'assigned_to'      => $lead->assigned_to,
+                'source'           => $lead->lead_source,
+                'next_follow_up'   => $lead->next_follow_up_date,
+                'description'      => $lead->notes,
+                'stage'            => 'new',
+            ]);
+
+            $lead->converted_at = Carbon::now();
+            $lead->converted_opportunity_id = $opportunity->id;
+            $lead->converted_by = Auth::id();
+            $lead->save();
+
+            return redirect()
+                ->route('marketing.leads.index')
+                ->with('success', 'سرنخ با موفقیت به فرصت فروش تبدیل شد.');
+        } catch (\Throwable $e) {
+            return redirect()->back()->with('error', 'خطا در تبدیل سرنخ به فرصت: ' . $e->getMessage());
+        }
     }
 
 }

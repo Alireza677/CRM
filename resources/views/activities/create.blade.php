@@ -51,7 +51,7 @@
       <label class="block text-sm mb-1">ارجاع به</label>
       <select name="assigned_to_id" class="w-full rounded-md border p-2" required>
         @foreach($users as $u)
-          <option value="{{ $u->id }}">{{ $u->name }}</option>
+          <option value="{{ $u->id }}" {{ (string)old('assigned_to_id', auth()->id()) === (string)$u->id ? 'selected' : '' }}>{{ $u->name }}</option>
         @endforeach
       </select>
     </div>

@@ -142,6 +142,7 @@
                 <template x-if="$store.menu.activeMenu === 'documents'">
                     <div class="space-y-2">
                         <a href="{{ route('sales.documents.index') }}" class="menu-item">همه اسناد</a>
+                        <a href="{{ route('tools.sms.create') }}" class="menu-item">ارسال پیامک</a>
                     </div>
                 </template>
 

@@ -152,10 +152,13 @@
                 <td class="px-2 py-2 text-center">
                     <input type="checkbox" name="selected_leads[]" value="{{ $lead->id }}" class="form-checkbox row-checkbox">
                 </td>
-                <td class="px-6 py-2 text-sm text-blue-700 hover:underline">
-                    <a href="{{ route('marketing.leads.show', $lead) }}">
+                <td class="px-6 py-2 text-sm">
+                    <a href="{{ route('marketing.leads.show', $lead) }}" class="text-blue-700 hover:underline">
                         {{ $lead->full_name }}
                     </a>
+                    @if(!empty($lead->converted_at))
+                        <span class="ml-2 px-2 py-0.5 text-[10px] rounded-full bg-green-100 text-green-800 align-middle">تبدیل شده</span>
+                    @endif
                 </td>
                 <td class="px-6 py-2 text-sm text-gray-500">
                     {{ \Morilog\Jalali\Jalalian::forge($lead->created_at)->format('Y/m/d') }}
@@ -184,7 +187,22 @@
                     @endif
                 </td>
                 <td class="px-6 py-2 text-center">
-                    <a href="{{ route('marketing.leads.edit', $lead) }}" class="text-blue-500 hover:underline">ویرایش</a>
+                    <div class="flex items-center gap-3 justify-center">
+                        <a href="{{ route('marketing.leads.edit', $lead) }}" class="text-blue-500 hover:underline">ویرایش</a>
+                        @if(empty($lead->converted_at))
+                            <button
+                                type="submit"
+                                class="text-sm px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
+                                form="lead-convert-form"
+                                formaction="{{ route('marketing.leads.convert', $lead) }}"
+                                onclick="return confirm('این سرنخ به فرصت فروش تبدیل شود؟');"
+                            >
+                                تبدیل به فرصت
+                            </button>
+                        @else
+                            <span class="text-green-700 text-xs">تبدیل شده</span>
+                        @endif
+                    </div>
                 </td>
             </tr>
         @empty
@@ -203,6 +221,11 @@
         </form>
     </div>
 </div>
+
+<!-- Standalone form for conversion (outside bulk-delete form to avoid nested forms) -->
+<form id="lead-convert-form" method="POST" style="display:none">
+    @csrf
+</form>
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {

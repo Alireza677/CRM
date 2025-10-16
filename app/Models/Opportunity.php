@@ -136,7 +136,8 @@ public function approvals()
 public function proformas()
 {
     return $this->hasMany(\App\Models\Proforma::class)
-        ->orderByDesc('proforma_date'); 
+        ->orderByDesc('proforma_date')
+        ->orderByDesc('created_at'); 
 }
 
 
@@ -147,10 +148,10 @@ public function orders()
 }
 
 // اسناد
-public function documents()
-{
-    return $this->hasMany(Document::class);
-}
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
 
 protected static function booted()
 {
@@ -162,10 +163,20 @@ protected static function booted()
     });
 }
 
+    // ---------------- Accessors (display labels) ----------------
+    public function getStageAttribute($value)
+    {
+        return \App\Helpers\FormOptionsHelper::getOpportunityStageLabel($value);
+    }
+
+    public function getSourceAttribute($value)
+    {
+        return \App\Helpers\FormOptionsHelper::getOpportunitySourceLabel($value);
+    }
+
+
 
 
 
 
 }
-
-

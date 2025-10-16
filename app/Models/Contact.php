@@ -49,7 +49,9 @@ class Contact extends Model
     }
     public function proformas()
     {
-        return $this->hasMany(Proforma::class);
+        return $this->hasMany(Proforma::class)
+            ->orderByDesc('proforma_date')
+            ->orderByDesc('created_at');
     }
     public function assignedUser()
     {

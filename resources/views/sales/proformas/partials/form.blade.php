@@ -145,7 +145,7 @@
             <option value="">انتخاب کنید</option>
             @foreach($users as $user)
                 <option value="{{ $user->id }}"
-                    {{ (string)old('assigned_to', $isEdit ? $proforma->assigned_to : '') === (string)$user->id ? 'selected' : '' }}>
+                    {{ (string)old('assigned_to', $isEdit ? $proforma->assigned_to : (auth()->id() ?? '')) === (string)$user->id ? 'selected' : '' }}>
                     {{ $user->name }}
                 </option>
             @endforeach

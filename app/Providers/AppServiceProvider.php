@@ -6,6 +6,8 @@ use Illuminate\Support\ServiceProvider;
 use Illuminate\Routing\Router;
 use App\Models\Proforma;
 use App\Observers\ProformaObserver;
+use App\Services\Sms\FarazEdgeService;
+
 
 // Spatie middlewares
 use Spatie\Permission\Middlewares\RoleMiddleware;
@@ -19,8 +21,11 @@ class AppServiceProvider extends ServiceProvider
      */
     public function register(): void
     {
-        //
+        $this->app->singleton(FarazEdgeService::class, fn() => new FarazEdgeService());
+
     }
+
+    
 
     /**
      * Bootstrap any application services.

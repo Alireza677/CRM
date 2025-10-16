@@ -103,25 +103,28 @@
         @error('stage') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
 
-    {{-- منبع سرنخ --}}
+    {{-- منبع فرصت --}}
+    {{-- ???? ???? ???? --}}
         <div>
-            <label for="source" class="block font-medium text-sm text-gray-700 required">منبع سرنخ</label>
-            @php $source = old('source', $opportunity->source ?? ''); @endphp
+            <label for="source" class="block font-medium text-sm text-gray-700 required">منبع فرصت فروش</label>
+            @php
+                $sourceKey = old('source', isset($opportunity) ? ($opportunity->getRawOriginal('source') ?? '') : '');
+                $sources  = \App\Helpers\FormOptionsHelper::opportunitySources();
+            @endphp
             <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                 <option value="">انتخاب کنید</option>
-                @foreach(['وب سایت','مشتریان قدیمی','نمایشگاه','بازاریابی حضوری','مناقصه'] as $opt)
-                    <option value="{{ $opt }}" {{ $source === $opt ? 'selected' : '' }}>{{ $opt }}</option>
+                @foreach($sources as $key => $label)
+                    <option value="{{ $key }}" {{ (string)$sourceKey === (string)$key ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
-            @error('source') 
-                <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+            @error('source')
+                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
             @enderror
         </div>
-
     {{-- ارجاع به --}}
     <div>
         <label for="assigned_to" class="block font-medium text-sm text-gray-700 required">ارجاع به</label>
-        @php $assigned = old('assigned_to', $opportunity->assigned_to ?? ''); @endphp
+        @php $assigned = old('assigned_to', $isEdit ? ($opportunity->assigned_to ?? '') : (auth()->id() ?? '')); @endphp
         <select id="assigned_to" name="assigned_to" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             <option value="">انتخاب کنید</option>
             @foreach($users as $user)

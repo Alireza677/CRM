@@ -7,6 +7,7 @@ use App\Models\Contact;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use App\Models\Opportunity;
+use App\Models\SmsList;
 use App\Models\Organization;
 use Illuminate\Support\Facades\Log;
 
@@ -43,7 +44,15 @@ class ContactController extends Controller
         }
     
         if ($request->filled('organization')) {
-            $query->where('contacts.organization_id', $request->organization);
+            $query->where('contacts.organization_id', (int) $request->organization);
+        } elseif ($request->filled('organization_name')) {
+            $name = trim($request->input('organization_name'));
+            if ($name !== '') {
+                $query->where(function($q) use ($name) {
+                    $q->where('organizations.name', 'like', "%{$name}%")
+                      ->orWhere('contacts.company', 'like', "%{$name}%");
+                });
+            }
         }
     
         $sortField = $request->get('sort', 'created_at');
@@ -61,8 +70,9 @@ class ContactController extends Controller
     
         $users = \App\Models\User::all(['id', 'name']);
         $organizations = \App\Models\Organization::all(['id', 'name']);
-    
-        return view('sales.contacts.index', compact('contacts', 'users', 'organizations'));
+        $smsLists = SmsList::query()->orderByDesc('created_at')->get(['id','name']);
+
+        return view('sales.contacts.index', compact('contacts', 'users', 'organizations', 'smsLists'));
     }
     
 

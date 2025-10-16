@@ -1,0 +1,19 @@
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    @endsection
+
+@push('scripts')
+<script>
+    $(function(){
+        $('#users').select2({
+            width: '100%',
+            dir: 'rtl',
+            placeholder: 'کاربران را انتخاب کنید',
+        });
+    });
+</script>
+@endpush

@@ -185,4 +185,16 @@ class SalesLead extends Model
 
    
 
+    /* ---------------- Conversion ---------------- */
+
+    public function convertedOpportunity()
+    {
+        return $this->belongsTo(\App\Models\Opportunity::class, 'converted_opportunity_id');
+    }
+
+    public function getIsConvertedAttribute(): bool
+    {
+        return !is_null($this->converted_at ?? null);
+    }
+
 }

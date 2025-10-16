@@ -129,7 +129,7 @@
     <select name="assigned_to" id="assigned_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
         <option value=""> انتخاب کاربر </option>
         @foreach($users as $user)
-            <option value="{{ $user->id }}" {{ old('assigned_to', $contact->assigned_to ?? '') == $user->id ? 'selected' : '' }}>
+            <option value="{{ $user->id }}" {{ old('assigned_to', $contact->assigned_to ?? auth()->id()) == $user->id ? 'selected' : '' }}>
                 {{ $user->name ?? ($user->first_name . ' ' . $user->last_name) }}
             </option>
         @endforeach

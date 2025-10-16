@@ -4,6 +4,17 @@
     $breadcrumb = [
         ['title' => 'فرصت‌های فروش']
     ];
+
+    // رنگ هر مرحله (پس‌زمینه ملایم + رنگ متن)
+    $stageColors = [
+        'جدید'            => 'bg-blue-100 text-blue-700',
+        'در حال پیگیری'   => 'bg-yellow-100 text-yellow-700',
+        'پیگیری در آینده' => 'bg-orange-100 text-orange-700',
+        'برنده'           => 'bg-green-100 text-green-700',   // ✅ سبز
+        'بازنده'          => 'bg-gray-100 text-gray-700',
+        'سرکاری'          => 'bg-red-100 text-red-700',
+        'ارسال پیش فاکتور'=> 'bg-purple-100 text-purple-700',
+    ];
 @endphp
 
 @section('content')
@@ -25,7 +36,7 @@
                         <th class="px-2 py-2 text-right text-gray-600">عنوان</th>
                         <th class="px-2 py-2 text-right text-gray-600">مخاطب</th>
                         <th class="px-2 py-2 text-right text-gray-600">مرحله فروش</th>
-                        <th class="px-2 py-2 text-right text-gray-600">منبع سرنخ</th>
+                        <th class="px-2 py-2 text-right text-gray-600">منبع فرصت فروش</th>
                         <th class="px-2 py-2 text-right text-gray-600">ارجاع به</th>
                         <th class="px-2 py-2 text-right text-gray-600">تاریخ ایجاد</th>
                         <th class="px-2 py-2 text-right text-gray-600">عملیات</th>
@@ -41,16 +52,15 @@
                                     class="w-full px-2 py-1 border rounded text-sm" placeholder="نام مخاطب">
                             </th>
                             <th class="px-2 py-1">
-                            <select name="stage" class="w-full px-2 py-1 border rounded text-sm">
-    <option value="">همه</option>
-    <option value="در حال پیگیری" {{ request('stage') == 'در حال پیگیری' ? 'selected' : '' }}>در حال پیگیری</option>
-    <option value="پیگیری در آینده" {{ request('stage') == 'پیگیری در آینده' ? 'selected' : '' }}>پیگیری در آینده</option>
-    <option value="برنده" {{ request('stage') == 'برنده' ? 'selected' : '' }}>برنده</option>
-    <option value="بازنده" {{ request('stage') == 'بازنده' ? 'selected' : '' }}>بازنده</option>
-    <option value="سرکاری" {{ request('stage') == 'سرکاری' ? 'selected' : '' }}>سرکاری</option>
-    <option value="ارسال پیش فاکتور" {{ request('stage') == 'ارسال پیش فاکتور' ? 'selected' : '' }}>ارسال پیش فاکتور</option>
-</select>
-
+                                <select name="stage" class="w-full px-2 py-1 border rounded text-sm">
+                                    <option value="">همه</option>
+                                    <option value="در حال پیگیری" {{ request('stage') == 'در حال پیگیری' ? 'selected' : '' }}>در حال پیگیری</option>
+                                    <option value="پیگیری در آینده" {{ request('stage') == 'پیگیری در آینده' ? 'selected' : '' }}>پیگیری در آینده</option>
+                                    <option value="برنده" {{ request('stage') == 'برنده' ? 'selected' : '' }}>برنده</option>
+                                    <option value="بازنده" {{ request('stage') == 'بازنده' ? 'selected' : '' }}>بازنده</option>
+                                    <option value="سرکاری" {{ request('stage') == 'سرکاری' ? 'selected' : '' }}>سرکاری</option>
+                                    <option value="ارسال پیش فاکتور" {{ request('stage') == 'ارسال پیش فاکتور' ? 'selected' : '' }}>ارسال پیش فاکتور</option>
+                                </select>
                             </th>
                             <th class="px-2 py-1">
                                 <select name="source" class="w-full px-2 py-1 border rounded text-sm">
@@ -82,14 +92,37 @@
                         <tr>
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <a href="{{ route('sales.opportunities.show', $opportunity) }}" class="text-blue-600 hover:text-blue-900">
-                                {{ $opportunity->name ?? '-' }}
+                                    {{ $opportunity->name ?? '-' }}
                                 </a>
                             </td>
-                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->contact->name ?? '—' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->stage ?? '—' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->source ?? '—' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{{ $opportunity->assignedTo->name ?? '—' }}</td>
-                            <td class="px-6 py-4 whitespace-nowrap">{{ jdate($opportunity->created_at) }}</td>
+
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ $opportunity->contact->name ?? '—' }}
+                            </td>
+
+                            {{-- ⭐ مرحله فروش به صورت بادج رنگی --}}
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                @php
+                                    $stage = $opportunity->stage ?? '—';
+                                    $badgeClass = $stageColors[$stage] ?? 'bg-gray-100 text-gray-700';
+                                @endphp
+                                <span class="px-2 py-1 text-xs font-medium rounded-full {{ $badgeClass }}">
+                                    {{ $stage }}
+                                </span>
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ $opportunity->source ?? '—' }}
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ $opportunity->assignedTo->name ?? '—' }}
+                            </td>
+
+                            <td class="px-6 py-4 whitespace-nowrap">
+                                {{ jdate($opportunity->created_at) }}
+                            </td>
+
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex gap-4">
                                     <a href="{{ route('sales.opportunities.edit', $opportunity) }}" class="text-indigo-600 hover:text-indigo-900">ویرایش</a>

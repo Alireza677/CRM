@@ -100,24 +100,12 @@
                         <option value="{{ $st }}" {{ old('state', $lead->state ?? '')===$st ? 'selected' : '' }}>{{ $st }}</option>
                     @endforeach
                 </select>
-                @error('state') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                @error('state') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
             </div>
-
             <div>
                 <label class="block font-medium text-sm text-gray-700">شهر</label>
-                <select name="city" id="citySelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" {{ old('state', $lead->state ?? '') ? '' : 'disabled' }}>
-                    <option value="">{{ old('state', $lead->state ?? '') ? 'انتخاب شهر' : 'ابتدا استان را انتخاب کنید' }}</option>
-                    @php
-                        $state = old('state', $lead->state ?? '');
-                        $city  = old('city', $lead->city ?? '');
-                        $all   = \App\Helpers\FormOptionsHelper::iranLocations();
-                        $list  = $state && isset($all[$state]) ? $all[$state] : [];
-                    @endphp
-                    @foreach($list as $c)
-                        <option value="{{ $c }}" {{ $city===$c ? 'selected' : '' }}>{{ $c }}</option>
-                    @endforeach
-                </select>
-                @error('city') <p class="mt-1 text-sm text-red-600">{{ $message }}</p> @enderror
+                <select name="city" id="citySelect" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm"></select>
+                @error('city') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
             </div>
         </div>
 
@@ -200,7 +188,7 @@
         <select id="assigned_to" name="assigned_to" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm" required>
             <option value="">انتخاب کنید</option>
             @foreach($users as $user)
-                <option value="{{ $user->id }}" @selected(old('assigned_to', $lead->assigned_to ?? '') == $user->id)>{{ $user->name }}</option>
+                <option value="{{ $user->id }}" @selected(old('assigned_to', $lead->assigned_to ?? auth()->id()) == $user->id)>{{ $user->name }}</option>
             @endforeach
         </select>
         @error('assigned_to') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror

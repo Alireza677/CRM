@@ -34,5 +34,21 @@ return [
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
     ],
+   // Faraz SMS Edge (IPPANEL)
+    // Compatible with both new (FARAZ_EDGE_*) and legacy (FARAZSMS_*) environment keys.
+    'faraz_edge' => [
+        'token' => env('FARAZ_EDGE_TOKEN')
+            ?: env('FARAZSMS_API_KEY'),
+
+        'from' => env('FARAZ_EDGE_FROM')
+            ?: env('FARAZSMS_FROM'),
+
+        'base_url' => rtrim(
+            env('FARAZ_EDGE_BASE_URL')
+                ?: env('FARAZSMS_BASE_URL', 'https://edge.ippanel.com/v1'),
+            '/'
+        ),
+    ],
+
 
 ];

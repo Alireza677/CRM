@@ -25,6 +25,19 @@ class ProfileUpdateRequest extends FormRequest
                 'max:255',
                 Rule::unique(User::class)->ignore($this->user()->id),
             ],
+            // Allow updating optional username and mobile too
+            'username' => [
+                'nullable',
+                'string',
+                'max:255',
+                Rule::unique(User::class)->ignore($this->user()->id),
+            ],
+            'mobile' => [
+                'nullable',
+                'string',
+                'max:20',
+                Rule::unique(User::class, 'mobile')->ignore($this->user()->id),
+            ],
         ];
     }
 }

@@ -11,6 +11,8 @@ use App\Models\User;
 use Illuminate\Support\Facades\View;
 use Spatie\Activitylog\Models\Activity;
 use Morilog\Jalali\Jalalian;
+use Illuminate\Validation\Rule;
+use App\Helpers\FormOptionsHelper;
 
 
 class OpportunityController extends Controller
@@ -84,7 +86,7 @@ public function store(Request $request)
         'organization_id' => 'nullable|exists:organizations,id',
         'contact_id' => 'nullable|exists:contacts,id',
         'type' => 'required|string|in:کسب و کار موجود,کسب و کار جدید',
-        'source' => 'required|string|in:وب سایت,مشتریان قدیمی,نمایشگاه,بازاریابی حضوری,مناقصه',
+        'source' => 'required|string|max:255',
         'building_usage' => 'required|string|in:کارگاه و یا کارخانه,فضای باز و رستوران,تعمیرگاه و سالن صنعتی,گلخانه و پرورش گیاه,مرغداری و پرورش دام و طیور,فروشگاه و مراکز خرید,سالن و باشگاه های ورزشی,سالن های نمایش,مدارس و محیط های آموزشی,سایر',
         'assigned_to' => 'nullable|exists:users,id',
         'success_rate' => 'required|numeric|min:0|max:100',
@@ -163,6 +165,11 @@ public function edit(Opportunity $opportunity)
 
 public function update(Request $request, Opportunity $opportunity)
 {
+    if ($request->filled('source')) {
+        $request->merge([
+            'source' => \App\Helpers\FormOptionsHelper::getLeadSourceLabel($request->input('source')),
+        ]);
+    }
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'organization_id' => 'nullable|exists:organizations,id',

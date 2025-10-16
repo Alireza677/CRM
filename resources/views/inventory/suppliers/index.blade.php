@@ -16,13 +16,20 @@
             </a>
         </div>
 
+        <div class="mb-4 -mt-2">
+            <a href="{{ route('inventory.suppliers.import') }}"
+               class="inline-flex items-center px-3 py-1.5 bg-indigo-600 text-white rounded-md hover:bg-indigo-700">
+                ایمپورت تأمین‌کنندگان
+            </a>
+        </div>
+
         <div class="bg-white shadow-sm sm:rounded-lg overflow-hidden">
             <div class="p-6">
                 <!-- Search Bar -->
                 <div class="mb-4">
                     <form action="{{ route('inventory.suppliers.index') }}" method="GET" class="flex gap-4">
                         <input type="text" name="search" value="{{ request('search') }}"
-                               class="flex-1 rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500"
+                               class="flex-1 rounded-md border-gray-300 shadow-sm focus:ring-blue-500 focus:border-blue-500" 
                                placeholder="جستجو در همه فیلدها...">
                         <button type="submit"
                                 class="px-4 py-2 bg-gray-800 text-white rounded-md hover:bg-gray-700">

@@ -57,6 +57,8 @@
                 if ($selectedOrgId) {
                     $selected = collect($organizations)->firstWhere('id', (int) $selectedOrgId);
                     $selectedOrgName = $selected ? $selected->name : '';
+                } else {
+                    $selectedOrgName = request('organization_name', '');
                 }
             @endphp
 
@@ -65,6 +67,7 @@
                 <input
                     type="text"
                     id="org-filter-input"
+                    name="organization_name"
                     placeholder="جستجوی سازمان..."
                     class="border rounded px-3 py-2 w-full"
                     value="{{ $selectedOrgName }}"
@@ -109,6 +112,35 @@
         </form>
 
         <!-- حذف گروهی -->
+        <!-- Per page selector (outside filter form, preserves query via JS) -->
+        <div class="flex items-center gap-2 mb-2">
+            <label for="per-page-selector" class="text-sm text-gray-700">تعداد در صفحه</label>
+            <select id="per-page-selector" class="border rounded px-3 py-2 w-28">
+                <option value="25">25</option>
+                <option value="50">50</option>
+                <option value="100">100</option>
+                <option value="200">200</option>
+            </select>
+        </div>
+
+        <script>
+        (function () {
+            try {
+                var sel = document.getElementById('per-page-selector');
+                if (!sel) return;
+                var params = new URLSearchParams(window.location.search);
+                var current = parseInt(params.get('per_page') || '100', 10);
+                if ([25,50,100,200].indexOf(current) === -1) current = 100;
+                sel.value = String(current);
+                sel.addEventListener('change', function () {
+                    var p = new URLSearchParams(window.location.search);
+                    p.set('per_page', this.value);
+                    window.location.search = p.toString();
+                });
+            } catch (e) {}
+        })();
+        </script>
+
         <form method="POST" action="{{ route('sales.contacts.bulk_delete') }}" id="bulk-delete-form">
             @csrf
             @method('DELETE')
@@ -155,6 +187,12 @@
                                     <td class="px-6 py-4 text-sm text-gray-900">{{ $contact->assigned_to_name ?? '-' }}</td>
                                     <td class="px-6 py-4 text-sm text-gray-500">{{ jdate($contact->created_at)->format('Y/m/d H:i')}}</td>
                                     <td class="px-6 py-4 text-sm text-blue-600 flex items-center gap-2">
+                                        <button type="button"
+                                                class="text-indigo-600 hover:text-indigo-800"
+                                                title="افزودن به لیست پیامک"
+                                                onclick="openSmsListModal({{ $contact->id }}, '{{ addslashes(trim(($contact->first_name ?? '').' '.($contact->last_name ?? ''))) }}')">
+                                            <i class="fas fa-envelope ml-1"></i>
+                                        </button>
                                         <a href="{{ route('sales.contacts.edit', $contact->id) }}" class="hover:underline">
                                             <i class="fas fa-edit ml-1"></i> ویرایش
                                         </a>
@@ -262,5 +300,66 @@
   updateClearVisibility();
 })();
 </script>
+
+<!-- SMS List Modal -->
+<div id="smsListModal" class="fixed inset-0 bg-black/50 z-40 hidden items-center justify-center">
+  <div class="bg-white rounded shadow-lg w-full max-w-md mx-4 p-4">
+    <div class="flex items-center justify-between mb-3">
+      <h3 class="text-lg font-semibold">افزودن مخاطب به لیست پیامک</h3>
+      <button type="button" class="text-gray-500 hover:text-gray-700" onclick="closeSmsListModal()">✕</button>
+    </div>
+
+    <form id="smsListForm" method="POST" action="#">
+      @csrf
+      <input type="hidden" name="contact_ids[]" id="smsContactId" value="">
+
+      @if(isset($smsLists) && $smsLists->count())
+        <label class="block text-sm font-medium text-gray-700 mb-1">یک لیست را انتخاب کنید</label>
+        <select id="smsListSelect" class="form-select w-full mb-4">
+          @foreach($smsLists as $l)
+            <option value="{{ $l->id }}">{{ $l->name }}</option>
+          @endforeach
+        </select>
+        <div class="flex items-center justify-end gap-2">
+          <button type="button" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300" onclick="closeSmsListModal()">انصراف</button>
+          <button type="submit" class="px-3 py-2 rounded bg-indigo-600 text-white hover:bg-indigo-700">افزودن</button>
+        </div>
+      @else
+        <div class="p-3 rounded bg-yellow-50 text-yellow-800 mb-3">
+          هیچ لیست پیامکی وجود ندارد. از مسیر ابزارها » پیامک، یک لیست بسازید.
+        </div>
+        <div class="flex items-center justify-end">
+          <button type="button" class="px-3 py-2 rounded bg-gray-200 hover:bg-gray-300" onclick="closeSmsListModal()">بستن</button>
+        </div>
+      @endif
+    </form>
+  </div>
+  <script>
+    const smsModalEl   = document.getElementById('smsListModal');
+    const smsFormEl    = document.getElementById('smsListForm');
+    const smsContactEl = document.getElementById('smsContactId');
+    const smsSelectEl  = document.getElementById('smsListSelect');
+    const smsActionBase= "{{ url('/tools/sms/lists') }}"; // /tools/sms/lists/{id}/contacts
+
+    function openSmsListModal(contactId, contactName) {
+      if (!smsModalEl) return;
+      if (smsContactEl) smsContactEl.value = contactId;
+      smsModalEl.classList.remove('hidden');
+      smsModalEl.classList.add('flex');
+    }
+    function closeSmsListModal() {
+      if (!smsModalEl) return;
+      smsModalEl.classList.add('hidden');
+      smsModalEl.classList.remove('flex');
+    }
+    if (smsFormEl) {
+      smsFormEl.addEventListener('submit', function (e) {
+        if (!smsSelectEl || !smsSelectEl.value) return; // let server handle if missing
+        // Build action like: /tools/sms/lists/{listId}/contacts
+        this.action = smsActionBase + '/' + encodeURIComponent(smsSelectEl.value) + '/contacts';
+      });
+    }
+  </script>
+</div>
 
 @endsection

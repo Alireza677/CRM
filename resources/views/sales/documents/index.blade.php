@@ -25,6 +25,11 @@
                         بدون ارتباط با فرصت فروش
                     @endif
                 </div>
+                <div class="text-xs text-gray-400 mt-1">
+                    {{-- تاریخ ثبت سند به‌صورت شمسی --}}
+                    <i class="far fa-calendar-alt mr-1"></i>
+                    تاریخ ثبت: {{ \Morilog\Jalali\Jalalian::fromCarbon($doc->created_at)->format('Y/m/d H:i') }}
+                </div>
             </div>
 
             <div class="flex items-center gap-3 text-sm">

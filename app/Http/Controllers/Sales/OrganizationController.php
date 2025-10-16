@@ -21,7 +21,8 @@ class OrganizationController extends Controller
     {
         $query = Organization::query()
             ->select('organizations.*', 'users.name as assigned_to_name')
-            ->leftJoin('users', 'organizations.assigned_to', '=', 'users.id');
+            ->leftJoin('users', 'organizations.assigned_to', '=', 'users.id')
+            ->with('contacts');
 
         // Search functionality
         if ($request->has('search')) {
@@ -43,9 +44,20 @@ class OrganizationController extends Controller
             $query->orderBy("organizations.{$sortField}", $sortDirection);
         }
 
-        $organizations = $query->paginate(10)->withQueryString();
+        // Per-page selection (with allowed values and persistence)
+        $allowedPerPage = [10, 25, 50, 100, 250];
+        $perPage = (int) $request->get('per_page', session('orgs_per_page', 10));
+        if (!in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+        // Remember user's choice in session when explicitly provided
+        if ($request->has('per_page')) {
+            session(['orgs_per_page' => $perPage]);
+        }
 
-        return view('sales.organizations.index', compact('organizations'));
+        $organizations = $query->paginate($perPage)->withQueryString();
+
+        return view('sales.organizations.index', compact('organizations', 'perPage'));
     }
 
     public function create()

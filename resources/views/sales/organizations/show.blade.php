@@ -1,6 +1,12 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('content')
+@php
+    $breadcrumb = [
+        ['title' => 'سازمان‌ها', 'url' => route('sales.organizations.index')],
+        ['title' => $organization->name ?? ('#' . $organization->id)],
+    ];
+@endphp
 <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" dir="rtl">
     <h2 class="text-2xl font-bold mb-6 text-neutral-900">مشاهده سازمان</h2>
 

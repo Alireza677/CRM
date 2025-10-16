@@ -97,4 +97,34 @@ $(function () {
 </script>
 @endpush
 
+@push('scripts')
+<script>
+(function () {
+  const statusEl = document.getElementById('lead_status');
+  const dateTextEl = document.getElementById('next_followup_date');
+  const dateHiddenEl = document.getElementById('next_follow_up_date');
+
+  function toggleFollowupForLead() {
+    const val = (statusEl && statusEl.value ? statusEl.value : '').toLowerCase();
+    const isJunk = val === 'lost'; // 'سرکاری'
+    if (isJunk) {
+      if (dateTextEl) {
+        dateTextEl.setAttribute('disabled', 'disabled');
+        dateTextEl.classList.add('bg-gray-100', 'cursor-not-allowed');
+      }
+      if (dateHiddenEl) { dateHiddenEl.value = ''; }
+    } else {
+      if (dateTextEl) {
+        dateTextEl.removeAttribute('disabled');
+        dateTextEl.classList.remove('bg-gray-100', 'cursor-not-allowed');
+      }
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', toggleFollowupForLead);
+  if (statusEl) statusEl.addEventListener('change', toggleFollowupForLead);
+})();
+</script>
+@endpush
+
 

@@ -143,6 +143,15 @@
                         @endforeach
                     </select>
 
+                    <!-- تعداد آیتم در هر صفحه -->
+                    <label for="per-page" class="text-gray-600">تعداد در صفحه:</label>
+                    <select id="per-page" name="per_page" class="border rounded px-2 py-1" onchange="this.form.submit()">
+                        <option value="10"  {{ (string)request('per_page', 10) === '10'  ? 'selected' : '' }}>10</option>
+                        <option value="25"  {{ (string)request('per_page', 10) === '25'  ? 'selected' : '' }}>25</option>
+                        <option value="50"  {{ (string)request('per_page', 10) === '50'  ? 'selected' : '' }}>50</option>
+                        <option value="100" {{ (string)request('per_page', 10) === '100' ? 'selected' : '' }}>100</option>
+                    </select>
+
                     <!-- فیلتر ارجاع به -->
                     <select name="assigned_to" class="border rounded px-2 py-1">
                         <option value="">ارجاع به</option>

@@ -50,6 +50,8 @@ use App\Http\Controllers\Inventory\ProductImportController;
 use App\Http\Controllers\ActivityController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\Marketing\LeadExportController;
+use App\Services\Sms\FarazEdgeService;
+use App\Http\Controllers\SmsController;
 
 
 
@@ -59,6 +61,15 @@ Route::get('/', function () {
     return view('welcome');
 });
 
+Route::get('/test-faraz-sms', function (FarazEdgeService $sms) {
+    // شماره‌ها باید E.164 باشند: +98912XXXXXXX
+    return $sms->sendWebservice(
+        ['+98912XXXXXXX'],                    // یک یا چند گیرنده
+        'سلام! تست ارسال از CRM ✅',         // متن پیام
+        null,                                 // از شماره پیش‌فرض .env
+        null                                  // یا مثلاً '2025-03-12 21:20:02' (UTC)
+    );
+});
 // ------------------------------
 // Protected Routes (auth)
 // ------------------------------
@@ -72,6 +83,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/marketing', [MarketingController::class, 'index'])->name('marketing');
             // ریسورس اصلی که نمایش، ویرایش، حذف، و ایجاد سرنخ‌ها را پوشش می‌دهد
     Route::resource('marketing/leads', SalesLeadController::class)->names('marketing.leads');
+    Route::post('marketing/leads/{lead}/convert', [SalesLeadController::class, 'convertToOpportunity'])
+        ->name('marketing.leads.convert');
 
             // حذف گروهی از کنترلری که خودت ویرایشش کردی
     Route::post('/marketing/leads/bulk-delete', [SalesLeadController::class, 'bulkDelete'])->name('marketing.leads.bulk-delete');
@@ -172,7 +185,17 @@ Route::middleware(['auth'])->group(function () {
         Route::get('products/import', [ProductImportController::class, 'create'])->name('products.import');
         Route::post('products/import/dry-run', [ProductImportController::class, 'dryRun'])->name('products.import.dryrun');
         Route::post('products/import/confirm', [ProductImportController::class, 'store'])->name('products.import.store');
-    
+
+        // Suppliers import
+        Route::get('suppliers/import', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'create'])->name('suppliers.import');
+        Route::post('suppliers/import/dry-run', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'dryRun'])->name('suppliers.import.dryrun');
+        Route::post('suppliers/import/confirm', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'store'])->name('suppliers.import.store');
+
+        // Single product details page
+        Route::get('products/{product}', [ProductController::class, 'show'])
+            ->whereNumber('product')
+            ->name('products.show');
+
         // --- Resources ---
         Route::resource('products', ProductController::class)->except(['show'])->whereNumber('product');
         Route::resource('suppliers', SupplierController::class);          // => inventory.suppliers.index
@@ -236,6 +259,22 @@ Route::middleware(['auth'])->group(function () {
     Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
 
     // Global search
+
+    // Tools > SMS Sender
+    Route::prefix('tools')->name('tools.')->group(function(){
+        Route::get('sms', [SmsController::class, 'create'])->name('sms.create');
+        Route::post('sms', [SmsController::class, 'send'])->name('sms.send');
+        Route::get('sms/report', [SmsController::class, 'report'])->name('sms.report');
+        Route::get('sms/report/export', [SmsController::class, 'exportCsv'])->name('sms.report.export');
+        Route::post('sms/blacklist', [SmsController::class, 'addToBlacklist'])->name('sms.blacklist.add');
+
+        // SMS Lists management
+        Route::post('sms/lists', [SmsController::class, 'storeList'])->name('sms.lists.store');
+        Route::delete('sms/lists/{list}', [SmsController::class, 'destroyList'])->name('sms.lists.destroy');
+        Route::post('sms/lists/{list}/contacts', [SmsController::class, 'addContactsToList'])->name('sms.lists.contacts.add');
+        Route::delete('sms/lists/{list}/contacts/{contact}', [SmsController::class, 'removeContactFromList'])->name('sms.lists.contacts.remove');
+        Route::post('sms/lists/{list}/send', [SmsController::class, 'sendToList'])->name('sms.lists.send');
+    });
     Route::get('/global-search', [GlobalSearchController::class, 'index'])->name('global.search');
 
     Route::scopeBindings()->group(function () {
@@ -339,4 +378,3 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
-

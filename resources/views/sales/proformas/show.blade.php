@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('content')
 @php
@@ -13,16 +13,13 @@
     ];
 @endphp
 
-
-
-
 @if(session('alert_error'))
     <script>
         document.addEventListener('DOMContentLoaded', function () {
             Swal.fire({
                 icon: 'warning',
                 title: 'توجه',
-                text: '{{ session('alert_error') }}',
+                text: "{{ session('alert_error') }}",
                 confirmButtonText: 'باشه'
             });
         });
@@ -42,7 +39,6 @@
         <span class="px-2 py-1 rounded bg-gray-100 text-gray-800 text-sm">
             وضعیت: {{ $stageLabel }}
         </span>
-
 
             @if(($proforma->approval_mode ?? null) === 'override')
                 <span class="px-2 py-1 rounded bg-yellow-100 text-yellow-800 text-xs">
@@ -74,17 +70,13 @@
             </div>
         @endif
 
-
         {{-- عنوان و دکمه‌ها --}}
         <div class="flex justify-between items-center mb-6">
             <h2 class="font-semibold text-xl text-gray-800 leading-tight">جزئیات پیش‌فاکتور</h2>
             <div class="flex gap-3">
-
-                {{-- دکمه ویرایش فقط اگر مجاز باشد (Policy:update) --}}
                 @can('update', $proforma)
                     <a href="{{ route('sales.proformas.edit', $proforma) }}" class="btn btn-primary">✏️ ویرایش</a>
                 @endcan
-
                 <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت</a>
             </div>
         </div>
@@ -102,11 +94,107 @@
         @endif
 
         {{-- محتوای اصلی --}}
-        <div class="bg-white shadow-sm sm:rounded-lg">
+        <div class="relative">
+            {{-- Timeline absolute خارج از باکس سفید --}}
+            @php /** @var \App\Models\Proforma $proforma */ @endphp
+            @php
+                $createdAtFa = \App\Helpers\DateHelper::toJalali($proforma->created_at, 'H:i Y/m/d');
+
+                $firstApproval = $proforma->approvals()
+                    ->with('approver')
+                    ->where('status', 'approved')
+                    ->where('step', 1)
+                    ->orderByDesc('approved_at')
+                    ->first();
+                $firstApprovedAt   = $firstApproval?->approved_at;
+                $firstApprovedAtFa = $firstApprovedAt ? \App\Helpers\DateHelper::toJalali($firstApprovedAt, 'H:i Y/m/d') : null;
+                $firstApproverName = $firstApproval?->approver?->name ?? $proforma->firstApprovedBy?->name;
+
+                $secondApproval = $proforma->approvals()
+                    ->with('approver')
+                    ->where('status', 'approved')
+                    ->where('step', 2)
+                    ->orderByDesc('approved_at')
+                    ->first();
+                $secondApprovedAt   = $secondApproval?->approved_at;
+                $secondApprovedAtFa = $secondApprovedAt ? \App\Helpers\DateHelper::toJalali($secondApprovedAt, 'H:i Y/m/d') : null;
+                $secondApproverName = $secondApproval?->approver?->name ?? $proforma->approvedBy?->name;
+
+                if (!$secondApprovedAt && ($proforma->approval_stage === 'approved' || $proforma->proforma_stage === 'approved')) {
+                    $lastApproved = $proforma->approvals()
+                        ->with('approver')
+                        ->where('status', 'approved')
+                        ->orderByDesc('approved_at')
+                        ->first();
+                    if ($lastApproved) {
+                        $secondApprovedAt   = $lastApproved->approved_at;
+                        $secondApprovedAtFa = $secondApprovedAt ? \App\Helpers\DateHelper::toJalali($secondApprovedAt, 'H:i Y/m/d') : null;
+                        $secondApproverName = $secondApproverName ?: ($lastApproved->approver?->name);
+                    }
+                }
+
+                $durationText = null;
+                try {
+                    if ($proforma->created_at && $secondApprovedAt) {
+                        $minutes = $proforma->created_at->diffInMinutes($secondApprovedAt);
+                        $days    = intdiv($minutes, 60*24);
+                        $hours   = intdiv($minutes % (60*24), 60);
+                        $mins    = $minutes % 60;
+                        $parts = [];
+                        if ($days)  $parts[] = $days . ' روز';
+                        if ($hours) $parts[] = $hours . ' ساعت';
+                        if ($mins && $days === 0) $parts[] = $mins . ' دقیقه';
+                        $durationText = implode(' و ', $parts);
+                    }
+                } catch (\Throwable $e) { $durationText = null; }
+
+                $hasFirst  = !empty($firstApprovedAtFa);
+                $hasSecond = !empty($secondApprovedAtFa);
+                $dotFirstClass  = $hasFirst  ? 'bg-green-600' : 'bg-gray-400';
+                $dotSecondClass = $hasSecond ? 'bg-green-600' : 'bg-gray-400';
+            @endphp
+
+            <div class="hidden lg:block absolute top-0 -right-80 w-72">
+                <div class="bg-white/70 backdrop-blur-sm border rounded-xl shadow p-4">
+                    <div class="text-center text-sm font-semibold text-gray-800 mb-2">تایم‌لاین تاییدات</div>
+                    <ol class="relative border-r-2 border-gray-200 pr-5 space-y-6">
+                        <li class="relative pr-6">
+                            <span class="absolute -right-[7px] top-1 w-3 h-3 bg-blue-600 rounded-full border-2 border-white shadow"></span>
+                            <div class="text-xs text-gray-500">{{ $createdAtFa ?: '—' }}</div>
+                            <div class="text-sm font-medium">ثبت پیش‌فاکتور</div>
+                        </li>
+                        <li class="relative pr-6">
+                            <span class="absolute -right-[7px] top-1 w-3 h-3 {{ $dotFirstClass }} rounded-full border-2 border-white shadow"></span>
+                            <div class="text-xs text-gray-500">{{ $firstApprovedAtFa ?: 'در انتظار' }}</div>
+                            <div class="text-sm font-medium">تایید اول
+                                @if($firstApproverName)
+                                    <span class="text-gray-500">— {{ $firstApproverName }}</span>
+                                @endif
+                            </div>
+                        </li>
+                        <li class="relative pr-6">
+                            <span class="absolute -right-[7px] top-1 w-3 h-3 {{ $dotSecondClass }} rounded-full border-2 border-white shadow"></span>
+                            <div class="text-xs text-gray-500">{{ $secondApprovedAtFa ?: 'در انتظار' }}</div>
+                            <div class="text-sm font-medium">تایید نهایی
+                                @if($secondApproverName)
+                                    <span class="text-gray-500">— {{ $secondApproverName }}</span>
+                                @endif
+                            </div>
+                        </li>
+                    </ol>
+                    @if($durationText)
+                        <div class="mt-3 text-center text-xs">
+                            <span class="inline-block rounded bg-gray-100 px-2 py-1 text-gray-700">مدت زمان تا تایید نهایی: <strong>{{ $durationText }}</strong></span>
+                        </div>
+                    @endif
+                </div>
+            </div>
+
+            <div class="bg-white shadow-sm sm:rounded-lg">
             <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-6">
 
                 {{-- اطلاعات پایه --}}
-                <div class="space-y-4">
+                <div class="space-y-4 md:col-span-2">
                     <h3 class="text-lg font-semibold mb-4">اطلاعات پایه</h3>
                     <div><strong>موضوع:</strong> {{ $proforma->subject }}</div>
 
@@ -133,7 +221,6 @@
                         <strong>مرحله:</strong> {{ $stageLabel }}
                     </div>
 
-                    {{-- نمایش اطلاعات تایید (در صورت وجود) --}}
                     @if(!empty($proforma->first_approved_by))
                         <div>
                             <strong>تایید مرحله اول توسط:</strong>
@@ -150,8 +237,100 @@
 
                 </div>
 
+                {{-- Sidebar: تایملاین/اطلاعات تاییدات --}}
+                <div class="hidden">
+                    @php /** @var \App\Models\Proforma $proforma */ @endphp
+                    @php
+                        // تاریخ ثبت (ایجاد)
+                        $createdAtFa = \App\Helpers\DateHelper::toJalali($proforma->created_at, 'H:i Y/m/d');
+
+                        // تایید اول
+                        $firstApproval = $proforma->approvals()
+                            ->with('approver')
+                            ->where('status', 'approved')
+                            ->where('step', 1)
+                            ->orderByDesc('approved_at')
+                            ->first();
+                        $firstApprovedAtFa = $firstApproval?->approved_at ? \App\Helpers\DateHelper::toJalali($firstApproval->approved_at, 'H:i Y/m/d') : null;
+                        $firstApproverName = $firstApproval?->approver?->name ?? $proforma->firstApprovedBy?->name;
+
+                        // تایید دوم (نهایی)
+                        $secondApproval = $proforma->approvals()
+                            ->with('approver')
+                            ->where('status', 'approved')
+                            ->where('step', 2)
+                            ->orderByDesc('approved_at')
+                            ->first();
+                        $secondApprovedAt   = $secondApproval?->approved_at;
+                        $secondApprovedAtFa = $secondApprovedAt ? \App\Helpers\DateHelper::toJalali($secondApprovedAt, 'H:i Y/m/d') : null;
+                        $secondApproverName = $secondApproval?->approver?->name ?? $proforma->approvedBy?->name;
+
+                        // در صورت نبود مرحله دوم ولی تایید نهایی انجام شده
+                        if (!$secondApprovedAt && ($proforma->approval_stage === 'approved' || $proforma->proforma_stage === 'approved')) {
+                            $lastApproved = $proforma->approvals()
+                                ->with('approver')
+                                ->where('status', 'approved')
+                                ->orderByDesc('approved_at')
+                                ->first();
+                            if ($lastApproved) {
+                                $secondApprovedAt   = $lastApproved->approved_at;
+                                $secondApprovedAtFa = $secondApprovedAt ? \App\Helpers\DateHelper::toJalali($secondApprovedAt, 'H:i Y/m/d') : null;
+                                $secondApproverName = $secondApproverName ?: ($lastApproved->approver?->name);
+                            }
+                        }
+
+                        // مدت زمان از ایجاد تا تایید نهایی
+                        $durationText = null;
+                        try {
+                            if ($proforma->created_at && $secondApprovedAt) {
+                                $minutes = $proforma->created_at->diffInMinutes($secondApprovedAt);
+                                $days    = intdiv($minutes, 60*24);
+                                $hours   = intdiv($minutes % (60*24), 60);
+                                $mins    = $minutes % 60;
+                                $parts = [];
+                                if ($days)  $parts[] = $days . ' روز';
+                                if ($hours) $parts[] = $hours . ' ساعت';
+                                if ($mins && $days === 0) $parts[] = $mins . ' دقیقه';
+                                $durationText = implode(' و ', $parts);
+                            }
+                        } catch (\Throwable $e) { $durationText = null; }
+                    @endphp
+
+                    <div class="bg-gray-50 border rounded-lg p-4">
+                        <h3 class="text-base font-semibold mb-3">پیگیری تاییدات</h3>
+                        <div class="space-y-2 text-sm">
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">تاریخ ثبت پیش‌فاکتور</span>
+                                <span class="font-medium">{{ $createdAtFa ?: '—' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">تاریخ تایید اول</span>
+                                <span class="font-medium">{{ $firstApprovedAtFa ?: '—' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">تاییدکننده اول</span>
+                                <span class="font-medium">{{ $firstApproverName ?: '—' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">تاریخ تایید دوم</span>
+                                <span class="font-medium">{{ $secondApprovedAtFa ?: '—' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-gray-600">تاییدکننده دوم</span>
+                                <span class="font-medium">{{ $secondApproverName ?: '—' }}</span>
+                            </div>
+                            @if($durationText)
+                                <div class="flex justify-between pt-2 border-t mt-2">
+                                    <span class="text-gray-700">مدت زمان تا تایید نهایی</span>
+                                    <span class="font-semibold text-gray-900">{{ $durationText }}</span>
+                                </div>
+                            @endif
+                        </div>
+                    </div>
+                </div>
+
                 {{-- اطلاعات تماس --}}
-                <div class="space-y-4">
+                <div class="space-y-4 md:col-span-2">
                     <h3 class="text-lg font-semibold mb-4">اطلاعات تماس</h3>
 
                     {{-- مخاطب --}}
@@ -221,7 +400,7 @@
                                     <th>تعداد</th>
                                     <th>واحد</th>
                                     <th>قیمت واحد</th>
-                                    <th> جمع ردیف</th>
+                                    <th>جمع ردیف</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -246,7 +425,6 @@
                                             @endswitch
                                         </td>
                                         <td>{{ number_format((float)$item->unit_price, 0) }}</td>
-                                        
                                         <td>{{ number_format((float)$item->total_price, 0) }}</td>
                                     </tr>
                                 @endforeach
@@ -286,19 +464,19 @@
 
                             <tfoot class="bg-gray-50">
                                 <tr>
-                                    <td colspan="6" class="font-bold text-right">جمع پایه (بدون تخفیف/مالیات):</td>
+                                    <td colspan="4" class="font-bold text-right">جمع پایه (بدون تخفیف/مالیات):</td>
                                     <td class="font-bold">{{ number_format($subtotal, 0) }}</td>
                                 </tr>
                                 <tr>
-                                    <td colspan="6" class="font-bold text-right">جمع تخفیف (سراسری):</td>
+                                    <td colspan="4" class="font-bold text-right">جمع تخفیف (سراسری):</td>
                                     <td class="font-bold text-red-600">{{ number_format($discount, 0) }}</td>
                                 </tr>
                                 <tr>
-                                    <td colspan="6" class="font-bold text-right">جمع مالیات (سراسری):</td>
+                                    <td colspan="4" class="font-bold text-right">جمع مالیات (سراسری):</td>
                                     <td class="font-bold text-green-600">{{ number_format($tax, 0) }}</td>
                                 </tr>
                                 <tr>
-                                    <td colspan="6" class="font-bold text-right">مجموع کل:</td>
+                                    <td colspan="4" class="font-bold text-right">مجموع کل:</td>
                                     <td class="font-bold">{{ number_format($grand, 0) }}</td>
                                 </tr>
                             </tfoot>
@@ -311,10 +489,10 @@
         </div>
 
         {{-- دکمه‌ها پایین صفحه --}}
+            </div>
             <div class="mt-6 flex justify-end gap-3">
                 <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت به لیست</a>
 
-                {{-- دکمه تایید: فقط وقتی مجاز باشم (Policy:approve) --}}
                 @can('approve', $proforma)
                     <form action="{{ route('sales.proformas.approve', $proforma) }}" method="POST"
                         onsubmit="return confirm('آیا از تایید پیش‌فاکتور مطمئن هستید؟');">
@@ -329,7 +507,6 @@
                         @endif
                     </form>
 
-                    {{-- دکمه رد --}}
                     <form action="{{ route('sales.proformas.reject', $proforma) }}" method="POST"
                         onsubmit="return confirm('آیا از رد این پیش‌فاکتور مطمئن هستید؟ با رد کردن، کل فرایند متوقف می‌شود.');"
                         class="ml-2">

@@ -45,6 +45,7 @@ class ProformaController extends Controller
     // کوئری اصلی
     $query = Proforma::query()
         ->with(['organization', 'contact', 'opportunity', 'assignedTo'])
+        ->orderByDesc('proforma_date')
         ->orderByDesc('created_at');
 
     // جستجو
@@ -79,7 +80,15 @@ class ProformaController extends Controller
     });
 
     // صفحه‌بندی + حفظ کوئری‌استرینگ
-    $proformas = $query->paginate(10)->withQueryString();
+    // Page size (per-page) with whitelist
+    $allowedPerPage = [10, 25, 50, 100];
+    $perPage = (int) $request->get('per_page', 10);
+    if (!in_array($perPage, $allowedPerPage, true)) {
+        $perPage = 10;
+    }
+
+    // Paginate with current query string preserved
+    $proformas = $query->paginate($perPage)->withQueryString();
 
     return view('sales.proformas.index', compact('proformas', 'organizations', 'users'));
 }
