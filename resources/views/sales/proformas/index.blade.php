@@ -277,7 +277,15 @@
                                             @endphp
                                             {{ $dateOut }}
                                         </td>
-                                        <td class="px-6 py-4">{{ $proforma->opportunity->name ?? '-' }}</td>
+                                        <td class="px-6 py-4">
+                                            @if($proforma->opportunity)
+                                                <a href="{{ route('sales.opportunities.show', $proforma->opportunity) }}" class="text-blue-600 hover:underline">
+                                                    {{ $proforma->opportunity->name ?? ('فرصت #'.$proforma->opportunity->id) }}
+                                                </a>
+                                            @else
+                                                -
+                                            @endif
+                                        </td>
                                         <td class="px-6 py-4">{{ $proforma->assignedTo->name ?? '-' }}</td>
                                         @php
                                             $canEdit = method_exists($proforma, 'canEdit')
