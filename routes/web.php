@@ -52,6 +52,7 @@ use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\Marketing\LeadExportController;
 use App\Services\Sms\FarazEdgeService;
 use App\Http\Controllers\SmsController;
+use App\Http\Controllers\ReportController;
 
 
 
@@ -239,6 +240,22 @@ Route::middleware(['auth'])->group(function () {
         'update' => 'forms.update',
         'destroy' => 'forms.destroy',
     ]);
+
+    // Reports (auth + verified)
+    Route::middleware(['auth','verified'])->group(function(){
+        // Place specific routes before resource to avoid shadowing
+        Route::get('reports/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
+        Route::put('reports/{report}/share', [ReportController::class, 'share'])->name('reports.share');
+        Route::post('reports/preview', [ReportController::class, 'preview'])->name('reports.preview');
+        Route::get('reports/{report}/run', [ReportController::class, 'run'])->name('reports.run');
+        Route::get('reports/{report}/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
+        Route::get('reports/{report}/export/xlsx', [ReportController::class, 'exportXlsx'])->name('reports.export.xlsx');
+        Route::get('reports/{report}/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
+        Route::get('reports/{report}/schedules', [ReportController::class, 'schedules'])->name('reports.schedules');
+        Route::post('reports/{report}/schedules', [ReportController::class, 'storeSchedule'])->name('reports.schedules.store');
+        Route::delete('reports/{report}/schedules/{schedule}', [ReportController::class, 'destroySchedule'])->name('reports.schedules.destroy');
+        Route::resource('reports', ReportController::class);
+    });
 
     Route::middleware(['auth','role:admin'])
     ->prefix('settings')->name('settings.')

@@ -146,6 +146,14 @@
                     </div>
                 </template>
 
+                <!-- Reports quick links under documents menu -->
+                <template x-if="$store.menu.activeMenu === 'documents'">
+                    <div class="space-y-2">
+                        <a href="{{ route('reports.dashboard') }}" class="menu-item">داشبورد گزارش‌ها</a>
+                        <a href="{{ route('reports.index') }}" class="menu-item">همهٔ گزارش‌ها</a>
+                    </div>
+                </template>
+
             </nav>
         </div>
     </aside>

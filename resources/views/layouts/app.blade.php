@@ -146,6 +146,17 @@
     initPicker($('#next_follow_up_shamsi'), '#next_follow_up');
     initPicker($('#proforma_date_shamsi'), '#proforma_date');
 
+    // Ensure default "today" is submitted on create
+    // If both the visible Jalali field and its hidden alt are empty,
+    // prefill them with today's date (Jalali for UI, Gregorian for server).
+    if (!$('#proforma_date_shamsi').val() && !$('#proforma_date').val()) {
+      const today = new persianDate();
+      $('#proforma_date_shamsi')
+        .val(today.calendar('persian').toLocale('fa').format('YYYY/MM/DD'));
+      $('#proforma_date')
+        .val(today.toCalendar('gregorian').toLocale('en').format('YYYY-MM-DD'));
+    }
+
     // پشتیبانی عمومی برای هر input با کلاس persian-datepicker و data-alt-field / data-target
     $('.persian-datepicker').each(function(){
       const $i = $(this);

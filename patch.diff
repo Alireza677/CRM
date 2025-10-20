@@ -1,0 +1,30 @@
+*** Begin Patch
+*** Update File: resources/views/reports/_builder.blade.php
+@@
+-<div x-data="reportBuilder()" x-init="init(@js($models), @js($initial))" class="space-y-4" dir="rtl">
++<div x-data="reportBuilder()"
++     x-init="init(@js($models), @js($initial))"
++     x-on:report-preview.window="preview()"
++     class="space-y-4" dir="rtl">
+@@
+-                async preview(){
++                async preview(){
+                     this.previewError = null; this.previewData = null; this.refreshJson();
+                     try{
+                         const resp = await fetch(@js(route('reports.preview')), { method:'POST', headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content') }, body: JSON.stringify({ query_json: this.state }) });
+                         const data = await resp.json();
+                         if(!resp.ok){ this.previewError = data.message || 'OrO?O\u0015 O_O? U_UOO'??OU+U.O\u0015UOO''; return; }
+-                        this.previewData = data;
++                        this.previewData = data;
++                        try {
++                            window.reportPreviewData = data;
++                            window.dispatchEvent(new CustomEvent('report-preview-done', { detail: data }));
++                        } catch(e){}
+                     }catch(e){ this.previewError = 'OrO?O\u0015UO O'"UcU?/O3O?U^O?'; }
+                 },
+                 $watch: { state: { deep: true, handler(){ this.refreshJson(); } } }
+             }
+         }
+     </script>
+ </div>
+*** End Patch

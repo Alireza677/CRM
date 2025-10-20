@@ -232,18 +232,48 @@ class ProformaController extends Controller
         ]);
         \Log::debug('✅ Passed validation (store)', $validated);
 
-        // -------------------- 3) تاریخ شمسی → میلادی --------------------
+        // -------------------- 3) تاریخ ورودی → میلادی (پشتیبانی هر دو فرمت) --------------------
+        // سناریوها:
+        // - اگر خالی بود: امروز ذخیره می‌شود.
+        // - اگر "YYYY-MM-DD" (میلادی) بود: مستقیم Carbon می‌شود.
+        // - اگر "YYYY/MM/DD" یا «YYYY-MM-DD» (جلالی) بود: به میلادی تبدیل می‌شود.
         $miladiDate = null;
-        if (!empty($validated['proforma_date'])) {
-            try {
-                $jalaliDate = str_replace('-', '/', $validated['proforma_date']);
-                if (preg_match('/^\d{4}\/\d{2}\/\d{2}$/', $jalaliDate)) {
-                    $miladiDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $jalaliDate)->toCarbon();
+        try {
+            $rawDate = trim((string)($validated['proforma_date'] ?? ''));
+            // Normalize unicode digits (Persian/Arabic) to ASCII and strip ZW chars
+            $rawDate = preg_replace('/\x{200C}|\x{200B}|\x{00A0}|\x{FEFF}/u', '', $rawDate);
+            $rawDate = str_replace(
+                ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'],
+                ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'],
+                $rawDate
+            );
+            if ($rawDate === '') {
+                // پیش‌فرض: امروز
+                $miladiDate = \Carbon\Carbon::today();
+            } else {
+                $normalized = preg_replace('/\s+/', '', $rawDate) ?? '';
+                if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalized)) {
+                    $year = (int) substr($normalized, 0, 4);
+                    if ($year >= 1300 && $year <= 1599) {
+                        // جلالی با خط‌تیره
+                        $miladiDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', str_replace('-', '/', $normalized))->toCarbon();
+                    } else {
+                        // میلادی: YYYY-MM-DD
+                        $miladiDate = \Carbon\Carbon::createFromFormat('Y-m-d', $normalized)->startOfDay();
+                    }
+                } else {
+                    // تلاش برای جلالی: YYYY/MM/DD (یا با - که به / تبدیل می‌کنیم)
+                    $jalaliDate = str_replace('-', '/', $normalized);
+                    if (preg_match('/^\d{4}\/\d{2}\/\d{2}$/', $jalaliDate)) {
+                        $miladiDate = \Morilog\Jalali\Jalalian::fromFormat('Y/m/d', $jalaliDate)->toCarbon();
+                    } else {
+                        return back()->withInput()->with('error', 'تاریخ وارد شده معتبر نیست.');
+                    }
                 }
-            } catch (\Exception $e) {
-                \Log::error('❌ Invalid Jalali Date', ['exception' => $e->getMessage()]);
-                return back()->withInput()->with('error', 'تاریخ وارد شده معتبر نیست.');
             }
+        } catch (\Exception $e) {
+            \Log::error('❌ Invalid Date (store)', ['exception' => $e->getMessage(), 'raw' => $validated['proforma_date'] ?? null]);
+            return back()->withInput()->with('error', 'تاریخ وارد شده معتبر نیست.');
         }
 
         // -------------------- 4) DB & محاسبات --------------------
@@ -509,13 +539,39 @@ class ProformaController extends Controller
             ]);
             Log::debug('✅ Passed Update Validation:', $validated);
     
-            $miladiDate = null;
-            if (!empty($validated['proforma_date'])) {
+            // تاریخ ورودی در ویرایش → میلادی (پشتیبانی هر دو فرمت + نگه‌داشتن مقدار قبلی در صورت خالی)
+            $miladiDate = $proforma->proforma_date; // پیش‌فرض: مقدار قبلی را نگه دار
+            $rawDateUpd = trim((string)($validated['proforma_date'] ?? ''));
+            if ($rawDateUpd !== '') {
                 try {
-                    $jalaliDateString = str_replace('-', '/', $validated['proforma_date']);
-                    $miladiDate = Jalalian::fromFormat('Y/m/d', $jalaliDateString)->toCarbon();
+                    // نرمال‌سازی ارقام و کاراکترهای نامرئی
+                    $rawDateUpd = preg_replace('/\x{200C}|\x{200B}|\x{00A0}|\x{FEFF}/u', '', $rawDateUpd);
+                    $rawDateUpd = str_replace(
+                        ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'],
+                        ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'],
+                        $rawDateUpd
+                    );
+                    $normalizedUpd = preg_replace('/\s+/', '', $rawDateUpd) ?? '';
+                    if (preg_match('/^\d{4}-\d{2}-\d{2}$/', $normalizedUpd)) {
+                        $year = (int) substr($normalizedUpd, 0, 4);
+                        if ($year >= 1300 && $year <= 1599) {
+                            // جلالی با خط تیره
+                            $miladiDate = Jalalian::fromFormat('Y/m/d', str_replace('-', '/', $normalizedUpd))->toCarbon();
+                        } else {
+                            // میلادی با خط تیره
+                            $miladiDate = \Carbon\Carbon::createFromFormat('Y-m-d', $normalizedUpd)->startOfDay();
+                        }
+                    } else {
+                        // تلاش برای جلالی با اسلش
+                        $jalaliDateString = str_replace('-', '/', $normalizedUpd);
+                        if (preg_match('/^\d{4}\/\d{2}\/\d{2}$/', $jalaliDateString)) {
+                            $miladiDate = Jalalian::fromFormat('Y/m/d', $jalaliDateString)->toCarbon();
+                        } else {
+                            return back()->withInput()->with('error', 'تاریخ وارد شده معتبر نیست.');
+                        }
+                    }
                 } catch (\Exception $e) {
-                    Log::error('❌ Invalid Jalali Date on Update:', ['exception' => $e->getMessage()]);
+                    Log::error('❌ Invalid Jalali/Gregorian Date on Update:', ['exception' => $e->getMessage(), 'raw' => $validated['proforma_date']]);
                     return back()->withInput()->with('error', 'تاریخ وارد شده معتبر نیست.');
                 }
             }

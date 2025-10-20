@@ -10,6 +10,8 @@ use App\Models\Task;
 use App\Policies\TaskPolicy;
 use App\Models\Document;
 use App\Models\User;
+use App\Models\Report;
+use App\Policies\ReportPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -22,6 +24,7 @@ class AuthServiceProvider extends ServiceProvider
         Proforma::class => ProformaPolicy::class,
         \App\Models\Project::class => \App\Policies\ProjectPolicy::class,
         Task::class => TaskPolicy::class,
+        Report::class => ReportPolicy::class,
 
 
     ];

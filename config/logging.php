@@ -57,6 +57,12 @@ return [
             'channels' => explode(',', env('LOG_STACK', 'single')),
             'ignore_exceptions' => false,
         ],
+        'reports' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/reports.log'),
+            'level' => env('LOG_LEVEL', 'info'),
+            'replace_placeholders' => true,
+        ],
 
         'single' => [
             'driver' => 'single',

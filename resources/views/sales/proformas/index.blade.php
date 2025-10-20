@@ -261,12 +261,21 @@
                                         <td class="px-6 py-4">{{ $proforma->contact_name ?? '-' }}</td>
                                         <td class="px-6 py-4">{{ number_format($proforma->total_amount) }} ریال</td>
                                         <td class="px-6 py-4">
-                                            {{ $proforma->proforma_date
-                                                ? \Morilog\Jalali\Jalalian::fromCarbon(
-                                                    \Carbon\Carbon::parse($proforma->proforma_date)
-                                                )->format('Y/m/d')
-                                                : '-' 
-                                            }}  
+                                            @php
+                                                $dateOut = '-';
+                                                if ($proforma->proforma_date) {
+                                                    try {
+                                                        $c = \Carbon\Carbon::parse($proforma->proforma_date);
+                                                        // Guard against corrupted years like 1404 AD
+                                                        if ($c->year >= 1700 && $c->year <= 2500) {
+                                                            $dateOut = \Morilog\Jalali\Jalalian::fromCarbon($c)->format('Y/m/d');
+                                                        }
+                                                    } catch (\Throwable $e) {
+                                                        $dateOut = '-';
+                                                    }
+                                                }
+                                            @endphp
+                                            {{ $dateOut }}
                                         </td>
                                         <td class="px-6 py-4">{{ $proforma->opportunity->name ?? '-' }}</td>
                                         <td class="px-6 py-4">{{ $proforma->assignedTo->name ?? '-' }}</td>

@@ -38,5 +38,8 @@ class DatabaseSeeder extends Seeder
             $opportunity->organization_id = $organizations->random()->id;
             $opportunity->save();
         });
+
+        // Reports
+        $this->call(ReportSeeder::class);
     }
 }
