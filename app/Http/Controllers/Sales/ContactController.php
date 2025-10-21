@@ -142,7 +142,25 @@ class ContactController extends Controller
 
     public function show(Contact $contact)
     {
+        // For the AJAX tabs view, we do not need to preload data here.
+        // Individual tabs will fetch their own data via loadTab().
         return view('sales.contacts.show', compact('contact'));
+    }
+
+    public function loadTab(Contact $contact, $tab)
+    {
+        $view = "sales.contacts.tabs.$tab";
+        if (!view()->exists($view)) {
+            abort(404);
+        }
+
+        $data = ['contact' => $contact];
+
+        if ($tab === 'updates') {
+            $data['activities'] = $contact->activities()->latest()->get();
+        }
+
+        return view($view, $data);
     }
 
     public function edit(Contact $contact)

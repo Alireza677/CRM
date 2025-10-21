@@ -1,0 +1,215 @@
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        // --- Import routes (قبل از resource ها) ---
+        Route::get('products/import', [ProductImportController::class, 'create'])->name('products.import');
+        Route::post('products/import/dry-run', [ProductImportController::class, 'dryRun'])->name('products.import.dryrun');
+        Route::post('products/import/confirm', [ProductImportController::class, 'store'])->name('products.import.store');
+
+        // Suppliers import
+        Route::get('suppliers/import', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'create'])->name('suppliers.import');
+        Route::post('suppliers/import/dry-run', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'dryRun'])->name('suppliers.import.dryrun');
+        Route::post('suppliers/import/confirm', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'store'])->name('suppliers.import.store');
+
+        // Single product details page
+        Route::get('products/{product}', [ProductController::class, 'show'])
+            ->whereNumber('product')
+            ->name('products.show');
+
+        // --- Resources ---
+        Route::resource('products', ProductController::class)->except(['show'])->whereNumber('product');
+        Route::resource('suppliers', SupplierController::class);          // => inventory.suppliers.index
+        Route::resource('purchase-orders', PurchaseOrderController::class);
+    });
+
+    // Other Modules
+    Route::get('/support', [SupportController::class, 'index'])->name('support');
+    Route::get('/tools', [ToolsController::class, 'index'])->name('tools');
+    Route::get('/admin', [AdminController::class, 'index'])->name('admin');
+    Route::get('/customize', [CustomizeController::class, 'index'])->name('customize');
+
+    // approval
+    Route::get('/approvals/pending', [\App\Http\Controllers\ApprovalController::class, 'pending'])
+    ->middleware('auth')
+    ->name('approvals.pending');
+    
+    Route::post('/approvals/{approval}/action', [\App\Http\Controllers\ApprovalController::class, 'handleAction'])
+    ->middleware('auth')
+    ->name('approvals.action');
+
+    
+
+
+    Route::post('settings/users/reassign', [UserController::class, 'reassign'])->name('settings.users.reassign');
+
+
+    // Customers
+    Route::resource('customers', CustomerController::class);
+
+    // Print Templates
+    Route::resource('print-templates', PrintTemplateController::class);
+
+    // Forms
+    Route::resource('forms', FormController::class)->names([
+        'index' => 'forms.index',
+        'create' => 'forms.create',
+        'store' => 'forms.store',
+        'show' => 'forms.show',
+        'edit' => 'forms.edit',
+        'update' => 'forms.update',
+        'destroy' => 'forms.destroy',
+    ]);
+
+    // Reports (auth + verified)
+    Route::middleware(['auth','verified'])->group(function(){
+        // Place specific routes before resource to avoid shadowing
+        Route::get('reports/dashboard', [ReportController::class, 'dashboard'])->name('reports.dashboard');
+        Route::put('reports/{report}/share', [ReportController::class, 'share'])->name('reports.share');
+        Route::post('reports/preview', [ReportController::class, 'preview'])->name('reports.preview');
+        Route::get('reports/{report}/run', [ReportController::class, 'run'])->name('reports.run');
+        Route::get('reports/{report}/export/csv', [ReportController::class, 'exportCsv'])->name('reports.export.csv');
+        Route::get('reports/{report}/export/xlsx', [ReportController::class, 'exportXlsx'])->name('reports.export.xlsx');
+        Route::get('reports/{report}/export/pdf', [ReportController::class, 'exportPdf'])->name('reports.export.pdf');
+        Route::get('reports/{report}/schedules', [ReportController::class, 'schedules'])->name('reports.schedules');
+        Route::post('reports/{report}/schedules', [ReportController::class, 'storeSchedule'])->name('reports.schedules.store');
+        Route::delete('reports/{report}/schedules/{schedule}', [ReportController::class, 'destroySchedule'])->name('reports.schedules.destroy');
+        Route::resource('reports', ReportController::class);
+    });
+
+    Route::middleware(['auth','role:admin'])
+    ->prefix('settings')->name('settings.')
+    ->group(function () {
+        Route::get('/', [SettingsController::class, 'index'])->name('index');
+        Route::get('/general', [SettingsController::class, 'general'])->name('general');
+        Route::resource('users', UserController::class)->except(['show']);
+        Route::get('/workflows', [WorkflowController::class, 'index'])->name('workflows.index');
+        Route::get('/automation', [AutomationController::class, 'edit'])->name('automation.edit');
+        Route::post('/automation/update', [AutomationController::class, 'update'])->name('automation.update');
+        Route::delete('/automation/delete-all', [AutomationController::class, 'destroyAll'])->name('automation.destroyAll');
+    });
+
+
+    // Profile
+    Route::get('/profile', [ProfileController::class, 'edit'])->name('profile.edit');
+    Route::patch('/profile', [ProfileController::class, 'update'])->name('profile.update');
+    Route::delete('/profile', [ProfileController::class, 'destroy'])->name('profile.destroy');
+
+    // Global search
+
+    // Tools > SMS Sender
+    Route::prefix('tools')->name('tools.')->group(function(){
+        Route::get('sms', [SmsController::class, 'create'])->name('sms.create');
+        Route::post('sms', [SmsController::class, 'send'])->name('sms.send');
+        Route::get('sms/report', [SmsController::class, 'report'])->name('sms.report');
+        Route::get('sms/report/export', [SmsController::class, 'exportCsv'])->name('sms.report.export');
+        Route::post('sms/blacklist', [SmsController::class, 'addToBlacklist'])->name('sms.blacklist.add');
+
+        // SMS Lists management
+        Route::post('sms/lists', [SmsController::class, 'storeList'])->name('sms.lists.store');
+        Route::delete('sms/lists/{list}', [SmsController::class, 'destroyList'])->name('sms.lists.destroy');
+        Route::post('sms/lists/{list}/contacts', [SmsController::class, 'addContactsToList'])->name('sms.lists.contacts.add');
+        Route::delete('sms/lists/{list}/contacts/{contact}', [SmsController::class, 'removeContactFromList'])->name('sms.lists.contacts.remove');
+        Route::post('sms/lists/{list}/send', [SmsController::class, 'sendToList'])->name('sms.lists.send');
+    });
+    Route::get('/global-search', [GlobalSearchController::class, 'index'])->name('global.search');
+
+    Route::scopeBindings()->group(function () {
+
+        // Projects
+        Route::get('/projects',               [ProjectController::class, 'index'])->name('projects.index');
+        Route::get('/projects/create',        [ProjectController::class, 'create'])->name('projects.create');
+        Route::post('/projects',              [ProjectController::class, 'store'])->name('projects.store');
+        Route::get('/projects/{project}',     [ProjectController::class, 'show'])->name('projects.show');
+    
+        // Members
+        Route::post('/projects/{project}/members',          [ProjectController::class, 'addMember'])->name('projects.members.add');
+        Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember'])->name('projects.members.remove');
+    
+        Route::prefix('projects/{project}')
+    ->name('projects.')
+    ->middleware('can:view,project')  // کاربر باید عضو پروژه باشد
+    ->scopeBindings()                 // بایندینگ تو در تو: task متعلق به project و note متعلق به task
+    ->group(function () {
+
+        /*
+        |-------------------------
+        | Tasks (CRUD + Done)
+        |-------------------------
+        */
+
+        // ایجاد تسک
+        Route::post('tasks', [TaskController::class, 'store'])
+            ->name('tasks.store')
+            ->whereNumber('project');
+
+        // نمایش تسک (با یادداشت‌ها) => به TaskNoteController منتقل شد
+        Route::get('tasks/{task}', [TaskNoteController::class, 'show'])
+            ->name('tasks.show')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        // ویرایش/به‌روزرسانی/حذف توسط TaskController
+        Route::get('tasks/{task}/edit', [TaskController::class, 'edit'])
+            ->middleware('can:update,task')
+            ->name('tasks.edit')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        Route::put('tasks/{task}', [TaskController::class, 'update'])
+            ->middleware('can:update,task')
+            ->name('tasks.update')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        Route::delete('tasks/{task}', [TaskController::class, 'destroy'])
+            ->middleware('can:delete,task')
+            ->name('tasks.destroy')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        // علامت زدن به‌عنوان انجام‌شده
+        Route::post('tasks/{task}/done', [TaskController::class, 'markDone'])
+            ->middleware('can:update,task')
+            ->name('tasks.done')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        /*
+        |-------------------------
+        | Task Notes (Store/Destroy)
+        |-------------------------
+        */
+
+        // ثبت یادداشتِ جدید برای تسک
+        Route::post('tasks/{task}/notes', [TaskNoteController::class, 'store'])
+            ->middleware('can:view,task') // یا can:create, App\Models\Note اگر پالیسی جدا دارید
+            ->name('tasks.notes.store')
+            ->whereNumber('project')
+            ->whereNumber('task');
+
+        // حذف یادداشت
+        Route::delete('tasks/{task}/notes/{note}', [TaskNoteController::class, 'destroy'])
+            ->middleware('can:delete,note')
+            ->name('tasks.notes.destroy')
+            ->whereNumber('project')
+            ->whereNumber('task')
+            ->whereNumber('note');
+    });
+    });
+    
+    Route::middleware(['auth'])->group(function () {
+        Route::resource('activities', ActivityController::class);
+    
+        // دکمه تغییر وضعیت به تکمیل شده
+        Route::patch('activities/{activity}/complete', [\App\Http\Controllers\ActivityController::class, 'markComplete'])
+            ->name('activities.complete');
+    
+        Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
+        Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events'); // فید ایونت‌ها
+    });
+    
+
+    
+
+});
+
+require __DIR__.'/auth.php';
+

@@ -1,0 +1,22 @@
+            $op->next_follow_up = null;
+        }
+    });
+}
+
+    // ---------------- Accessors (display labels) ----------------
+    public function getStageAttribute($value)
+    {
+        return \App\Helpers\FormOptionsHelper::getOpportunityStageLabel($value);
+    }
+
+    public function getSourceAttribute($value)
+    {
+        return \App\Helpers\FormOptionsHelper::getOpportunitySourceLabel($value);
+    }
+
+
+
+
+
+
+}

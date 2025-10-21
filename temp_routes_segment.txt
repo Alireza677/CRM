@@ -1,0 +1,122 @@
+    Route::prefix('sales')->name('sales.')->group(function () {
+        // فرصت‌های فروش
+        Route::resource('opportunities', OpportunityController::class)->names('opportunities');
+        Route::get('opportunities/{opportunity}/tab/{tab}', [OpportunityController::class, 'loadTab'])->name('opportunities.tab');
+        Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])->name('opportunities.notes.store');
+
+        // سرنخ‌ها
+        Route::get('leads/export', [LeadExportController::class, 'export'])
+        ->name('leads.export');
+        // اکسپورت با فرمت در مسیر: /sales/leads/export/xlsx
+        Route::get('leads/export/{format}', [LeadExportController::class, 'export'])
+            ->whereIn('format', ['csv', 'xlsx'])
+            ->name('leads.export.format');
+        // سرنخ‌ها (موجود)
+        Route::resource('leads', SalesLeadController::class)->names('leads');
+
+
+        // اسناد
+        Route::resource('documents', DocumentController::class);
+        Route::get('documents/{document}/view', [DocumentController::class, 'view'])->name('documents.view');
+        Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+
+
+        // مخاطبین
+        Route::get('contacts/import', [ContactImportController::class, 'showForm'])
+        ->name('contacts.import.form');
+        Route::post('contacts/import', [ContactImportController::class, 'import'])
+            ->name('contacts.import');
+        Route::get('contacts/export', [ContactImportController::class, 'export'])
+            ->name('contacts.export');
+        Route::get('contacts/export/{format}', [ContactImportController::class, 'export'])
+            ->whereIn('format', ['csv', 'xlsx'])
+            ->name('contacts.export.format');
+        Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])
+            ->name('contacts.bulk_delete');
+        Route::get('contacts/{contact}/tab/{tab}', [ContactController::class, 'loadTab'])->name('contacts.tab');
+        Route::resource('contacts', ContactController::class);
+
+
+        // سازمان‌ها
+        Route::get('organizations/import', [OrganizationImportController::class, 'importForm'])->name('organizations.import.form');
+        Route::post('organizations/import', [OrganizationImportController::class, 'import'])->name('organizations.import');
+        Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // قبل از resource
+        Route::get('organizations/{organization}/tab/{tab}', [OrganizationController::class, 'loadTab'])->name('organizations.tab');
+        Route::resource('organizations', OrganizationController::class)->names('organizations');
+
+        // پیش‌فاکتور
+        Route::get('proformas/import', [ProformaImportController::class, 'Form'])->name('proformas.import.form');
+        Route::post('proformas/import', [ProformaImportController::class, 'import'])->name('proformas.import');
+        Route::delete('proformas/bulk-delete', [ProformaController::class, 'bulkDestroy'])->name('proformas.bulk-destroy');
+        Route::resource('proformas', ProformaController::class);
+        Route::get('proformas/{proforma}/preview', [ProformaController::class, 'preview'])->name('proformas.preview');
+        Route::post('proformas/{proforma}/items', [ProformaController::class, 'storeItems'])->name('proformas.items.store');
+        Route::post('proformas/{proforma}/send-for-approval', [ProformaController::class, 'sendForApproval'])->name('proformas.sendForApproval');
+
+        // تصمیم‌گیری مرحله‌ای: approve | reject
+        Route::post('proformas/{proforma}/approvals/{step}/{decision}', [ProformaApprovalController::class, 'decide'])
+        ->whereNumber('step')
+        ->whereIn('decision', ['approve','reject'])
+        ->name('proformas.approvals.decide');
+        Route::post('proformas/{proforma}/reject', [ProformaController::class, 'reject'])
+        ->name('proformas.reject');
+
+        // روت قدیمی برای تأیید نهایی (در صورت استفاده جاهای دیگر)
+        Route::post('proformas/{proforma}/approve', [ProformaController::class, 'approve'])
+            ->name('proformas.approve');
+
+        // نقل‌قول‌ها
+        Route::resource('quotations', QuotationController::class);
+
+        // داشبورد فروش
+        Route::get('/', [SalesController::class, 'index'])->name('index');
+
+        // نسخه قدیمی (در صورت نیاز)
+        Route::get('proforma-invoice', [ProformaInvoiceController::class, 'index'])->name('proforma.index');
+    });
+
+    
+    Route::prefix('inventory')->name('inventory.')->group(function () {
+        // --- Import routes (قبل از resource ها) ---
+        Route::get('products/import', [ProductImportController::class, 'create'])->name('products.import');
+        Route::post('products/import/dry-run', [ProductImportController::class, 'dryRun'])->name('products.import.dryrun');
+        Route::post('products/import/confirm', [ProductImportController::class, 'store'])->name('products.import.store');
+
+        // Suppliers import
+        Route::get('suppliers/import', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'create'])->name('suppliers.import');
+        Route::post('suppliers/import/dry-run', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'dryRun'])->name('suppliers.import.dryrun');
+        Route::post('suppliers/import/confirm', [\App\Http\Controllers\Inventory\SupplierImportController::class, 'store'])->name('suppliers.import.store');
+
+        // Single product details page
+        Route::get('products/{product}', [ProductController::class, 'show'])
+            ->whereNumber('product')
+            ->name('products.show');
+
+        // --- Resources ---
+        Route::resource('products', ProductController::class)->except(['show'])->whereNumber('product');
+        Route::resource('suppliers', SupplierController::class);          // => inventory.suppliers.index
+        Route::resource('purchase-orders', PurchaseOrderController::class);
+    });
+
+    // Other Modules
+    Route::get('/support', [SupportController::class, 'index'])->name('support');
+    Route::get('/tools', [ToolsController::class, 'index'])->name('tools');
+    Route::get('/admin', [AdminController::class, 'index'])->name('admin');
+    Route::get('/customize', [CustomizeController::class, 'index'])->name('customize');
+
+    // approval
+    Route::get('/approvals/pending', [\App\Http\Controllers\ApprovalController::class, 'pending'])
+    ->middleware('auth')
+    ->name('approvals.pending');
+    
+    Route::post('/approvals/{approval}/action', [\App\Http\Controllers\ApprovalController::class, 'handleAction'])
+    ->middleware('auth')
+    ->name('approvals.action');
+
+    
+
+
+    Route::post('settings/users/reassign', [UserController::class, 'reassign'])->name('settings.users.reassign');
+
+
+    // Customers

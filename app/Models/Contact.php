@@ -4,11 +4,12 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
-use App\Models\Opportunity;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\LogOptions;
 
 class Contact extends Model
 {
-    use HasFactory;
+    use HasFactory, LogsActivity;
 
     protected $fillable = [
         'first_name',
@@ -24,16 +25,31 @@ class Contact extends Model
         'opportunity_id',
         'assigned_to',
     ];
-    
-    
 
-    // فرصت‌های فروش مرتبط با مخاطب
+    // Relations
     public function opportunities()
     {
-        return $this->hasMany(Opportunity::class);
+        return $this->hasMany(\App\Models\Opportunity::class);
     }
 
-    // ترکیب نام و نام خانوادگی برای نمایش
+    public function organization()
+    {
+        return $this->belongsTo(\App\Models\Organization::class);
+    }
+
+    public function proformas()
+    {
+        return $this->hasMany(\App\Models\Proforma::class)
+            ->orderByDesc('proforma_date')
+            ->orderByDesc('created_at');
+    }
+
+    public function assignedUser()
+    {
+        return $this->belongsTo(\App\Models\User::class, 'assigned_to');
+    }
+
+    // Accessors
     public function getNameAttribute()
     {
         return trim("{$this->first_name} {$this->last_name}");
@@ -43,19 +59,32 @@ class Contact extends Model
     {
         return trim("{$this->first_name} {$this->last_name}");
     }
-    public function organization()
+
+    // Activity Log
+    public function getActivitylogOptions(): LogOptions
     {
-        return $this->belongsTo(Organization::class);
-    }
-    public function proformas()
-    {
-        return $this->hasMany(Proforma::class)
-            ->orderByDesc('proforma_date')
-            ->orderByDesc('created_at');
-    }
-    public function assignedUser()
-    {
-        return $this->belongsTo(User::class, 'assigned_to');
+        return LogOptions::defaults()
+            ->logOnly([
+                'first_name',
+                'last_name',
+                'email',
+                'phone',
+                'mobile',
+                'company',
+                'state',
+                'city',
+                'address',
+                'organization_id',
+                'assigned_to',
+            ])
+            ->useLogName('contact')
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 
+    public function activities()
+    {
+        return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
+    }
 }
+

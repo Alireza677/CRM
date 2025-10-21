@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
 @php
@@ -7,98 +7,174 @@
         ['title' => $organization->name ?? ('#' . $organization->id)],
     ];
 @endphp
-<div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8" dir="rtl">
-    <h2 class="text-2xl font-bold mb-6 text-neutral-900">مشاهده سازمان</h2>
 
-    <div class="bg-neutral-100 shadow rounded-2xl p-6">
-        {{-- مشخصات سازمان --}}
-        <dl class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-6">
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">نام</dt>
-                <dd class="font-medium text-neutral-900">{{ $organization->name ?: '—' }}</dd>
+<div class="bg-gray-100" dir="rtl">
+    <div class="flex">
+        <div id="mobileOverlay" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden"></div>
+
+        <aside id="mobileSidebar"
+               class="fixed right-0 top-[115px] h-full w-72 bg-white shadow-lg z-50 border-l
+                      transform translate-x-full transition-transform duration-200 ease-out
+                      md:translate-x-0 md:sticky md:top-[115px] md:h-[calc(100vh-115px)] md:w-64 md:z-40 md:overflow-y-auto">
+            <div class="p-4">
+                <div class="flex items-center justify-between mb-2 md:mb-4">
+                    <h2 class="text-m font-bold text-gray-600">
+                        {{ $organization->name }}
+                    </h2>
+                    <button id="closeSidebarBtn"
+                            class="md:hidden inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100"
+                            aria-label="بستن منو">
+                        <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <nav class="space-y-1">
+                    <a href="#" data-url="{{ route('sales.organizations.tab', ['organization' => $organization->id, 'tab' => 'info']) }}"
+                       class="load-tab flex items-center justify-between px-3 py-2 rounded bg-blue-100 text-blue-800 font-semibold">
+                        <span class="flex items-center space-x-2 rtl:space-x-reverse">
+                            
+                            اطلاعات
+                        </span>
+                    </a>
+                    <a href="#" data-url="{{ route('sales.organizations.tab', ['organization' => $organization->id, 'tab' => 'opportunities']) }}"
+                       class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        <span>فرصت‌های فروش مرتبط</span>
+                    </a>
+                    <a href="#" data-url="{{ route('sales.organizations.tab', ['organization' => $organization->id, 'tab' => 'contacts']) }}"
+                       class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        <span>مخاطبین مرتبط</span>
+                    </a>
+                    <a href="#" data-url="{{ route('sales.organizations.tab', ['organization' => $organization->id, 'tab' => 'updates']) }}"
+                       class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        <span>به‌روزرسانی‌ها</span>
+                    </a>
+                </nav>
+            </div>
+        </aside>
+
+        <main class="flex-1 px-4 md:px-8 pb-8 md:mr-64 md:ml-0">
+            <div class="hidden md:flex justify-between items-center mb-6 mt-8">
+                <h1 class="text-2xl font-bold text-gray-800">
+                    سازمان: {{ $organization->name }}
+                </h1>
+                <div class="flex gap-2">
+                    <a href="{{ route('sales.organizations.edit', $organization->id) }}"
+                       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-xl bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-gray-700 text-sm"
+                       title="ویرایش سازمان">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                                  d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z"/>
+                        </svg>
+                        <span class="hidden sm:inline">ویرایش</span>
+                    </a>
+                </div>
             </div>
 
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">ایمیل</dt>
-                <dd class="text-neutral-900">{{ $organization->email ?: '—' }}</dd>
+            <div id="organization-tab-content" class="bg-white rounded-lg shadow p-4">
+                <div class="text-gray-500 text-sm">درحال بارگذاری...</div>
             </div>
+        </main>
+    </div>
 
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">شماره تماس</dt>
-                <dd class="text-neutral-900">{{ $organization->phone ?: '—' }}</dd>
-            </div>
-
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">آدرس</dt>
-                <dd class="text-neutral-900">{{ $organization->address ?: '—' }}</dd>
-            </div>
-
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">وب‌سایت</dt>
-                <dd>
-                    @if($organization->website)
-                        <a href="{{ $organization->website }}" class="text-primary-dark hover:underline" target="_blank">
-                            {{ $organization->website }}
-                        </a>
-                    @else
-                        <span class="text-neutral-600">—</span>
-                    @endif
-                </dd>
-            </div>
-
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">صنعت</dt>
-                <dd class="text-neutral-900">{{ $organization->industry ?: '—' }}</dd>
-            </div>
-
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">استان</dt>
-                <dd class="text-neutral-900">{{ $organization->state ?: '—' }}</dd>
-            </div>
-
-            <div class="space-y-1">
-                <dt class="text-sm text-neutral-600">شهر</dt>
-                <dd class="text-neutral-900">{{ $organization->city ?: '—' }}</dd>
-            </div>
-
-            {{-- یادداشت --}}
-            <div class="sm:col-span-2 lg:col-span-3 space-y-1">
-                <dt class="text-sm text-neutral-600">یادداشت</dt>
-                <dd class="text-neutral-900 leading-relaxed">{{ $organization->notes ?: '—' }}</dd>
-            </div>
-        </dl>
-
-        {{-- مخاطبین مرتبط --}}
-        @if($organization->contacts->count())
-            <div class="mt-8 pt-6 border-t border-neutral-300">
-                <h3 class="text-lg font-semibold mb-4 text-neutral-900">مخاطبین مرتبط</h3>
-                <ul class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-                    @foreach($organization->contacts as $contact)
-                        <li class="rounded-xl border border-neutral-300 bg-white hover:bg-primary-light transition p-4">
-                            <a href="{{ route('sales.contacts.show', $contact->id) }}" 
-                               class="block font-medium text-primary-dark hover:underline">
-                                {{ $contact->first_name }} {{ $contact->last_name }}
-                            </a>
-                            <div class="text-sm text-neutral-600 mt-1">
-                                {{ $contact->mobile ?: $contact->phone ?: '—' }}
-                            </div>
-                        </li>
-                    @endforeach
-                </ul>
-            </div>
-        @endif
-
-        {{-- دکمه‌ها --}}
-        <div class="mt-8 flex items-center gap-3">
-            <a href="{{ route('sales.organizations.edit', $organization->id) }}"
-               class="inline-flex items-center rounded-lg bg-primary px-4 py-2 text-neutral-900 font-medium hover:bg-primary-dark">
-                ویرایش
-            </a>
-            <a href="{{ route('sales.organizations.index') }}"
-               class="inline-flex items-center rounded-lg bg-secondary px-4 py-2 text-neutral-900 font-medium hover:bg-secondary-dark">
-                بازگشت
-            </a>
-        </div>
+    <!-- Floating open button for mobile -->
+    <div class="md:hidden fixed left-4 top-[110px] z-50">
+        <button id="mobileMenuBtn" aria-expanded="false"
+                class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 bg-white">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                      d="M4 6h16M4 12h16M4 18h16" />
+            </svg>
+        </button>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener("DOMContentLoaded", function () {
+    const links = document.querySelectorAll('.load-tab');
+    const contentArea = document.getElementById('organization-tab-content');
+
+    const activeClasses = ['bg-blue-100', 'text-blue-800', 'font-semibold'];
+
+    function setActiveTab(el) {
+        links.forEach(l => l.classList.remove(...activeClasses));
+        el.classList.add(...activeClasses);
+    }
+
+    function closeSidebar() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobileOverlay');
+        const openBtn = document.getElementById('mobileMenuBtn');
+        if (!sidebar) return;
+        sidebar.classList.add('translate-x-full');
+        overlay?.classList.add('hidden');
+        document.body.classList.remove('overflow-hidden');
+        openBtn?.setAttribute('aria-expanded', 'false');
+    }
+
+    function openSidebar() {
+        const sidebar = document.getElementById('mobileSidebar');
+        const overlay = document.getElementById('mobileOverlay');
+        const openBtn = document.getElementById('mobileMenuBtn');
+        if (!sidebar) return;
+        sidebar.classList.remove('translate-x-full');
+        overlay?.classList.remove('hidden');
+        document.body.classList.add('overflow-hidden');
+        openBtn?.setAttribute('aria-expanded', 'true');
+    }
+
+    function loadTab(url, clickedEl = null) {
+        contentArea.innerHTML =
+          '<div class="text-gray-400 p-4 flex items-center gap-2">' +
+          '<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="4" opacity=".25"></circle><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" fill="none"></path></svg>' +
+          'در حال بارگذاری...</div>';
+
+        fetch(url)
+            .then(res => res.text())
+            .then(html => {
+                contentArea.innerHTML = html;
+                if (clickedEl && window.matchMedia('(max-width: 767px)').matches) {
+                    closeSidebar();
+                }
+            })
+            .catch(() => {
+                contentArea.innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری محتوا.</div>';
+            });
+    }
+
+    links.forEach(link => {
+        link.addEventListener('click', function (e) {
+            e.preventDefault();
+            setActiveTab(this);
+            loadTab(this.dataset.url, this);
+        });
+    });
+
+    const defaultTab = document.querySelector('.load-tab');
+    if (defaultTab) {
+        setActiveTab(defaultTab);
+        loadTab(defaultTab.dataset.url);
+    }
+
+    const sidebar = document.getElementById('mobileSidebar');
+    const overlay = document.getElementById('mobileOverlay');
+    const openBtn = document.getElementById('mobileMenuBtn');
+    const closeBtn = document.getElementById('closeSidebarBtn');
+
+    openBtn?.addEventListener('click', (e) => {
+        e.preventDefault();
+        const expanded = openBtn.getAttribute('aria-expanded') === 'true';
+        expanded ? closeSidebar() : openSidebar();
+    });
+    closeBtn?.addEventListener('click', (e) => { e.preventDefault(); closeSidebar(); });
+    overlay?.addEventListener('click', closeSidebar);
+    document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape' && window.matchMedia('(max-width: 767px)').matches) closeSidebar();
+    });
+});
+</script>
+@endpush

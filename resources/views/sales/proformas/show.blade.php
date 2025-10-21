@@ -77,6 +77,7 @@
                 @can('update', $proforma)
                     <a href="{{ route('sales.proformas.edit', $proforma) }}" class="btn btn-primary">✏️ ویرایش</a>
                 @endcan
+                <a href="{{ route('sales.proformas.preview', $proforma) }}" class="btn btn-secondary">پیشنمایش چاپ</a>
                 <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary">⬅ بازگشت</a>
             </div>
         </div>

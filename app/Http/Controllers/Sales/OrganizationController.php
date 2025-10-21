@@ -139,6 +139,31 @@ class OrganizationController extends Controller
         $organization = Organization::with('contacts')->findOrFail($id);
         return view('sales.organizations.show', compact('organization'));
     }
+
+    public function loadTab(Organization $organization, $tab)
+    {
+        $view = "sales.organizations.tabs.$tab";
+        if (!view()->exists($view)) {
+            abort(404);
+        }
+
+        $data = ['organization' => $organization];
+
+        if ($tab === 'opportunities') {
+            $organization->load('opportunities');
+        }
+        if ($tab === 'contacts') {
+            $organization->load('contacts');
+        }
+        if ($tab === 'updates') {
+            $data['activities'] = \Spatie\Activitylog\Models\Activity::where('subject_type', \App\Models\Organization::class)
+                ->where('subject_id', $organization->id)
+                ->latest()
+                ->get();
+        }
+
+        return view($view, $data);
+    }
     public function bulkDelete(Request $request)
     {
         $ids = $request->input('selected', []);

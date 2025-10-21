@@ -68,7 +68,7 @@
                                     @endif
                                 </a>
                             </th>
-                            <th class="px-3 py-2 text-gray-600">شخص تماس</th>
+                            <th class="px-3 py-2 text-gray-600"> مخاطب مرتبط </th>
                             <th class="px-3 py-2 text-gray-600">تلفن</th>
                             <th class="px-3 py-2 text-gray-600">شهر</th>
                             <th class="px-3 py-2 text-gray-600">

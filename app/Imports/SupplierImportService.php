@@ -141,6 +141,14 @@ class SupplierImportService
                 $v = trim($v);
             }
 
+            // Normalize foreign keys: empty string should be null
+            if (in_array($k, ['category_id','assigned_to'], true)) {
+                if ($v === '' || $v === null) {
+                    $out[$k] = null;
+                    continue;
+                }
+            }
+
             if (in_array($k, ['created_at','updated_at'], true)) {
                 $v = $this->normalizeDate($v);
             }

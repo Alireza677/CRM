@@ -126,6 +126,7 @@
                             <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
                                 <div class="flex gap-4">
                                     <a href="{{ route('sales.opportunities.edit', $opportunity) }}" class="text-indigo-600 hover:text-indigo-900">ویرایش</a>
+                                    @role('admin')
                                     <form action="{{ route('sales.opportunities.destroy', $opportunity) }}" method="POST" class="inline">
                                         @csrf
                                         @method('DELETE')
@@ -135,6 +136,7 @@
                                             حذف
                                         </button>
                                     </form>
+                                    @endrole
                                 </div>
                             </td>
                         </tr>

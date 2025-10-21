@@ -1,4 +1,4 @@
-<?php
+﻿<?php
 
 namespace App\Http\Controllers\Inventory;
 
@@ -16,10 +16,10 @@ class PurchaseOrderController extends Controller
             ->select([
                 'purchase_orders.*',
                 'suppliers.name as supplier_name',
-                'requested_by_user.name as requested_by_name'
+                'users.name as assigned_to_name'
             ])
             ->leftJoin('suppliers', 'purchase_orders.supplier_id', '=', 'suppliers.id')
-            ->leftJoin('users as requested_by_user', 'purchase_orders.requested_by', '=', 'requested_by_user.id');
+            ->leftJoin('users', 'purchase_orders.assigned_to', '=', 'users.id');
 
         if ($request->has('search')) {
             $search = $request->search;
@@ -41,8 +41,8 @@ class PurchaseOrderController extends Controller
         if ($request->has('status')) {
             $query->where('purchase_orders.status', $request->status);
         }
-        if ($request->has('requested_by')) {
-            $query->where('requested_by_user.name', 'like', "%{$request->requested_by}%");
+        if ($request->has('assigned_to')) {
+            $query->where('users.name', 'like', "%{$request->assigned_to}%");
         }
 
         $sortField = $request->get('sort', 'created_at');
@@ -50,8 +50,8 @@ class PurchaseOrderController extends Controller
 
         if ($sortField === 'supplier') {
             $query->orderBy('suppliers.name', $sortDirection);
-        } elseif ($sortField === 'requested_by') {
-            $query->orderBy('requested_by_user.name', $sortDirection);
+        } elseif ($sortField === 'assigned_to') {
+            $query->orderBy('users.name', $sortDirection);
         } else {
             $query->orderBy("purchase_orders.{$sortField}", $sortDirection);
         }
@@ -73,61 +73,19 @@ class PurchaseOrderController extends Controller
     {
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
-            'purchase_type' => 'required|in:official,unofficial',
             'supplier_id' => 'required|exists:suppliers,id',
-            'requested_by' => 'nullable|exists:users,id',
-            'request_date' => 'nullable|date',
             'purchase_date' => 'required|date',
-            'needed_by_date' => 'nullable|date',
             'status' => 'nullable|string|max:50',
-            'previously_paid_amount' => 'nullable|numeric|min:0',
+            'total_amount' => 'nullable|numeric',
+            'assigned_to' => 'nullable|exists:users,id',
             'description' => 'nullable|string',
-            // Items
-            'items' => 'required|array|min:1',
-            'items.*.item_name' => 'required|string|max:255',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit' => 'nullable|string|max:50',
-            'items.*.unit_price' => 'required|numeric|min:0',
         ]);
 
-        $items = collect($validated['items']);
-        $total = $items->reduce(function ($carry, $item) {
-            $line = (float)$item['quantity'] * (float)$item['unit_price'];
-            return $carry + $line;
-        }, 0.0);
-
-        $previouslyPaid = (float)($validated['previously_paid_amount'] ?? 0);
-        $remaining = max($total - $previouslyPaid, 0);
-
-        $po = PurchaseOrder::create([
-            'subject' => $validated['subject'],
-            'purchase_type' => $validated['purchase_type'],
-            'supplier_id' => $validated['supplier_id'],
-            'requested_by' => $validated['requested_by'] ?? auth()->id(),
-            'request_date' => $validated['request_date'] ?? now(),
-            'purchase_date' => $validated['purchase_date'],
-            'needed_by_date' => $validated['needed_by_date'] ?? null,
-            'status' => $validated['status'] ?? 'created',
-            'total_amount' => $total,
-            'previously_paid_amount' => $previouslyPaid,
-            'remaining_payable_amount' => $remaining,
-            'assigned_to' => $validated['requested_by'] ?? auth()->id(),
-            'description' => $validated['description'] ?? null,
-        ]);
-
-        foreach ($items as $item) {
-            $lineTotal = (float)$item['quantity'] * (float)$item['unit_price'];
-            $po->items()->create([
-                'item_name' => $item['item_name'],
-                'quantity' => $item['quantity'],
-                'unit' => $item['unit'] ?? null,
-                'unit_price' => $item['unit_price'],
-                'line_total' => $lineTotal,
-            ]);
-        }
+        PurchaseOrder::create($validated);
 
         return redirect()
             ->route('inventory.purchase-orders.index')
             ->with('success', 'سفارش خرید با موفقیت ثبت شد.');
     }
 }
+

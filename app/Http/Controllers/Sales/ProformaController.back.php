@@ -1,3 +1,13 @@
+﻿<?php
+}
+
+    public function preview(Proforma \)
+    {
+        \->load(['organization','contact','items.product']);
+        return view('sales.proformas.preview', compact('proforma'));
+    }
+ 
+}
 <?php
 
 namespace App\Http\Controllers\Sales;
@@ -471,11 +481,6 @@ class ProformaController extends Controller
         }
     
         return view('sales.proformas.show', compact('proforma', 'approval', 'pendingApproverName'));
-    }
-    public function preview(Proforma $proforma)
-    {
-        $proforma->load(['organization','contact','items.product']);
-        return view('sales.proformas.preview', compact('proforma'));
     }
     
     
@@ -1111,8 +1116,4 @@ class ProformaController extends Controller
     
 
 }
-
-
-
-
 

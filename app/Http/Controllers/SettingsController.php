@@ -10,4 +10,12 @@ class SettingsController extends Controller
     {
         return view('settings.index');
     }
-} 
+
+    /**
+     * نمایش صفحه تنظیمات عمومی
+     */
+    public function general()
+    {
+        return view('settings.general');
+    }
+}

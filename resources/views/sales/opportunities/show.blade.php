@@ -25,6 +25,7 @@
                 </svg>
             </a>
             {{-- حذف (موبایل) --}}
+            @role('admin')
             <form action="{{ route('sales.opportunities.destroy', $opportunity) }}" method="POST"
                   onsubmit="return confirm('آیا از حذف این فرصت فروش اطمینان دارید؟')">
                 @csrf
@@ -38,6 +39,7 @@
                     </svg>
                 </button>
             </form>
+            @endrole
             {{-- همبرگری --}}
             <button id="mobileMenuBtn"
                     class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 bg-white"
@@ -164,6 +166,7 @@
                         <span class="hidden sm:inline">ویرایش</span>
                     </a>
                     {{-- حذف --}}
+                    @role('admin')
                     <form action="{{ route('sales.opportunities.destroy', $opportunity) }}" method="POST"
                           onsubmit="return confirm('آیا از حذف این فرصت فروش اطمینان دارید؟')">
                         @csrf
@@ -178,6 +181,7 @@
                             <span class="hidden sm:inline">حذف</span>
                         </button>
                     </form>
+                    @endrole
                 </div>
             </div>
 

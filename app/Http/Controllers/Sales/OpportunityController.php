@@ -202,6 +202,18 @@ public function update(Request $request, Opportunity $opportunity)
 
     public function destroy(Opportunity $opportunity)
     {
+        $user = auth()->user();
+        $isAdmin = false;
+        if ($user) {
+            if (method_exists($user, 'hasRole')) {
+                $isAdmin = $user->hasRole('admin');
+            } else {
+                $isAdmin = (bool)($user->is_admin ?? false);
+            }
+        }
+
+        abort_unless($isAdmin, 403, 'فقط ادمین می‌تواند فرصت فروش را حذف کند.');
+
         $opportunity->delete();
 
         return redirect()->route('sales.opportunities.index')
