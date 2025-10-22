@@ -65,7 +65,7 @@
 </div>
 
 <!-- Persian Datepicker Dependencies (Local) -->
-<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="{{ asset('vendor/persian-datepicker/js/jquery.min.js') }}"></script>
 <script src="{{ asset('vendor/persian-datepicker/js/persian-date.js') }}"></script>
 <script src="{{ asset('vendor/persian-datepicker/js/persian-datepicker.min.js') }}"></script>
 
@@ -160,7 +160,8 @@
     // پشتیبانی عمومی برای هر input با کلاس persian-datepicker و data-alt-field / data-target
     $('.persian-datepicker').each(function(){
       const $i = $(this);
-      const altId = $i.data('alt-field') || $i.data('target');
+      // Read raw attribute to avoid jQuery camelCase data() mismatch
+      const altId = $i.attr('data-alt-field') || $i.attr('data-target');
       if (altId) initPicker($i, '#' + altId); else initPicker($i, null);
     });
   });
@@ -168,6 +169,39 @@
 
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+<!-- Flash popups -->
+@if (session('success'))
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'success',
+        title: 'ثبت موفق',
+        text: @json(session('success')),
+        confirmButtonText: 'باشه',
+        timer: 2500,
+        timerProgressBar: true
+      });
+    }
+  });
+</script>
+@endif
+
+@if (session('error'))
+<script>
+  document.addEventListener('DOMContentLoaded', function(){
+    if (window.Swal) {
+      Swal.fire({
+        icon: 'error',
+        title: 'خطا در ذخیره',
+        text: @json(session('error')),
+        confirmButtonText: 'باشه'
+      });
+    }
+  });
+</script>
+@endif
 
 
 @stack('scripts')
