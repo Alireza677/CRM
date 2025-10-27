@@ -2,37 +2,64 @@
 
 namespace App\Helpers;
 
-use App\Models\Opportunity;
-use App\Models\Proforma;
-use App\Models\Approval;
-use App\Models\Quotation;
-use App\Models\Activity;
-use App\Models\Call;
-use App\Models\Document;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 class UserTransferHelper
 {
-    public static function transferAllData(int $fromUserId, int $toUserId): void
+    /**
+     * Transfer or nullify user references across tables.
+     * - Uses Schema::hasColumn to guard against missing columns
+     * - Does NOT touch Spatie activity logs (no activities.user_id)
+     * - If $toUserId is null, sets selected FK columns (e.g., assigned_to, owner_user_id) to null
+     */
+    public static function transferAllData(int $fromUserId, ?int $toUserId): void
     {
-        // فرصت‌های فروش
-        Opportunity::where('assigned_to', $fromUserId)->update(['assigned_to' => $toUserId]);
+        // Helper to safely update a single table.column
+        $safeUpdate = static function (string $table, string $column) use ($fromUserId, $toUserId) {
+            if (!Schema::hasTable($table) || !Schema::hasColumn($table, $column)) {
+                return;
+            }
+            DB::table($table)
+                ->where($column, $fromUserId)
+                ->update([$column => $toUserId]);
+        };
 
-        // پیش‌فاکتورها
-        Proforma::where('assigned_to', $fromUserId)->update(['assigned_to' => $toUserId]);
+        // Columns that should be updated even when $toUserId is null (set to null)
+        $nullables = [
+            ['opportunities', 'assigned_to'],
+            ['opportunities', 'owner_user_id'],
+            ['proformas',     'assigned_to'],
+            ['proformas',     'owner_user_id'],
+            ['documents',     'assigned_to'],
+            ['documents',     'owner_user_id'],
+            ['calls',         'user_id'],
+        ];
+        foreach ($nullables as [$table, $column]) {
+            $safeUpdate($table, $column);
+        }
 
-        // تاییدیه‌ها
-        Approval::where('user_id', $fromUserId)->update(['user_id' => $toUserId]);
-        Approval::where('approved_by', $fromUserId)->update(['approved_by' => $toUserId]);
+        // Columns updated only when a replacement user exists
+        if ($toUserId !== null) {
+            $onlyWithReplacement = [
+                ['approvals',   'user_id'],
+                ['approvals',   'approved_by'],
+                ['quotations',  'assigned_to'],
+                ['quotations',  'product_manager'],
+                ['documents',   'user_id'],
+            ];
+            foreach ($onlyWithReplacement as [$table, $column]) {
+                $safeUpdate($table, $column);
+            }
 
-        // پیشنهاد قیمت‌ها
-        Quotation::where('assigned_to', $fromUserId)->update(['assigned_to' => $toUserId]);
-        Quotation::where('product_manager', $fromUserId)->update(['product_manager' => $toUserId]);
-
-        // فعالیت‌ها و تماس‌ها و اسناد
-        Activity::where('user_id', $fromUserId)->update(['user_id' => $toUserId]);
-        Call::where('user_id', $fromUserId)->update(['user_id' => $toUserId]);
-        Document::where('user_id', $fromUserId)->update(['user_id' => $toUserId]);
-
-        // هر مدل وابسته‌ی دیگر را می‌توان اینجا اضافه کرد
+            // If logs must be transferred, uncomment below to reassign Spatie activitylog causer
+            // $activityLogTable = config('activitylog.table_name', 'activity_log');
+            // if (Schema::hasTable($activityLogTable) && Schema::hasColumn($activityLogTable, 'causer_id') && Schema::hasColumn($activityLogTable, 'causer_type')) {
+            //     DB::table($activityLogTable)
+            //         ->where('causer_type', \App\Models\User::class)
+            //         ->where('causer_id', $fromUserId)
+            //         ->update(['causer_id' => $toUserId]);
+            // }
+        }
     }
 }

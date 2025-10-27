@@ -6,12 +6,14 @@ use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
+use App\Models\Traits\AppliesVisibilityScope;
 
 class Contact extends Model
 {
-    use HasFactory, LogsActivity;
+    use HasFactory, LogsActivity, AppliesVisibilityScope;
 
     protected $fillable = [
+        'owner_user_id',
         'first_name',
         'last_name',
         'email',
@@ -24,6 +26,9 @@ class Contact extends Model
         'organization_id',
         'opportunity_id',
         'assigned_to',
+        'team_id',
+        'department',
+        'visibility',
     ];
 
     // Relations
@@ -87,4 +92,3 @@ class Contact extends Model
         return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
     }
 }
-

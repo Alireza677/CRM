@@ -25,7 +25,7 @@ class ContactController extends Controller
         $perPage = (int) $request->input('per_page', 100);           // پیش‌فرض 100
         $perPage = in_array($perPage, [25,50,100,200]) ? $perPage : 100;
     
-        $query = Contact::query()
+        $query = Contact::visibleFor(auth()->user(), 'contacts')
             ->select('contacts.*', 'organizations.name as organization_name', 'users.name as assigned_to_name')
             ->leftJoin('organizations', 'contacts.organization_id', '=', 'organizations.id')
             ->leftJoin('users', 'contacts.assigned_to', '=', 'users.id');
@@ -165,15 +165,17 @@ class ContactController extends Controller
 
     public function edit(Contact $contact)
     {
+        $this->authorize('update', $contact);
         $organizations = \App\Models\Organization::all();
         $users = \App\Models\User::all(); // لیست کاربران برای کشوی ارجاع به
-    
+
         return view('sales.contacts.edit', compact('contact', 'organizations', 'users'));
     }
     
 
     public function update(Request $request, Contact $contact)
 {
+    $this->authorize('update', $contact);
     $validated = $request->validate([
         'first_name'       => 'nullable|string|max:255',
         'last_name'        => 'nullable|string|max:255',

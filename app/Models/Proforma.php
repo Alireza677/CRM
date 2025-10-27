@@ -9,13 +9,16 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
 use App\Models\User;
 use App\Models\AutomationRule;
+use App\Models\Traits\AppliesVisibilityScope;
 
 class Proforma extends Model
 {
     use HasFactory;
     use NotifiesAssignee;
+    use AppliesVisibilityScope;
 
     protected $fillable = [
+        'owner_user_id',
         'subject',
         'proforma_date',
         'contact_name',
@@ -53,6 +56,9 @@ class Proforma extends Model
         'price',
         'unit',
         'total',
+        'team_id',
+        'department',
+        'visibility',
     ];
     
     protected $guarded = ['proforma_number'];
@@ -71,6 +77,10 @@ class Proforma extends Model
         'approval_mode'        => 'string',
         'proforma_stage'       => 'string',
         'status'               => 'string',
+        'owner_user_id'        => 'integer',
+        'assigned_to'          => 'integer',
+        'team_id'              => 'integer',
+        'visibility'           => 'string',
     ];
     
 

@@ -15,7 +15,7 @@
       </div>
     @endif
 
-    <form action="{{ route('inventory.purchase-orders.store') }}" method="POST" id="po-form">
+    <form action="{{ route('inventory.purchase-orders.store') }}" method="POST" id="po-form" enctype="multipart/form-data">
       @csrf
 
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 bg-white p-6 rounded shadow">
@@ -30,6 +30,31 @@
             <option value="official" {{ old('purchase_type')==='official' ? 'selected' : '' }}>رسمی</option>
             <option value="unofficial" {{ old('purchase_type')==='unofficial' ? 'selected' : '' }}>غیررسمی</option>
           </select>
+        </div>
+
+        <div>
+          <label for="settlement_type" class="block text-sm font-medium mb-1">نوع تسویه حساب</label>
+          <select name="settlement_type" id="settlement_type" class="w-full rounded-md border-gray-300">
+            <option value="">انتخاب کنید</option>
+            <option value="cash"   {{ old('settlement_type')==='cash' ? 'selected' : '' }}>نقد</option>
+            <option value="credit" {{ old('settlement_type')==='credit' ? 'selected' : '' }}>نسیه</option>
+            <option value="cheque" {{ old('settlement_type')==='cheque' ? 'selected' : '' }}>چک</option>
+          </select>
+        </div>
+
+        <div>
+          <label for="usage_type" class="block text-sm font-medium mb-1">مورد استفاده</label>
+          <select name="usage_type" id="usage_type" class="w-full rounded-md border-gray-300">
+            <option value="">انتخاب کنید</option>
+            <option value="inventory" {{ old('usage_type')==='inventory' ? 'selected' : '' }}>تکمیل موجودی انبار</option>
+            <option value="project"   {{ old('usage_type')==='project' ? 'selected' : '' }}>تکمیل پروژه</option>
+            <option value="both"      {{ old('usage_type')==='both' ? 'selected' : '' }}>هر دو</option>
+          </select>
+        </div>
+
+        <div id="project_name_wrapper" class="md:col-span-2" style="display:none;">
+          <label for="project_name" class="block text-sm font-medium mb-1">نام پروژه</label>
+          <input type="text" name="project_name" id="project_name" value="{{ old('project_name') }}" class="w-full rounded-md border-gray-300" placeholder="مثلاً: پروژه ساختمان الف">
         </div>
 
         <div>
@@ -69,22 +94,21 @@
           <input type="hidden" name="needed_by_date" id="needed_by_date" value="{{ old('needed_by_date') }}">
         </div>
 
-        <div>
-          <label for="status" class="block text-sm font-medium mb-1">وضعیت</label>
-          <select name="status" id="status" class="w-full rounded-md border-gray-300">
-            <option value="created">ایجاد شده</option>
-            <option value="approved">تأیید شده</option>
-            <option value="delivered">تحویل شده</option>
-          </select>
-        </div>
+        {{-- وضعیت پیش‌فرض: ایجاد شده (بدون نیاز به انتخاب کاربر) --}}
+        <input type="hidden" name="status" value="created">
 
         <div class="md:col-span-2">
-          <label for="description" class="block text-sm font-medium mb-1">توضیحات</label>
+          <label for="description" class="block text-sm font-medium mb-1">توضیحات و مشخصات حساب بانکی</label>
           <textarea name="description" id="description" rows="3" class="w-full rounded-md border-gray-300">{{ old('description') }}</textarea>
         </div>
       </div>
 
       <div class="mt-8 bg-white p-6 rounded shadow">
+        <div class="mb-4">
+          <label class="block text-sm font-medium mb-1">افزودن تصویر/سند</label>
+          <input type="file" name="attachments[]" accept="image/*" multiple class="block w-full text-sm text-gray-700" />
+          <p class="text-xs text-gray-500 mt-1">فرمت‌های مجاز: JPG, PNG — حداکثر 10MB برای هر فایل</p>
+        </div>
         <div class="flex items-center justify-between mb-4">
           <h3 class="text-lg font-semibold">آیتم‌ها</h3>
           <button type="button" id="add-item" class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">افزودن آیتم</button>
@@ -106,21 +130,43 @@
           </table>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-          <div>
-            <label for="previously_paid_amount" class="block text-sm font-medium mb-1">مبلغ‌های پرداخت‌شده قبلی</label>
-            <input type="number" step="0.01" min="0" name="previously_paid_amount" id="previously_paid_amount" value="{{ old('previously_paid_amount', 0) }}" class="w-full rounded-md border-gray-300">
-          </div>
+        <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mt-6">
           <div>
             <label class="block text-sm font-medium mb-1">جمع کل</label>
             <input type="text" id="total_amount_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
           </div>
-          <div>
-            <label class="block text-sm font-medium mb-1">مانده قابل پرداخت</label>
-            <input type="text" id="remaining_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
-          </div>
         </div>
       </div>
+      <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mt-4 bg-white p-6 rounded shadow">
+        <div class="flex items-center mt-2">
+          <input type="checkbox" id="apply_vat" class="mr-2">
+          <label for="apply_vat" class="text-sm">اعمال ارزش افزوده</label>
+        </div>
+        <div>
+          <label for="vat_percent" class="block text-sm font-medium mb-1">درصد ارزش افزوده (%)</label>
+          <input type="number" step="0.01" min="0" max="100" name="vat_percent" id="vat_percent" value="{{ old('vat_percent') }}" class="w-full rounded-md border-gray-300" disabled>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">مبلغ ارزش افزوده</label>
+          <input type="text" id="vat_amount_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">جمع با ارزش افزوده</label>
+          <input type="text" id="grand_total_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
+        </div>
+      </div>
+
+      <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+        <div>
+          <label for="previously_paid_amount" class="block text-sm font-medium mb-1">مبلغ‌های پرداخت‌شده قبلی</label>
+          <input type="number" step="1" min="0" name="previously_paid_amount" id="previously_paid_amount" value="{{ old('previously_paid_amount', 0) }}" class="w-full rounded-md border-gray-300">
+        </div>
+        <div>
+          <label class="block text-sm font-medium mb-1">مانده قابل پرداخت</label>
+          <input type="text" id="remaining_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
+        </div>
+      </div>
+
 
       <div class="mt-6 flex items-center">
         <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">ثبت سفارش خرید</button>
@@ -193,9 +239,13 @@
   const addItemBtn = document.getElementById('add-item');
   const previouslyPaidInput = document.getElementById('previously_paid_amount');
   const totalDisplay = document.getElementById('total_amount_display');
+  const vatPercentInput = document.getElementById('vat_percent');
+  const vatAmountDisplay = document.getElementById('vat_amount_display');
+  const grandTotalDisplay = document.getElementById('grand_total_display');
+  const applyVatCheckbox = document.getElementById('apply_vat');
   const remainingDisplay = document.getElementById('remaining_display');
 
-  function format(n){ return (Math.round(n * 100) / 100).toFixed(2); }
+  function formatInt(n){ return String(Math.round(n)); }
 
   function recalc(){
     let sum = 0;
@@ -203,22 +253,38 @@
       const qty = parseFloat(tr.querySelector('.item-qty')?.value || 0);
       const price = parseFloat(tr.querySelector('.item-price')?.value || 0);
       const lt = qty * price;
-      tr.querySelector('.item-total').textContent = format(lt);
+      tr.querySelector('.item-total').textContent = formatInt(lt);
       sum += lt;
     });
-    totalDisplay.value = format(sum);
+    totalDisplay.value = formatInt(sum);
+
+    const vatPercent = applyVatCheckbox && applyVatCheckbox.checked ? (parseFloat(vatPercentInput.value || 0) || 0) : 0;
+    const vatAmount = Math.round((sum * (vatPercent / 100)) * 100) / 100;
+    if (vatAmountDisplay) vatAmountDisplay.value = formatInt(vatAmount);
+
+    const grand = sum + vatAmount;
+    if (grandTotalDisplay) grandTotalDisplay.value = formatInt(grand);
+
     const paid = parseFloat(previouslyPaidInput.value || 0);
-    remainingDisplay.value = format(Math.max(sum - paid, 0));
+    remainingDisplay.value = formatInt(Math.max(grand - paid, 0));
   }
 
   function addRow(item = {item_name:'', quantity:1, unit:'', unit_price:0}){
     const tr = document.createElement('tr');
     tr.innerHTML = `
       <td class="px-3 py-2"><input name="items[][item_name]" class="w-48 rounded-md border-gray-300 item-name" value="${item.item_name}"></td>
-      <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="items[][quantity]" class="w-24 rounded-md border-gray-300 item-qty" value="${item.quantity}"></td>
-      <td class="px-3 py-2"><input name="items[][unit]" class="w-28 rounded-md border-gray-300 item-unit" value="${item.unit}"></td>
-      <td class="px-3 py-2"><input type="number" step="0.01" min="0" name="items[][unit_price]" class="w-28 rounded-md border-gray-300 item-price" value="${item.unit_price}"></td>
-      <td class="px-3 py-2"><span class="item-total">0.00</span></td>
+      <td class="px-3 py-2"><input type="number" step="1" min="0" name="items[][quantity]" class="w-24 rounded-md border-gray-300 item-qty" value="${item.quantity}"></td>
+      <td class="px-3 py-2">
+        <select name="items[][unit]" class="w-28 rounded-md border-gray-300 item-unit">
+          <option value="متر" ${item.unit==='متر'?'selected':''}>متر</option>
+          <option value="سانتی متر" ${item.unit==='سانتی متر'?'selected':''}>سانتی متر</option>
+          <option value="کیلوگرم" ${item.unit==='کیلوگرم'?'selected':''}>کیلوگرم</option>
+          <option value="لیتر" ${item.unit==='لیتر'?'selected':''}>لیتر</option>
+          <option value="عدد" ${item.unit==='عدد'?'selected':''}>عدد</option>
+        </select>
+      </td>
+      <td class="px-3 py-2"><input type="number" step="1" min="0" name="items[][unit_price]" class="w-28 rounded-md border-gray-300 item-price" value="${item.unit_price}"></td>
+      <td class="px-3 py-2"><span class="item-total">0</span></td>
       <td class="px-3 py-2 text-right"><button type="button" class="text-red-600 remove-row">حذف</button></td>`;
     itemsBody.appendChild(tr);
     tr.querySelectorAll('input').forEach(inp => inp.addEventListener('input', recalc));
@@ -228,8 +294,45 @@
 
   addItemBtn.addEventListener('click', () => addRow());
   previouslyPaidInput.addEventListener('input', recalc);
-  addRow();
+  if (applyVatCheckbox) {
+    applyVatCheckbox.addEventListener('change', () => {
+      if (vatPercentInput) vatPercentInput.disabled = !applyVatCheckbox.checked;
+      if (!applyVatCheckbox.checked && vatPercentInput) {
+        vatPercentInput.value = '';
+      }
+      recalc();
+    });
+  }
+  if (vatPercentInput) vatPercentInput.addEventListener('input', recalc);
+
+  // Restore previously entered rows after validation errors; otherwise don't add a blank row
+  const oldItems = @json(old('items', []));
+  if (Array.isArray(oldItems) && oldItems.length > 0) {
+    oldItems.forEach(it => addRow({
+      item_name: it.item_name || '',
+      quantity:  it.quantity ?? 1,
+      unit:      it.unit || '',
+      unit_price:it.unit_price ?? 0
+    }));
+  }
+  // Restore VAT state from old input
+  @if(old('vat_percent') !== null)
+    if (applyVatCheckbox && vatPercentInput) {
+      applyVatCheckbox.checked = true;
+      vatPercentInput.disabled = false;
+    }
+  @endif
   attachSupplierEvents();
+
+  // Toggle project name input based on usage_type
+  const usageSelect = document.getElementById('usage_type');
+  const projectWrapper = document.getElementById('project_name_wrapper');
+  function toggleProjectName(){
+    const v = (usageSelect?.value || '').toLowerCase();
+    projectWrapper.style.display = (v === 'project' || v === 'both') ? '' : 'none';
+  }
+  usageSelect && usageSelect.addEventListener('change', toggleProjectName);
+  // Initialize visibility from old value
+  toggleProjectName();
 </script>
 @endsection
-

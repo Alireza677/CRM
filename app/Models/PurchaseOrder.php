@@ -18,7 +18,13 @@ class PurchaseOrder extends Model
         'purchase_date',
         'needed_by_date',
         'status',
+        'settlement_type',
+        'usage_type',
+        'project_name',
+        'vat_percent',
+        'vat_amount',
         'total_amount',
+        'total_with_vat',
         'previously_paid_amount',
         'remaining_payable_amount',
         'assigned_to',
@@ -29,7 +35,10 @@ class PurchaseOrder extends Model
         'purchase_date' => 'date',
         'request_date' => 'date',
         'needed_by_date' => 'date',
+        'vat_percent' => 'decimal:2',
+        'vat_amount' => 'decimal:2',
         'total_amount' => 'decimal:2',
+        'total_with_vat' => 'decimal:2',
         'previously_paid_amount' => 'decimal:2',
         'remaining_payable_amount' => 'decimal:2',
     ];
@@ -53,4 +62,58 @@ class PurchaseOrder extends Model
     {
         return $this->hasMany(PurchaseOrderItem::class);
     }
-} 
+
+    public function documents()
+    {
+        return $this->hasMany(Document::class);
+    }
+
+    // Notes (polymorphic)
+    public function notes()
+    {
+        return $this->morphMany(\App\Models\Note::class, 'noteable')->latest();
+    }
+
+    public function lastNote()
+    {
+        return $this->morphOne(\App\Models\Note::class, 'noteable')->latestOfMany();
+    }
+
+    // Activity logs (if present)
+    public function activities()
+    {
+        return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
+    }
+
+    // Approvals (polymorphic) for timeline/steps
+    public function approvals()
+    {
+        return $this->morphMany(\App\Models\Approval::class, 'approvable');
+    }
+
+    public function pendingApproval()
+    {
+        return $this->approvals()
+            ->with('approver')
+            ->where('status', 'pending')
+            ->orderBy('step')
+            ->orderBy('id')
+            ->first();
+    }
+
+    protected static function booted()
+    {
+        static::created(function (self $po) {
+            // If not assigned yet, set a deterministic P-prefixed number based on ID
+            if (empty($po->po_number)) {
+                $po->po_number = 'p' . str_pad((string)$po->id, 6, '0', STR_PAD_LEFT);
+                // Use saveQuietly to avoid triggering observers/logging
+                if (method_exists($po, 'saveQuietly')) {
+                    $po->saveQuietly();
+                } else {
+                    $po->save();
+                }
+            }
+        });
+    }
+}

@@ -41,14 +41,30 @@
 
         <!-- Main Menu Items -->
         <nav class="p-4 space-y-2">
-            <button @click="$store.menu.openSubMenu('marketing')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">بازاریابی</button>
-            <button @click="$store.menu.openSubMenu('sales')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">فروش</button>
-            <button @click="$store.menu.openSubMenu('projects')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">پروژه‌ها</button>
-            <button @click="$store.menu.openSubMenu('inventory')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">موجودی</button>
-            {{--<button @click="$store.menu.openSubMenu('print-templates')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">قالب‌های پرینت</button>--}}
-            {{--<button @click="$store.menu.openSubMenu('forms')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">فرم‌ها</button>--}}
-            <button @click="$store.menu.openSubMenu('documents')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">اسناد</button>
-            <button @click="$store.menu.openSubMenu('settings')" class="w-full text-right px-4 py-2 text-gray-700 hover:bg-blue-100 rounded transition duration-200">تنظیمات</button>
+            <button @click="$store.menu.openSubMenu('marketing')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='marketing' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">بازاریابی</button>
+            <button @click="$store.menu.openSubMenu('sales')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='sales' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">فروش</button>
+            <button @click="$store.menu.openSubMenu('projects')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='projects' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">پروژه‌ها</button>
+            <button @click="$store.menu.openSubMenu('inventory')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='inventory' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">موجودی</button>
+            {{--<button @click="$store.menu.openSubMenu('print-templates')"
+                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                     :class="$store.menu.activeMenu==='print-templates' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">قالب‌های پرینت</button>--}}
+            {{--<button @click="$store.menu.openSubMenu('forms')"
+                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                     :class="$store.menu.activeMenu==='forms' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">فرم‌ها</button>--}}
+            <button @click="$store.menu.openSubMenu('documents')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='documents' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">اسناد</button>
+            <button @click="$store.menu.openSubMenu('settings')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='settings' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">تنظیمات</button>
 
         </nav>
     </aside>
@@ -98,6 +114,8 @@
                     </div>
                 </template>
 
+                <!-- Admin-only: Roles Permission Matrix link moved to settings -->
+
                 <template x-if="$store.menu.activeMenu === 'marketing'">
                     <div class="space-y-2">
                         <a href="{{ route('marketing.leads.index') }}" class="menu-item">سرنخ‌های فروش</a>
@@ -136,12 +154,20 @@
                         <a href="{{ route('settings.users.index') }}" class="menu-item">مدیریت کاربران</a>
                         <a href="{{ route('settings.workflows.index') }}" class="menu-item">گردش کارها</a>
                         <a href="{{ route('settings.automation.edit') }}" class="menu-item">اتوماسیون</a>
+                        @role('admin')
+                            <a href="{{ route('roles.matrix') }}" class="menu-item">ماتریس دسترسی نقش‌ها</a>
+                        @endrole
+                        @can('reports.view')
+                            <a href="{{ route('admin.role-permissions') }}" class="menu-item">گزارش نقش‌ها و دسترسی‌ها</a>
+                        @endcan
                     </div>
                 </template>
 
                 <template x-if="$store.menu.activeMenu === 'documents'">
                     <div class="space-y-2">
-                        <a href="{{ route('sales.documents.index') }}" class="menu-item">همه اسناد</a>
+                        @can('viewAny', \App\Models\Document::class)
+                            <a href="{{ route('sales.documents.index') }}" class="menu-item">همه اسناد</a>
+                        @endcan
                         <a href="{{ route('tools.sms.create') }}" class="menu-item">ارسال پیامک</a>
                     </div>
                 </template>
@@ -153,6 +179,8 @@
                         <a href="{{ route('reports.index') }}" class="menu-item">همهٔ گزارش‌ها</a>
                     </div>
                 </template>
+
+                <!-- Roles & permissions report moved to settings -->
 
             </nav>
         </div>

@@ -9,12 +9,14 @@ use Spatie\Activitylog\LogOptions;
 
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\Traits\CausesActivity;
+use App\Models\Traits\AppliesVisibilityScope;
 
 class Opportunity extends Model
 {
     use NotifiesAssignee;
     use HasFactory;
     use LogsActivity, CausesActivity;
+    use AppliesVisibilityScope;
 
     protected static $logAttributes = ['name',
         'organization_id',
@@ -32,6 +34,7 @@ class Opportunity extends Model
     protected static $logName = 'opportunity';
 
     protected $fillable = [
+        'owner_user_id',
         'name',
         'organization_id',
         'contact_id',
@@ -43,13 +46,20 @@ class Opportunity extends Model
         'success_rate',
         'amount',
         'next_follow_up',
-        'description'
+        'description',
+        'team_id',
+        'department',
+        'visibility'
     ];
 
     protected $casts = [
         'next_follow_up' => 'date',
         'amount' => 'integer',
-        'success_rate' => 'integer'
+        'success_rate' => 'integer',
+        'owner_user_id' => 'integer',
+        'assigned_to'   => 'integer',
+        'team_id'       => 'integer',
+        'visibility'    => 'string'
     ];
 
     public function contact()

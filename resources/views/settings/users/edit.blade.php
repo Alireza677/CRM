@@ -45,8 +45,16 @@
                             <label for="role" class="block text-sm font-medium text-gray-700">نقش</label>
                             <select name="role" id="role" class="mt-1 block w-full rounded-md border-gray-300 shadow-sm">
                                 @foreach(\Spatie\Permission\Models\Role::all() as $role)
+                                    @php
+                                        $key = 'roles.' . $role->name;
+                                        $label = trans($key);
+                                        // If translation key is missing, trans() returns the key itself.
+                                        if ($label === $key) {
+                                            $label = $role->name;
+                                        }
+                                    @endphp
                                     <option value="{{ $role->name }}" {{ (isset($user) && $user->hasRole($role->name)) ? 'selected' : '' }}>
-                                        {{ $role->name }}
+                                        {{ $label }}
                                     </option>
                                 @endforeach
                             </select>

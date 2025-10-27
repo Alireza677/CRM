@@ -96,7 +96,7 @@
           try {
             const [gy, gm, gd] = gVal.split('-').map(Number);
             const j = new persianDate([gy, gm, gd])
-              .calendar('gregorian')
+              .toCalendar('gregorian')
               .toCalendar('persian');
             $input.val(j.format('YYYY/MM/DD'));
           } catch(e){}
@@ -133,7 +133,7 @@
           const m = raw.match(/^(\d{4})\/(\d{2})\/(\d{2})$/);
           if (!m) return;
           const g = new persianDate([+m[1], +m[2], +m[3]])
-            .calendar('persian')
+            .toCalendar('persian')
             .toCalendar('gregorian')
             .toLocale('en')
             .format('YYYY-MM-DD');
@@ -152,7 +152,7 @@
     if (!$('#proforma_date_shamsi').val() && !$('#proforma_date').val()) {
       const today = new persianDate();
       $('#proforma_date_shamsi')
-        .val(today.calendar('persian').toLocale('fa').format('YYYY/MM/DD'));
+        .val(today.toCalendar('persian').toLocale('fa').format('YYYY/MM/DD'));
       $('#proforma_date')
         .val(today.toCalendar('gregorian').toLocale('en').format('YYYY-MM-DD'));
     }

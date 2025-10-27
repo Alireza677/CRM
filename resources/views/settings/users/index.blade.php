@@ -45,7 +45,16 @@
                                     <tr>
                                         <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">{{ $user->name }}</td>
                                         <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">{{ $user->email }}</td>
-                                        <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">{{ $user->roles->pluck('name')->join(', ') ?: '---' }}</td>
+                                        <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200">
+                                            @php
+                                                $translatedRoles = $user->roles->map(function($role){
+                                                    $key = 'roles.' . $role->name;
+                                                    $label = trans($key);
+                                                    return $label === $key ? $role->name : $label;
+                                                });
+                                            @endphp
+                                            {{ $translatedRoles->join(', ') ?: '---' }}
+                                        </td>
                                         <td class="px-6 py-4 whitespace-nowrap border-b border-gray-200 text-left text-sm font-medium">
                                             <a href="{{ route('settings.users.edit', $user) }}" class="text-indigo-600 hover:text-indigo-900 ml-4">ویرایش</a>
                                             @if($user->id !== auth()->id())

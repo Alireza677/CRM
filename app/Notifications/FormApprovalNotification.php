@@ -52,9 +52,10 @@ class FormApprovalNotification extends Notification implements ShouldQueue
     protected function labelFor(string $formType): string
     {
         return match ($formType) {
-            'Proforma'    => 'پیش‌فاکتور',
-            'Opportunity' => 'فرصت فروش',
-            default       => 'فرم',
+            'Proforma'      => 'پیش‌فاکتور',
+            'Opportunity'   => 'فرصت فروش',
+            'PurchaseOrder' => 'سفارش خرید',
+            default         => 'فرم',
         };
     }
     public function toMail($notifiable): MailMessage
@@ -93,6 +94,13 @@ class FormApprovalNotification extends Notification implements ShouldQueue
             $m = \App\Models\Opportunity::query()->find($id);
             $title = $this->pickTitle($m);
             $url   = route('sales.opportunities.show', $id);
+            return [$title, $url];
+        }
+
+        if ($formType === 'PurchaseOrder') {
+            $m = \App\Models\PurchaseOrder::query()->find($id);
+            $title = $this->pickTitle($m);
+            $url   = route('inventory.purchase-orders.show', $id);
             return [$title, $url];
         }
 

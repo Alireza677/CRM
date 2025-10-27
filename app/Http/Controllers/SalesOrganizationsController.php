@@ -43,6 +43,7 @@ class SalesOrganizationsController extends Controller
 
     public function edit(Organization $organization)
     {
+        $this->authorize('update', $organization);
         $users = User::all();
         $contacts = Contact::all();
 
@@ -51,6 +52,7 @@ class SalesOrganizationsController extends Controller
 
     public function update(Request $request, Organization $organization)
     {
+        $this->authorize('update', $organization);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:50',

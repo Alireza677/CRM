@@ -1,0 +1,179 @@
+     1: <?php
+     2: 
+     3: namespace Database\Seeders;
+     4: 
+     5: use Illuminate\Database\Seeder;
+     6: use Spatie\Permission\Models\Permission;
+     7: use Spatie\Permission\Models\Role;
+     8: use App\Models\User;
+     9: 
+    10: class RolePermissionSeeder extends Seeder
+    11: {
+    12:     public function run(): void
+    13:     {
+    14:         $roles = [
+    15:             'admin',
+    16:             'finance',
+    17:             'admin_manager',
+    18:             'admin_staff',
+    19:             'factory_supervisor',
+    20:             'support',
+    21:             'sales_manager',
+    22:             'salesperson',
+    23:             'sales_agent',
+    24:         ];
+    25: 
+    26:         foreach ($roles as $role) {
+    27:             Role::firstOrCreate(['name' => $role]);
+    28:         }
+    29: 
+    30:         // Global permission keys for core modules
+    31:         $prefixes = [
+    32:             'leads',
+    33:             'opportunities',
+    34:             'contacts',
+    35:             'organizations',
+    36:             'proformas',
+    37:             'approvals',
+    38:             'invoices',
+    39:             'payments',
+    40:             'documents',
+    41:             'tickets',
+    42:             'workorders',
+    43:             'reports',
+    44:             'users',
+    45:             'roles',
+    46:             'settings',
+    47:         ];
+    48: 
+    49:         $actions = [
+    50:             'view.own',
+    51:             'view.team',
+    52:             'view.department',
+    53:             'view.company',
+    54:             'create',
+    55:             'update.own',
+    56:             'update.team',
+    57:             'update.department',
+    58:             'delete.own',
+    59:             'reassign',
+    60:             'export', // optional
+    61:         ];
+    62: 
+    63:         foreach ($prefixes as $prefix) {
+    64:             foreach ($actions as $action) {
+    65:                 $name = $prefix . '.' . $action;
+    66:                 Permission::firstOrCreate([
+    67:                     'name' => $name,
+    68:                     'guard_name' => 'web',
+    69:                 ]);
+    70:             }
+    71:         }
+    72: 
+    73:         // Additional granular report permissions referenced in matrix
+    74:         $extra = [
+    75:             'reports.view',
+    76:             'reports.sales.department',
+    77:             'reports.sales.own',
+    78:             'reports.finance.department',
+    79:         ];
+    80:         foreach ($extra as $perm) {
+    81:             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
+    82:         }
+    83: 
+    84:         // Helper to ensure a permission exists and return its model
+    85:         $ensure = function (string $name) {
+    86:             return Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
+    87:         };
+    88: 
+    89:         // Matrix: role => permissions
+    90:         $matrix = [
+    91:             'admin' => ['*'], // all
+    92: 
+    93:             'sales_manager' => [
+    94:                 'leads.view.department', 'leads.create', 'leads.update.department', 'leads.reassign',
+    95:                 'opportunities.view.department', 'opportunities.create', 'opportunities.update.department',
+    96:                 'contacts.view.department', 'contacts.create', 'contacts.update.department',
+    97:                 'organizations.view.department', 'organizations.create', 'organizations.update.department',
+    98:                 'proformas.view.department', 'proformas.create', 'proformas.update.department',
+    99:                 'approvals.view.department',
+   100:                 // reports.view OR reports.sales.department
+   101:                 'reports.view', 'reports.sales.department',
+   102:             ],
+   103: 
+   104:             'salesperson' => [
+   105:                 'leads.view.own', 'leads.create', 'leads.update.own', 'leads.delete.own',
+   106:                 'opportunities.view.team', 'opportunities.create', 'opportunities.update.own', 'opportunities.delete.own',
+   107:                 'contacts.view.team', 'contacts.create', 'contacts.update.own',
+   108:                 'organizations.view.team',
+   109:                 'proformas.view.team', 'proformas.create', 'proformas.update.own',
+   110:                 // optional split
+   111:                 'reports.sales.own',
+   112:             ],
+   113: 
+   114:             'sales_agent' => [
+   115:                 // same as salesperson but opportunities.view.own (stricter)
+   116:                 'leads.view.own', 'leads.create', 'leads.update.own', 'leads.delete.own',
+   117:                 'opportunities.view.own', 'opportunities.create', 'opportunities.update.own', 'opportunities.delete.own',
+   118:                 'contacts.view.team', 'contacts.create', 'contacts.update.own',
+   119:                 'organizations.view.team',
+   120:                 'proformas.view.team', 'proformas.create', 'proformas.update.own',
+   121:                 'reports.sales.own',
+   122:             ],
+   123: 
+   124:             'finance' => [
+   125:                 'proformas.view.department', 'proformas.create', 'proformas.update.department',
+   126:                 'approvals.view.department',
+   127:                 'invoices.view.department', 'invoices.create', 'invoices.update.department',
+   128:                 'payments.view.department', 'payments.create', 'payments.update.department',
+   129:                 'reports.finance.department',
+   130:             ],
+   131: 
+   132:             'factory_supervisor' => [
+   133:                 'workorders.view.department', 'workorders.create', 'workorders.update.department',
+   134:                 'opportunities.view.department',
+   135:                 'proformas.view.department',
+   136:                 'documents.view.department',
+   137:             ],
+   138: 
+   139:             'support' => [
+   140:                 'tickets.view.department', 'tickets.create', 'tickets.update.team', 'tickets.delete.own',
+   141:                 'contacts.view.department',
+   142:                 'documents.view.department',
+   143:             ],
+   144: 
+   145:             // Admin area roles (if present): users/roles/settings
+   146:             'admin_manager' => [
+   147:                 'users.view.department', 'users.create', 'users.update.department',
+   148:                 'roles.view.department', 'roles.create', 'roles.update.department',
+   149:                 'settings.view.department', 'settings.update.department',
+   150:             ],
+   151:             'admin_staff' => [
+   152:                 'users.view.team', 'users.create', 'users.update.team',
+   153:                 'roles.view.team',
+   154:                 'settings.view.team',
+   155:             ],
+   156:         ];
+   157: 
+   158:         foreach ($matrix as $roleName => $perms) {
+   159:             $role = Role::firstOrCreate(['name' => $roleName]);
+   160:             if (in_array('*', $perms, true)) {
+   161:                 $role->syncPermissions(Permission::all());
+   162:                 continue;
+   163:             }
+   164:             $permModels = [];
+   165:             foreach ($perms as $p) {
+   166:                 $permModels[] = $ensure($p);
+   167:             }
+   168:             $role->syncPermissions($permModels);
+   169:         }
+   170: 
+   171:         // Ensure current admin users get the 'admin' role
+   172:         $adminRole = Role::firstOrCreate(['name' => 'admin']);
+   173:         User::where('is_admin', true)->get()->each(function (User $u) use ($adminRole) {
+   174:             if (!$u->hasRole($adminRole->name)) {
+   175:                 $u->assignRole($adminRole);
+   176:             }
+   177:         });
+   178:     }
+   179: }

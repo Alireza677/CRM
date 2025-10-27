@@ -109,10 +109,13 @@ class NotificationController extends Controller
         }
 
         $routeName = Arr::get($data, 'route_name');
-        $formId    = Arr::get($data, 'form_id');
+        $formId    = Arr::get($data, 'form_id')
+                    ?? Arr::get($data, 'noteable_id')
+                    ?? Arr::get($data, 'notable_id');
         $formType  = Arr::get($data, 'form_type')
                     ?? Arr::get($data, 'model')
-                    ?? Arr::get($data, 'notable_type');
+                    ?? Arr::get($data, 'notable_type')
+                    ?? Arr::get($data, 'noteable_type');
         $noteId    = Arr::get($data, 'note_id') ?? Arr::get($data, 'note.id');
 
         // 1) اگر route_name + form_id داریم
@@ -134,6 +137,7 @@ class NotificationController extends Controller
                 'opportunity' => route('sales.opportunities.show', ['opportunity' => $formId]),
                 'proforma'    => route('sales.proformas.show',     ['proforma'    => $formId]),
                 'project'     => route('projects.show',            ['project'     => $formId]),
+                'purchaseorder' => route('inventory.purchase-orders.show', $formId),
                 default       => null,
             };
             return $u ? ($noteId ? "{$u}#note-{$noteId}" : $u) : null;
@@ -144,11 +148,13 @@ class NotificationController extends Controller
         $oppId      = Arr::get($data, 'opportunity_id') ?? Arr::get($data, 'sales_opportunity_id');
         $proformaId = Arr::get($data, 'proforma_id');
         $projectId  = Arr::get($data, 'project_id');
+        $poId       = Arr::get($data, 'purchase_order_id') ?? Arr::get($data, 'po_id');
 
         if ($proformaId) { $u = route('sales.proformas.show',     ['proforma'    => $proformaId]); return $noteId ? "{$u}#note-{$noteId}" : $u; }
         if ($oppId)      { $u = route('sales.opportunities.show', ['opportunity' => $oppId]);      return $noteId ? "{$u}#note-{$noteId}" : $u; }
         if ($leadId)     { $u = route('sales.leads.show',         ['lead'        => $leadId]);     return $noteId ? "{$u}#note-{$noteId}" : $u; }
         if ($projectId)  { $u = route('projects.show',            ['project'     => $projectId]);  return $noteId ? "{$u}#note-{$noteId}" : $u; }
+        if ($poId)       { $u = route('inventory.purchase-orders.show', $poId); return $noteId ? "{$u}#note-{$noteId}" : $u; }
 
         return null;
     }
@@ -165,10 +171,11 @@ class NotificationController extends Controller
             $model = $this->normalizeModelName($formType);
 
             // بر اساس مدل
-            if ($model === 'proforma')     return 'proforma';
-            if ($model === 'opportunity')  return 'opportunity';
-            if ($model === 'lead')         return 'lead';
-            if ($model === 'project')      return 'project';
+            if ($model === 'proforma')       return 'proforma';
+            if ($model === 'opportunity')    return 'opportunity';
+            if ($model === 'lead')           return 'lead';
+            if ($model === 'project')        return 'project';
+            if ($model === 'purchaseorder')  return 'purchaseOrder';
 
             // بر اساس نام روت
             if (is_string($routeName)) {
@@ -176,6 +183,7 @@ class NotificationController extends Controller
                 if (str_contains($routeName, 'opportunit'))   return 'opportunity';
                 if (str_contains($routeName, 'lead'))         return 'lead';
                 if (str_contains($routeName, 'project'))      return 'project';
+                if (str_contains($routeName, 'purchase-order')) return 'purchaseOrder';
             }
 
             // پیش‌فرض
@@ -201,6 +209,7 @@ class NotificationController extends Controller
             str_contains($base, 'opportunit')   => 'opportunity',
             str_contains($base, 'lead')         => 'lead',
             str_contains($base, 'project')      => 'project',
+            str_contains($base, 'purchase')     => 'purchaseorder',
             default                             => null,
         };
     }

@@ -7,7 +7,10 @@ use Illuminate\Http\Request;
 use App\Models\Document;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 use App\Models\Opportunity;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 
 class DocumentController extends Controller
@@ -23,7 +26,8 @@ class DocumentController extends Controller
      */
     public function index()
     {
-        $documents = Document::with(['opportunity','user'])
+        $documents = Document::visibleFor(auth()->user(), 'documents')
+            ->with(['opportunity','user'])
             ->latest()
             ->paginate(10);
 
@@ -66,7 +70,7 @@ class DocumentController extends Controller
     {
         $request->validate([
             'title'          => ['required','string','max:255'],
-            'file'           => ['required','file','max:10240','mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png'],
+            'file'           => ['required','file','max:10240','mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
             'opportunity_id' => ['nullable','integer','exists:opportunities,id'],
         ]);
 
@@ -101,16 +105,56 @@ class DocumentController extends Controller
      */
     public function view(Document $document)
     {
-        $this->authorizeViewDocument($document); 
+        $this->authorize('view', $document);
 
         if (! $document->file_path || ! Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'فایل یافت نشد.');
         }
 
-        $mime = Storage::disk('public')->mimeType($document->file_path) ?? 'application/octet-stream';
-        $contents = Storage::disk('public')->get($document->file_path);
+        $disk = Storage::disk('public');
+        $absolutePath = $disk->path($document->file_path);
 
-        return response($contents, 200)->header('Content-Type', $mime);
+        // 1) Try Storage mimeType, 2) fallback to File::mimeType, 3) fallback by extension
+        $mime = $disk->mimeType($document->file_path) ?: null;
+        if (!$mime && \Illuminate\Support\Facades\File::exists($absolutePath)) {
+            $mime = @\Illuminate\Support\Facades\File::mimeType($absolutePath) ?: null;
+        }
+
+        $ext = strtolower(pathinfo($absolutePath, PATHINFO_EXTENSION));
+        $fallback = [
+            'jpg' => 'image/jpeg', 'jpeg' => 'image/jpeg', 'png' => 'image/png', 'gif' => 'image/gif', 'webp' => 'image/webp', 'svg' => 'image/svg+xml',
+            'pdf' => 'application/pdf', 'doc' => 'application/msword', 'docx' => 'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        ];
+        if (!$mime && isset($fallback[$ext])) {
+            $mime = $fallback[$ext];
+        }
+        if (!$mime) { $mime = 'application/octet-stream'; }
+
+        $downloadName = str($document->title)->slug('_').'.'.$ext;
+        Log::info('doc.view', ['id' => $document->id, 'mime' => $mime, 'ext' => $ext]);
+
+        $stream = $disk->readStream($document->file_path);
+        if ($stream === false) {
+            abort(404, 'امکان خواندن فایل وجود ندارد.');
+        }
+
+        if (function_exists('ob_get_level') && ob_get_level()) {
+            @ob_end_clean();
+        }
+
+        $size = $disk->size($document->file_path);
+
+        return new \Symfony\Component\HttpFoundation\StreamedResponse(function () use ($stream) {
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type' => $mime,
+            'Content-Disposition' => 'inline; filename="'.$downloadName.'"',
+            'Content-Length' => is_numeric($size) ? (string)$size : null,
+            'Cache-Control' => 'public, max-age=86400',
+        ]);
     }
 
     /**
@@ -118,7 +162,7 @@ class DocumentController extends Controller
      */
     public function download(Document $document)
     {
-        $this->authorizeViewDocument($document);
+        $this->authorize('view', $document);
         if (! $document->file_path || ! Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'فایل یافت نشد.');
         }
@@ -155,7 +199,7 @@ class DocumentController extends Controller
 
         $request->validate([
             'title'           => ['required','string','max:255'],
-            'file'            => ['nullable','file','max:10240', 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png'],
+            'file'            => ['nullable','file','max:10240', 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
             'opportunity_id'  => ['nullable','integer','exists:opportunities,id'],
         ]);
 

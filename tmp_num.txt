@@ -1,0 +1,74 @@
+1: <?php
+2: 
+3: namespace App\Models\Traits;
+4: 
+5: use App\Models\User;
+6: use Illuminate\Database\Eloquent\Builder;
+7: 
+8: trait AppliesVisibilityScope
+9: {
+10:     /**
+11:      * Scope query by row-level visibility according to user's permissions.
+12:      *
+13:      * @param Builder $query
+14:      * @param User $user
+15:      * @param string $modulePrefix e.g. 'leads', 'opportunities'
+16:      */
+17:     public function scopeVisibleFor(Builder $query, User $user, string $modulePrefix): Builder
+18:     {
+19:         // Admin shortcut
+20:         if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+21:             return $query;
+22:         }
+23: 
+24:         // Company-level permission: no restriction
+25:         if ($user->can($modulePrefix . '.view.company')) {
+26:             return $query;
+27:         }
+28: 
+29:         // Department-level
+30:         if ($user->can($modulePrefix . '.view.department')) {
+31:             $dept = $user->department ?? null;
+32:             if ($dept) {
+33:                 return $query->where($query->getModel()->getTable() . '.department', $dept);
+34:             }
+35:             // if no department, fall back to no additional filtering beyond own/team
+36:         }
+37: 
+38:         // Team-level
+39:         if ($user->can($modulePrefix . '.view.team')) {
+40:             $teamIds = [];
+41:             // If a teams() relation exists and returns a relation/collection, use it
+42:             if (method_exists($user, 'teams')) {
+43:                 try {
+44:                     $teamIds = collect($user->teams)->pluck('id')->filter()->values()->all();
+45:                 } catch (\Throwable $e) {
+46:                     $teamIds = [];
+47:                 }
+48:             }
+49:             // Fallback to single team_id column if present
+50:             if (empty($teamIds) && isset($user->team_id)) {
+51:                 $teamIds = array_filter([(int) $user->team_id]);
+52:             }
+53: 
+54:             if (!empty($teamIds)) {
+55:                 return $query->whereIn($query->getModel()->getTable() . '.team_id', $teamIds);
+56:             }
+57: 
+58:             // If no team info available, treat as department-level where possible
+59:             $dept = $user->department ?? null;
+60:             if ($dept) {
+61:                 return $query->where($query->getModel()->getTable() . '.department', $dept);
+62:             }
+63:         }
+64: 
+65:         // Own-level
+66:         if ($user->can($modulePrefix . '.view.own')) {
+67:             return $query->where($query->getModel()->getTable() . '.owner_user_id', $user->id);
+68:         }
+69: 
+70:         // Default: no permission → empty result
+71:         return $query->whereRaw('1 = 0');
+72:     }
+73: }
+74: 

@@ -141,15 +141,16 @@ class UserController extends Controller
      */
     public function reassign(Request $request)
     {
-        $request->validate([
+        $validated = $request->validate([
             'user_id_to_delete' => ['required','exists:users,id'],
-            'new_user_id'       => ['required','exists:users,id','different:user_id_to_delete'],
+            'new_user_id'       => ['nullable','exists:users,id','different:user_id_to_delete'],
         ]);
 
-        $fromUser = User::findOrFail($request->user_id_to_delete);
+        $fromUser = User::findOrFail($validated['user_id_to_delete']);
 
-        // انتقال همه‌ی داده‌های وابسته
-        UserTransferHelper::transferAllData($fromUser->id, $request->new_user_id);
+        // انتقال همه‌ی داده‌های وابسته (در صورت نبود کاربر جایگزین، شناسه مقصد null می‌شود)
+        $toUserId = $validated['new_user_id'] ?? null;
+        UserTransferHelper::transferAllData($fromUser->id, $toUserId);
 
         // حذف کاربر مبدا
         $fromUser->delete();

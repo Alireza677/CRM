@@ -24,7 +24,7 @@ class SalesLeadController extends Controller
     }
     public function index(Request $request)
     {
-        $query = SalesLead::with('assignedUser');
+        $query = SalesLead::visibleFor(auth()->user(), 'leads')->with('assignedUser');
 
         // جستجوی عمومی
         if ($request->filled('search')) {
@@ -132,6 +132,8 @@ class SalesLeadController extends Controller
             unset($validated['notes']);
 
             $validated['created_by'] = Auth::id();
+            // Ensure creator ownership is recorded for visibility scopes
+            $validated['owner_user_id'] = Auth::id();
             $validated['do_not_email'] = $request->has('do_not_email');
             $validated['lead_date'] = DateHelper::toGregorian((string)($validated['lead_date'] ?? ''));
             if (strtolower((string)($validated['lead_status'] ?? '')) === 'lost') {

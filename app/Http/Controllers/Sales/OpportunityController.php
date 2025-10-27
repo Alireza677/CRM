@@ -19,7 +19,8 @@ class OpportunityController extends Controller
 {
     public function index(Request $request)
 {
-    $query = Opportunity::with(['contact', 'assignedUser', 'organization']);
+    $query = Opportunity::visibleFor(auth()->user(), 'opportunities')
+        ->with(['contact', 'assignedUser', 'organization']);
 
     if ($request->filled('name')) {
         $query->where('name', 'like', '%' . $request->name . '%');
@@ -64,6 +65,7 @@ class OpportunityController extends Controller
 
     public function create(Request $request)
     {
+        $this->authorize('create', \App\Models\Opportunity::class);
         $organizations = Organization::all();
         $contacts = Contact::all();
         $users = User::all();
@@ -81,13 +83,14 @@ class OpportunityController extends Controller
 
 public function store(Request $request)
 {
+    $this->authorize('create', \App\Models\Opportunity::class);
     $validated = $request->validate([
         'name' => 'required|string|max:255',
         'organization_id' => 'nullable|exists:organizations,id',
         'contact_id' => 'nullable|exists:contacts,id',
-        'type' => 'required|string|in:کسب و کار موجود,کسب و کار جدید',
+        'type' => 'required|string|in:Ú©Ø³Ø¨ Ùˆ Ú©Ø§Ø± Ù…ÙˆØ¬ÙˆØ¯,Ú©Ø³Ø¨ Ùˆ Ú©Ø§Ø± Ø¬Ø¯ÛŒØ¯',
         'source' => 'required|string|max:255',
-        'building_usage' => 'required|string|in:کارگاه و یا کارخانه,فضای باز و رستوران,تعمیرگاه و سالن صنعتی,گلخانه و پرورش گیاه,مرغداری و پرورش دام و طیور,فروشگاه و مراکز خرید,سالن و باشگاه های ورزشی,سالن های نمایش,مدارس و محیط های آموزشی,سایر',
+        'building_usage' => 'required|string|in:Ú©Ø§Ø±Ú¯Ø§Ù‡ Ùˆ ÛŒØ§ Ú©Ø§Ø±Ø®Ø§Ù†Ù‡,ÙØ¶Ø§ÛŒ Ø¨Ø§Ø² Ùˆ Ø±Ø³ØªÙˆØ±Ø§Ù†,ØªØ¹Ù…ÛŒØ±Ú¯Ø§Ù‡ Ùˆ Ø³Ø§Ù„Ù† ØµÙ†Ø¹ØªÛŒ,Ú¯Ù„Ø®Ø§Ù†Ù‡ Ùˆ Ù¾Ø±ÙˆØ±Ø´ Ú¯ÛŒØ§Ù‡,Ù…Ø±ØºØ¯Ø§Ø±ÛŒ Ùˆ Ù¾Ø±ÙˆØ±Ø´ Ø¯Ø§Ù… Ùˆ Ø·ÛŒÙˆØ±,ÙØ±ÙˆØ´Ú¯Ø§Ù‡ Ùˆ Ù…Ø±Ø§Ú©Ø² Ø®Ø±ÛŒØ¯,Ø³Ø§Ù„Ù† Ùˆ Ø¨Ø§Ø´Ú¯Ø§Ù‡ Ù‡Ø§ÛŒ ÙˆØ±Ø²Ø´ÛŒ,Ø³Ø§Ù„Ù† Ù‡Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´,Ù…Ø¯Ø§Ø±Ø³ Ùˆ Ù…Ø­ÛŒØ· Ù‡Ø§ÛŒ Ø¢Ù…ÙˆØ²Ø´ÛŒ,Ø³Ø§ÛŒØ±',
         'assigned_to' => 'nullable|exists:users,id',
         'success_rate' => 'required|numeric|min:0|max:100',
         'next_follow_up' => 'required|date',
@@ -100,17 +103,18 @@ public function store(Request $request)
     $opportunity->notifyIfAssigneeChanged(null);
 
     return redirect()->route('sales.opportunities.index')
-        ->with('success', 'فرصت فروش با موفقیت ایجاد شد.');
+        ->with('success', 'ÙØ±ØµØª ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø§ÛŒØ¬Ø§Ø¯ Ø´Ø¯.');
 }
 
 
     
 public function show(Opportunity $opportunity)
 {
+    $this->authorize('view', $opportunity);
     $breadcrumb = [
-        ['title' => 'خانه', 'url' => url('/dashboard')],
-        ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
-        ['title' => $opportunity->name ?? ('فرصت #' . $opportunity->id)],
+        ['title' => 'Ø®Ø§Ù†Ù‡', 'url' => url('/dashboard')],
+        ['title' => 'ÙØ±ØµØªâ€ŒÙ‡Ø§ÛŒ ÙØ±ÙˆØ´', 'url' => route('sales.opportunities.index')],
+        ['title' => $opportunity->name ?? ('ÙØ±ØµØª #' . $opportunity->id)],
     ];
 
     $activities = Activity::where('subject_type', Opportunity::class)
@@ -140,6 +144,7 @@ public function show(Opportunity $opportunity)
 
 public function edit(Opportunity $opportunity)
 {
+    $this->authorize('update', $opportunity);
     $opportunity->loadMissing(['organization', 'contact']);
 
     $organizations = Organization::orderBy('name')->get(['id','name','phone']);
@@ -165,6 +170,7 @@ public function edit(Opportunity $opportunity)
 
 public function update(Request $request, Opportunity $opportunity)
 {
+    $this->authorize('update', $opportunity);
     if ($request->filled('source')) {
         $request->merge([
             'source' => \App\Helpers\FormOptionsHelper::getLeadSourceLabel($request->input('source')),
@@ -176,7 +182,7 @@ public function update(Request $request, Opportunity $opportunity)
         'contact_id' => 'nullable|exists:contacts,id',
         'type' => 'nullable|string|max:255',
         'source' => 'nullable|string|max:255',
-        'building_usage' => 'nullable|string|in:کارگاه و یا کارخانه,فضای باز و رستوران,تعمیرگاه و سالن صنعتی,گلخانه و پرورش گیاه,مرغداری و پرورش دام و طیور,فروشگاه و مراکز خرید,سالن و باشگاه های ورزشی,سالن های نمایش,مدارس و محیط های آموزشی,سایر',
+        'building_usage' => 'nullable|string|in:Ú©Ø§Ø±Ú¯Ø§Ù‡ Ùˆ ÛŒØ§ Ú©Ø§Ø±Ø®Ø§Ù†Ù‡,ÙØ¶Ø§ÛŒ Ø¨Ø§Ø² Ùˆ Ø±Ø³ØªÙˆØ±Ø§Ù†,ØªØ¹Ù…ÛŒØ±Ú¯Ø§Ù‡ Ùˆ Ø³Ø§Ù„Ù† ØµÙ†Ø¹ØªÛŒ,Ú¯Ù„Ø®Ø§Ù†Ù‡ Ùˆ Ù¾Ø±ÙˆØ±Ø´ Ú¯ÛŒØ§Ù‡,Ù…Ø±ØºØ¯Ø§Ø±ÛŒ Ùˆ Ù¾Ø±ÙˆØ±Ø´ Ø¯Ø§Ù… Ùˆ Ø·ÛŒÙˆØ±,ÙØ±ÙˆØ´Ú¯Ø§Ù‡ Ùˆ Ù…Ø±Ø§Ú©Ø² Ø®Ø±ÛŒØ¯,Ø³Ø§Ù„Ù† Ùˆ Ø¨Ø§Ø´Ú¯Ø§Ù‡ Ù‡Ø§ÛŒ ÙˆØ±Ø²Ø´ÛŒ,Ø³Ø§Ù„Ù† Ù‡Ø§ÛŒ Ù†Ù…Ø§ÛŒØ´,Ù…Ø¯Ø§Ø±Ø³ Ùˆ Ù…Ø­ÛŒØ· Ù‡Ø§ÛŒ Ø¢Ù…ÙˆØ²Ø´ÛŒ,Ø³Ø§ÛŒØ±',
         'assigned_to' => 'nullable|exists:users,id',
         'success_rate' => 'nullable|numeric|min:0|max:100',
         'next_follow_up' => 'nullable|date',
@@ -190,7 +196,7 @@ public function update(Request $request, Opportunity $opportunity)
     $opportunity->notifyIfAssigneeChanged($oldAssignedTo);
 
     return redirect()->route('sales.opportunities.show', $opportunity)
-        ->with('success', 'فرصت فروش با موفقیت بروزرسانی شد.');
+        ->with('success', 'ÙØ±ØµØª ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯.');
 }
 
 
@@ -212,12 +218,12 @@ public function update(Request $request, Opportunity $opportunity)
             }
         }
 
-        abort_unless($isAdmin, 403, 'فقط ادمین می‌تواند فرصت فروش را حذف کند.');
+        abort_unless($isAdmin, 403, 'ÙÙ‚Ø· Ø§Ø¯Ù…ÛŒÙ† Ù…ÛŒâ€ŒØªÙˆØ§Ù†Ø¯ ÙØ±ØµØª ÙØ±ÙˆØ´ Ø±Ø§ Ø­Ø°Ù Ú©Ù†Ø¯.');
 
         $opportunity->delete();
 
         return redirect()->route('sales.opportunities.index')
-            ->with('success', 'فرصت فروش با موفقیت حذف شد.');
+            ->with('success', 'ÙØ±ØµØª ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯.');
     }
 
     public function loadTab(Opportunity $opportunity, $tab)
@@ -230,12 +236,12 @@ public function update(Request $request, Opportunity $opportunity)
 
     $data = ['opportunity' => $opportunity];
 
-    // برای تب یادداشت‌ها، کاربران را لود کن
+    // Ø¨Ø±Ø§ÛŒ ØªØ¨ ÛŒØ§Ø¯Ø¯Ø§Ø´Øªâ€ŒÙ‡Ø§ØŒ Ú©Ø§Ø±Ø¨Ø±Ø§Ù† Ø±Ø§ Ù„ÙˆØ¯ Ú©Ù†
     if ($tab === 'notes') {
         $data['allUsers'] = \App\Models\User::whereNotNull('username')->get();
     }
 
-    // برای تب بروزرسانی‌ها، فعالیت‌ها را لود کن
+    // Ø¨Ø±Ø§ÛŒ ØªØ¨ Ø¨Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒâ€ŒÙ‡Ø§ØŒ ÙØ¹Ø§Ù„ÛŒØªâ€ŒÙ‡Ø§ Ø±Ø§ Ù„ÙˆØ¯ Ú©Ù†
     if ($tab === 'updates') {
         $data['activities'] = \Spatie\Activitylog\Models\Activity::where('subject_type', \App\Models\Opportunity::class)
             ->where('subject_id', $opportunity->id)
@@ -284,3 +290,8 @@ public function update(Request $request, Opportunity $opportunity)
         }
     }
 }
+
+
+
+
+

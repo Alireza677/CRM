@@ -10,9 +10,11 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use App\Traits\NotifiesAssignee; // باقی می‌ماند؛ اما با گارد داخلی جلوی دوبل‌شدن را می‌گیریم
 
+use App\Models\Traits\AppliesVisibilityScope;
+
 class SalesLead extends Model
 {
-    use HasFactory, LogsActivity, NotifiesAssignee;
+    use HasFactory, LogsActivity, NotifiesAssignee, AppliesVisibilityScope;
 
     /**
      * نام ستون و نام رابطه‌ی ارجاع‌گیرنده برای سازگاری عمومی
@@ -22,6 +24,7 @@ class SalesLead extends Model
     protected string $assigneeRelation = 'assignedTo';
 
     protected $fillable = [
+        'owner_user_id',
         'prefix',
         'full_name',
         'company',
@@ -45,12 +48,19 @@ class SalesLead extends Model
         'city',
         'notes',           // توجه: این ستون متنیِ داخل جدول sales_leads است
         'created_by',
+        'team_id',
+        'department',
+        'visibility',
     ];
 
     protected $casts = [
         'lead_date'            => 'date',
         'next_follow_up_date'  => 'date',
         'do_not_email'         => 'boolean',
+        'owner_user_id'        => 'integer',
+        'assigned_to'          => 'integer',
+        'team_id'              => 'integer',
+        'visibility'           => 'string',
     ];
 
     /* ---------------- Hooks: ارسال اعلان روی ایجاد/تغییر ارجاع ---------------- */
@@ -94,7 +104,16 @@ class SalesLead extends Model
         $assignedBy = auth()->user(); // در صف ممکن است null باشد؛ مشکلی نیست
         $title = $event === 'created' ? 'ارجاع سرنخ جدید' : 'تغییر ارجاع سرنخ';
 
-        $user->notify(new \App\Notifications\FormAssignedNotification($lead, $assignedBy, null, $title));
+        try {
+            $user->notify(new \App\Notifications\FormAssignedNotification($lead, $assignedBy, null, $title));
+        } catch (\Throwable $e) {
+            \Log::error('Failed to send assignment notification email', [
+                'lead_id' => $lead->id ?? null,
+                'user_id' => $user->id ?? null,
+                'error'   => $e->getMessage(),
+            ]);
+        }
+        
 
         // گارد برای جلوگیری از ارسال دوباره در همین چرخه
         $lead->_assignment_notified = true;
@@ -198,3 +217,5 @@ class SalesLead extends Model
     }
 
 }
+
+

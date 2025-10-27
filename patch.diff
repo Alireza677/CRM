@@ -1,30 +1,49 @@
 *** Begin Patch
-*** Update File: resources/views/reports/_builder.blade.php
+*** Update File: resources/views/inventory/purchase-orders/tabs/info.blade.php
 @@
--<div x-data="reportBuilder()" x-init="init(@js($models), @js($initial))" class="space-y-4" dir="rtl">
-+<div x-data="reportBuilder()"
-+     x-init="init(@js($models), @js($initial))"
-+     x-on:report-preview.window="preview()"
-+     class="space-y-4" dir="rtl">
-@@
--                async preview(){
-+                async preview(){
-                     this.previewError = null; this.previewData = null; this.refreshJson();
-                     try{
-                         const resp = await fetch(@js(route('reports.preview')), { method:'POST', headers: { 'Content-Type':'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').getAttribute('content') }, body: JSON.stringify({ query_json: this.state }) });
-                         const data = await resp.json();
-                         if(!resp.ok){ this.previewError = data.message || 'OrO?O\u0015 O_O? U_UOO'??OU+U.O\u0015UOO''; return; }
--                        this.previewData = data;
-+                        this.previewData = data;
-+                        try {
-+                            window.reportPreviewData = data;
-+                            window.dispatchEvent(new CustomEvent('report-preview-done', { detail: data }));
-+                        } catch(e){}
-                     }catch(e){ this.previewError = 'OrO?O\u0015UO O'"UcU?/O3O?U^O?'; }
-                 },
-                 $watch: { state: { deep: true, handler(){ this.refreshJson(); } } }
-             }
-         }
-     </script>
- </div>
+             <dl class="space-y-4">
+                 <div>
+                     <dt class="text-sm font-medium text-gray-500">????? ?????</dt>
+                     <dd class="mt-1 text-sm text-gray-900">{{ ->subject ?: '—' }}</dd>
+                 </div>
+                 <div>
+                     <dt class="text-sm font-medium text-gray-500">??? ????</dt>
+                     <dd class="mt-1 text-sm text-gray-900">{{ ->purchase_type === 'unofficial' ? '???????' : '????' }}</dd>
+                 </div>
++                <div>
++                    <dt class="text-sm font-medium text-gray-500">??? ????? ????</dt>
++                    <dd class="mt-1 text-sm text-gray-900">
++                        @php
++                             = [
++                                'cash'   => '???',
++                                'credit' => '????',
++                                'cheque' => '??',
++                            ];
++                             = [->settlement_type ?? ''] ?? '—';
++                        @endphp
++                        {{  }}
++                    </dd>
++                </div>
++                <div>
++                    <dt class="text-sm font-medium text-gray-500">???? ???????</dt>
++                    <dd class="mt-1 text-sm text-gray-900">
++                        @php
++                             = [
++                                'inventory' => '????? ?????? ?????',
++                                'project'   => '????? ?????',
++                                'both'      => '?? ??',
++                            ];
++                             = [->usage_type ?? ''] ?? '—';
++                        @endphp
++                        {{  }}
++                        @if(in_array(->usage_type ?? null, ['project','both'], true) && !empty(->project_name))
++                            <span class="text-gray-500">— ?????: {{ ->project_name }}</span>
++                        @endif
++                    </dd>
++                </div>
+                 <div>
+                     <dt class="text-sm font-medium text-gray-500">???????????</dt>
+                     <dd class="mt-1 text-sm text-gray-900">{{ optional(->supplier)->name ?: '—' }}</dd>
+                 </div>
+                 <div>
 *** End Patch

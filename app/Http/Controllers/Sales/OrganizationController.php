@@ -19,7 +19,7 @@ class OrganizationController extends Controller
     }
     public function index(Request $request)
     {
-        $query = Organization::query()
+        $query = Organization::visibleFor(auth()->user(), 'organizations')
             ->select('organizations.*', 'users.name as assigned_to_name')
             ->leftJoin('users', 'organizations.assigned_to', '=', 'users.id')
             ->with('contacts');
@@ -105,6 +105,7 @@ class OrganizationController extends Controller
     public function edit($id)
     {
         $organization = Organization::findOrFail($id);
+        $this->authorize('update', $organization);
         $users = User::all();
         $contacts = Contact::all();
 
@@ -112,6 +113,8 @@ class OrganizationController extends Controller
     }
     public function update(Request $request, $id)
     {
+        $organization = Organization::findOrFail($id);
+        $this->authorize('update', $organization);
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -127,7 +130,6 @@ class OrganizationController extends Controller
             'assigned_to.exists' => 'کاربر انتخاب شده معتبر نیست.',
         ]);
 
-        $organization = Organization::findOrFail($id);
         $organization->update($validated);
 
         return redirect()->route('sales.organizations.index')

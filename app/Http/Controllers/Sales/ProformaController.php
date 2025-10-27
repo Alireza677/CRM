@@ -44,7 +44,7 @@ class ProformaController extends Controller
         $users         = User::select('id', 'name')->orderBy('name')->get();
 
         // کوئری اصلی
-        $query = Proforma::query()
+        $query = Proforma::visibleFor(auth()->user(), 'proformas')
             ->with(['organization', 'contact', 'opportunity', 'assignedTo'])
             ->orderByDesc('proforma_date')
             ->orderByDesc('created_at');
@@ -1131,10 +1131,7 @@ class ProformaController extends Controller
     
         return back()->with('success', $ids->count().' مورد حذف شد.');
     }
-    
-
-    
-
+   
 }
 
 

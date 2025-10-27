@@ -1,4 +1,4 @@
-@extends('layouts.app')
+﻿@extends('layouts.app')
 
 @section('content')
   <div class="py-12">
@@ -19,6 +19,7 @@
             <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
+                  <th class="px-4 py-3 text-xs text-right text-gray-500">شماره</th>
                   <th class="px-4 py-3 text-xs text-right text-gray-500">عنوان</th>
                   <th class="px-4 py-3 text-xs text-right text-gray-500">نوع</th>
                   <th class="px-4 py-3 text-xs text-right text-gray-500">تأمین‌کننده</th>
@@ -35,7 +36,14 @@
                 @php use Morilog\Jalali\Jalalian; @endphp
                 @forelse($purchaseOrders as $order)
                   <tr>
-                    <td class="px-4 py-3 text-sm text-gray-900">{{ $order->subject }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
+                      {{ $order->po_number ?? ('#'.$order->id) }}
+                    </td>
+                    <td class="px-4 py-3 text-sm text-blue-700">
+                      <a href="{{ route('inventory.purchase-orders.show', $order->id) }}" class="hover:underline">
+                        {{ $order->subject }}
+                      </a>
+                    </td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ $order->purchase_type === 'unofficial' ? 'غیررسمی' : 'رسمی' }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ $order->supplier_name }}</td>
                     <td class="px-4 py-3 text-sm text-gray-900">
@@ -56,7 +64,7 @@
                   </tr>
                 @empty
                   <tr>
-                    <td colspan="10" class="text-center py-4 text-sm text-gray-500">سفارشی ثبت نشده است.</td>
+                    <td colspan="11" class="text-center py-4 text-sm text-gray-500">سفارشی ثبت نشده است.</td>
                   </tr>
                 @endforelse
               </tbody>

@@ -21,9 +21,18 @@ trait NotifiesAssignee
             $this->assignedTo &&
             $currentUser
         ) {
-            $this->assignedTo->notify(
-                new FormAssignedNotification($this, $currentUser)
-            );
+            try {
+                $this->assignedTo->notify(
+                    new FormAssignedNotification($this, $currentUser)
+                );
+            } catch (\Throwable $e) {
+                \Log::error('Failed to send assignment notification email', [
+                    'model'  => static::class,
+                    'model_id' => method_exists($this, 'getKey') ? $this->getKey() : null,
+                    'user_id'  => $this->assigned_to,
+                    'error'    => $e->getMessage(),
+                ]);
+            }
         }
     }
 }
