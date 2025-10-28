@@ -44,7 +44,7 @@ class LeadNoteController extends Controller
             foreach ($mentionedUsers as $user) {
                 $user->notify(new MentionedInNote($note));
                 try {
-                    $router = app(\\App\\Services\\Notifications\\NotificationRouter::class);
+                    $router = app(\App\Services\Notifications\NotificationRouter::class);
                     $context = [
                         'note_body' => $note->body,
                         'mentioned_user' => $user,
@@ -53,7 +53,7 @@ class LeadNoteController extends Controller
                         'url' => route('marketing.leads.show', $lead->id) . '#note-' . $note->id,
                     ];
                     $router->route('notes', 'note.mentioned', $context, [$user]);
-                } catch (\\Throwable $e) { /* ignore */ }
+                } catch (\Throwable $e) { /* ignore */ }
             }
         }
 

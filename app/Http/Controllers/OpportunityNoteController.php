@@ -33,7 +33,7 @@ class OpportunityNoteController extends Controller
             foreach ($mentionedUsers as $user) {
                 $user->notify(new MentionedInNote($note));
                 try {
-                    $router = app(\\App\\Services\\Notifications\\NotificationRouter::class);
+                    $router = app(\App\Services\Notifications\NotificationRouter::class);
                     $context = [
                         'note_body' => $note->body,
                         'mentioned_user' => $user,
@@ -42,7 +42,7 @@ class OpportunityNoteController extends Controller
                         'url' => route('sales.opportunities.show', $opportunity->id) . '#note-' . $note->id,
                     ];
                     $router->route('notes', 'note.mentioned', $context, [$user]);
-                } catch (\\Throwable $e) { /* ignore */ }
+                } catch (\Throwable $e) { /* ignore */ }
             }
         }
 
