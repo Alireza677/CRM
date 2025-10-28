@@ -37,6 +37,51 @@ class ProformaPolicy
         return $this->checkAction($user, $model, 'delete');
     }
 
+    /**
+     * Determine whether the user can approve/reject the given proforma.
+     * Shows approve/reject actions only to the current step approver
+     * or the emergency approver defined by the automation rule, and
+     * only while the proforma is in an approval-in-progress stage.
+     */
+    public function approve(User $user, Proforma $model): bool
+    {
+        $stage = strtolower((string)($model->approval_stage ?? $model->proforma_stage ?? ''));
+        if (!in_array($stage, ['send_for_approval', 'awaiting_second_approval'], true)) {
+            return false;
+        }
+
+        try {
+            $pending = $model->approvals()
+                ->where('status', 'pending')
+                ->orderBy('step')
+                ->orderBy('id')
+                ->first();
+        } catch (\Throwable) {
+            $pending = null;
+        }
+
+        if (!$pending) {
+            return false;
+        }
+
+        if ((int) $pending->user_id === (int) $user->id) {
+            return true;
+        }
+
+        // Allow emergency approver (if configured on the related automation rule)
+        try {
+            $rule = $model->automationRule()->first();
+        } catch (\Throwable) {
+            $rule = null;
+        }
+
+        if ($rule && (int) $rule->emergency_approver_id === (int) $user->id) {
+            return true;
+        }
+
+        return false;
+    }
+
     protected function checkAction(User $user, $model, string $action): bool
     {
         if (method_exists($user, 'isAdmin') && $user->isAdmin()) { return true; }
@@ -59,4 +104,3 @@ class ProformaPolicy
         return false;
     }
 }
-
