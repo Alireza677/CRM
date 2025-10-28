@@ -24,6 +24,7 @@ use App\Http\Controllers\SalesLeadController;
 use App\Http\Controllers\ProformaInvoiceController;
 use App\Http\Controllers\Sales\ContactImportController;
 use App\Http\Controllers\Sales\OpportunityController;
+use App\Http\Controllers\Sales\OpportunityImportController;
 use App\Http\Controllers\Sales\ContactController;
 use App\Http\Controllers\Sales\ProformaController;
 use App\Http\Controllers\Sales\QuotationController;
@@ -144,6 +145,11 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('opportunities/{opportunity}', [OpportunityController::class, 'destroy'])
             ->name('opportunities.destroy')
             ->middleware('can:delete,opportunity');
+        // Import (Dry run + Confirm)
+        Route::get('opportunities/import', [OpportunityImportController::class, 'create'])->name('opportunities.import');
+        Route::post('opportunities/import/dry-run', [OpportunityImportController::class, 'dryRun'])->name('opportunities.import.dryrun');
+        Route::post('opportunities/import/confirm', [OpportunityImportController::class, 'store'])->name('opportunities.import.store');
+
         Route::resource('opportunities', OpportunityController::class)->names('opportunities')
             ->except(['create','store','edit','update','destroy']);
         Route::get('opportunities/{opportunity}/tab/{tab}', [OpportunityController::class, 'loadTab'])->name('opportunities.tab');

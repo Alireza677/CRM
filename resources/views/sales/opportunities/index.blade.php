@@ -28,6 +28,9 @@
         + فرصت جدید
     </a>
 
+    <a href="{{ route('sales.opportunities.import') }}" class="mb-4 inline-block bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">ایمپورت فرصت‌ها</a>
+   
+
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
