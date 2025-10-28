@@ -150,12 +150,13 @@
 
                 <template x-if="$store.menu.activeMenu === 'settings'">
                     <div class="space-y-2">
+                    @role('admin')
                         <a href="{{ route('settings.general') }}" class="menu-item">تنظیمات عمومی</a>
                         <a href="{{ route('settings.users.index') }}" class="menu-item">مدیریت کاربران</a>
                         <a href="{{ route('settings.workflows.index') }}" class="menu-item">گردش کارها</a>
                         <a href="{{ route('settings.automation.edit') }}" class="menu-item">اتوماسیون</a>
-                        @role('admin')
-                            <a href="{{ route('roles.matrix') }}" class="menu-item">ماتریس دسترسی نقش‌ها</a>
+                        <a href="{{ route('settings.notifications.index') }}" class="menu-item">تنظیمات اعلان‌ها</a>
+                        <a href="{{ route('roles.matrix') }}" class="menu-item">ماتریس دسترسی نقش‌ها</a>
                         @endrole
                         @can('reports.view')
                             <a href="{{ route('admin.role-permissions') }}" class="menu-item">گزارش نقش‌ها و دسترسی‌ها</a>

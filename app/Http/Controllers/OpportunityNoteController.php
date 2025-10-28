@@ -32,6 +32,17 @@ class OpportunityNoteController extends Controller
             $mentionedUsers = User::whereIn('username', $usernames)->get();
             foreach ($mentionedUsers as $user) {
                 $user->notify(new MentionedInNote($note));
+                try {
+                    $router = app(\\App\\Services\\Notifications\\NotificationRouter::class);
+                    $context = [
+                        'note_body' => $note->body,
+                        'mentioned_user' => $user,
+                        'mentioned_user_name' => $user->name,
+                        'context_label' => 'فرصت فروش',
+                        'url' => route('sales.opportunities.show', $opportunity->id) . '#note-' . $note->id,
+                    ];
+                    $router->route('notes', 'note.mentioned', $context, [$user]);
+                } catch (\\Throwable $e) { /* ignore */ }
             }
         }
 

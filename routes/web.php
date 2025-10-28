@@ -36,6 +36,7 @@ use App\Http\Controllers\PrintTemplateController;
 use App\Http\Controllers\FormController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\WorkflowController;
+use App\Http\Controllers\Settings\NotificationRuleController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\OpportunityNoteController;
@@ -368,6 +369,13 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/automation', [AutomationController::class, 'edit'])->name('automation.edit');
             Route::post('/automation/update', [AutomationController::class, 'update'])->name('automation.update');
             Route::delete('/automation/delete-all', [AutomationController::class, 'destroyAll'])->name('automation.destroyAll');
+
+            // Notification Settings Matrix
+            Route::get('/notifications', [NotificationRuleController::class, 'index'])->name('notifications.index');
+            Route::post('/notifications', [NotificationRuleController::class, 'store'])->name('notifications.store');
+            Route::put('/notifications/{notificationRule}', [NotificationRuleController::class, 'update'])->name('notifications.update');
+            Route::patch('/notifications/{notificationRule}', [NotificationRuleController::class, 'update']);
+            Route::delete('/notifications/{notificationRule}', [NotificationRuleController::class, 'destroy'])->name('notifications.destroy');
         });
 
     // Profile

@@ -63,24 +63,39 @@ class PurchaseOrderController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->where('purchase_orders.subject', 'like', "%{$search}%")
                     ->orWhere('suppliers.name', 'like', "%{$search}%");
-            });
-        }
+    
+            // Route custom notifications in parallel (if rule active)
+            try {
+                $router = app(\App\Services\Notifications\NotificationRouter::class);
+                $context = [
+                    'purchase_order' => $purchaseOrder,
+                    'prev_status' => $currentStatus,
+                    'new_status' => $newStatus,
+                    'actor' => auth()->user(),
+                    'url' => route('inventory.purchase-orders.show', $purchaseOrder->id),
+                ];
+                $recipients = [];
+                if (!empty($purchaseOrder->requested_by)) {
+                    $recipients[] = (int) $purchaseOrder->requested_by;
+                }
+                if (!empty($purchaseOrder->assigned_to)) {
+                    $recipients[] = (int) $purchaseOrder->assigned_to;
+                }
+                $router->route('purchase_orders', 'status.changed', $context, $recipients);
+            } catch (\Throwable $e) {
+            }
+        });
 
         if ($request->has('subject')) {
             $query->where('purchase_orders.subject', 'like', "%{$request->subject}%");
-        }
         if ($request->has('supplier')) {
             $query->where('suppliers.name', 'like', "%{$request->supplier}%");
-        }
         if ($request->has('purchase_date')) {
             $query->whereDate('purchase_orders.purchase_date', $request->purchase_date);
-        }
         if ($request->has('status')) {
             $query->where('purchase_orders.status', $request->status);
-        }
         if ($request->has('requested_by')) {
             $query->where('requested_by_user.name', 'like', "%{$request->requested_by}%");
-        }
 
         $sortField = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
@@ -91,7 +106,6 @@ class PurchaseOrderController extends Controller
             $query->orderBy('requested_by_user.name', $sortDirection);
         } else {
             $query->orderBy("purchase_orders.{$sortField}", $sortDirection);
-        }
 
         $purchaseOrders = $query->paginate(10)->withQueryString();
 
@@ -120,28 +134,23 @@ class PurchaseOrderController extends Controller
         $view = "inventory.purchase-orders.tabs.$tab";
         if (!view()->exists($view)) {
             abort(404);
-        }
 
         $data = ['purchaseOrder' => $purchaseOrder];
 
         if ($tab === 'notes') {
             $data['allUsers'] = \App\Models\User::whereNotNull('username')->get();
-        }
 
         if ($tab === 'updates') {
             $data['activities'] = \Spatie\Activitylog\Models\Activity::where('subject_type', \App\Models\PurchaseOrder::class)
                 ->where('subject_id', $purchaseOrder->id)
                 ->latest()
                 ->get();
-        }
 
         if (in_array($tab, ['documents','info'], true)) {
             $purchaseOrder->loadMissing('documents');
-        }
 
         if ($tab === 'info') {
             $data['poSettings'] = PurchaseOrderWorkflowSetting::first();
-        }
 
         return view($view, $data);
     }
@@ -314,7 +323,6 @@ class PurchaseOrderController extends Controller
             Log::warning('PurchaseOrder.store: pre-normalization failed', [
                 'message' => $e->getMessage(),
             ]);
-        }
 
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
@@ -481,7 +489,6 @@ class PurchaseOrderController extends Controller
             return back()
                 ->withInput()
                 ->with('error', 'خطا در ثبت سفارش خرید. لطفاً مجدداً تلاش کنید.');
-        }
     }
 
     /**
@@ -511,7 +518,6 @@ class PurchaseOrderController extends Controller
         // Prevent moving backwards
         if (($order[$newStatus] ?? -1) < ($order[$currentStatus] ?? -1)) {
             return back()->with('error', 'امکان بازگشت به مرحله قبلی وجود ندارد.');
-        }
 
         // If currently awaiting an approver, restrict who can change status
         $settings = PurchaseOrderWorkflowSetting::first();
@@ -522,11 +528,9 @@ class PurchaseOrderController extends Controller
             $requiredUserId = optional($settings)->second_approver_id;
         } elseif ($currentStatus === 'accounting_approval') {
             $requiredUserId = optional($settings)->accounting_user_id;
-        }
 
         if ($requiredUserId && (int) auth()->id() !== (int) $requiredUserId) {
             return back()->with('error', 'تنها تاییدکننده این مرحله می‌تواند وضعیت را تغییر دهد.');
-        }
 
         DB::transaction(function () use ($purchaseOrder, $newStatus, $settings, $currentStatus) {
             $purchaseOrder->status = $newStatus;
@@ -585,7 +589,26 @@ class PurchaseOrderController extends Controller
                     }
                 }
             }
-        });
+
+            // Route custom notifications in parallel (if rule active)
+            try {
+                 = app(\\App\\Services\\Notifications\\NotificationRouter::class);
+                 = [
+                    'purchase_order' => ,
+                    'prev_status' => ,
+                    'new_status' => ,
+                    'actor' => auth()->user(),
+                    'url' => route('inventory.purchase-orders.show', ->id),
+                ];
+                 = [];
+                if (!empty(->requested_by)) {
+                    [] = (int) ->requested_by;
+                }
+                if (!empty(->assigned_to)) {
+                    [] = (int) ->assigned_to;
+                }
+                ->route('purchase_orders', 'status.changed', , );
+            } catch (\\Throwable ) {
 
         return back()->with('success', 'وضعیت سفارش خرید به‌روزرسانی شد.');
     }
@@ -615,11 +638,9 @@ class PurchaseOrderController extends Controller
             $stage = 'supervisor_approval';
             $step = 1;
             $expectedId = optional($settings)->first_approver_id;
-        }
 
         if (!$expectedId || (int) auth()->id() !== (int) $expectedId) {
             return back()->with('error', 'دسترسی برای تأیید این مرحله ندارید.');
-        }
 
         DB::transaction(function () use ($purchaseOrder, $settings, $step, $expectedId) {
             // Record approval for this step
@@ -676,7 +697,26 @@ class PurchaseOrderController extends Controller
                     }
                 }
             }
-        });
+
+            // Route custom notifications in parallel (if rule active)
+            try {
+                 = app(\\App\\Services\\Notifications\\NotificationRouter::class);
+                 = [
+                    'purchase_order' => ,
+                    'prev_status' => ,
+                    'new_status' => ,
+                    'actor' => auth()->user(),
+                    'url' => route('inventory.purchase-orders.show', ->id),
+                ];
+                 = [];
+                if (!empty(->requested_by)) {
+                    [] = (int) ->requested_by;
+                }
+                if (!empty(->assigned_to)) {
+                    [] = (int) ->assigned_to;
+                }
+                ->route('purchase_orders', 'status.changed', , );
+            } catch (\\Throwable ) {
 
         return back()->with('success', 'سفارش در این مرحله تأیید شد.');
     }
@@ -705,11 +745,9 @@ class PurchaseOrderController extends Controller
         } elseif ($purchaseOrder->status === 'created' || $purchaseOrder->status === null) {
             $step = 1;
             $expectedId = optional($settings)->first_approver_id;
-        }
 
         if (!$expectedId || (int) auth()->id() !== (int) $expectedId) {
             return back()->with('error', 'دسترسی برای رد این مرحله ندارید.');
-        }
 
         DB::transaction(function () use ($purchaseOrder, $step, $expectedId, $validated) {
             // Save note for rejection reason
@@ -746,7 +784,26 @@ class PurchaseOrderController extends Controller
                     ]);
                 }
             }
-        });
+
+            // Route custom notifications in parallel (if rule active)
+            try {
+                 = app(\\App\\Services\\Notifications\\NotificationRouter::class);
+                 = [
+                    'purchase_order' => ,
+                    'prev_status' => ,
+                    'new_status' => ,
+                    'actor' => auth()->user(),
+                    'url' => route('inventory.purchase-orders.show', ->id),
+                ];
+                 = [];
+                if (!empty(->requested_by)) {
+                    [] = (int) ->requested_by;
+                }
+                if (!empty(->assigned_to)) {
+                    [] = (int) ->assigned_to;
+                }
+                ->route('purchase_orders', 'status.changed', , );
+            } catch (\\Throwable ) {
 
         return back()->with('success', 'سفارش رد شد.');
     }
@@ -758,10 +815,8 @@ class PurchaseOrderController extends Controller
     {
         if ($purchaseOrder->status !== 'purchasing') {
             return back()->with('error', 'تنها در وضعیت «در حال خرید» می‌توان تحویل به انباردار را ثبت کرد.');
-        }
         if ((int) auth()->id() !== (int) $purchaseOrder->requested_by) {
             return back()->with('error', 'فقط ایجادکننده سفارش می‌تواند تحویل به انباردار را ثبت کند.');
-        }
 
         $purchaseOrder->status = 'warehouse_delivered';
         $purchaseOrder->save();
@@ -769,3 +824,4 @@ class PurchaseOrderController extends Controller
         return back()->with('success', 'وضعیت به «تحویل انبار» تغییر یافت.');
     }
 }
+

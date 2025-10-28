@@ -113,7 +113,20 @@ class SalesLead extends Model
                 'error'   => $e->getMessage(),
             ]);
         }
-        
+        // Route via NotificationRouter in parallel
+        try {
+            $router = app(\App\Services\Notifications\NotificationRouter::class);
+            $context = [
+                'model' => $lead,
+                'old_assignee' => null,
+                'new_assignee' => optional($lead->assignedTo)->name,
+                'actor' => $assignedBy,
+                'url' => route('marketing.leads.show', $lead->id),
+            ];
+            $router->route('leads', 'assigned.changed', $context, [$lead->assigned_to]);
+        } catch (\Throwable $e) {
+            \Log::warning('SalesLead notifyAssignee: NotificationRouter failed', ['error' => $e->getMessage()]);
+        }
 
         // گارد برای جلوگیری از ارسال دوباره در همین چرخه
         $lead->_assignment_notified = true;

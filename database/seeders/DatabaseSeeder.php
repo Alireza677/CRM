@@ -43,6 +43,7 @@ class DatabaseSeeder extends Seeder
         });
 
         // Reports
-        $this->call(ReportSeeder::class);
+        $this\->call(ReportSeeder::class);\n\n        // Notification rules\n        \->call(\\Database\\Seeders\\NotificationRuleSeeder::class);
     }
 }
+
