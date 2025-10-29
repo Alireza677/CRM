@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Str;
 use Morilog\Jalali\Jalalian;
 use Spatie\SimpleExcel\SimpleExcelReader;
@@ -92,6 +93,10 @@ class OpportunityImportService
         $aliases = $this->aliases();
         $created = 0; $updated = 0; $failed = 0;
         $failedRows = [];
+        $report = [
+            'unresolved_organizations' => [],
+            'unresolved_contacts' => [],
+        ];
 
         DB::beginTransaction();
         try {
@@ -108,27 +113,24 @@ class OpportunityImportService
                         continue;
                     }
 
-                    // Upsert Organization
-                    $organization = $preview['organization']['model'] ?? null;
-                    if (!$organization) {
-                        $organization = Organization::firstOrCreate(
-                            ['name' => $preview['organization']['name']]
-                        );
+                    // Resolve Organization and Contact by name only (do not create)
+                    $orgNameOriginal = $preview['organization']['name'] ?? null;
+                    $organizationId = $this->findOrganizationIdByName($orgNameOriginal);
+                    if (($orgNameOriginal !== null && trim((string)$orgNameOriginal) !== '') && !$organizationId) {
+                        $report['unresolved_organizations'][] = [
+                            'row' => $rowNo,
+                            'name' => $orgNameOriginal,
+                        ];
                     }
-                    // Update Organization state/city if provided
-                    $orgUpdates = [];
-                    if (!empty($preview['organization']['state'])) $orgUpdates['state'] = $preview['organization']['state'];
-                    if (!empty($preview['organization']['city']))  $orgUpdates['city']  = $preview['organization']['city'];
-                    if (!empty($orgUpdates)) $organization->update($orgUpdates);
 
-                    // Upsert Contact linked to organization
-                    $contact = $preview['contact']['model'] ?? null;
-                    if (!$contact && !empty($preview['contact']['full_name'])) {
-                        [$first, $last] = $this->splitName($preview['contact']['full_name']);
-                        $contact = Contact::firstOrCreate(
-                            ['first_name' => $first, 'last_name' => $last, 'organization_id' => $organization->id],
-                            ['owner_user_id' => $ownerUserId]
-                        );
+                    $contactFullNameOriginal = $preview['contact']['full_name'] ?? null;
+                    $contactId = $this->findContactIdByFullName($contactFullNameOriginal, $organizationId);
+                    if (($contactFullNameOriginal !== null && trim((string)$contactFullNameOriginal) !== '') && !$contactId) {
+                        $report['unresolved_contacts'][] = [
+                            'row' => $rowNo,
+                            'full_name' => $contactFullNameOriginal,
+                            'organization_name' => $orgNameOriginal,
+                        ];
                     }
 
                     // Resolve user
@@ -137,16 +139,18 @@ class OpportunityImportService
                     // Find existing opportunity by match key if requested
                     $opportunity = null;
                     if ($preview['match_key']) {
-                        $opportunity = $this->findByMatchKey($preview['match_key'], $organization->id);
+                        $opportunity = $this->findByMatchKey($preview['match_key'], $organizationId);
                     }
 
                     $payload = $preview['opportunity'];
-                    $payload['owner_user_id'] = $ownerUserId;
-                    $payload['organization_id'] = $organization->id;
-                    $payload['contact_id'] = $contact?->id;
+                    $payload['owner_user_id'] = Auth::id() ?? $ownerUserId;
+                    $payload['organization_id'] = $organizationId;
+                    $payload['contact_id'] = $contactId;
                     $payload['assigned_to'] = $assignedTo;
                     $createdAtProvided = $payload['created_at'] ?? null;
+                    $updatedAtProvided = $payload['updated_at'] ?? null;
                     unset($payload['created_at']);
+                    unset($payload['updated_at']);
 
                     if ($opportunity) {
                         $opportunity->fill($payload)->save();
@@ -154,11 +158,19 @@ class OpportunityImportService
                             $opportunity->created_at = $createdAtProvided;
                             $opportunity->saveQuietly();
                         }
+                        if ($updatedAtProvided) {
+                            $opportunity->updated_at = $updatedAtProvided;
+                            $opportunity->saveQuietly();
+                        }
                         $updated++;
                     } else {
                         $opportunity = Opportunity::create($payload);
                         if ($createdAtProvided) {
                             $opportunity->created_at = $createdAtProvided;
+                            $opportunity->saveQuietly();
+                        }
+                        if ($updatedAtProvided) {
+                            $opportunity->updated_at = $updatedAtProvided;
                             $opportunity->saveQuietly();
                         }
                         $created++;
@@ -181,6 +193,8 @@ class OpportunityImportService
             'updated' => $updated,
             'failed' => $failed,
             'failed_rows' => $failedRows,
+            'skipped' => $failed,
+            'report' => $report,
         ];
     }
 
@@ -190,6 +204,18 @@ class OpportunityImportService
             if (array_key_exists($from, $row)) {
                 $row[$to] = $row[$from];
                 unset($row[$from]);
+            }
+        }
+        // Also normalize common Persian contact mobile headers
+        foreach ([
+            'شماره موبایل',
+            'موبایل',
+            'شماره همراه',
+            'موبایل مخاطب',
+        ] as $h) {
+            if (array_key_exists($h, $row)) {
+                $row['contact_mobile'] = $row[$h];
+                unset($row[$h]);
             }
         }
         return $row;
@@ -211,8 +237,10 @@ class OpportunityImportService
             $errors['organization'] = ['سازمان الزامی است.'];
         }
 
-        // Contact (optional) – link to org
+        // Contact (optional) - link to org
         $contactFullName = trim((string)($row['contact_name'] ?? ''));
+        $contactMobileRaw = trim((string)($row['contact_mobile'] ?? ''));
+        $contactMobile = $contactMobileRaw !== '' ? preg_replace('/[^\d+]/u', '', $this->faToEnDigits($contactMobileRaw)) : '';
         $contact = null;
         if ($contactFullName !== '' && $organization) {
             [$f, $l] = $this->splitName($contactFullName);
@@ -323,28 +351,26 @@ class OpportunityImportService
         }
 
         $action = 'create';
-        if ($matchKey) {
-            $existing = $this->findByMatchKey($matchKey, $organization?->id);
-            if ($existing) $action = 'update';
-        }
+        // Organization is optional; do not fail preview if not provided
+        unset($errors['organization']);
 
         return [
             'action' => $action,
             'match_key' => $matchKey,
             'organization' => [
                 'name' => $orgName,
-                'model' => $organization,
                 'state' => $row['state'] ?? null,
                 'city'  => $row['city'] ?? null,
             ],
             'contact' => [
                 'full_name' => $contactFullName,
-                'model' => $contact,
+                'mobile' => $contactMobile ?: null,
             ],
             'assigned_to' => [
                 'ref' => $assignedRef,
                 'id' => $assignedUser?->id,
             ],
+            // Compute updated_at here (no strict validation needed for preview)
             'opportunity' => [
                 'name' => $name,
                 'type' => $row['type'] ?? null,
@@ -355,6 +381,7 @@ class OpportunityImportService
                 'amount' => $amount,
                 'next_follow_up' => $nextFollow,
                 'created_at' => $createdAt,
+                'updated_at' => $this->normalizeDateTime($row['updated_at'] ?? null),
                 'description' => $row['description'] ?? null,
             ],
             'notes' => $notes,
@@ -394,7 +421,7 @@ class OpportunityImportService
             if (in_array($k, ['success_rate','amount'], true)) {
                 $v = $this->normalizeNumber($v);
             }
-            if (in_array($k, ['next_follow_up','created_at'], true)) {
+            if (in_array($k, ['next_follow_up','created_at','updated_at'], true)) {
                 // keep raw; dedicated normalizers used later for precision
             }
             $out[$k] = $v;
@@ -545,5 +572,124 @@ class OpportunityImportService
         // If nothing matched, return null
         $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
         return null;
+    }
+
+    // ----------------------- Lookup helpers (search-only) -----------------------
+    protected function findOrganizationIdByName(?string $name): ?int
+    {
+        $needle = $this->normalizeComparable($name);
+        if ($needle === null) return null;
+
+        // Try exact candidates first
+        $variants = array_values(array_unique(array_filter([
+            $name,
+            $this->swapArabicVariants($name),
+        ], fn($v) => is_string($v) && trim($v) !== '')));
+
+        if (!empty($variants)) {
+            $candidates = Organization::query()
+                ->whereIn('name', $variants)
+                ->limit(50)
+                ->get(['id','name']);
+            foreach ($candidates as $org) {
+                if ($this->normalizeComparable($org->name) === $needle) {
+                    return (int)$org->id;
+                }
+            }
+        }
+
+        // Fallback: LIKE search with normalization check in PHP
+        $like = '%' . str_replace(' ', '%', $name) . '%';
+        $candidates = Organization::query()
+            ->where('name', 'like', $like)
+            ->limit(50)
+            ->get(['id','name']);
+        foreach ($candidates as $org) {
+            if ($this->normalizeComparable($org->name) === $needle) {
+                return (int)$org->id;
+            }
+        }
+        return null;
+    }
+
+    protected function findContactIdByFullName(?string $fullName, ?int $organizationId = null): ?int
+    {
+        $full = $this->normalizeComparable($fullName);
+        if ($full === null) return null;
+        [$firstRaw, $lastRaw] = $this->splitName($fullName ?? '');
+        $first = $this->normalizeComparable($firstRaw);
+        $last  = $this->normalizeComparable($lastRaw);
+
+        $firstAlts = array_values(array_unique(array_filter([
+            $firstRaw,
+            $this->swapArabicVariants($firstRaw),
+        ], fn($v) => is_string($v) && trim($v) !== '')));
+        $lastAlts = array_values(array_unique(array_filter([
+            $lastRaw,
+            $this->swapArabicVariants($lastRaw),
+        ], fn($v) => is_string($v) && trim($v) !== '')));
+
+        $query = Contact::query();
+        if ($organizationId) {
+            $query->where('organization_id', $organizationId);
+        }
+        if (!empty($firstAlts)) $query->whereIn('first_name', $firstAlts);
+        if (!empty($lastAlts))  $query->whereIn('last_name', $lastAlts);
+
+        $candidates = $query->limit(50)->get(['id','first_name','last_name','organization_id']);
+        $matches = [];
+        foreach ($candidates as $c) {
+            if ($this->normalizeComparable($c->first_name) === $first && $this->normalizeComparable($c->last_name) === $last) {
+                $matches[] = (int)$c->id;
+            }
+        }
+        if (!empty($matches)) {
+            // Prefer unique match; otherwise pick the first consistent match in provided org
+            return $matches[0];
+        }
+
+        // Fallback across all orgs only if org scope was not provided
+        if (!$organizationId) {
+            $candidates = Contact::query()
+                ->whereIn('first_name', $firstAlts)
+                ->whereIn('last_name', $lastAlts)
+                ->limit(50)
+                ->get(['id','first_name','last_name','organization_id']);
+            $matches = [];
+            foreach ($candidates as $c) {
+                if ($this->normalizeComparable($c->first_name) === $first && $this->normalizeComparable($c->last_name) === $last) {
+                    $matches[] = (int)$c->id;
+                }
+            }
+            if (count($matches) === 1) {
+                return $matches[0];
+            }
+        }
+
+        return null;
+    }
+
+    protected function normalizeComparable(?string $s): ?string
+    {
+        if ($s === null) return null;
+        $s = trim($s);
+        if ($s === '') return null;
+        // Remove NBSP, ZWNJ, Tatweel
+        $s = str_replace(["\xC2\xA0", "\u{200C}", "\u{0640}"], ' ', $s);
+        // Normalize Arabic variants to Persian forms
+        $s = $this->swapArabicVariants($s);
+        // Collapse spaces
+        $s = preg_replace('/\s+/u', ' ', $s);
+        // Case-insensitive compare
+        return mb_strtolower($s, 'UTF-8');
+    }
+
+    protected function swapArabicVariants(?string $s): ?string
+    {
+        if ($s === null) return null;
+        // Arabic Yeh/Kaf to Persian Yeh/Kaf
+        $search = ["\u{064A}", "\u{0643}"];
+        $replace = ["\u{06CC}", "\u{06A9}"];
+        return str_replace($search, $replace, $s);
     }
 }
