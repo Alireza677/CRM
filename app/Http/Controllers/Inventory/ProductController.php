@@ -41,7 +41,21 @@ class ProductController extends Controller
 
         // Sorting
         $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
+        $sortDirection = strtolower((string) $request->get('direction', 'desc'));
+
+        // Normalize sort direction and field to prevent invalid inputs
+        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
+            $sortDirection = 'desc';
+        }
+
+        $allowedSortFields = [
+            'created_at', 'name', 'unit_price', 'stock_quantity',
+            'code', 'serial_number', 'is_active', 'receiver_name', 'percentage'
+        ];
+        $specialSortFields = ['category', 'supplier'];
+        if (! in_array($sortField, array_merge($allowedSortFields, $specialSortFields), true)) {
+            $sortField = 'created_at';
+        }
         
         if ($sortField === 'category') {
             $query->orderBy('categories.name', $sortDirection);
@@ -51,7 +65,13 @@ class ProductController extends Controller
             $query->orderBy("products.{$sortField}", $sortDirection);
         }
 
-        $products = $query->paginate(10)->withQueryString();
+        $allowedPerPage = [10, 25, 50, 100, 200];
+        $perPage = (int) $request->get('per_page', 10);
+        if (! in_array($perPage, $allowedPerPage, true)) {
+            $perPage = 10;
+        }
+
+        $products = $query->paginate($perPage)->withQueryString();
 
         return view('inventory.products.index', compact('products'));
     }
@@ -142,7 +162,7 @@ class ProductController extends Controller
 
         return redirect()
             ->route('inventory.products.index')
-            ->with('success', 'O�OrUOO�U� O�O�UOUOO�OO�.');
+            ->with('success', 'محصول با موفقیت به‌روزرسانی شد.');
     }
 
     public function destroy(Product $product)
@@ -151,6 +171,6 @@ class ProductController extends Controller
 
         return redirect()
             ->route('inventory.products.index')
-            ->with('success', 'U.O-O�U^U, O-O�U? O"O.');
+            ->with('success', 'محصول با موفقیت حذف شد.');
     }
 } 

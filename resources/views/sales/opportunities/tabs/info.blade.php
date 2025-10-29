@@ -53,10 +53,7 @@
                                 <dt class="text-sm font-medium text-gray-500">درصد موفقیت</dt>
                                 <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->success_rate ?? '-' }}%</dd>
                             </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">مبلغ</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ number_format($opportunity->amount) ?? '-' }}</dd>
-                            </div>
+                            
                             <div>
                                 <dt class="text-sm font-medium text-gray-500">تاریخ پیگیری بعدی</dt>
                                 <dd class="mt-1 text-sm text-gray-900">

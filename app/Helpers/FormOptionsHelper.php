@@ -66,8 +66,11 @@ class FormOptionsHelper
     // ---------------- Opportunity: Sources & Stages ----------------
     public static function opportunitySources(): array
     {
-        // Same choices as lead sources
-        return self::leadSources();
+        // Base choices from lead sources
+        $sources = self::leadSources();
+        // Add extra option specific to opportunities
+        $sources['in_person_marketing'] = 'بازاریابی حضوری';
+        return $sources;
     }
 
     public static function getOpportunitySourceLabel($source): string

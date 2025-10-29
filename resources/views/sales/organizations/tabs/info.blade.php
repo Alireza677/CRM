@@ -55,5 +55,48 @@
             <dd class="text-gray-900 leading-relaxed">{{ $organization->notes ?: '-' }}</dd>
         </div>
     </dl>
-</div>
 
+    <div class="mt-8">
+        <h3 class="text-md font-semibold text-gray-800 mb-4">مخاطب(های) مرتبط</h3>
+
+        @php
+            $contacts = isset($organization->contacts) ? $organization->contacts : [];
+        @endphp
+
+        @if(!empty($contacts) && count($contacts))
+            <ul class="divide-y divide-gray-200 border border-gray-200 rounded-md">
+                @foreach($contacts as $contact)
+                    @php
+                        $name = $contact->name ?? trim((($contact->first_name ?? '') . ' ' . ($contact->last_name ?? '')));
+                        $email = $contact->email ?? null;
+                        $phone = $contact->phone ?? null;
+                    @endphp
+                    <li class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
+                        <div class="font-medium text-gray-900">
+                            {{ $name !== '' ? $name : '-' }}
+                        </div>
+                        <div class="mt-2 sm:mt-0 text-gray-700 space-x-4 space-x-reverse">
+                            @if(!empty($email))
+                                <span class="inline-block">
+                                    <span class="text-gray-600">ایمیل:</span>
+                                    <span class="ml-1">{{ $email }}</span>
+                                </span>
+                            @endif
+                            @if(!empty($phone))
+                                <span class="inline-block">
+                                    <span class="text-gray-600">تلفن:</span>
+                                    <span class="ml-1">{{ $phone }}</span>
+                                </span>
+                            @endif
+                            @if(empty($email) && empty($phone))
+                                <span class="text-gray-500">اطلاعات تماس ثبت نشده است</span>
+                            @endif
+                        </div>
+                    </li>
+                @endforeach
+            </ul>
+        @else
+            <div class="text-gray-600">مخاطبی ثبت نشده است.</div>
+        @endif
+    </div>
+</div>

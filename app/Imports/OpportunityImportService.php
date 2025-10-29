@@ -3,6 +3,7 @@
 namespace App\Imports;
 
 use App\Helpers\FormOptionsHelper;
+use App\Helpers\ImportNormalize;
 use App\Models\Contact;
 use App\Models\Opportunity;
 use App\Models\Organization;
@@ -20,22 +21,22 @@ class OpportunityImportService
     protected function aliases(): array
     {
         return [
-            'نام فرصت فروش'      => 'name',
-            'نام سازمان'          => 'organization_name',
-            'نام مخاطب'           => 'contact_name',
-            'نوع'                 => 'type',
-            'منبع'                => 'source',
-            'منبع سرنخ'           => 'source',
-            'ارجاع به'            => 'assigned_to_ref',
-            'مرحله فروش'          => 'stage',
-            'کاربری'              => 'building_usage',
-            'درصد پیشرفت'         => 'success_rate',
-            'مقدار'               => 'amount',
-            'تاریخ پیگیری بعدی'   => 'next_follow_up',
-            'زمان ایجاد'          => 'created_at',
-            'توضیحات'             => 'description',
-            'استان'               => 'state',
-            'شهر'                 => 'city',
+            'نام فرصت فروش'        => 'name',
+            'نام سازمان'            => 'organization_name',
+            'نام مخاطب'             => 'contact_name',
+            'نوع'                   => 'type',
+            'منبع'                  => 'source',
+            'منبع سرنخ'             => 'source',
+            'ارجاع به'              => 'assigned_to_ref',
+            'مرحله فروش'            => 'stage',
+            'کاربری'                => 'building_usage',
+            'درصد پیشرفت'           => 'success_rate',
+            'مقدار'                 => 'amount',
+            'تاریخ پیگیری بعدی'     => 'next_follow_up',
+            'زمان ایجاد'            => 'created_at',
+            'توضیحات'               => 'description',
+            'استان'                 => 'state',
+            'شهر'                   => 'city',
         ];
     }
 
@@ -198,6 +199,8 @@ class OpportunityImportService
     {
         $errors = [];
         $notes = [];
+        $stageLabel = null;
+        $sourceLabel = null;
 
         // Organization
         $orgName = trim((string)($row['organization_name'] ?? ''));
@@ -230,28 +233,6 @@ class OpportunityImportService
             }
         }
 
-        // Stage & Source to labels (accept key or label)
-        $stageInput = $row['stage'] ?? null;
-        $stageLabel = $stageInput !== null ? FormOptionsHelper::getOpportunityStageLabel($stageInput) : null;
-        if ($stageInput !== null && $stageInput !== '') {
-            $validStages = FormOptionsHelper::opportunityStages();
-            $isValidStage = in_array(mb_strtolower(trim((string)$stageInput)), array_keys($validStages), true)
-                || in_array((string)$stageLabel, array_values($validStages), true);
-            if (!$isValidStage) {
-                $errors['stage'] = ['مرحله فروش نامعتبر است.'];
-            }
-        }
-        $sourceInput = $row['source'] ?? null;
-        $sourceLabel = $sourceInput !== null ? FormOptionsHelper::getOpportunitySourceLabel($sourceInput) : null;
-        if ($sourceInput !== null && $sourceInput !== '') {
-            $validSources = FormOptionsHelper::opportunitySources();
-            $isValidSource = in_array(mb_strtolower(trim((string)$sourceInput)), array_keys($validSources), true)
-                || in_array((string)$sourceLabel, array_values($validSources), true);
-            if (!$isValidSource) {
-                $errors['source'] = ['منبع نامعتبر است.'];
-            }
-        }
-
         // Success rate (0-100)
         $successRate = $this->normalizePercent($row['success_rate'] ?? null);
         if ($successRate !== null && ($successRate < 0 || $successRate > 100)) {
@@ -273,6 +254,55 @@ class OpportunityImportService
             if ($createdAt === null) {
                 $errors['created_at'] = ['زمان ایجاد نامعتبر است.'];
             }
+        }
+
+        // Normalize stage and source to canonical keys and validate (fa-IR)
+        $stageKey   = ImportNormalize::normalizeStage($row['stage'] ?? null);
+        $sourceKey  = ImportNormalize::normalizeSource($row['source'] ?? null);
+
+        if (($row['stage'] ?? null) !== null && (string)($row['stage']) !== '') {
+            $allowedStageKeys = array_keys(ImportNormalize::stageMap());
+            if ($stageKey === null || !in_array($stageKey, $allowedStageKeys, true)) {
+                $allowedListFa = implode('، ', $allowedStageKeys);
+                $origText = (string)($row['stage'] ?? '');
+                $errors['stage'] = ["مرحله فروش نامعتبر: «{$origText}». مقادیر مجاز: {$allowedListFa}"];
+            } else {
+                // Persist canonical key
+                $stageLabel = $stageKey;
+            }
+        } else {
+            $stageLabel = null;
+        }
+
+        if (($row['source'] ?? null) !== null && (string)($row['source']) !== '') {
+            $allowedSourceKeys = array_keys(ImportNormalize::sourceMap());
+            if ($sourceKey === null || !in_array($sourceKey, $allowedSourceKeys, true)) {
+                $allowedListFa = implode('، ', $allowedSourceKeys);
+                $origText = (string)($row['source'] ?? '');
+                $errors['source'] = ["منبع نامعتبر: «{$origText}». مقادیر مجاز: {$allowedListFa}"];
+            } else {
+                // Persist canonical key
+                $sourceLabel = $sourceKey;
+            }
+        }
+
+        // Replace any prior generic errors with Persian detailed messages
+        if (!empty($errors['stage'])) {
+            $orig = (string)($row['stage'] ?? '');
+            $errors['stage'] = [
+                "مرحله فروش نامعتبر: «{$orig}». مقادیر مجاز: " . implode('، ', array_keys(ImportNormalize::stageMap()))
+            ];
+        }
+        if (!empty($errors['source'])) {
+            $orig = (string)($row['source'] ?? '');
+            $errors['source'] = [
+                "منبع نامعتبر: «{$orig}». مقادیر مجاز: " . implode('، ', array_keys(ImportNormalize::sourceMap()))
+            ];
+        }
+
+        // If stage resolves to won, nullify follow-up date (import-side enforcement)
+        if (($stageKey ?? null) === 'won') {
+            $nextFollow = null;
         }
 
         // Name required
@@ -384,6 +414,7 @@ class OpportunityImportService
     {
         if ($v === '' || $v === null) return null;
         if (is_string($v)) {
+            // حذف فاصله و ویرگول انگلیسی، تبدیل جداکننده اعشاری فارسی/عربی به نقطه
             $v = str_replace([' ', ',', '٬', '٫'], ['', '', '', '.'], $v);
         }
         return is_numeric($v) ? (int) round((float) $v) : null;
@@ -391,6 +422,7 @@ class OpportunityImportService
 
     protected function faToEnDigits(string $s): string
     {
+        // ارقام فارسی (۰-۹) و ارقام عربی-هندی (٠-٩) به انگلیسی
         $fa = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹','٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
         $en = ['0','1','2','3','4','5','6','7','8','9','0','1','2','3','4','5','6','7','8','9'];
         return str_replace($fa, $en, $s);
@@ -408,19 +440,51 @@ class OpportunityImportService
             }
         }
         $val = is_string($v) ? str_replace(['.', '\\'], ['-', '/'], (string) $v) : $v;
-        if (is_string($val)) $val = str_replace('-', '/', $val);
-        // Try Gregorian
-        try {
-            $dt = new \DateTime((string)$val);
-            return $dt->format('Y-m-d');
-        } catch (\Throwable $e) {}
-        // Try Jalali common formats
-        $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
-        foreach ($formats as $fmt) {
-            try {
-                return Jalalian::fromFormat($fmt, (string)$val)->toCarbon()->format('Y-m-d');
-            } catch (\Throwable $e) { /* continue */ }
+        if (is_string($val)) {
+            $val = str_replace('-', '/', $val);
+            // Normalize Persian/Arabic digits to English for robust parsing
+            $val = $this->faToEnDigits($val);
         }
+
+        // Detect possible Jalali year (e.g., 13xx/14xx) and prefer Jalali parsing first
+        $preferJalali = false;
+        if (is_string($val)) {
+            if (preg_match('/^\s*(\d{3,4})[\/]/', $val, $m)) {
+                $year = (int) $m[1];
+                // Heuristic: treat years < 1600 as Jalali
+                if ($year > 1200 && $year < 1600) $preferJalali = true;
+            }
+        }
+
+        if ($preferJalali) {
+            $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
+            foreach ($formats as $fmt) {
+                try {
+                    return Jalalian::fromFormat($fmt, (string)$val)->toCarbon()->format('Y-m-d');
+                } catch (\Throwable $e) { /* continue */ }
+            }
+            // fallback to Gregorian
+            try {
+                $dt = new \DateTime((string)$val);
+                return $dt->format('Y-m-d');
+            } catch (\Throwable $e) {}
+        } else {
+            // Try Gregorian first
+            try {
+                $dt = new \DateTime((string)$val);
+                return $dt->format('Y-m-d');
+            } catch (\Throwable $e) {}
+            // Then try Jalali
+            $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
+            foreach ($formats as $fmt) {
+                try {
+                    return Jalalian::fromFormat($fmt, (string)$val)->toCarbon()->format('Y-m-d');
+                } catch (\Throwable $e) { /* continue */ }
+            }
+        }
+
+        // If nothing matched, return null
+        $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
         return null;
     }
 
@@ -436,19 +500,50 @@ class OpportunityImportService
             }
         }
         $val = is_string($v) ? str_replace(['.', '\\'], ['-', '/'], (string) $v) : $v;
-        if (is_string($val)) $val = str_replace('-', '/', $val);
-        // Try Gregorian
-        try {
-            $dt = new \DateTime((string)$val);
-            return $dt->format('Y-m-d H:i:s');
-        } catch (\Throwable $e) {}
-        // Try Jalali
-        $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
-        foreach ($formats as $fmt) {
-            try {
-                return Jalalian::fromFormat($fmt, (string)$val)->toCarbon()->format('Y-m-d H:i:s');
-            } catch (\Throwable $e) { /* continue */ }
+        if (is_string($val)) {
+            $val = str_replace('-', '/', $val);
+            // Normalize Persian/Arabic digits to English for robust parsing
+            $val = $this->faToEnDigits($val);
         }
+
+        // Detect possible Jalali year and prefer Jalali parsing first
+        $preferJalali = false;
+        if (is_string($val)) {
+            if (preg_match('/^\s*(\d{3,4})[\/]/', $val, $m)) {
+                $year = (int) $m[1];
+                if ($year > 1200 && $year < 1600) $preferJalali = true;
+            }
+        }
+
+        if ($preferJalali) {
+            $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
+            foreach ($formats as $fmt) {
+                try {
+                    return Jalalian::fromFormat($fmt, (string)$val)->toCarbon()->format('Y-m-d H:i:s');
+                } catch (\Throwable $e) { /* continue */ }
+            }
+            // fallback to Gregorian
+            try {
+                $dt = new \DateTime((string)$val);
+                return $dt->format('Y-m-d H:i:s');
+            } catch (\Throwable $e) {}
+        } else {
+            // Try Gregorian first
+            try {
+                $dt = new \DateTime((string)$val);
+                return $dt->format('Y-m-d H:i:s');
+            } catch (\Throwable $e) {}
+            // Then try Jalali
+            $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
+            foreach ($formats as $fmt) {
+                try {
+                    return Jalalian::fromFormat($fmt, (string)$val)->toCarbon()->format('Y-m-d H:i:s');
+                } catch (\Throwable $e) { /* continue */ }
+            }
+        }
+
+        // If nothing matched, return null
+        $formats = ['Y/m/d','Y/m/d H:i','Y/m/d H:i:s'];
         return null;
     }
 }

@@ -19,23 +19,59 @@
 
 @section('content')
 <div class="py-6 px-4 sm:px-6 lg:px-8">
-    <h2 class="text-2xl font-semibold text-gray-800 mb-6">
-        فرصت‌های فروش
-    </h2>
+    <div class="flex gap-3 flex-wrap items-center justify-between">
+        <div class="flex items-center gap-3 flex-wrap">
+            <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                فرصت‌های فروش
+            </h2>
 
-    <a href="{{ route('sales.opportunities.create') }}" 
-       class="mb-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
-        + فرصت جدید
-    </a>
+            <a href="{{ route('sales.opportunities.create') }}" 
+            class="mb-4 inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600">
+                + فرصت جدید
+            </a>
 
-    <a href="{{ route('sales.opportunities.import') }}" class="mb-4 inline-block bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">ایمپورت فرصت‌ها</a>
-   
+            <a href="{{ route('sales.opportunities.import') }}" class="mb-4 inline-block bg-emerald-600 text-white px-4 py-2 rounded hover:bg-emerald-700">ایمپورت فرصت‌ها</a>
+
+            @role('admin')
+            <form id="bulk-delete-form" method="POST" action="{{ route('sales.opportunities.bulk_delete') }}" class="mb-4 inline-block"
+                  onsubmit="return handleBulkDeleteSubmit(event)">
+                @csrf
+                @method('DELETE')
+                <button id="bulk-delete-btn" type="submit"
+                        class="bg-red-600 text-white px-4 py-2 rounded disabled:opacity-50 disabled:cursor-not-allowed" disabled>
+                    حذف انتخاب‌ها
+                </button>
+            </form>
+            @endrole
+        </div>
+
+        <form method="GET" action="{{ route('sales.opportunities.index') }}" class="mb-4 inline-flex items-center gap-2">
+            <input type="hidden" name="name" value="{{ request('name') }}">
+            <input type="hidden" name="contact" value="{{ request('contact') }}">
+            <input type="hidden" name="stage" value="{{ request('stage') }}">
+            <input type="hidden" name="source" value="{{ request('source') }}">
+            <input type="hidden" name="assigned_to" value="{{ request('assigned_to') }}">
+            @php $currentPerPage = (int) request('per_page', 15); @endphp
+            <label for="per_page" class="text-sm text-gray-700 whitespace-nowrap">تعداد در صفحه</label>
+            <select id="per_page" name="per_page" class="border rounded px-2 py-1 text-sm" onchange="this.form.submit()">
+                @foreach([10,15,25,50,100] as $size)
+                    <option value="{{ $size }}" {{ $currentPerPage === $size ? 'selected' : '' }}>{{ $size }}</option>
+                @endforeach
+            </select>
+        </form>
+    </div>
+    
 
     <div class="bg-white shadow overflow-hidden sm:rounded-lg">
         <div class="overflow-x-auto">
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
                     <tr>
+                        @role('admin')
+                        <th class="px-2 py-2 text-center">
+                            <input type="checkbox" id="select-all" class="h-4 w-4">
+                        </th>
+                        @endrole
                         <th class="px-2 py-2 text-right text-gray-600">عنوان</th>
                         <th class="px-2 py-2 text-right text-gray-600">مخاطب</th>
                         <th class="px-2 py-2 text-right text-gray-600">مرحله فروش</th>
@@ -46,6 +82,9 @@
                     </tr>
                     <tr>
                         <form method="GET" action="{{ route('sales.opportunities.index') }}">
+                            @role('admin')
+                            <th class="px-2 py-1"></th>
+                            @endrole
                             <th class="px-2 py-1">
                                 <input type="text" name="name" value="{{ request('name') }}"
                                     class="w-full px-2 py-1 border rounded text-sm" placeholder="جستجوی عنوان">
@@ -93,6 +132,11 @@
                 <tbody class="bg-white divide-y divide-gray-200">
                     @forelse($opportunities as $opportunity)
                         <tr>
+                            @role('admin')
+                            <td class="px-3 py-4 text-center">
+                                <input type="checkbox" class="row-checkbox h-4 w-4" value="{{ $opportunity->id }}">
+                            </td>
+                            @endrole
                             <td class="px-6 py-4 whitespace-nowrap">
                                 <a href="{{ route('sales.opportunities.show', $opportunity) }}" class="text-blue-600 hover:text-blue-900">
                                     {{ $opportunity->name ?? '-' }}
@@ -145,7 +189,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-6 py-4 text-center text-gray-400">
+                            <td colspan="{{ auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('admin') ? 8 : 7 }}" class="px-6 py-4 text-center text-gray-400">
                                 هیچ فرصتی یافت نشد.
                             </td>
                         </tr>
@@ -160,3 +204,63 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    function updateBulkDeleteState() {
+        const checkboxes = Array.from(document.querySelectorAll('.row-checkbox'));
+        const selected = checkboxes.filter(cb => cb.checked).map(cb => cb.value);
+        const btn = document.getElementById('bulk-delete-btn');
+        if (btn) btn.disabled = selected.length === 0;
+        const master = document.getElementById('select-all');
+        if (master) {
+            const allChecked = checkboxes.length > 0 && selected.length === checkboxes.length;
+            const someChecked = selected.length > 0 && !allChecked;
+            master.checked = allChecked;
+            master.indeterminate = someChecked;
+        }
+        return selected;
+    }
+
+    function handleBulkDeleteSubmit(e) {
+        const ids = updateBulkDeleteState();
+        if (ids.length === 0) {
+            e.preventDefault();
+            return false;
+        }
+        if (!confirm('آیا از حذف گروهی فرصت‌های انتخاب‌شده اطمینان دارید؟')) {
+            e.preventDefault();
+            return false;
+        }
+        const form = document.getElementById('bulk-delete-form');
+        // Clean previous hidden inputs
+        Array.from(form.querySelectorAll('input[name="ids[]"]')).forEach(n => n.remove());
+        ids.forEach(id => {
+            const h = document.createElement('input');
+            h.type = 'hidden';
+            h.name = 'ids[]';
+            h.value = id;
+            form.appendChild(h);
+        });
+        return true;
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const master = document.getElementById('select-all');
+        if (master) {
+            master.addEventListener('change', function () {
+                document.querySelectorAll('.row-checkbox').forEach(cb => {
+                    cb.checked = master.checked;
+                });
+                updateBulkDeleteState();
+            });
+        }
+        document.querySelectorAll('.row-checkbox').forEach(cb => {
+            cb.addEventListener('change', updateBulkDeleteState);
+        });
+        updateBulkDeleteState();
+        // Expose handler globally for inline onsubmit
+        window.handleBulkDeleteSubmit = handleBulkDeleteSubmit;
+    });
+</script>
+@endpush

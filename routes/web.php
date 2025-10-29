@@ -29,6 +29,7 @@ use App\Http\Controllers\Sales\ContactController;
 use App\Http\Controllers\Sales\ProformaController;
 use App\Http\Controllers\Sales\QuotationController;
 use App\Http\Controllers\Sales\OrganizationController;
+use App\Http\Controllers\Sales\AjaxCreateController;
 use App\Http\Controllers\Sales\DocumentController;
 use App\Http\Controllers\Inventory\ProductController;
 use App\Http\Controllers\Inventory\SupplierController;
@@ -142,7 +143,11 @@ Route::middleware(['auth'])->group(function () {
         Route::put('opportunities/{opportunity}', [OpportunityController::class, 'update'])
             ->name('opportunities.update')
             ->middleware('can:update,opportunity');
+        // Bulk delete opportunities (placed before parameter route to avoid conflicts)
+        Route::delete('opportunities/bulk-delete', [OpportunityController::class, 'bulkDelete'])
+            ->name('opportunities.bulk_delete');
         Route::delete('opportunities/{opportunity}', [OpportunityController::class, 'destroy'])
+            ->whereNumber('opportunity')
             ->name('opportunities.destroy')
             ->middleware('can:delete,opportunity');
         // Import (Dry run + Confirm)
@@ -227,6 +232,10 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])
             ->name('contacts.bulk_delete');
         Route::get('contacts/{contact}/tab/{tab}', [ContactController::class, 'loadTab'])->name('contacts.tab');
+        // AJAX lightweight create endpoints for inline modals
+        Route::post('ajax/contacts', [AjaxCreateController::class, 'contact'])->name('ajax.contacts.store');
+        Route::post('ajax/organizations', [AjaxCreateController::class, 'organization'])->name('ajax.organizations.store');
+
         Route::resource('contacts', ContactController::class);
 
         // سازمان‌ها

@@ -1,12 +1,12 @@
 @php
-    // $opportunity (nullable) : برای edit موجود است، برای create خالی است
+    // $opportunity (nullable): برای حالت edit موجود است، برای create خالی است
     // $users, $contacts, $organizations, $defaultContact (nullable)
-    // $nextFollowUpDate (shamsi) برای edit از کنترلر پاس می‌شود
+    // $nextFollowUpDate (shamsi): برای edit از کنترلر پاس می‌شود
 
     $isEdit = isset($opportunity) && $opportunity?->id;
 @endphp
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4" dir="rtl">
     {{-- عنوان --}}
     <div>
         <label for="name" class="block font-medium text-sm text-gray-700 required">عنوان</label>
@@ -22,11 +22,15 @@
         <div class="flex items-center gap-2">
             <input type="text" id="organization_name" name="organization_name"
                    class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
-                   placeholder="انتخاب سازمان" readonly
+                   placeholder="انتخاب سازمان" readonly onclick="openOrganizationModal()"
                    value="{{ old('organization_name', optional($opportunity->organization ?? null)->name) }}">
             <input type="hidden" id="organization_id" name="organization_id"
                    value="{{ old('organization_id', optional($opportunity->organization ?? null)->id) }}">
-            <button type="button" onclick="openOrganizationModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
+                   <!-- <button type="button"
+                            onclick="openCreateOrganizationModal(event)"
+                            class="mt-1 inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-300 bg-white text-green-600 text-xl hover:bg-green-50"
+                            title="ایجاد سازمان جدید">+
+                    </button> -->
         </div>
         @error('organization_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
@@ -37,14 +41,17 @@
         <div class="relative">
             <input type="text" id="contact_display"
                    class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
-                   placeholder="انتخاب مخاطب..." readonly
+                   placeholder="انتخاب مخاطب..." readonly onclick="openContactModal()"
                    value="{{ old('contact_display',
                             ($defaultContact->full_name ?? '') ?: optional($opportunity->contact ?? null)->full_name) }}">
             <input type="hidden" name="contact_id" id="contact_id"
                    value="{{ old('contact_id',
                             ($defaultContact->id ?? '') ?: optional($opportunity->contact ?? null)->id) }}">
-            <button type="button" onclick="openContactModal()"
-                    class="absolute inset-y-0 left-0 flex items-center px-3 text-gray-500 hover:text-blue-600">🔍</button>
+                            <!-- <button type="button"
+                                    onclick="openCreateContactModal(event)"
+                                    class="absolute inset-y-0 left-0 z-20 flex items-center px-3 pointer-events-auto text-green-600 hover:text-green-700 text-2xl"
+                                    title="ایجاد مخاطب جدید">+
+                            </button> -->
         </div>
         @error('contact_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
@@ -60,6 +67,7 @@
         </select>
         @error('type') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
+
     {{-- کاربری ساختمان --}}
     <div>
         <label for="building_usage" class="block font-medium text-sm text-gray-700 required">
@@ -75,9 +83,9 @@
                 'گلخانه و پرورش گیاه',
                 'مرغداری و پرورش دام و طیور',
                 'فروشگاه و مراکز خرید',
-                'سالن و باشگاه های ورزشی',
-                'سالن های نمایش',
-                'مدارس و محیط های آموزشی',
+                'سالن و باشگاه‌های ورزشی',
+                'سالن‌های نمایش',
+                'مدارس و محیط‌های آموزشی',
                 'سایر'
             ] as $opt)
                 <option value="{{ $opt }}" {{ $buildingUsage === $opt ? 'selected' : '' }}>
@@ -85,8 +93,8 @@
                 </option>
             @endforeach
         </select>
-        @error('building_usage') 
-            <div class="text-red-500 text-xs mt-2">{{ $message }}</div> 
+        @error('building_usage')
+            <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
         @enderror
     </div>
 
@@ -96,31 +104,31 @@
         @php $stage = old('stage', $opportunity->stage ?? ''); @endphp
         <select name="stage" id="stage" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
             <option value="">انتخاب کنید...</option>
-            @foreach(['در حال پیگیری','پیگیری در آینده','برنده','بازنده','سرکاری','ارسال پیش فاکتور'] as $opt)
+            @foreach(['در حال پیگیری','پیگیری در آینده','برنده','بازنده','سرکاری','ارسال پیش‌فاکتور'] as $opt)
                 <option value="{{ $opt }}" {{ $stage === $opt ? 'selected' : '' }}>{{ $opt }}</option>
             @endforeach
         </select>
         @error('stage') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
 
-    {{-- منبع فرصت --}}
-    {{-- ???? ???? ???? --}}
-        <div>
-            <label for="source" class="block font-medium text-sm text-gray-700 required">منبع فرصت فروش</label>
-            @php
-                $sourceKey = old('source', isset($opportunity) ? ($opportunity->getRawOriginal('source') ?? '') : '');
-                $sources  = \App\Helpers\FormOptionsHelper::opportunitySources();
-            @endphp
-            <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                <option value="">انتخاب کنید</option>
-                @foreach($sources as $key => $label)
-                    <option value="{{ $key }}" {{ (string)$sourceKey === (string)$key ? 'selected' : '' }}>{{ $label }}</option>
-                @endforeach
-            </select>
-            @error('source')
-                <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
-            @enderror
-        </div>
+    {{-- منبع فرصت فروش --}}
+    <div>
+        <label for="source" class="block font-medium text-sm text-gray-700 required">منبع فرصت فروش</label>
+        @php
+            $sourceKey = old('source', isset($opportunity) ? ($opportunity->getRawOriginal('source') ?? '') : '');
+            $sources  = \App\Helpers\FormOptionsHelper::opportunitySources();
+        @endphp
+        <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+            <option value="">انتخاب کنید</option>
+            @foreach($sources as $key => $label)
+                <option value="{{ $key }}" {{ (string)$sourceKey === (string)$key ? 'selected' : '' }}>{{ $label }}</option>
+            @endforeach
+        </select>
+        @error('source')
+            <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+        @enderror
+    </div>
+
     {{-- ارجاع به --}}
     <div>
         <label for="assigned_to" class="block font-medium text-sm text-gray-700 required">ارجاع به</label>
@@ -145,38 +153,36 @@
         @error('success_rate') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
 
-    
     {{-- تاریخ پیگیری بعدی (نمایش شمسی + hidden میلادی) --}}
-<div class="md:col-span-2">
-    <label for="next_follow_up_shamsi" class="block font-medium text-sm text-gray-700">
-        تاریخ پیگیری بعدی
-    </label>
+    <div class="md:col-span-2">
+        <label for="next_follow_up_shamsi" class="block font-medium text-sm text-gray-700">
+            تاریخ پیگیری بعدی
+        </label>
 
-    {{-- ورودی نمایشی شمسی (فقط name + data-jdp کافیست) --}}
-    <input
-        type="text"
-        id="next_follow_up_shamsi"
-        name="next_follow_up_shamsi"
-        data-jdp
-        dir="ltr"
-        class="form-control"
-        placeholder="انتخاب تاریخ"
-        value="{{ old('next_follow_up_shamsi') }}"
-    >
+        {{-- ورودی نمایشی شمسی (استفاده از persian-datepicker عمومی پروژه) --}}
+        <input
+            type="text"
+            id="next_follow_up_shamsi"
+            name="next_follow_up_shamsi"
+            class="form-control persian-datepicker"
+            data-alt-field="next_follow_up"
+            dir="ltr"
+            placeholder="انتخاب تاریخ"
+            value="{{ old('next_follow_up_shamsi', $nextFollowUpDate ?? '') }}"
+        >
 
-    {{-- hidden میلادی که به دیتابیس می‌رود --}}
-    <input
-        type="hidden"
-        name="next_follow_up"
-        id="next_follow_up"
-        value="{{ old('next_follow_up', $opportunity->next_follow_up ?? '') }}"
-    >
+        {{-- مقدار میلادی که به دیتابیس می‌رود (hidden) --}}
+        <input
+            type="hidden"
+            name="next_follow_up"
+            id="next_follow_up"
+            value="{{ old('next_follow_up', $opportunity->next_follow_up ?? '') }}"
+        >
 
-    @error('next_follow_up')
-        <span class="text-danger text-xs">{{ $message }}</span>
-    @enderror
-</div>
-
+        @error('next_follow_up')
+            <span class="text-danger text-xs">{{ $message }}</span>
+        @enderror
+    </div>
 
     {{-- توضیحات --}}
     <div class="md:col-span-2">
@@ -186,5 +192,3 @@
         @error('description') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
 </div>
-
-

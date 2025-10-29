@@ -57,7 +57,8 @@ class OpportunityController extends Controller
             $query->whereDate('created_at', $request->created_at);
         }
 
-        $opportunities = $query->latest()->paginate(15)->withQueryString();
+        $perPage = (int) $request->get('per_page', 15);
+        $opportunities = $query->latest()->paginate($perPage)->withQueryString();
 
         return view('sales.opportunities.index', compact('opportunities'));
     }
@@ -222,6 +223,37 @@ class OpportunityController extends Controller
         return redirect()
             ->route('sales.opportunities.index')
             ->with('success', 'فرصت فروش با موفقیت حذف شد.');
+    }
+
+    public function bulkDelete(Request $request)
+    {
+        $user = auth()->user();
+        $isAdmin = false;
+
+        if ($user) {
+            if (method_exists($user, 'hasRole')) {
+                $isAdmin = $user->hasRole('admin');
+            } else {
+                $isAdmin = (bool)($user->is_admin ?? false);
+            }
+        }
+
+        abort_unless($isAdmin, 403, 'شما مجوز حذف گروهی فرصت‌ها را ندارید.');
+
+        $validated = $request->validate([
+            'ids' => ['required','array','min:1'],
+            'ids.*' => ['integer','exists:opportunities,id'],
+        ]);
+
+        $ids = $validated['ids'];
+
+        Opportunity::whereIn('id', $ids)->get()->each(function (Opportunity $op) {
+            $op->delete();
+        });
+
+        return redirect()
+            ->route('sales.opportunities.index')
+            ->with('success', 'حذف گروهی انجام شد (' . count($ids) . ').');
     }
 
     public function loadTab(Opportunity $opportunity, $tab)

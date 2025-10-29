@@ -22,7 +22,20 @@
                 </button>
             </div>
         </form>
-
+        <form action="{{ route('inventory.products.index') }}" method="GET" class="w-auto">
+            <input type="hidden" name="search" value="{{ request('search') }}">
+            <input type="hidden" name="sort" value="{{ request('sort') }}">
+            <input type="hidden" name="direction" value="{{ request('direction') }}">
+            <label for="per_page" class="text-sm text-gray-700 mr-2">تعداد در صفحه</label>
+            @php $pp = (int) request('per_page', 10); @endphp
+            <select id="per_page" name="per_page" class="border rounded px-2 py-1 text-sm" onchange="this.form.submit()">
+                <option value="10" {{ $pp === 10 ? 'selected' : '' }}>10</option>
+                <option value="25" {{ $pp === 25 ? 'selected' : '' }}>25</option>
+                <option value="50" {{ $pp === 50 ? 'selected' : '' }}>50</option>
+                <option value="100" {{ $pp === 100 ? 'selected' : '' }}>100</option>
+                <option value="200" {{ $pp === 200 ? 'selected' : '' }}>200</option>
+            </select>
+        </form>
         <div class="flex flex-wrap gap-2">
             <a href="{{ route('inventory.products.import') }}"
                class="inline-block bg-green-600 text-white px-4 py-2 rounded hover:bg-green-700">
@@ -93,9 +106,11 @@
         </div>
     </div>
 
-    <div class="mt-4">
-        {{ $products->links() }}
+    <div class="mt-4 flex flex-col sm:flex-row justify-between items-center gap-3">
+        
+        <div>
+            {{ $products->links() }}
+        </div>
     </div>
 </div>
 @endsection
-
