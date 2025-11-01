@@ -104,31 +104,59 @@
       </div>
 
       <div class="mt-8 bg-white p-6 rounded shadow">
-        <div class="mb-4">
-          <label class="block text-sm font-medium mb-1">افزودن تصویر/سند</label>
-          <input type="file" name="attachments[]" accept="image/*" multiple class="block w-full text-sm text-gray-700" />
-          <p class="text-xs text-gray-500 mt-1">فرمت‌های مجاز: JPG, PNG — حداکثر 10MB برای هر فایل</p>
-        </div>
-        <div class="flex items-center justify-between mb-4">
-          <h3 class="text-lg font-semibold">آیتم‌ها</h3>
-          <button type="button" id="add-item" class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">افزودن آیتم</button>
-        </div>
+  <div class="mb-4">
+    <label class="block text-sm font-medium mb-1">افزودن تصویر یا سند</label>
+    <input type="file" name="attachments[]" accept="image/*" multiple class="block w-full text-sm text-gray-700" />
+    <p class="text-xs text-gray-500 mt-1">فرمت‌های مجاز: JPG, PNG — حداکثر ۱۰ مگابایت برای هر فایل</p>
+  </div>
 
-        <div class="overflow-x-auto">
-          <table class="min-w-full text-sm" id="items-table">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-3 py-2 text-right">نام کالا/خدمت</th>
-                <th class="px-3 py-2 text-right">تعداد</th>
-                <th class="px-3 py-2 text-right">واحد</th>
-                <th class="px-3 py-2 text-right">قیمت واحد</th>
-                <th class="px-3 py-2 text-right">مبلغ ردیف</th>
-                <th class="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody id="items-body"></tbody>
-          </table>
-        </div>
+  <div class="flex items-center justify-between mb-4">
+    <h3 class="text-lg font-semibold">آیتم‌ها</h3>
+    <button type="button" id="add-item" class="px-3 py-2 bg-green-600 text-white rounded hover:bg-green-700">افزودن آیتم</button>
+  </div>
+
+  <div class="overflow-x-auto">
+    <table class="min-w-full text-sm" id="items-table">
+      <thead class="bg-gray-50">
+        <tr>
+          <th class="px-3 py-2 text-right">نام کالا / خدمت</th>
+          <th class="px-3 py-2 text-right">تعداد</th>
+          <th class="px-3 py-2 text-right">واحد</th>
+          <th class="px-3 py-2 text-right">قیمت واحد</th>
+          <th class="px-3 py-2 text-right">مبلغ ردیف</th>
+          <th class="px-3 py-2"></th>
+        </tr>
+      </thead>
+      <tbody id="items-body">
+        <tr id="item-row-template" class="hidden">
+          <td class="px-3 py-2">
+            <input data-name="items[__INDEX__][item_name]" class="w-48 rounded-md border-gray-300 item-name" disabled required>
+          </td>
+          <td class="px-3 py-2">
+            <input type="number" step="0.001" min="0.001" data-name="items[__INDEX__][quantity]" class="w-24 rounded-md border-gray-300 item-qty" disabled required>
+          </td>
+          <td class="px-3 py-2">
+            <select data-name="items[__INDEX__][unit]" class="w-28 rounded-md border-gray-300 item-unit" disabled required>
+              <option value="">—</option>
+              <option value="عدد">عدد</option>
+              <option value="متر">متر</option>
+              <option value="کیلوگرم">کیلوگرم</option>
+              <option value="مترمربع">متر مربع</option>
+              <option value="دستگاه">دستگاه</option>
+            </select>
+          </td>
+          <td class="px-3 py-2">
+            <input type="number" step="0.01" min="0" data-name="items[__INDEX__][unit_price]" class="w-28 rounded-md border-gray-300 item-price" disabled required>
+          </td>
+          <td class="px-3 py-2"><span class="item-total">۰</span></td>
+          <td class="px-3 py-2 text-right">
+            <button type="button" class="text-red-600 remove-row" disabled>حذف</button>
+          </td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+</div>
 
         <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mt-6">
           <div>
@@ -250,6 +278,7 @@
   function recalc(){
     let sum = 0;
     itemsBody.querySelectorAll('tr').forEach(tr => {
+      if (tr.id === 'item-row-template') return; // skip template row
       const qty = parseFloat(tr.querySelector('.item-qty')?.value || 0);
       const price = parseFloat(tr.querySelector('.item-price')?.value || 0);
       const lt = qty * price;
@@ -267,6 +296,41 @@
 
     const paid = parseFloat(previouslyPaidInput.value || 0);
     remainingDisplay.value = formatInt(Math.max(grand - paid, 0));
+  }
+
+  // Indexed row creation using a disabled template to avoid duplicate/blank names
+  let nextIndex = 0;
+  function addRowIndexed(item = {item_name:'', quantity:'', unit:'', unit_price:''}){
+    const tpl = document.getElementById('item-row-template');
+    if (!tpl) return;
+    const tr = tpl.cloneNode(true);
+    tr.removeAttribute('id');
+    tr.classList.remove('hidden');
+
+    tr.querySelectorAll('input, select, button').forEach(el => {
+      const dataName = el.getAttribute('data-name');
+      if (dataName) {
+        el.name = dataName.replace('__INDEX__', String(nextIndex));
+        el.removeAttribute('data-name');
+      }
+      el.disabled = false;
+    });
+
+    // Set values
+    const nameInput = tr.querySelector('.item-name');
+    const qtyInput = tr.querySelector('.item-qty');
+    const unitSelect = tr.querySelector('.item-unit');
+    const priceInput = tr.querySelector('.item-price');
+    if (nameInput) nameInput.value = item.item_name ?? '';
+    if (qtyInput) qtyInput.value = item.quantity ?? '';
+    if (unitSelect) unitSelect.value = item.unit ?? '';
+    if (priceInput) priceInput.value = item.unit_price ?? '';
+
+    itemsBody.appendChild(tr);
+    tr.querySelectorAll('input, select').forEach(inp => inp.addEventListener('input', recalc));
+    tr.querySelector('.remove-row')?.addEventListener('click', () => { tr.remove(); recalc(); });
+    nextIndex++;
+    recalc();
   }
 
   function addRow(item = {item_name:'', quantity:1, unit:'', unit_price:0}){
@@ -292,7 +356,7 @@
     recalc();
   }
 
-  addItemBtn.addEventListener('click', () => addRow());
+  addItemBtn.addEventListener('click', () => addRowIndexed());
   previouslyPaidInput.addEventListener('input', recalc);
   if (applyVatCheckbox) {
     applyVatCheckbox.addEventListener('change', () => {
@@ -308,11 +372,11 @@
   // Restore previously entered rows after validation errors; otherwise don't add a blank row
   const oldItems = @json(old('items', []));
   if (Array.isArray(oldItems) && oldItems.length > 0) {
-    oldItems.forEach(it => addRow({
+    oldItems.forEach(it => addRowIndexed({
       item_name: it.item_name || '',
-      quantity:  it.quantity ?? 1,
+      quantity:  it.quantity ?? '',
       unit:      it.unit || '',
-      unit_price:it.unit_price ?? 0
+      unit_price:it.unit_price ?? ''
     }));
   }
   // Restore VAT state from old input

@@ -173,7 +173,7 @@ class PurchaseOrderController extends Controller
             ],
         ]);
 
-        // --- Pre-normalize input: dates & numbers ---
+        // --- Pre-normalize input: dates & numbers + items structure ---
         try {
             $input = $request->all();
 
@@ -228,6 +228,34 @@ class PurchaseOrderController extends Controller
                 }
             }
 
+            // Normalize potential parallel arrays into nested items[n][field]
+            $parallelKeys = ['item_name', 'quantity', 'unit', 'unit_price'];
+            $hasParallel = false;
+            foreach ($parallelKeys as $k) {
+                if (isset($input[$k]) && is_array($input[$k])) { $hasParallel = true; break; }
+            }
+            if ($hasParallel) {
+                // Build nested items from parallel arrays, preserving original order by index
+                $max = 0;
+                foreach ($parallelKeys as $k) {
+                    $cnt = is_array($input[$k] ?? null) ? count($input[$k]) : 0;
+                    if ($cnt > $max) $max = $cnt;
+                }
+                $rebuiltPar = [];
+                for ($i = 0; $i < $max; $i++) {
+                    $row = [
+                        'item_name'  => (is_array($input['item_name'] ?? null)  && array_key_exists($i, $input['item_name']))  ? $input['item_name'][$i]  : '',
+                        'quantity'   => (is_array($input['quantity'] ?? null)   && array_key_exists($i, $input['quantity']))   ? $input['quantity'][$i]   : null,
+                        'unit'       => (is_array($input['unit'] ?? null)       && array_key_exists($i, $input['unit']))       ? $input['unit'][$i]       : null,
+                        'unit_price' => (is_array($input['unit_price'] ?? null) && array_key_exists($i, $input['unit_price'])) ? $input['unit_price'][$i] : null,
+                    ];
+                    $rebuiltPar[] = $row;
+                }
+                $input['items'] = $rebuiltPar;
+                // Remove parallel arrays to avoid confusion downstream
+                foreach ($parallelKeys as $k) { unset($input[$k]); }
+            }
+
             if (!empty($input['items']) && is_array($input['items'])) {
                 $rebuilt = [];
                 foreach ($input['items'] as $row) {
@@ -243,11 +271,17 @@ class PurchaseOrderController extends Controller
                     ];
                 }
 
+                // Keep only rows with a non-empty item name to avoid
+                // accidentally including blank template rows in validation.
                 $rebuilt = array_values(array_filter($rebuilt, function ($row) {
                     $name = trim((string)($row['item_name'] ?? ''));
-                    $qty  = (float)($row['quantity'] ?? 0);
-                    $price= (float)($row['unit_price'] ?? 0);
-                    return $name !== '' || $qty > 0 || $price > 0;
+                    // Drop rows with empty name, or rows where all fields are empty
+                    $allEmpty = $name === ''
+                        && ($row['quantity'] === null || $row['quantity'] === '' )
+                        && ($row['unit'] === null || $row['unit'] === '' )
+                        && ($row['unit_price'] === null || $row['unit_price'] === '' );
+                    if ($allEmpty) return false;
+                    return $name !== '';
                 }));
 
                 $input['items'] = $rebuilt;
@@ -281,8 +315,8 @@ class PurchaseOrderController extends Controller
             'description' => 'nullable|string',
             'items' => 'required|array|min:1',
             'items.*.item_name' => 'required|string|max:255',
-            'items.*.quantity' => 'required|numeric|min:0.01',
-            'items.*.unit' => 'nullable|string|max:50',
+            'items.*.quantity' => 'required|numeric|min:0.001',
+            'items.*.unit' => 'required|string|max:50',
             'items.*.unit_price' => 'required|numeric|min:0',
             'attachments' => 'nullable|array',
             'attachments.*' => 'file|mimes:jpeg,jpg,png|max:10240',

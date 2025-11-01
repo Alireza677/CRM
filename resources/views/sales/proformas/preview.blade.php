@@ -67,7 +67,8 @@
 
     <div class="invoice-a4">
         <div class="invoice-header">
-            <div class="title">پیش‌فاکتور فروش کالا و خدمات</div>
+            <div class="title flex-column">پیش نویس پیش فاکتور فروش </div>
+            <img src="public\images\admin-ajax.png" alt="akhgartabesh">
             <div class="meta">
                 <div><span>شماره:</span> {{ $proforma->proforma_number ?: ('PF-' . $proforma->id) }}</div>
                 <div><span>تاریخ:</span> {{ $dateFa }}</div>
@@ -78,12 +79,12 @@
         <div class="section">
             <div class="section-title">مشخصات فروشنده</div>
             <div class="grid-2">
-                <div><span>نام شخص/حقوقی:</span> {{ $seller['name'] }}</div>
+                <div><span>نام شخص/حقوقی:</span>شرکت دانش بنیان اخگرتابش </div>
                 <div><span>شماره اقتصادی:</span> {{ $seller['economic_id'] ?: '—' }}</div>
                 <div><span>شماره ثبت/شناسه ملی:</span> {{ $seller['national_id'] ?: '—' }}</div>
                 <div><span>کد پستی:</span> {{ $seller['postal_code'] ?: '—' }}</div>
-                <div class="full"><span>نشانی:</span> {{ $seller['address'] ?: '—' }}</div>
-                <div><span>شماره تلفن:</span> {{ $seller['phone'] ?: '—' }}</div>
+                <div class="full"><span>نشانی:</span>  تهران ، اسلامشهر، شهرک ایرین</div>
+                <div><span>شماره تلفن:</span> 02144777905</div>
                 <div><span>شماره فکس:</span> {{ $seller['fax'] ?: '—' }}</div>
             </div>
         </div>
@@ -115,8 +116,8 @@
                     <th>شرح کالا/خدمت</th>
                     <th style="width: 70px">واحد</th>
                     <th style="width: 80px">تعداد/مقدار</th>
-                    <th style="width: 120px">مبلغ واحد</th>
-                    <th style="width: 120px">مبلغ کل</th>
+                    <th style="width: 120px">مبلغ واحد (ریال)</th>
+                    <th style="width: 120px">مبلغ کل (ریال)</th>
                 </tr>
                 </thead>
                 <tbody>
