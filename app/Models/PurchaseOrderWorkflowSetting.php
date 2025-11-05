@@ -10,6 +10,9 @@ class PurchaseOrderWorkflowSetting extends Model
         'first_approver_id',
         'second_approver_id',
         'accounting_user_id',
+        'first_approver_substitute_id',
+        'second_approver_substitute_id',
+        'accounting_approver_substitute_id',
     ];
 
     public function firstApprover()
@@ -26,5 +29,19 @@ class PurchaseOrderWorkflowSetting extends Model
     {
         return $this->belongsTo(User::class, 'accounting_user_id');
     }
-}
 
+    public function firstApproverSubstitute()
+    {
+        return $this->belongsTo(User::class, 'first_approver_substitute_id');
+    }
+
+    public function secondApproverSubstitute()
+    {
+        return $this->belongsTo(User::class, 'second_approver_substitute_id');
+    }
+
+    public function accountingApproverSubstitute()
+    {
+        return $this->belongsTo(User::class, 'accounting_approver_substitute_id');
+    }
+}

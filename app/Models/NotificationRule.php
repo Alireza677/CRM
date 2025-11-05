@@ -18,6 +18,7 @@ class NotificationRule extends Model
         'conditions',
         'subject_template',
         'body_template',
+        'sms_template',
         'created_by',
         'updated_by',
     ];
@@ -28,4 +29,3 @@ class NotificationRule extends Model
         'conditions' => 'array',
     ];
 }
-

@@ -9,7 +9,7 @@
     @endphp
 
     <div class="py-12" x-data="notificationsMatrix()" x-init="init()" dir="rtl">
-        <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+      <div class="max-w-none w-full px-4 sm:px-6 lg:px-8">
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="flex items-center justify-between mb-4">
@@ -64,19 +64,21 @@
                                             showModal: false,
                                             enabled: {{ $row['enabled'] ? 'true' : 'false' }},
                                             channels: @js($row['channels']),
-                                            conditions: @js($row['conditions'] ?? ['from_status' => '', 'to_status' => '']),
+                                            conditions: @js($isPOStatus ? ($row['conditions'] ?? ['from_status' => '', 'to_status' => '']) : null),
                                             subject: @js($row['subject_template']),
                                             body: @js($row['body_template']),
+                                            internal: @js($row['internal_template'] ?? ($row['body_template'] ?? '')),
+                                            sms: @js($row['sms_template'] ?? ''),
                                             placeholders: @js($row['allowed_placeholders'] ?? $row['placeholders']),
                                             formAction: @js($formAction),
                                             hasId: @js((bool)$rowId),
                                             pQ: '',
                                             selectedIdx: 0,
                                             focusedField: 'body',
-                                            get tokens(){ return (this.placeholders||[]).concat(['@{{ url }}','@{{ actor.name }}']); },
+                                            get tokens(){ return (this.placeholders||[]).concat(['{form_title}','{sender_name}','{status}','{url}','@{{ url }}','@{{ actor.name }}']); },
                                             filteredTokens(){ const q=(this.pQ||'').toLowerCase(); const list=this.tokens; if(!q) return list; return list.filter(t=> (t||'').toLowerCase().includes(q)); },
                                             insertToken(token){
-                                                const field=this.focusedField==='subject' ? this.$refs.subjectArea : this.$refs.bodyArea;
+                                                const field = this.focusedField==='subject' ? this.$refs.subjectArea : (this.focusedField==='sms' ? this.$refs.smsArea : this.$refs.bodyArea);
                                                 if(!field) return;
                                                 const start=field.selectionStart||0; const end=field.selectionEnd||0; const val=field.value||'';
                                                 const newVal=val.substring(0,start)+token+val.substring(end);
@@ -109,12 +111,18 @@
                                                 };
                                                 let s = this.subject || '';
                                                 let b = this.body || '';
-                                                Object.entries(dummy).forEach(([k,v])=>{ s = s.split(k).join(v); b = b.split(k).join(v); });
+                                                let d = this.internal || '';
+                                                let m = this.sms || '';
+                                                Object.entries(dummy).forEach(([k,v])=>{ s = s.split(k).join(v); b = b.split(k).join(v); d = d.split(k).join(v); m = m.split(k).join(v); });
                                                 s = s.split('@{{ url }}').join('https://crm.local/item');
                                                 s = s.split('@{{ actor.name }}').join('Actor Name');
                                                 b = b.split('@{{ url }}').join('https://crm.local/item');
                                                 b = b.split('@{{ actor.name }}').join('Actor Name');
-                                                return {subject:s, body:b};
+                                                d = d.split('@{{ url }}').join('https://crm.local/item');
+                                                d = d.split('@{{ actor.name }}').join('Actor Name');
+                                                m = m.split('@{{ url }}').join('https://crm.local/item');
+                                                m = m.split('@{{ actor.name }}').join('Actor Name');
+                                                return {subject:s, body:b, internal:d, sms:m};
                                             },
                                             openEditor(){
                                                 try {
@@ -139,6 +147,8 @@
                                                     const fd=new FormData(form);
                                                     fd.set('subject_template', this.subject||'');
                                                     fd.set('body_template', this.body||'');
+                                                    fd.set('internal_template', this.internal||'');
+                                                    fd.set('sms_template', this.sms||'');
                                                     const method='POST';
                                                     if(this.hasId){ fd.set('_method','PUT'); }
                                                     const res= await fetch(this.formAction, { method, headers: { 'Accept':'application/json' }, body: fd });
@@ -150,6 +160,7 @@
                                                     if(data && data.rule){
                                                         this.subject=data.rule.subject_template||this.subject;
                                                         this.body=data.rule.body_template||this.body;
+                                                        this.sms=data.rule.sms_template||this.sms;
                                                     }
                                                     this.closeEditor();
                                                     this.$dispatch('toast', {color:'green', text:'ذخیره شد'});
@@ -166,11 +177,11 @@
                                                 <div class="w-11 h-6 bg-gray-200 peer-focus:outline-none rounded-full peer peer-checked:bg-green-600 relative transition"></div>
                                             </label>
                                         </td>
-                                        <td class="px-4 py-3 text-sm text-gray-700">
+                                        <td class="px-4 py-3 text-sm text-gray-70ش0">
                                             <div class="flex gap-4">
                                                 @foreach($channelOptions as $chKey => $chLabel)
                                                     <label class="inline-flex items-center gap-2">
-                                                        <input type="checkbox" value="{{ $chKey }}" x-model="channels" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500">
+                                                        <input type="checkbox" name="channels[]" value="{{ $chKey }}" x-model="channels" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500" form="rowForm-{{ $rowId ?? ($row['module'].'-'.$row['event']) }}">
                                                         <span>{{ $chLabel }}</span>
                                                     </label>
                                                 @endforeach
@@ -179,9 +190,21 @@
                                         <td class="px-4 py-3 text-sm text-gray-700">
                                             @if($isPOStatus)
                                                 <div class="flex items-center gap-2">
-                                                    <input type="text" x-model="conditions.from_status" placeholder="از وضعیت" class="w-28 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                                    {{-- از وضعیت: دراپ‌داون با مقادیر مجاز سفارش خرید --}}
+                                                    <select x-model="conditions.from_status" class="w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                                        <option value="">(همهٔ وضعیت‌ها)</option>
+                                                        @foreach(($poStatuses ?? []) as $code => $label)
+                                                            <option value="{{ $code }}">{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
                                                     <span>→</span>
-                                                    <input type="text" x-model="conditions.to_status" placeholder="به وضعیت" class="w-28 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                                    {{-- به وضعیت: دراپ‌داون با مقادیر مجاز سفارش خرید --}}
+                                                    <select x-model="conditions.to_status" class="w-40 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                                        <option value="">(همهٔ وضعیت‌ها)</option>
+                                                        @foreach(($poStatuses ?? []) as $code => $label)
+                                                            <option value="{{ $code }}">{{ $label }}</option>
+                                                        @endforeach
+                                                    </select>
                                                 </div>
                                             @else
                                                 <span class="text-gray-400">—</span>
@@ -190,13 +213,25 @@
                                         <td class="px-4 py-3 text-sm text-blue-700">
                                             <button type="button" @click="openEditor()" class="px-3 py-1.5 bg-blue-50 hover:bg-blue-100 rounded border border-blue-200">ویرایش متن</button>
                                             <div class="mt-1 text-xs text-gray-600">نمونه ذخیره‌شده:</div>
-                                            <div class="mt-1 p-2 bg-gray-50 rounded border text-xs whitespace-pre-line">
+                                                <div class="mt-1 p-2 bg-gray-50 rounded border text-xs whitespace-pre-line">
                                                 <div class="font-semibold" x-text="previewLocal().subject"></div>
                                                 <div x-text="previewLocal().body"></div>
-                                            </div>
+                                                <template x-if="(channels||[]).includes('database') && (internal||'').trim() !== ''">
+                                                    <div class="mt-2 text-gray-700">
+                                                        <div class="font-semibold">System:</div>
+                                                        <div x-text="previewLocal().internal"></div>
+                                                    </div>
+                                                </template>
+                                                <template x-if="(channels||[]).includes('sms') && (sms||'').trim() !== ''">
+                                                    <div class="mt-2 text-gray-700">
+                                                        <div class="font-semibold">SMS:</div>
+                                                        <div x-text="previewLocal().sms"></div>
+                                                    </div>
+                                                </template>
+                                                </div>
                                         </td>
                                         <td class="px-4 py-3 text-sm text-right">
-                                            <form x-ref="rowForm" :action="formAction" method="post" class="inline-block">
+                                            <form x-ref="rowForm" :action="formAction" method="post" class="inline-block" id="rowForm-{{ $rowId ?? ($row['module'].'-'.$row['event']) }}">
                                                 @csrf
                                                 @if($rowId)
                                                     @method('PUT')
@@ -207,21 +242,37 @@
                                                     <input type="hidden" name="event" value="{{ $row['event'] }}">
                                                 @endunless
 
-                                                <input type="hidden" name="enabled" :value="enabled ? 1 : 0">
+                                                <input type="hidden" name="enabled" :value="enabled ? 1 : 0" x-effect="$el.value = enabled ? 1 : 0">
 
-                                                <template x-for="ch in channels" :key="ch">
-                                                    <input type="hidden" name="channels[]" :value="ch">
-                                                </template>
+                                                
 
+                                                @if($isPOStatus)
                                                 <template x-if="conditions">
-                                                    <div>
-                                                        <input type="hidden" name="conditions[from_status]" :value="conditions.from_status ?? ''">
-                                                        <input type="hidden" name="conditions[to_status]" :value="conditions.to_status ?? ''">
-                                                    </div>
+                                                <div>
+                                                    {{-- hidden inputs برای ارسال شروط از طریق فرم اکشن --}}
+                                                    {{-- Use both flat keys and nested keys; keep values synchronized via x-effect --}}
+                                                    <input type="hidden" name="from_status"
+                                                           x-effect="$el.value = (conditions.from_status ?? '')"
+                                                           :value="conditions.from_status ?? ''">
+                                                    <input type="hidden" name="to_status"
+                                                           x-effect="$el.value = (conditions.to_status ?? '')"
+                                                           :value="conditions.to_status ?? ''">
+
+                                                    {{-- Backward-compatible nested payload for existing validator paths --}}
+                                                    <input type="hidden" name="conditions[from_status]"
+                                                           x-effect="$el.value = (conditions.from_status ?? '')"
+                                                           :value="conditions.from_status ?? ''">
+                                                    <input type="hidden" name="conditions[to_status]"
+                                                           x-effect="$el.value = (conditions.to_status ?? '')"
+                                                           :value="conditions.to_status ?? ''">
+                                                </div>
                                                 </template>
+                                                @endif
 
                                                 <input type="hidden" name="subject_template" :value="subject">
                                                 <input type="hidden" name="body_template" :value="body">
+                                                <input type="hidden" name="internal_template" :value="internal">
+                                                <input type="hidden" name="sms_template" :value="sms">
 
                                                 <button type="submit" class="px-3 py-1.5 bg-green-600 text-white rounded hover:bg-green-700">ذخیره</button>
                                             </form>
@@ -235,60 +286,91 @@
                                             @endif
 
                                             <!-- Modal (teleported to body for consistent Alpine scope) -->
-                                            <template x-teleport="body">
-                                                <div x-show="showModal" x-cloak class="fixed inset-0 z-50" aria-modal="true" role="dialog">
-                                                    <div class="absolute inset-0 bg-black/30" @click="closeEditor()" x-transition.opacity></div>
-                                                    <div class="relative max-w-4xl mx-auto mt-10 sm:mt-16 bg-white border rounded-lg p-4 shadow"
-                                                         dir="rtl"
-                                                         x-show="showModal"
-                                                         x-transition.opacity.scale.origin-top>
+                                                    <template x-teleport="body">
+                                                    <!-- اضافه شد: overflow-y-auto برای اسکرول عمودی کل مودال -->
+                                                    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
+                                                        <div class="absolute inset-0 bg-black/30" @click="closeEditor()" x-transition.opacity></div>
+
+                                                        <!-- تغییر: mt به my تا بالا و پایین فاصله داشته باشد -->
+                                                        <!-- اضافه شد: max-h-[90vh] و overflow-y-auto تا بدنه مودال داخل خودش اسکرول شود -->
+                                                        <div class="relative max-w-4xl mx-auto my-10 sm:my-16 bg-white border rounded-lg p-4 shadow
+                                                                    max-h-[90vh] overflow-y-auto"
+                                                            dir="rtl"
+                                                            x-show="showModal"
+                                                            x-transition.opacity.scale.origin-top>
                                                         <div class="flex items-center justify-between mb-3">
                                                             <h3 class="text-lg font-semibold">ویرایش قالب اعلان</h3>
                                                             <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeEditor()">بستن</button>
                                                         </div>
+
                                                         <div class="grid grid-cols-1 gap-3">
                                                             <div>
-                                                                <label class="block text-sm text-gray-700 mb-1">عنوان</label>
-                                                                <input type="text" x-ref="subjectArea" @focus="focusedField='subject'" x-model="subject" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                                            <label class="block text-sm text-gray-700 mb-1">عنوان</label>
+                                                            <input type="text" x-ref="subjectArea" @focus="focusedField='subject'" x-model="subject"
+                                                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                                             </div>
+
                                                             <div>
-                                                                <label class="block text-sm text-gray-700 mb-1">متن</label>
-                                                                <textarea x-ref="bodyArea" @focus="focusedField='body'" x-model="body" rows="8" placeholder="برای شروع می‌توانید از کلیدواژه‌ها استفاده کنید" class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                                                            <label class="block text-sm text-gray-700 mb-1">متن</label>
+                                                            <textarea x-ref="bodyArea" @focus="focusedField='body'" x-model="body" rows="8"
+                                                                        placeholder="برای شروع می‌توانید از کلیدواژه‌ها استفاده کنید"
+                                                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
                                                             </div>
+
+                                                            <div>
+                                                            <label class="block text-sm text-gray-700 mb-1">متن پیامک (SMS)</label>
+                                                            <textarea x-ref="smsArea" @focus="focusedField='sms'" x-model="sms" rows="4"
+                                                                        placeholder="متن کوتاه پیامک؛ از کلیدواژه‌ها می‌توانید استفاده کنید"
+                                                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
+                                                            </div>
+
                                                             <div class="text-xs text-gray-500 mb-1">از کلیدواژه‌ها برای جای‌گذاری خودکار استفاده کنید.</div>
+
                                                             <div class="flex items-center gap-2 mb-2">
-                                                                <input type="text" x-model="pQ" @keydown="onKeyNav($event)" placeholder="جستجو در کلیدواژه‌ها..." class="w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
+                                                            <input type="text" x-model="pQ" @keydown="onKeyNav($event)" placeholder="جستجو در کلیدواژه‌ها..."
+                                                                    class="w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
                                                             </div>
+
                                                             <div class="flex flex-wrap gap-2" @keydown="onKeyNav($event)" tabindex="0">
-                                                                <template x-for="(tok, idx) in filteredTokens()" :key="tok">
-                                                                    <div :class="'px-2 py-1 rounded border text-xs cursor-pointer flex items-center gap-2 '+(idx===selectedIdx?'bg-blue-50 border-blue-300':'bg-gray-50 border-gray-200')" @click="insertToken(tok)" @mouseenter="selectedIdx=idx">
-                                                                        <span x-text="tok"></span>
-                                                                        <button type="button" class="text-gray-400 hover:text-gray-600" @click.stop="copyToken(tok)">کپی</button>
-                                                                    </div>
-                                                                </template>
+                                                            <template x-for="(tok, idx) in filteredTokens()" :key="tok">
+                                                                <div :class="'px-2 py-1 rounded border text-xs cursor-pointer flex items-center gap-2 '+(idx===selectedIdx?'bg-blue-50 border-blue-300':'bg-gray-50 border-gray-200')"
+                                                                    @click="insertToken(tok)" @mouseenter="selectedIdx=idx">
+                                                                <span x-text="tok"></span>
+                                                                <button type="button" class="text-gray-400 hover:text-gray-600" @click.stop="copyToken(tok)">کپی</button>
+                                                                </div>
+                                                            </template>
                                                             </div>
+
                                                             <div class="text-xs text-gray-500">
-                                                                از کلیدواژه‌ها برای جای‌گذاری خودکار استفاده کنید:
-                                                                <span x-text="placeholders.join('، ')"></span>،
-                                                                <code>{url}</code> یا <code>@{{ url }}</code>، <code>@{{ actor.name }}</code>
+                                                            از کلیدواژه‌ها برای جای‌گذاری خودکار استفاده کنید:
+                                                            <span x-text="placeholders.join('، ')"></span>،
+                                                            <code>{url}</code> یا <code>@{{ url }}</code>، <code>@{{ actor.name }}</code>
                                                             </div>
+
                                                             <div class="text-right mt-2">
-                                                                <button type="button" class="px-4 py-2 bg-gray-200 rounded mr-2" @click="renderPreview()">به‌روزرسانی پیش‌نمایش</button>
-                                                                <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" @click="saveTemplates()">ذخیره</button>
-                                                                <button type="button" class="px-4 py-2 bg-gray-200 rounded mr-2" @click="closeEditor()">انصراف</button>
+                                                            <button type="button" class="px-4 py-2 bg-gray-200 rounded mr-2" @click="renderPreview()">به‌روزرسانی پیش‌نمایش</button>
+                                                            <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" @click="saveTemplates()">ذخیره</button>
+                                                            <button type="button" class="px-4 py-2 bg-gray-200 rounded mr-2" @click="closeEditor()">انصراف</button>
                                                             </div>
 
                                                             <div class="mt-2">
-                                                                <div class="text-sm font-medium mb-1">پیش‌نمایش</div>
-                                                                <div class="p-3 bg-gray-50 rounded border text-sm whitespace-pre-line">
-                                                                    <div class="font-semibold" x-text="preview.subject"></div>
-                                                                    <div x-text="preview.body"></div>
+                                                            <div class="text-sm font-medium mb-1">پیش‌نمایش</div>
+                                                            <div class="p-3 bg-gray-50 rounded border text-sm whitespace-pre-line">
+                                                                <div class="font-semibold" x-text="preview.subject"></div>
+                                                                <div x-text="preview.body"></div>
+                                                                <template x-if="(channels||[]).includes('sms') && (sms||'').trim() !== ''">
+                                                                <div class="mt-2">
+                                                                    <div class="font-semibold">SMS:</div>
+                                                                    <div x-text="preview.sms"></div>
                                                                 </div>
+                                                                </template>
+                                                            </div>
                                                             </div>
                                                         </div>
+                                                        </div>
                                                     </div>
-                                                </div>
-                                            </template>
+                                                    </template>
+
                                         </td>
                                     </tr>
 
@@ -319,7 +401,7 @@ function notificationsMatrix() {
     return {
         q: '',
         toggleAll: false,
-        preview: {subject:'', body:''},
+        preview: {subject:'', body:'', internal:'', sms:''},
         init(){},
         matchesFilter(text){
             const t = (this.q||'').trim();
@@ -329,7 +411,7 @@ function notificationsMatrix() {
         applyToggleAll(){
             document.querySelectorAll('tbody tr [type=checkbox].sr-only').forEach(el=>{
                 el.checked = this.toggleAll;
-                el.dispatchEvent(new Event('input',{bubbles:true}))
+                el.dispatchEvent(new Event('change',{bubbles:true}))
             });
         },
         renderPreview(){
@@ -350,15 +432,19 @@ function notificationsMatrix() {
             };
             let s = this.subject || '';
             let b = this.body || '';
+            let m = this.sms || '';
             Object.entries(dummy).forEach(([k,v])=>{
                 s = s.split(k).join(v);
                 b = b.split(k).join(v);
+                m = m.split(k).join(v);
             });
             s = s.split('@{{ url }}').join('https://crm.local/item');
             s = s.split('@{{ actor.name }}').join('کاربر سیستم');
             b = b.split('@{{ url }}').join('https://crm.local/item');
             b = b.split('@{{ actor.name }}').join('کاربر سیستم');
-            this.preview = {subject:s, body:b};
+            m = m.split('@{{ url }}').join('https://crm.local/item');
+            m = m.split('@{{ actor.name }}').join('کاربر سیستم');
+            this.preview = {subject:s, body:b, sms:m};
         }
     }
 }

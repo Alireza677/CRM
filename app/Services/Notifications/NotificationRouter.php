@@ -6,6 +6,7 @@ use App\Models\NotificationRule;
 use App\Models\User;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Arr;
+use App\Services\Sms\FarazEdgeService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Str;
@@ -58,6 +59,7 @@ class NotificationRouter
 
         $subject = $rule->subject_template ?? '';
         $body    = $rule->body_template ?? '';
+        $sms     = $rule->sms_template ?? '';
 
         // Replace only whitelisted placeholders
         foreach ($placeholders as $ph) {
@@ -65,6 +67,7 @@ class NotificationRouter
             $val = (string) ($map[$ph] ?? '');
             $subject = str_replace($ph, $val, $subject);
             $body    = str_replace($ph, $val, $body);
+            $sms     = str_replace($ph, $val, $sms);
         }
 
         // Also support minimal mustache-style for safe globals: {{ url }}, {{ actor.name }}
@@ -76,11 +79,13 @@ class NotificationRouter
             $token = '{{ '.$key.' }}';
             $subject = str_replace($token, $val, $subject);
             $body    = str_replace($token, $val, $body);
+            $sms     = str_replace($token, $val, $sms);
         }
 
         return [
             'subject' => trim($subject),
             'body'    => trim($body),
+            'sms'     => trim($sms),
         ];
     }
 
@@ -134,6 +139,25 @@ class NotificationRouter
                         'event'  => $rule->event,
                         'error'  => $e->getMessage(),
                     ]);
+                }
+            }
+
+            if (in_array('sms', $channels, true) && $user->mobile) {
+                $text = (string) ($rendered['sms'] ?? '');
+                if ($text !== '') {
+                    try {
+                        /** @var FarazEdgeService $sms */
+                        $sms = app(FarazEdgeService::class);
+                        $sms->sendWebservice($user->mobile, $text);
+                    } catch (\Throwable $e) {
+                        Log::error('NotificationRouter: failed sms', [
+                            'user_id' => $user->id,
+                            'mobile'  => $user->mobile,
+                            'module' => $rule->module,
+                            'event'  => $rule->event,
+                            'error'  => $e->getMessage(),
+                        ]);
+                    }
                 }
             }
         }

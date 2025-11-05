@@ -156,6 +156,8 @@
     @php \App\Helpers\DateHelper::class; @endphp
     @php
         $createdAtFa = \App\Helpers\DateHelper::toJalali($purchaseOrder->created_at, 'H:i Y/m/d');
+        // Ensure workflow settings are available for substitute names
+        $wf = $wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first());
         $a1 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',1)->orderByDesc('approved_at')->first();
         $a2 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',2)->orderByDesc('approved_at')->first();
         $a3 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',3)->orderByDesc('approved_at')->first();
@@ -171,21 +173,31 @@
     @endphp
 
     @php
-        $currentUserId   = (int) auth()->id();
-        $firstApproverId  = (int) (optional($poSettings ?? null)->first_approver_id ?? 0);
-        $secondApproverId = (int) (optional($poSettings ?? null)->second_approver_id ?? 0);
-        $accountingId     = (int) (optional($poSettings ?? null)->accounting_user_id ?? 0);
+        $currentUserId = (int) auth()->id();
+        $isCreator     = $currentUserId === (int) ($purchaseOrder->requested_by ?? 0);
 
-        $isFirstApprover  = $currentUserId === $firstApproverId;
-        $isSecondApprover = $currentUserId === $secondApproverId;
-        $isAccounting     = $currentUserId === $accountingId;
-        $isCreator        = $currentUserId === (int) ($purchaseOrder->requested_by ?? 0);
+        // Determine whether we are at an approval stage
+        $status = $purchaseOrder->status ?? 'created';
+        $approvalStages = ['created','supervisor_approval','manager_approval','accounting_approval'];
+        $inApprovalStage = in_array($status, $approvalStages, true);
 
-        $showDecisionButtons = (
-            (in_array($purchaseOrder->status, ['created','supervisor_approval'], true) && $isFirstApprover) ||
-            ($purchaseOrder->status === 'manager_approval' && $isSecondApprover) ||
-            ($purchaseOrder->status === 'accounting_approval' && $isAccounting)
-        );
+        // Determine eligibility solely by main/sub approver for the stage (ignore assigned_to)
+        $showDecisionButtons = false;
+        if ($inApprovalStage) {
+            $wf = $poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first();
+            $mainId = null; $subId = null;
+            if ($status === 'accounting_approval') {
+                $mainId = optional($wf)->accounting_user_id;
+                $subId  = optional($wf)->accounting_approver_substitute_id;
+            } elseif ($status === 'manager_approval') {
+                $mainId = optional($wf)->second_approver_id;
+                $subId  = optional($wf)->second_approver_substitute_id;
+            } else { // created or supervisor_approval
+                $mainId = optional($wf)->first_approver_id;
+                $subId  = optional($wf)->first_approver_substitute_id;
+            }
+            $showDecisionButtons = ($currentUserId === (int) ($mainId ?? 0)) || ($currentUserId === (int) ($subId ?? 0));
+        }
     @endphp
 
     <h3 class="text-md font-semibold mb-3">تایم‌لاین تأییدات</h3>
@@ -197,19 +209,19 @@
         <div class="flex justify-between">
             <span class="text-gray-600">تأیید سرپرست کارخانه</span>
             <span class="font-medium">
-                {{ $a1AtFa ?: '—' }} @if($a1?->approver) — {{ $a1->approver->name }} @endif
+                {{ $a1AtFa ?: '-' }} @if($a1?->approver) - {{ $a1->approver->name }} @php $__sub = optional(($wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first()))?->firstApproverSubstitute)->name ?? null; @endphp @if($__sub) ({{ $__sub }}) @endif @endif
             </span>
         </div>
         <div class="flex justify-between">
             <span class="text-gray-600">تأیید مدیر کل</span>
             <span class="font-medium">
-                {{ $a2AtFa ?: '—' }} @if($a2?->approver) — {{ $a2->approver->name }} @endif
+                {{ $a2AtFa ?: '-' }} @if($a2?->approver) - {{ $a2->approver->name }} @php $__sub = optional(($wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first()))?->secondApproverSubstitute)->name ?? null; @endphp @if($__sub) ({{ $__sub }}) @endif @endif
             </span>
         </div>
         <div class="flex justify-between">
             <span class="text-gray-600">تأیید حسابداری / پرداخت</span>
             <span class="font-medium">
-                {{ $a3AtFa ?: '—' }} @if($a3?->approver) — {{ $a3->approver->name }} @endif
+                {{ $a3AtFa ?: '-' }} @if($a3?->approver) - {{ $a3->approver->name }} @php $__sub = optional(($wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first()))?->accountingApproverSubstitute)->name ?? null; @endphp @if($__sub) ({{ $__sub }}) @endif @endif
             </span>
         </div>
         @if($pendingLabel && !($a3AtFa))
@@ -242,6 +254,38 @@
                 $expectedId = optional($poSettings ?? null)->accounting_user_id;
             }
             $canUpdate = (int) auth()->id() === (int) $expectedId;
+        }
+
+        // Ensure substitutes and assigned_to effective approvers can act
+        $wf = $wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first());
+        if (in_array($purchaseOrder->status, ['supervisor_approval','manager_approval','accounting_approval'], true)) {
+            $assignedId = (int) ($purchaseOrder->assigned_to ?? 0);
+            if ($assignedId > 0) {
+                $canUpdate = ((int) auth()->id() === $assignedId);
+            } else {
+                $mainId = null; $subId = null;
+                if ($purchaseOrder->status === 'supervisor_approval' || $purchaseOrder->status === 'created') {
+                    $mainId = optional($wf)->first_approver_id;
+                    $subId  = optional($wf)->first_approver_substitute_id;
+                } elseif ($purchaseOrder->status === 'manager_approval') {
+                    $mainId = optional($wf)->second_approver_id;
+                    $subId  = optional($wf)->second_approver_substitute_id;
+                } elseif ($purchaseOrder->status === 'accounting_approval') {
+                    $mainId = optional($wf)->accounting_user_id;
+                    $subId  = optional($wf)->accounting_approver_substitute_id;
+                }
+                $effectiveId = (int) ($mainId ?? 0);
+                if (empty($effectiveId) && !empty($subId)) {
+                    $effectiveId = (int) $subId;
+                } else {
+                    try {
+                        $user = \App\Models\User::find($mainId);
+                        $onLeave = (bool) ($user->is_on_leave ?? false);
+                        if ($onLeave && !empty($subId)) { $effectiveId = (int) $subId; }
+                    } catch (\Throwable $e) {}
+                }
+                $canUpdate = ((int) auth()->id() === $effectiveId);
+            }
         }
     @endphp
 

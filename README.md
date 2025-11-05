@@ -21,6 +21,25 @@ Laravel is a web application framework with expressive, elegant syntax. We belie
 
 Laravel is accessible, powerful, and provides tools required for large, robust applications.
 
+## Roles & Permissions Restore
+
+This project uses Spatie Laravel Permission. To (re)create the roles and permissions safely on any environment:
+
+- Run database migrations: `php artisan migrate`
+- Seed roles only: `php artisan db:seed --class=Database\Seeders\RolesRestoreSeeder --force`
+- Optionally seed permissions and grant them to the top manager role: `php artisan db:seed --class=Database\Seeders\PermissionsRestoreSeeder --force`
+- Or run the bundled command: `php artisan roles:restore`
+
+Notes:
+
+- The command attempts to assign the top role (`مدیر کل` if present, otherwise `admin`) to the user with `env('ADMIN_EMAIL', 'admin@example.com')`, falling back to `User::find(1)`.
+- After changes, clear caches to avoid stale permission data:
+  - `php artisan permission:cache-reset`
+  - `php artisan cache:clear`
+  - `php artisan config:clear`
+
+The Spatie permission tables are already present via migration. All seeders and the command are idempotent and safe if data already exists.
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.

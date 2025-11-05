@@ -28,6 +28,7 @@ class PurchaseOrder extends Model
         'previously_paid_amount',
         'remaining_payable_amount',
         'assigned_to',
+        'ready_for_delivery_notified_at',
         'description',
     ];
 
@@ -41,6 +42,7 @@ class PurchaseOrder extends Model
         'total_with_vat' => 'decimal:2',
         'previously_paid_amount' => 'decimal:2',
         'remaining_payable_amount' => 'decimal:2',
+        'ready_for_delivery_notified_at' => 'datetime',
     ];
 
     public function supplier()
@@ -99,6 +101,22 @@ class PurchaseOrder extends Model
             ->orderBy('step')
             ->orderBy('id')
             ->first();
+    }
+
+    // وضعیت‌های مجاز سفارش خرید برای استفاده در فرم‌ها و اعتبارسنجی
+    // نکته: برچسب‌های فارسی مطابق نمایش در UI تنظیم شده‌اند
+    public static function statuses(): array
+    {
+        return [
+            'created'             => 'ایجاد شده',
+            'supervisor_approval' => 'تأیید سرپرست کارخانه',
+            'manager_approval'    => 'تأیید مدیر کل',
+            'accounting_approval' => 'تأیید حسابداری / پرداخت',
+            'purchasing'          => 'در حال خرید',
+            'purchased'           => 'خرید انجام شده',
+            'warehouse_delivered' => 'تحویل انبار',
+            'rejected'            => 'رد شده',
+        ];
     }
 
     protected static function booted()

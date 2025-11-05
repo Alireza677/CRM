@@ -37,6 +37,17 @@
                             @endforeach
                         </select>
                         @error('first_approver_id')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+
+                        <div class="mt-3">
+                            <label class="block text-sm text-gray-700 mb-1">نفر جایگزین</label>
+                            <select name="first_approver_substitute" class="w-full border rounded p-2" placeholder="انتخاب نفر جایگزین">
+                                <option value="">— انتخاب نفر جایگزین —</option>
+                                @foreach(($users ?? []) as $u)
+                                    <option value="{{ $u->id }}" @selected(optional($poSettings)->first_approver_substitute_id == $u->id)>{{ $u->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('first_approver_substitute')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+                        </div>
                     </div>
 
                     <div>
@@ -48,6 +59,17 @@
                             @endforeach
                         </select>
                         @error('second_approver_id')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+
+                        <div class="mt-3">
+                            <label class="block text-sm text-gray-700 mb-1">نفر جایگزین</label>
+                            <select name="second_approver_substitute" class="w-full border rounded p-2" placeholder="انتخاب نفر جایگزین">
+                                <option value="">— انتخاب نفر جایگزین —</option>
+                                @foreach(($users ?? []) as $u)
+                                    <option value="{{ $u->id }}" @selected(optional($poSettings)->second_approver_substitute_id == $u->id)>{{ $u->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('second_approver_substitute')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+                        </div>
                     </div>
 
                     <div>
@@ -59,6 +81,17 @@
                             @endforeach
                         </select>
                         @error('accounting_user_id')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+
+                        <div class="mt-3">
+                            <label class="block text-sm text-gray-700 mb-1">نفر جایگزین</label>
+                            <select name="accounting_approver_substitute" class="w-full border rounded p-2" placeholder="انتخاب نفر جایگزین">
+                                <option value="">— انتخاب نفر جایگزین —</option>
+                                @foreach(($users ?? []) as $u)
+                                    <option value="{{ $u->id }}" @selected(optional($poSettings)->accounting_approver_substitute_id == $u->id)>{{ $u->name }}</option>
+                                @endforeach
+                            </select>
+                            @error('accounting_approver_substitute')<div class="text-red-600 text-sm mt-1">{{ $message }}</div>@enderror
+                        </div>
                     </div>
 
                     <div class="pt-2">
@@ -69,4 +102,3 @@
         </div>
     </div>
 @endsection
-
