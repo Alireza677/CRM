@@ -46,7 +46,7 @@ class DateHelper
      * - $date می‌تواند string یا Carbon باشد.
      * - همیشه به «تهرانِ ۱۲ ظهر» نرمال می‌کنیم تا پرش روز نداشته باشیم.
      */
-    public static function toJalali($date, $format = 'Y/m/d'): ?string
+    public static function toJalali($date, $format = 'Y/m/d', ?bool $preserveTime = null): ?string
     {
         try {
             if (empty($date)) {
@@ -58,8 +58,15 @@ class DateHelper
                 $date = Carbon::parse($date, 'UTC');
             }
 
-            // مبنا تهران + تثبیت 12:00
-            $date = $date->copy()->setTimezone(self::TZ_TEHRAN)->setTime(12, 0, 0);
+            // اگر فرمت شامل ساعت/دقیقه/ثانیه باشد، زمان واقعی را نگه دار
+            // در غیر این صورت برای اجتناب از پرش روز، زمان را 12:00 قرار می‌دهیم
+            $containsTimeTokens = (bool) preg_match('/[HhGgis]/', (string) $format);
+            $shouldPreserveTime = $preserveTime ?? $containsTimeTokens;
+
+            $date = $date->copy()->setTimezone(self::TZ_TEHRAN);
+            if (!$shouldPreserveTime) {
+                $date = $date->setTime(12, 0, 0);
+            }
 
             $year = (int) $date->format('Y');
             if ($year < 1000 || $year > 3000) {

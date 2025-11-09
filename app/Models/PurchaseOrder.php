@@ -20,6 +20,7 @@ class PurchaseOrder extends Model
         'status',
         'settlement_type',
         'usage_type',
+        'operational_expense_type',
         'project_name',
         'vat_percent',
         'vat_amount',

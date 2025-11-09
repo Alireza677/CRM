@@ -325,15 +325,16 @@ class PurchaseOrderController extends Controller
         $validated = $request->validate([
             'subject' => 'required|string|max:255',
             'purchase_type' => 'required|in:official,unofficial',
-            'supplier_id' => 'required|exists:suppliers,id',
+            'supplier_id' => 'nullable|exists:suppliers,id',
             'requested_by' => 'nullable|exists:users,id',
             'request_date' => 'nullable|date',
             'purchase_date' => 'required|date',
             'needed_by_date' => 'nullable|date',
             'status' => 'nullable|string|max:50',
             'settlement_type' => 'nullable|in:cash,credit,cheque',
-            'usage_type' => 'nullable|in:inventory,project,both',
+            'usage_type' => 'nullable|in:inventory,project,both,operational_expense',
             'project_name' => 'nullable|required_if:usage_type,project,both|string|max:255',
+            'operational_expense_type' => 'nullable|required_if:usage_type,operational_expense|in:commission,installation,shipping,workshop_running',
             'vat_percent' => 'nullable|numeric|min:0|max:100',
             'previously_paid_amount' => 'nullable|numeric|min:0',
             'description' => 'nullable|string',
@@ -365,7 +366,7 @@ class PurchaseOrderController extends Controller
             $data = [
                 'subject' => $validated['subject'],
                 'purchase_type' => $validated['purchase_type'],
-                'supplier_id' => $validated['supplier_id'],
+                'supplier_id' => $validated['supplier_id'] ?? null,
                 'requested_by' => $validated['requested_by'] ?? auth()->id(),
                 'request_date' => $validated['request_date'] ?? now(),
                 'purchase_date' => $validated['purchase_date'],
@@ -383,6 +384,7 @@ class PurchaseOrderController extends Controller
             if (Schema::hasColumn('purchase_orders', 'settlement_type')) { $data['settlement_type'] = $validated['settlement_type'] ?? null; }
             if (Schema::hasColumn('purchase_orders', 'usage_type')) { $data['usage_type'] = $validated['usage_type'] ?? null; }
             if (Schema::hasColumn('purchase_orders', 'project_name')) { $data['project_name'] = $validated['project_name'] ?? null; }
+            if (Schema::hasColumn('purchase_orders', 'operational_expense_type')) { $data['operational_expense_type'] = $validated['operational_expense_type'] ?? null; }
             $po = PurchaseOrder::create($data);
 
             // Assign first approver (if configured) and notify

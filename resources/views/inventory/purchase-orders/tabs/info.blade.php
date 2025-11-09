@@ -1,152 +1,173 @@
-﻿@php use Morilog\Jalali\Jalalian; @endphp
+@php use Morilog\Jalali\Jalalian; @endphp
 
-<div class="bg-white rounded-lg shadow-md p-6 font-vazirmatn" lang="fa" dir="rtl">
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-        <div>
-            <h2 class="text-lg font-semibold mb-4">اطلاعات اصلی</h2>
-            <dl class="space-y-4">
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">شماره سفارش</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ $purchaseOrder->po_number ?? ('#'.$purchaseOrder->id) }}</dd>
+<div class="font-vazirmatn" lang="fa" dir="rtl">
+    @php
+        // Common labels
+        $settlementMap = [
+            'cash'   => 'نقد',
+            'credit' => 'نسیه',
+            'cheque' => 'چک',
+            'operational_expense' => 'هزینه جاری',
+        ];
+        $settlementLabel = $settlementMap[$purchaseOrder->settlement_type ?? ''] ?? '—';
+
+        $usageMap = [
+            'inventory' => 'تکمیل موجودی انبار',
+            'project'   => 'تکمیل پروژه',
+            'both'      => 'هر دو',
+        ];
+        $usageLabel = $usageMap[$purchaseOrder->usage_type ?? ''] ?? '—';
+
+        $statusMap = [
+            'created'              => ['ایجاد شده', 'bg-blue-100 text-blue-800'],
+            'supervisor_approval'  => ['تأیید سرپرست کارخانه', 'bg-amber-100 text-amber-800'],
+            'manager_approval'     => ['تأیید مدیر کل', 'bg-yellow-100 text-yellow-800'],
+            'accounting_approval'  => ['تأیید حسابداری / پرداخت', 'bg-teal-100 text-teal-800'],
+            'purchased'            => ['خرید انجام شده', 'bg-green-100 text-green-800'],
+            'purchasing'           => ['در حال خرید', 'bg-indigo-100 text-indigo-800'],
+            'warehouse_delivered'  => ['تحویل انبار', 'bg-green-100 text-green-800'],
+            'rejected'             => ['رد شده', 'bg-red-100 text-red-800'],
+        ];
+        [$statusText, $statusBadge] = $statusMap[$purchaseOrder->status] ?? ['نامشخص','bg-gray-100 text-gray-800'];
+    @endphp
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- Card 1: اطلاعات اصلی سفارش -->
+        <div class="lg:col-span-4 rounded-2xl border border-green-200 bg-green-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-green-800 mb-3">اطلاعات اصلی سفارش</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">شماره سفارش</span>
+                        <span class="font-medium text-gray-900">{{ $purchaseOrder->po_number ?? ('#'.$purchaseOrder->id) }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">عنوان سفارش</span>
+                        <span class="font-medium text-gray-900">{{ $purchaseOrder->subject ?: '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">نوع خرید</span>
+                        <span class="font-medium text-gray-900">{{ $purchaseOrder->purchase_type === 'unofficial' ? 'غیررسمی' : 'رسمی' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">نوع تسویه حساب</span>
+                        <span class="font-medium text-gray-900">{{ $settlementLabel }}</span>
+                    </div>
                 </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">عنوان سفارش</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ $purchaseOrder->subject ?: '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">نوع خرید</dt>
-                    <dd class="mt-1 text-sm text-gray-900">
-                        {{ $purchaseOrder->purchase_type === 'unofficial' ? 'غیررسمی' : 'رسمی' }}
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">نوع تسویه حساب</dt>
-                    <dd class="mt-1 text-sm text-gray-900">
-                        @php
-                            $settlementMap = [
-                                'cash'   => 'نقد',
-                                'credit' => 'نسیه',
-                                'cheque' => 'چک',
-                            ];
-                            $settlementLabel = $settlementMap[$purchaseOrder->settlement_type ?? ''] ?? '—';
-                        @endphp
-                        {{ $settlementLabel }}
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">مورد استفاده</dt>
-                    <dd class="mt-1 text-sm text-gray-900">
-                        @php
-                            $usageMap = [
-                                'inventory' => 'تکمیل موجودی انبار',
-                                'project'   => 'تکمیل پروژه',
-                                'both'      => 'هر دو',
-                            ];
-                            $usageLabel = $usageMap[$purchaseOrder->usage_type ?? ''] ?? '—';
-                        @endphp
-                        {{ $usageLabel }}
-                        @if(in_array($purchaseOrder->usage_type ?? null, ['project','both'], true) && !empty($purchaseOrder->project_name))
-                            <span class="text-gray-500">— پروژه: {{ $purchaseOrder->project_name }}</span>
-                        @endif
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">تأمین‌کننده</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ optional($purchaseOrder->supplier)->name ?: '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">ارجاع به</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ optional($purchaseOrder->assignedUser)->name ?: '—' }}</dd>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">درخواست‌کننده</dt>
-                    <dd class="mt-1 text-sm text-gray-900">{{ optional($purchaseOrder->requestedByUser)->name ?: '—' }}</dd>
-                </div>
-            </dl>
+            </div>
         </div>
 
-        <div>
-            <h2 class="text-lg font-semibold mb-4">زمان‌ها و وضعیت</h2>
-            <dl class="space-y-4">
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">تاریخ درخواست</dt>
-                    <dd class="mt-1 text-sm text-gray-900">
-                        {{ $purchaseOrder->request_date ? Jalalian::fromCarbon($purchaseOrder->request_date)->format('Y/m/d') : '—' }}
-                    </dd>
+        <!-- Card 2: مشخصات اجرایی -->
+        <div class="lg:col-span-4 rounded-2xl border border-sky-200 bg-sky-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-sky-800 mb-3">مشخصات اجرایی</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <span class="text-gray-600">موارد استفاده</span>
+                        <span class="font-medium text-gray-900 text-left">
+                            {{ $usageLabel }}
+                            @if(in_array($purchaseOrder->usage_type ?? null, ['project','both'], true) && !empty($purchaseOrder->project_name))
+                                <span class="text-gray-500">— پروژه: {{ $purchaseOrder->project_name }}</span>
+                            @elseif(($purchaseOrder->usage_type ?? null) === 'operational_expense')
+                                @php
+                                    $opMap = [
+                                        'commission'       => 'هزینه کمیسیون',
+                                        'installation'     => 'هزینه نصب',
+                                        'shipping'         => 'هزینه حمل',
+                                        'workshop_running' => 'هزینه جاری کارگاه',
+                                    ];
+                                    $opLabel = $opMap[$purchaseOrder->operational_expense_type ?? ''] ?? null;
+                                @endphp
+                                @if($opLabel)
+                                    <span class="text-gray-500">— نوع: {{ $opLabel }}</span>
+                                @endif
+                            @endif
+                        </span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">تأمین‌کننده</span>
+                        <span class="font-medium text-gray-900">{{ optional($purchaseOrder->supplier)->name ?: '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">ارجاع به</span>
+                        <span class="font-medium text-gray-900">{{ optional($purchaseOrder->assignedUser)->name ?: '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">درخواست‌کننده</span>
+                        <span class="font-medium text-gray-900">{{ optional($purchaseOrder->requestedByUser)->name ?: '—' }}</span>
+                    </div>
                 </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">تاریخ خرید</dt>
-                    <dd class="mt-1 text-sm text-gray-900">
-                        {{ $purchaseOrder->purchase_date ? Jalalian::fromCarbon($purchaseOrder->purchase_date)->format('Y/m/d') : '—' }}
-                    </dd>
+            </div>
+        </div>
+
+        <!-- Card 3: زمان‌ها و وضعیت -->
+        <div class="lg:col-span-4 rounded-2xl border border-violet-200 bg-violet-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-violet-800 mb-3">زمان‌ها و وضعیت</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">تاریخ درخواست</span>
+                        <span class="font-medium text-gray-900">{{ $purchaseOrder->request_date ? Jalalian::fromCarbon($purchaseOrder->request_date)->format('Y/m/d') : '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">تاریخ خرید</span>
+                        <span class="font-medium text-gray-900">{{ $purchaseOrder->purchase_date ? Jalalian::fromCarbon($purchaseOrder->purchase_date)->format('Y/m/d') : '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">تاریخ نیاز</span>
+                        <span class="font-medium text-gray-900">{{ $purchaseOrder->needed_by_date ? Jalalian::fromCarbon($purchaseOrder->needed_by_date)->format('Y/m/d') : '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">وضعیت</span>
+                        <span class="font-medium">
+                            <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $statusBadge }}">{{ $statusText }}</span>
+                        </span>
+                    </div>
                 </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">تاریخ نیاز</dt>
-                    <dd class="mt-1 text-sm text-gray-900">
-                        {{ $purchaseOrder->needed_by_date ? Jalalian::fromCarbon($purchaseOrder->needed_by_date)->format('Y/m/d') : '—' }}
-                    </dd>
-                </div>
-                <div>
-                    <dt class="text-sm font-medium text-gray-500">وضعیت</dt>
-                    <dd class="mt-1 text-sm text-gray-900">
-                        @php
-                            $map = [
-                                'created'              => ['ایجاد شده', 'bg-blue-100 text-blue-800'],
-                                'supervisor_approval'  => ['تأیید سرپرست کارخانه', 'bg-amber-100 text-amber-800'],
-                                'manager_approval'     => ['تأیید مدیر کل', 'bg-yellow-100 text-yellow-800'],
-                                'accounting_approval'  => ['تأیید حسابداری / پرداخت', 'bg-teal-100 text-teal-800'],
-                                'purchased'            => ['خرید انجام شده', 'bg-green-100 text-green-800'],
-                                'purchasing'           => ['در حال خرید', 'bg-indigo-100 text-indigo-800'],
-                                'warehouse_delivered'  => ['تحویل انبار', 'bg-green-100 text-green-800'],
-                                'rejected'             => ['رد شده', 'bg-red-100 text-red-800'],
-                            ];
-                            [$statusText, $badge] = $map[$purchaseOrder->status] ?? ['نامشخص','bg-gray-100 text-gray-800'];
-                        @endphp
-                        <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $badge }}">{{ $statusText }}</span>
-                    </dd>
-                </div>
-            </dl>
+            </div>
         </div>
     </div>
 
-    <div class="mt-6 grid grid-cols-1 md:grid-cols-5 gap-4">
-        <div class="p-4 rounded-md bg-gray-50">
-            <div class="text-xs text-gray-500">جمع اقلام</div>
-            <div class="text-lg font-semibold">{{ number_format($purchaseOrder->total_amount, 0) }} ریال</div>
-        </div>
+    <!-- Card 4: وضعیت مالی -->
+    <div class="mt-4 grid grid-cols-1">
+        <div class="rounded-2xl border border-amber-200 bg-amber-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-amber-800 mb-3">وضعیت مالی</h2>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div class="p-3 rounded-lg bg-white/60 border border-amber-100">
+                        <div class="text-xs text-gray-500">جمع اقلام</div>
+                        <div class="text-lg font-bold text-gray-900">{{ number_format($purchaseOrder->total_amount, 0) }} ریال</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-white/60 border border-amber-100">
+                        <div class="text-xs text-gray-500">پیش‌پرداخت</div>
+                        <div class="text-lg font-bold text-gray-900">{{ number_format($purchaseOrder->previously_paid_amount ?? 0, 0) }} ریال</div>
+                    </div>
+                    <div class="p-3 rounded-lg bg-white/60 border border-amber-100">
+                        <div class="text-xs text-gray-500">مانده قابل پرداخت</div>
+                        <div class="text-lg font-bold text-gray-900">{{ number_format($purchaseOrder->remaining_payable_amount ?? 0, 0) }} ریال</div>
+                    </div>
+                </div>
 
-        @if(($purchaseOrder->vat_percent ?? 0) > 0)
-            <div class="p-4 rounded-md bg-gray-50">
-                <div class="text-xs text-gray-500">
-                    ارزش افزوده ({{ rtrim(rtrim(number_format($purchaseOrder->vat_percent, 2), '0'), '.') }}%)
-                </div>
-                <div class="text-lg font-semibold">
-                    {{ number_format($purchaseOrder->vat_amount ?? 0, 0) }} ریال
-                </div>
+                @if(($purchaseOrder->vat_percent ?? 0) > 0)
+                    <div class="mt-3 flex flex-wrap gap-2 text-xs">
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+                            ارزش افزوده {{ rtrim(rtrim(number_format($purchaseOrder->vat_percent, 2), '0'), '.') }}%
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+                            مبلغ: {{ number_format($purchaseOrder->vat_amount ?? 0, 0) }} ریال
+                        </span>
+                        <span class="inline-flex items-center gap-1 px-2 py-1 rounded-full bg-amber-100 text-amber-800">
+                            جمع با مالیات: {{ number_format($purchaseOrder->total_with_vat ?? ($purchaseOrder->total_amount + ($purchaseOrder->vat_amount ?? 0)), 0) }} ریال
+                        </span>
+                    </div>
+                @endif
             </div>
-            <div class="p-4 rounded-md bg-gray-50">
-                <div class="text-xs text-gray-500">
-                    جمع با ارزش افزوده
-                </div>
-                <div class="text-lg font-semibold">
-                    {{ number_format($purchaseOrder->total_with_vat ?? ($purchaseOrder->total_amount + ($purchaseOrder->vat_amount ?? 0)), 0) }} ریال
-                </div>
-            </div>
-        @endif
-
-        <div class="p-4 rounded-md bg-gray-50">
-            <div class="text-xs text-gray-500">پیش‌پرداخت</div>
-            <div class="text-lg font-semibold">{{ number_format($purchaseOrder->previously_paid_amount ?? 0, 0) }} ریال</div>
-        </div>
-        <div class="p-4 rounded-md bg-gray-50">
-            <div class="text-xs text-gray-500">مانده قابل پرداخت</div>
-            <div class="text-lg font-semibold">{{ number_format($purchaseOrder->remaining_payable_amount ?? 0, 0) }} ریال</div>
         </div>
     </div>
 
     @if(!empty($purchaseOrder->description))
-        <div class="mt-6">
-            <h2 class="text-lg font-semibold mb-2">توضیحات و اطلاعات حساب بانکی</h2>
+        <div class="mt-4 rounded-xl border border-gray-200 bg-white shadow-sm p-5">
+            <h2 class="text-base font-semibold mb-2 text-gray-800">توضیحات و اطلاعات حساب بانکی</h2>
             <div class="whitespace-pre-line text-gray-800">{{ $purchaseOrder->description }}</div>
         </div>
     @endif

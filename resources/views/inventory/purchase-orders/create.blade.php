@@ -62,7 +62,7 @@
           <div>
             <label for="supplier_display" class="block text-sm font-medium mb-1">تأمین‌کننده</label>
             <div class="flex gap-2">
-              <input type="text" id="supplier_display" class="flex-1 rounded-md border-gray-300 bg-gray-100" placeholder="انتخاب تأمین‌کننده" readonly required>
+              <input type="text" id="supplier_display" class="flex-1 rounded-md border-gray-300 bg-gray-100" placeholder="انتخاب تأمین‌کننده" readonly>
               <button type="button" id="btn_open_supplier" class="px-3 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700">انتخاب</button>
             </div>
             <input type="hidden" name="supplier_id" id="supplier_id" value="{{ old('supplier_id') }}">
@@ -382,5 +382,59 @@
   }
   usageSelect && usageSelect.addEventListener('change', toggleProjectName);
   toggleProjectName();
+  // Add 'operational_expense' option dynamically
+  (function(){
+    const sel = usageSelect;
+    if (!sel) return;
+    const exists = Array.from(sel.options || []).some(o => o.value === 'operational_expense');
+    if (!exists) {
+      const opt = document.createElement('option');
+      opt.value = 'operational_expense';
+      opt.textContent = 'هزینه های جاری';
+      try { if (@json(old('usage_type')) === 'operational_expense') opt.selected = true; } catch(e) {}
+      sel.appendChild(opt);
+    }
+  })();
+
+  // Create dependent dropdown for operational expenses
+  (function(){
+    const refNode = document.getElementById('project_name_wrapper');
+    const container = refNode?.parentElement || document.querySelector('#usage_type')?.closest('div')?.parentElement;
+    if (!container) return;
+
+    const wrapper = document.createElement('div');
+    wrapper.id = 'operational_expense_wrapper';
+    wrapper.className = 'md:col-span-2';
+    wrapper.style.display = 'none';
+    wrapper.innerHTML = `
+      <label for="operational_expense_type" class="block text-sm font-medium mb-1">نوع هزینه جاری</label>
+      <select name="operational_expense_type" id="operational_expense_type" class="w-full rounded-md border-gray-300">
+        <option value="">انتخاب کنید</option>
+        <option value="commission">هزینه کمیسیون</option>
+        <option value="installation">هزینه نصب</option>
+        <option value="shipping">هزینه حمل</option>
+        <option value="workshop_running">هزینه جاری کارگاه</option>
+      </select>`;
+
+    if (refNode && refNode.parentNode) {
+      refNode.parentNode.insertBefore(wrapper, refNode.nextSibling);
+    } else {
+      container.appendChild(wrapper);
+    }
+
+    try {
+      const oldOp = @json(old('operational_expense_type'));
+      if (oldOp) document.getElementById('operational_expense_type').value = oldOp;
+    } catch(e) {}
+  })();
+
+  // Toggle operational expense dropdown
+  const operationalWrapper = document.getElementById('operational_expense_wrapper');
+  function toggleOperationalExpense(){
+    const v = (usageSelect?.value || '').toLowerCase();
+    if (operationalWrapper) operationalWrapper.style.display = (v === 'operational_expense') ? '' : 'none';
+  }
+  usageSelect && usageSelect.addEventListener('change', toggleOperationalExpense);
+  toggleOperationalExpense();
 </script>
 @endsection

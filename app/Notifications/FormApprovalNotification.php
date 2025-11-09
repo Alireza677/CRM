@@ -50,6 +50,25 @@ class FormApprovalNotification extends Notification implements ShouldQueue
                 'url'        => $url,
                 'actor.name' => $senderName,
             ];
+            // For purchase order status event, also provide curly placeholders
+            // so templates render correctly in the database channel.
+            if ($module === 'purchase_orders' && $event === 'status.changed') {
+                try {
+                    $po = \App\Models\PurchaseOrder::query()->find($this->formId);
+                    if ($po) {
+                        $statuses = \App\Models\PurchaseOrder::statuses();
+                        $statusLabel = (string) ($statuses[$po->status] ?? $po->status ?? '');
+                        $ctx = array_merge($ctx, [
+                            'po_number'      => (string) ($po->po_number ?? ('#'.(string)$po->id)),
+                            'from_status'    => $statusLabel,
+                            'to_status'      => $statusLabel,
+                            'requester_name' => (string) optional($po->requestedByUser)->name,
+                        ]);
+                    }
+                } catch (\Throwable $e) {
+                    // ignore and continue with generic context
+                }
+            }
             // Try database template first, then fall back to email template
             $tpl = \App\Support\NotificationTemplateResolver::resolve($module, $event, 'database', $ctx)
                 ?? \App\Support\NotificationTemplateResolver::resolve($module, $event, 'email', $ctx)

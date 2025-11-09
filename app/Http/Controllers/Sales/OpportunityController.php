@@ -97,7 +97,8 @@ class OpportunityController extends Controller
             'building_usage' => 'required|string|max:255',
             'assigned_to' => 'nullable|exists:users,id',
             'success_rate' => 'required|numeric|min:0|max:100',
-            'next_follow_up' => 'required|date',
+            // Make follow-up optional when stage is "برنده" (won)
+            'next_follow_up' => 'nullable|date|required_unless:stage,برنده',
             'description' => 'nullable|string',
             'stage' => 'nullable|string|max:255',
         ]);

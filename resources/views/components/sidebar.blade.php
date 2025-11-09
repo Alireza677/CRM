@@ -52,7 +52,7 @@
                     :class="$store.menu.activeMenu==='projects' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">پروژه‌ها</button>
             <button @click="$store.menu.openSubMenu('inventory')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='inventory' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">موجودی</button>
+                    :class="$store.menu.activeMenu==='inventory' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'"> تأمین و خرید</button>
             {{--<button @click="$store.menu.openSubMenu('print-templates')"
                      class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                      :class="$store.menu.activeMenu==='print-templates' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">قالب‌های پرینت</button>--}}
