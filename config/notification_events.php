@@ -21,6 +21,14 @@ return [
                     // اگر برای این رویداد هم ویرایش قالب می‌خواهی:
                     'supports' => ['channel_templates' => true, 'conditions' => true],
                 ],
+                'ready_for_delivery' => [
+                    'label' => 'آماده برای تحویل به انبار',
+                    'default_channels' => ['database','email'],
+                    'placeholders' => ['{po_number}', '{requester_name}'],
+                    'default_subject' => 'سفارش خرید {po_number} تأیید شد',
+                    'default_body' => 'سفارش خرید {po_number} شما تأیید شد. لطفاً وضعیت را به «تحویل به انبار» تغییر دهید.',
+                    'supports' => ['channel_templates' => true, 'conditions' => false],
+                ],
             ],
         ],
 
@@ -71,6 +79,23 @@ return [
                     'default_body' => 'در {context} شما منشن شدید: {note_excerpt}',
                     // اختیاری: اگر می‌خواهی قابل ویرایش شود
                     'supports' => ['channel_templates' => true, 'conditions' => false],
+                ],
+            ],
+        ],
+
+        'reports' => [
+            'label' => 'گزارش‌ها',
+            'events' => [
+                'scheduled.sent' => [
+                    'label' => 'ارسال گزارش زمان‌بندی‌شده',
+                    'default_channels' => ['email'],
+                    'placeholders' => ['{report_title}'],
+                    'default_subject' => 'گزارش زمان‌بندی شده: {report_title}',
+                    'default_body' => 'گزارش زمان‌بندی شده شما آماده است. برای مشاهده گزارش به لینک مراجعه کنید.',
+                    'supports' => [
+                        'channel_templates' => true,
+                        'conditions' => false,
+                    ],
                 ],
             ],
         ],

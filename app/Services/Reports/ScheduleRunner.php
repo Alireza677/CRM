@@ -127,15 +127,47 @@ class ScheduleRunner
         // Send email with attachment
         $emails = (array) $s->emails;
         if (!empty($emails)) {
-            $data = [
-                'report' => $report,
-                'generated_at' => now(),
-                'link' => route('reports.run', $report),
-            ];
-            Mail::send('emails.reports.scheduled_report', $data, function ($m) use ($emails, $fullPath, $report, $s) {
-                $m->to($emails)->subject('گزارش زمان‌بندی شده: '.$report->title);
-                $m->attach($fullPath);
-            });
+            $link = route('reports.run', $report);
+
+            // Prefer DB/email template if defined; otherwise, fallback to existing view
+            try {
+                $ctx = [
+                    'report_title' => (string) ($report->title ?? ''),
+                    'generated_at' => now()->toDateTimeString(),
+                    'url'          => $link,
+                    'actor.name'   => (string) optional($s->user ?? null)->name,
+                ];
+                $tpl = \App\Support\NotificationTemplateResolver::resolve('reports', 'scheduled.sent', 'email', $ctx);
+                $subject = trim((string) ($tpl['subject'] ?? ''));
+                $body    = trim((string) ($tpl['body'] ?? ''));
+                if ($subject !== '' || $body !== '') {
+                    $viewData = ['subject' => $subject, 'body' => $body, 'url' => $link];
+                    Mail::send('emails.routed-notification', $viewData, function ($m) use ($emails, $fullPath, $subject) {
+                        $m->to($emails)->subject($subject);
+                        $m->attach($fullPath);
+                    });
+                } else {
+                    $data = [
+                        'report' => $report,
+                        'generated_at' => now(),
+                        'link' => $link,
+                    ];
+                    Mail::send('emails.reports.scheduled_report', $data, function ($m) use ($emails, $fullPath, $report, $s) {
+                        $m->to($emails)->subject('گزارش زمان‌بندی شده: '.$report->title);
+                        $m->attach($fullPath);
+                    });
+                }
+            } catch (\Throwable $e) {
+                $data = [
+                    'report' => $report,
+                    'generated_at' => now(),
+                    'link' => $link,
+                ];
+                Mail::send('emails.reports.scheduled_report', $data, function ($m) use ($emails, $fullPath, $report, $s) {
+                    $m->to($emails)->subject('گزارش زمان‌بندی شده: '.$report->title);
+                    $m->attach($fullPath);
+                });
+            }
         }
 
         // Log run

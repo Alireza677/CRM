@@ -2,7 +2,7 @@
 
 @section('content')
   <div class="py-12">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class=" mx-auto sm:px-6 lg:px-8">
       <div class="flex justify-between items-center mb-6">
         <h2 class="font-semibold text-xl text-gray-800 leading-tight">سفارش‌های خرید</h2>
         <a href="{{ route('inventory.purchase-orders.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">سفارش خرید جدید</a>
@@ -53,8 +53,24 @@
                       {{ $order->needed_by_date ? Jalalian::fromCarbon($order->needed_by_date)->format('Y/m/d') : '—' }}
                     </td>
                     <td class="px-4 py-3 text-sm">
-                      <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ match($order->status){ 'created' => 'bg-blue-100 text-blue-800', 'approved' => 'bg-green-100 text-green-800', 'delivered' => 'bg-gray-100 text-gray-800', default => 'bg-red-100 text-red-800'} }}">
-                        {{ $order->status === 'approved' ? 'تأیید شده' : ($order->status === 'delivered' ? 'تحویل شده' : 'ایجاد شده') }}
+                      @php
+                        $statusLabels = \App\Models\PurchaseOrder::statuses();
+                        $statusBadgeMap = [
+                          'created' => 'bg-blue-100 text-blue-800',
+                          'supervisor_approval' => 'bg-amber-100 text-amber-800',
+                          'manager_approval' => 'bg-yellow-100 text-yellow-800',
+                          'accounting_approval' => 'bg-teal-100 text-teal-800',
+                          'purchasing' => 'bg-indigo-100 text-indigo-800',
+                          'purchased' => 'bg-green-100 text-green-800',
+                          'warehouse_delivered' => 'bg-green-100 text-green-800',
+                          'rejected' => 'bg-red-100 text-red-800',
+                        ];
+                        $currentStatus = $order->status;
+                        $statusText = $statusLabels[$currentStatus] ?? 'نامشخص';
+                        $statusClass = $statusBadgeMap[$currentStatus] ?? 'bg-gray-100 text-gray-800';
+                      @endphp
+                      <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $statusClass }}">
+                        {{ $statusText }}
                       </span>
                     </td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ number_format($order->total_amount, 0) }} ریال</td>

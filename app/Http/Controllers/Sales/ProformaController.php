@@ -531,7 +531,8 @@ class ProformaController extends Controller
         $users          = User::select('id','name')->get();
         $organizations  = Organization::select('id','name')->get();
         $contacts       = Contact::select('id','first_name','last_name')->get();
-        $opportunities  = Opportunity::select('id','title')->get();
+        // Opportunities table uses 'name' as the title field; alias to keep downstream usage intact
+        $opportunities  = Opportunity::select(['id', DB::raw("name as title")])->get();
         $products       = Product::where('is_active', true)->orderBy('name')->get();
         $proformaStages = config('proforma.stages');
     

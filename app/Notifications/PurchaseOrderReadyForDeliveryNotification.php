@@ -8,6 +8,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Mail\RoutedNotificationMail;
 
 class PurchaseOrderReadyForDeliveryNotification extends Notification implements ShouldQueue
 {
@@ -58,6 +59,26 @@ class PurchaseOrderReadyForDeliveryNotification extends Notification implements 
         $sender = User::query()->find($this->sentById);
         $senderName = $sender?->name ?? '---';
 
+        // Try DB/email template first: purchase_orders.ready_for_delivery
+        try {
+            $ctx = [
+                'po_number'      => (string) ($po?->po_number ?? ('#'.(string)($po?->id ?? ''))),
+                'requester_name' => (string) ($recipientName ?: ''),
+                'url'            => $url,
+                'actor.name'     => $senderName,
+            ];
+            $tpl = \App\Support\NotificationTemplateResolver::resolve('purchase_orders', 'ready_for_delivery', 'email', $ctx);
+            $subj = trim((string) ($tpl['subject'] ?? ''));
+            $body = trim((string) ($tpl['body'] ?? ''));
+            if ($subj !== '' || $body !== '') {
+                /** @var \Illuminate\Mail\Mailable $m */
+                $m = new RoutedNotificationMail($subj, $body, $url);
+                return $m;
+            }
+        } catch (\Throwable $e) {
+            // ignore and fallback below
+        }
+
         return (new MailMessage)
             ->subject('سفارش شما تأیید شد')
             ->greeting('سلام' . ($recipientName ? ' ' . $recipientName : ''))
@@ -68,4 +89,3 @@ class PurchaseOrderReadyForDeliveryNotification extends Notification implements 
             ->action('مشاهده سفارش در CRM', $url);
     }
 }
-

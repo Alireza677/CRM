@@ -12,6 +12,7 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Notifications\Messages\MailMessage;
 use Illuminate\Notifications\Notification;
+use App\Mail\RoutedNotificationMail;
 
 class FormApprovalNotification extends Notification implements ShouldQueue
 {
@@ -202,6 +203,40 @@ class FormApprovalNotification extends Notification implements ShouldQueue
         }
 
         $title = $title ?: '---';
+
+        // Try DB/email template first; fallback to existing content
+        try {
+            [$module, $event] = $this->resolveModuleEvent();
+            $ctx = [
+                'form_title'  => $title ?: '---',
+                'approver_name' => (string) ($notifiable->name ?? ''),
+                'customer_name' => (string) ($model->organization_name ?? optional($model?->organization)->name ?? ''),
+                'proforma_number' => (string) ($model->proforma_number ?? ('#'.($model->id ?? ''))),
+                'url'         => $url,
+                'actor.name'  => $senderName,
+            ];
+            if ($module === 'purchase_orders' && $event === 'status.changed' && $model instanceof PurchaseOrder) {
+                $statuses = PurchaseOrder::statuses();
+                $statusLabel = (string) ($statuses[$model->status] ?? $model->status ?? '');
+                $ctx = array_merge($ctx, [
+                    'po_number'      => (string) ($model->po_number ?? ('#'.(string)$model->id)),
+                    'from_status'    => $statusLabel,
+                    'to_status'      => $statusLabel,
+                    'requester_name' => (string) optional($model->requestedByUser)->name,
+                ]);
+            }
+            $tpl = \App\Support\NotificationTemplateResolver::resolve($module, $event, 'email', $ctx);
+            $subj = trim((string) ($tpl['subject'] ?? ''));
+            $body = trim((string) ($tpl['body'] ?? ''));
+            if ($subj !== '' || $body !== '') {
+                // Return as Mailable to use a simple view
+                /** @var \Illuminate\Mail\Mailable $m */
+                $m = new RoutedNotificationMail($subj, $body, $url);
+                return $m;
+            }
+        } catch (\Throwable $e) {
+            // ignore and use fallback below
+        }
 
         return (new MailMessage)
             ->subject("درخواست تأیید {$label}")

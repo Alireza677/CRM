@@ -4,6 +4,7 @@ namespace App\Support;
 
 use App\Models\NotificationRule;
 use App\Models\NotificationTemplate;
+use Illuminate\Support\Facades\Cache;
 
 class NotificationTemplateResolver
 {
@@ -18,11 +19,18 @@ class NotificationTemplateResolver
         $subject = null;
         $body    = null;
 
-        $tpl = NotificationTemplate::query()
-            ->where('module', $module)
-            ->where('event', $event)
-            ->where('channel', $channel)
-            ->first();
+        // Cache template rows briefly to reduce DB chatter
+        $tpl = Cache::remember(
+            sprintf('ntpl:%s:%s:%s', $module, $event, $channel),
+            now()->addSeconds(60),
+            function () use ($module, $event, $channel) {
+                return NotificationTemplate::query()
+                    ->where('module', $module)
+                    ->where('event', $event)
+                    ->where('channel', $channel)
+                    ->first();
+            }
+        );
 
         if ($tpl) {
             $subject = $tpl->subject_template ?: null;
@@ -30,10 +38,16 @@ class NotificationTemplateResolver
         }
 
         if ($subject === null && $body === null) {
-            $rule = NotificationRule::query()
-                ->where('module', $module)
-                ->where('event', $event)
-                ->first();
+            $rule = Cache::remember(
+                sprintf('nrule:%s:%s', $module, $event),
+                now()->addSeconds(60),
+                function () use ($module, $event) {
+                    return NotificationRule::query()
+                        ->where('module', $module)
+                        ->where('event', $event)
+                        ->first();
+                }
+            );
             if ($rule) {
                 if ($channel === 'email') {
                     $subject = $rule->subject_template ?: null;
@@ -84,4 +98,3 @@ class NotificationTemplateResolver
         ];
     }
 }
-

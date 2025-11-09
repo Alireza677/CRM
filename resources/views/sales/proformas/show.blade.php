@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
 @php
@@ -194,48 +194,122 @@
             <div class="bg-white shadow-sm sm:rounded-lg">
             <div class="p-6 text-gray-900 grid grid-cols-1 md:grid-cols-2 gap-6">
 
-                {{-- اطلاعات پایه --}}
-                <div class="space-y-4 md:col-span-2">
-                    <h3 class="text-lg font-semibold mb-4">اطلاعات پایه</h3>
-                    <div><strong>موضوع:</strong> {{ $proforma->subject }}</div>
+                {{-- اطلاعات خلاصه در ۳ باکس --}}
+                <div class="md:col-span-2">
+                    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+                        {{-- Box 1: اطلاعات پایه --}}
+                        <div class="lg:col-span-4 rounded-2xl border border-green-200 bg-green-50/80 shadow-sm hover:shadow-md transition">
+                            <div class="p-5">
+                                <h3 class="text-base font-semibold text-green-800 mb-3">اطلاعات پایه</h3>
+                                @php
+                                    use Morilog\Jalali\Jalalian;
+                                    try {
+                                        $shamsiDate = ($proforma->proforma_date instanceof \Carbon\Carbon)
+                                            ? Jalalian::fromCarbon($proforma->proforma_date)->format('Y/m/d')
+                                            : 'تاریخ نامعتبر';
+                                    } catch (\Throwable $e) {
+                                        $shamsiDate = 'تاریخ نامعتبر';
+                                    }
+                                    $stageKey   = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
+                                    $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? 'نامشخص';
+                                @endphp
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">موضوع</span>
+                                        <span class="font-medium text-gray-900">{{ $proforma->subject ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">تاریخ پیش‌فاکتور</span>
+                                        <span class="font-medium text-gray-900">{{ $shamsiDate }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">شماره پیش‌فاکتور</span>
+                                        <span class="font-medium text-gray-900">{{ $proforma->proforma_number ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">مرحله</span>
+                                        <span class="font-medium text-gray-900">{{ $stageLabel }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                    @php
-                        use Morilog\Jalali\Jalalian;
+                        {{-- Box 2: اطلاعات تماس --}}
+                        <div class="lg:col-span-4 rounded-2xl border border-sky-200 bg-sky-50/80 shadow-sm hover:shadow-md transition">
+                            <div class="p-5">
+                                <h3 class="text-base font-semibold text-sky-800 mb-3">اطلاعات تماس</h3>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">نام مخاطب</span>
+                                        <span class="font-medium text-gray-900">
+                                            @if($proforma->contact)
+                                                <a href="{{ route('sales.contacts.show', $proforma->contact) }}" class="text-blue-600 hover:underline">
+                                                    {{ $proforma->contact->name ?? $proforma->contact_name }}
+                                                </a>
+                                            @else
+                                                {{ $proforma->contact_name ?? '—' }}
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">نام سازمان</span>
+                                        <span class="font-medium text-gray-900">
+                                            @if($proforma->organization)
+                                                <a href="{{ route('sales.organizations.show', $proforma->organization) }}" class="text-blue-600 hover:underline">
+                                                    {{ $proforma->organization->name ?? $proforma->organization_name }}
+                                                </a>
+                                            @else
+                                                {{ $proforma->organization_name ?? '—' }}
+                                            @endif
+                                        </span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">ارجاع به</span>
+                                        <span class="font-medium text-gray-900">{{ $proforma->assignedTo?->name ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">فرصت فروش</span>
+                                        <span class="font-medium text-gray-900">
+                                            @if($proforma->opportunity)
+                                                <a href="{{ route('sales.opportunities.show', $proforma->opportunity) }}" class="text-blue-600 hover:underline">
+                                                    {{ $proforma->opportunity->name ?? ('فرصت #' . $proforma->opportunity->id) }}
+                                                </a>
+                                            @else
+                                                —
+                                            @endif
+                                        </span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
 
-                        try {
-                            $shamsiDate = ($proforma->proforma_date instanceof \Carbon\Carbon)
-                                ? Jalalian::fromCarbon($proforma->proforma_date)->format('Y/m/d')
-                                : 'تاریخ نامعتبر';
-                        } catch (\Throwable $e) {
-                            $shamsiDate = 'تاریخ نامعتبر';
-                        }
-                    @endphp
-
-                    <div><strong>تاریخ پیش فاکتور:</strong> {{ $shamsiDate }}</div>
-                    <div><strong>شماره پیش فاکتور:</strong> {{ $proforma->proforma_number }}</div>
-                    @php
-                        $stageKey   = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
-                        $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? 'نامشخص';
-                    @endphp
-
-                    <div>
-                        <strong>مرحله:</strong> {{ $stageLabel }}
+                        {{-- Box 3: اطلاعات آدرس --}}
+                        <div class="lg:col-span-4 rounded-2xl border border-violet-200 bg-violet-50/80 shadow-sm hover:shadow-md transition">
+                            <div class="p-5">
+                                <h3 class="text-base font-semibold text-violet-800 mb-3">اطلاعات آدرس</h3>
+                                <div class="space-y-2 text-sm">
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">نوع آدرس</span>
+                                        <span class="font-medium text-gray-900">
+                                            {{ $proforma->address_type === 'invoice' ? 'آدرس تحویل صورت‌حساب' : 'آدرس تحویل محصول' }}
+                                        </span>
+                                    </div>
+                                    <div class="flex items-start justify-between gap-3">
+                                        <span class="text-gray-600">آدرس</span>
+                                        <span class="font-medium text-gray-900 text-left whitespace-pre-line">{{ $proforma->customer_address ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">شهر</span>
+                                        <span class="font-medium text-gray-900">{{ $proforma->city ?? '—' }}</span>
+                                    </div>
+                                    <div class="flex items-center justify-between">
+                                        <span class="text-gray-600">استان</span>
+                                        <span class="font-medium text-gray-900">{{ $proforma->state ?? '—' }}</span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
                     </div>
-
-                    @if(!empty($proforma->first_approved_by))
-                        <div>
-                            <strong>تایید مرحله اول توسط:</strong>
-                            {{ optional($proforma->firstApprovedBy)->name ?? '—' }}
-                        </div>
-                    @endif
-
-                    @if(!empty($proforma->approved_by))
-                        <div>
-                            <strong>تایید نهایی توسط:</strong>
-                            {{ optional($proforma->approvedBy)->name ?? '—' }}
-                        </div>
-                    @endif
-
                 </div>
 
                 {{-- Sidebar: تایملاین/اطلاعات تاییدات --}}
@@ -330,62 +404,9 @@
                     </div>
                 </div>
 
-                {{-- اطلاعات تماس --}}
-                <div class="space-y-4 md:col-span-2">
-                    <h3 class="text-lg font-semibold mb-4">اطلاعات تماس</h3>
+                {{-- اطلاعات تماس: منتقل شد به باکس‌ها --}}
 
-                    {{-- مخاطب --}}
-                    <div>
-                        <strong>نام مخاطب:</strong>
-                        @if($proforma->contact)
-                            <a href="{{ route('sales.contacts.show', $proforma->contact) }}" class="text-blue-600 hover:underline">
-                                {{ $proforma->contact->name ?? $proforma->contact_name }}
-                            </a>
-                        @else
-                            {{ $proforma->contact_name }}
-                        @endif
-                    </div>
-
-                    {{-- سازمان --}}
-                    <div>
-                        <strong>نام سازمان:</strong>
-                        @if($proforma->organization)
-                            <a href="{{ route('sales.organizations.show', $proforma->organization) }}" class="text-blue-600 hover:underline">
-                                {{ $proforma->organization->name ?? $proforma->organization_name }}
-                            </a>
-                        @else
-                            {{ $proforma->organization_name }}
-                        @endif
-                    </div>
-
-                    {{-- ارجاع --}}
-                    <div><strong>ارجاع به:</strong> {{ $proforma->assignedTo?->name }}</div>
-
-                    {{-- فرصت فروش --}}
-                    <div>
-                        <strong>فرصت فروش:</strong>
-                        @if($proforma->opportunity)
-                            <a href="{{ route('sales.opportunities.show', $proforma->opportunity) }}" class="text-blue-600 hover:underline">
-                                {{ $proforma->opportunity->name ?? ('فرصت #' . $proforma->opportunity->id) }}
-                            </a>
-                        @else
-                            —
-                        @endif
-                    </div>
-                </div>
-
-                {{-- اطلاعات آدرس --}}
-                <div class="space-y-4 md:col-span-2">
-                    <h3 class="text-lg font-semibold mb-4">اطلاعات آدرس</h3>
-                    <div><strong>نوع آدرس:</strong>
-                        {{ $proforma->address_type === 'invoice' ? 'آدرس تحویل صورت‌حساب' : 'آدرس تحویل محصول' }}
-                    </div>
-                    <div><strong>آدرس:</strong> {{ $proforma->customer_address }}</div>
-                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-                        <div><strong>شهر:</strong> {{ $proforma->city }}</div>
-                        <div><strong>استان:</strong> {{ $proforma->state }}</div>
-                    </div>
-                </div>
+                {{-- اطلاعات آدرس: منتقل شد به باکس‌ها --}}
 
                 {{-- اطلاعات محصول --}}
                 <div class="space-y-4 md:col-span-2">

@@ -185,7 +185,8 @@ class DocumentController extends Controller
             ['title' => 'ویرایش سند'],
         ];
 
-        $opportunities = Opportunity::select('id','title')->latest()->get();
+        // Use alias to keep compatibility if views expect 'title'
+        $opportunities = Opportunity::select(['id', \DB::raw('name as title')])->latest()->get();
 
         return view('sales.documents.edit', compact('document','breadcrumb','opportunities'));
     }

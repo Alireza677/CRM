@@ -9,6 +9,7 @@ use Illuminate\Notifications\Notification;
 use App\Models\Proforma;
 use App\Models\Opportunity;
 use App\Models\Lead;
+use App\Mail\RoutedNotificationMail;
 
 class FormAssignedNotification extends Notification implements ShouldQueue
 {
@@ -64,6 +65,29 @@ class FormAssignedNotification extends Notification implements ShouldQueue
 
         $subject = $this->customTitle ?: 'مورد جدید به شما ارجاع شد';
         $intro   = $this->customMessage ?: "یک {$label} جدید برای شما ارجاع شد:";
+
+        // Try DB/email template for leads.assigned.changed (and similar) first
+        try {
+            $module = 'leads';
+            $event  = 'assigned.changed';
+            $ctx = [
+                'lead_name' => (string) $formTitle,
+                'old_user'  => (string) ($this->assignedBy?->name ?? ''),
+                'new_user'  => (string) ($notifiable->name ?? ''),
+                'url'       => $url,
+                'actor.name'=> (string) ($this->assignedBy?->name ?? ''),
+            ];
+            $tpl = \App\Support\NotificationTemplateResolver::resolve($module, $event, 'email', $ctx);
+            $subj = trim((string) ($tpl['subject'] ?? ''));
+            $body = trim((string) ($tpl['body'] ?? ''));
+            if ($subj !== '' || $body !== '') {
+                /** @var \Illuminate\Mail\Mailable $m */
+                $m = new RoutedNotificationMail($subj, $body, $url);
+                return $m;
+            }
+        } catch (\Throwable $e) {
+            // ignore and fallback
+        }
 
         return (new MailMessage)
             ->subject($subject)

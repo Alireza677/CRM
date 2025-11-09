@@ -13,6 +13,7 @@ use Illuminate\Notifications\Notification;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Str;
 use Illuminate\Support\Facades\Route;
+use App\Mail\RoutedNotificationMail;
 
 class MentionedInNote extends Notification implements ShouldQueue
 {
@@ -97,6 +98,27 @@ class MentionedInNote extends Notification implements ShouldQueue
         if ($url) {
             // برای اسکرول دقیق روی نوت
             $url .= '#note-' . $this->note->id;
+        }
+
+        // Try DB/email template for notes.note.mentioned first
+        try {
+            $ctx = [
+                'note_excerpt'   => (string) \Illuminate\Support\Str::limit((string) ($this->note->body ?? ''), 120),
+                'mentioned_user' => (string) ($notifiable->name ?? ''),
+                'context'        => (string) $modelType,
+                'url'            => $url ?: url('/'),
+                'actor.name'     => (string) optional($this->note->author ?? null)->name,
+            ];
+            $tpl = \App\Support\NotificationTemplateResolver::resolve('notes', 'note.mentioned', 'email', $ctx);
+            $subj = trim((string) ($tpl['subject'] ?? ''));
+            $body = trim((string) ($tpl['body'] ?? ''));
+            if ($subj !== '' || $body !== '') {
+                /** @var \Illuminate\Mail\Mailable $m */
+                $m = new RoutedNotificationMail($subj, $body, $url ?: url('/'));
+                return $m;
+            }
+        } catch (\Throwable $e) {
+            // ignore and fallback
         }
 
         return (new MailMessage)
