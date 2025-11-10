@@ -55,15 +55,18 @@ class DocumentController extends Controller
 
         // فرصت پیش‌فرض وقتی از صفحه خودش می‌آییم
         $defaultOpportunityId = null;
+        $defaultOpportunityName = null;
         if ($request->filled('opportunity_id')) {
             $id = (int) $request->query('opportunity_id');
-            if (Opportunity::whereKey($id)->exists()) {
-                $defaultOpportunityId = $id;
+            $op = Opportunity::select('id','name')->find($id);
+            if ($op) {
+                $defaultOpportunityId = $op->id;
+                $defaultOpportunityName = $op->name;
             }
         }
 
         return view('sales.documents.create',
-            compact('breadcrumb','opportunities','defaultOpportunityId'));
+            compact('breadcrumb','opportunities','defaultOpportunityId','defaultOpportunityName'));
     }
 
     public function store(Request $request)

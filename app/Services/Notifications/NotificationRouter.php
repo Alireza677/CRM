@@ -209,6 +209,12 @@ class NotificationRouter
             $map['{context}']        = (string) ($context['context_label'] ?? '');
         }
 
+        if ($module === 'activities' && $event === 'reminder.due') {
+            $act = $context['activity'] ?? null;
+            $map['{activity_subject}'] = (string) ($act->subject ?? ('#'.($act->id ?? '')));
+            $map['{due_at}'] = (string) ($act->due_at_jalali ?? $act->start_at_jalali ?? '');
+        }
+
         return $map;
     }
 }

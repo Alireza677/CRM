@@ -78,6 +78,15 @@ document.addEventListener('DOMContentLoaded', () => {
     },
 
     eventDidMount: function(info) {
+      // Keep holidays red regardless of scope coloring
+      if (info.event.extendedProps && info.event.extendedProps.kind === 'holiday') {
+        const red = '#ef4444';
+        info.el.style.backgroundColor = red;
+        info.el.style.borderColor = red;
+        info.el.style.color = '#fff';
+        return;
+      }
+
       // رنگ‌بندی برای حالت مشترک
       if (currentScope === 'shared') {
         const uid = info.event.extendedProps?.assigned_to;
@@ -104,4 +113,3 @@ document.addEventListener('DOMContentLoaded', () => {
     });
   }
 });
-

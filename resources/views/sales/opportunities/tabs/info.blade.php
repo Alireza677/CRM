@@ -1,112 +1,119 @@
-<!-- Opportunity Details -->
-<div class="bg-white rounded-lg shadow-md p-6">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <!-- Main Information -->
-                    <div>
-                        <h2 class="text-lg font-semibold mb-4">اطلاعات اصلی</h2>
-                        <dl class="space-y-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">نام فرصت فروش</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->name }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">سازمان</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->organization->name ?? '-' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">مخاطب</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->contact->name ?? '-' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">کاربری ساختمان</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->building_usage ?? '-' }}</dd>
-                            </div>
+@php \App\Helpers\DateHelper::class; @endphp
 
-                            <!-- مرحله فروش -->
-                            <div class="mb-2">
-                                <div class="text-sm text-gray-600">مرحله فروش</div>
-                                <div class="text-sm text-gray-900 font-semibold">
-                                     {{ $opportunity->stage ?? '-' }}
-                                </div>
-                            </div>
+<div class="font-vazirmatn" lang="fa" dir="rtl">
+    @php
+        $lastNote = $opportunity->lastNote ?? null;
+        $displayBody = $lastNote?->body ?? '—';
 
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">نوع</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->type ?? '-' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">منبع</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->source ?? '-' }}</dd>
-                            </div>
-                        </dl>
+        if ($lastNote) {
+            preg_match_all('/@([^\s@]+)/u', $lastNote->body, $matches);
+            $mentionedUsernames = array_unique($matches[1] ?? []);
+            if (!empty($mentionedUsernames)) {
+                $mentionedUsers = \App\Models\User::whereIn('username', $mentionedUsernames)->get()->keyBy('username');
+                foreach ($mentionedUsers as $username => $user) {
+                    $displayBody = str_replace("@{$username}", '@' . $user->name, $displayBody);
+                }
+            }
+        }
+    @endphp
+
+    <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <!-- Box 1: اطلاعات اصلی -->
+        <div class="lg:col-span-3 rounded-2xl border border-green-200 bg-green-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-green-800 mb-3">اطلاعات اصلی</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">نام فرصت فروش</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->name ?? '-' }}</span>
                     </div>
-
-                    <!-- Additional Information -->
-                    <div>
-                        <h2 class="text-lg font-semibold mb-4">اطلاعات تکمیلی</h2>
-                        <dl class="space-y-4">
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">ارجاع به</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->assignedTo->name ?? '-' }}</dd>
-                            </div>
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">درصد موفقیت</dt>
-                                <dd class="mt-1 text-sm text-gray-900">{{ $opportunity->success_rate ?? '-' }}%</dd>
-                            </div>
-                            
-                            <div>
-                                <dt class="text-sm font-medium text-gray-500">تاریخ پیگیری بعدی</dt>
-                                <dd class="mt-1 text-sm text-gray-900">
-                                    @if($opportunity->next_follow_up)
-                                        {{ \Carbon\Carbon::parse($opportunity->next_follow_up)->format('Y/m/d') }}
-                                    @else
-                                        -
-                                    @endif
-                                </dd>
-                            </div>
-                            @php
-                                $lastNote = $opportunity->lastNote ?? null;
-                                $displayBody = $lastNote?->body ?? '—';
-
-                                if ($lastNote) {
-                                    // استخراج @username ها
-                                    preg_match_all('/@([^\s@]+)/u', $lastNote->body, $matches);
-                                    $mentionedUsernames = array_unique($matches[1] ?? []);
-
-                                    // گرفتن کاربران با username و جایگزینی با نام
-                                    if (!empty($mentionedUsernames)) {
-                                        $mentionedUsers = \App\Models\User::whereIn('username', $mentionedUsernames)->get()->keyBy('username');
-                                        foreach ($mentionedUsers as $username => $user) {
-                                            $displayBody = str_replace("@{$username}", '@' . $user->name, $displayBody);
-                                        }
-                                    }
-                                }
-                            @endphp
-
-                            <div>
-                                <strong>آخرین یادداشت:</strong>
-                                {!! nl2br(e($displayBody)) !!}
-                            </div>
-
-                            <div>
-                                <strong>تاریخ یادداشت:</strong>
-                                {{ $lastNote?->created_at
-                                    ? \App\Helpers\DateHelper::toJalali($lastNote->created_at)
-                                    : '—' }}
-                            </div>
-
-                            <div>
-                                <strong>ثبت‌کننده یادداشت:</strong>
-                                {{ $lastNote?->user?->name ?? '—' }}
-                            </div>
-
-                        </dl>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">سازمان</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->organization->name ?? '-' }}</span>
                     </div>
-                </div>
-
-                <!-- Description -->
-                <div class="mt-6">
-                    <h2 class="text-lg font-semibold mb-4">توضیحات</h2>
-                    <p class="text-sm text-gray-900">{{ $opportunity->description ?? '-' }}</p>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">مخاطب</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->contact->name ?? '-' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">کاربری ساختمان</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->building_usage ?? '-' }}</span>
+                    </div>
                 </div>
             </div>
+        </div>
+
+        <!-- Box 2: وضعیت فروش -->
+        <div class="lg:col-span-3 rounded-2xl border border-sky-200 bg-sky-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-sky-800 mb-3">وضعیت فروش</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">مرحله فروش</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->stage ?? '-' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">درصد موفقیت</span>
+                        <span class="font-medium text-gray-900">{{ isset($opportunity->success_rate) ? ($opportunity->success_rate . '%') : '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">نوع</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->type ?? '-' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">منبع</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->source ?? '-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 3: پیگیری و ارجاع -->
+        <div class="lg:col-span-3 rounded-2xl border border-amber-200 bg-amber-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-amber-800 mb-3">پیگیری و ارجاع</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">ارجاع به</span>
+                        <span class="font-medium text-gray-900">{{ $opportunity->assignedTo->name ?? '-' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">تاریخ پیگیری بعدی</span>
+                        <span class="font-medium text-gray-900">
+                            @if($opportunity->next_follow_up)
+                                {{ \App\Helpers\DateHelper::toJalali($opportunity->next_follow_up) }}
+                            @else
+                                —
+                            @endif
+                        </span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Box 4: یادداشت‌ها و توضیحات -->
+        <div class="lg:col-span-3 rounded-2xl border border-violet-200 bg-violet-50/80 shadow-sm hover:shadow-md transition">
+            <div class="p-5">
+                <h2 class="text-base font-semibold text-violet-800 mb-3">یادداشت‌ها و توضیحات</h2>
+                <div class="space-y-2 text-sm">
+                    <div class="flex items-start justify-between gap-3">
+                        <span class="text-gray-600">آخرین یادداشت</span>
+                        <span class="font-medium text-gray-900 whitespace-pre-line">{!! nl2br(e($displayBody)) !!}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">تاریخ یادداشت</span>
+                        <span class="font-medium text-gray-900">{{ $lastNote?->created_at ? \App\Helpers\DateHelper::toJalali($lastNote->created_at) : '—' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">ثبت‌کننده یادداشت</span>
+                        <span class="font-medium text-gray-900">{{ $lastNote?->user?->name ?? '—' }}</span>
+                    </div>
+                    <div class="flex items-start justify-between gap-3">
+                        <span class="text-gray-600">توضیحات</span>
+                        <span class="font-medium text-gray-900 whitespace-pre-line">{{ $opportunity->description ?? '-' }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

@@ -58,6 +58,7 @@ use App\Http\Controllers\SmsController;
 use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Admin\RoleReportController;
 use App\Http\Controllers\Admin\RolePermissionMatrixController;
+use App\Http\Controllers\HolidayController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -530,6 +531,14 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
         Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events'); // فید ایونت‌ها
+
+        // Admin: Holidays management
+        Route::middleware(['role:admin'])->group(function () {
+            Route::get('/admin/holidays', [HolidayController::class, 'index'])->name('holidays.index');
+            Route::post('/admin/holidays', [HolidayController::class, 'store'])->name('holidays.store');
+            Route::get('/admin/holidays/{holiday}/edit', [HolidayController::class, 'edit'])->name('holidays.edit');
+            Route::put('/admin/holidays/{holiday}', [HolidayController::class, 'update'])->name('holidays.update');
+        });
     });
 
 });

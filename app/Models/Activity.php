@@ -102,6 +102,7 @@ class Activity extends Model
     public function creator()    { return $this->belongsTo(User::class, 'created_by_id'); }
     public function updater()    { return $this->belongsTo(User::class, 'updated_by_id'); }
     public function related()    { return $this->morphTo(); }
+    public function reminders()  { return $this->hasMany(ActivityReminder::class); }
 
     public function scopeVisibleTo($q, User $u) {
         return $q->where(function($qq) use ($u) {

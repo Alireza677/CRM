@@ -156,6 +156,57 @@ class ActivityController extends Controller
         $activity->is_private    = (bool) $request->boolean('is_private');
         $activity->save();
 
+        // Reminders (optional)
+        try {
+            $reminders = (array) $request->input('reminders', []);
+            $prepared = [];
+            foreach ($reminders as $r) {
+                $type = (string) ($r['type'] ?? '');
+                if ($type === '') continue;
+
+                if (in_array($type, ['30m_before','1h_before','1d_before'], true)) {
+                    if (!$activity->due_at) {
+                        // Relative reminders need a due_at; skip safely
+                        continue;
+                    }
+                    $map = [
+                        '30m_before' => -30,
+                        '1h_before'  => -60,
+                        '1d_before'  => -1440,
+                    ];
+                    $prepared[] = [
+                        'kind' => 'relative',
+                        'offset_minutes' => $map[$type] ?? null,
+                        'time_of_day' => null,
+                    ];
+                } elseif ($type === 'same_day') {
+                    $time = trim((string) ($r['time'] ?? ''));
+                    if ($time === '' || !preg_match('/^\d{2}:\d{2}$/', $time)) {
+                        continue;
+                    }
+                    $prepared[] = [
+                        'kind' => 'same_day',
+                        'offset_minutes' => null,
+                        'time_of_day' => $time,
+                    ];
+                }
+            }
+
+            if (!empty($prepared)) {
+                $rows = array_map(function ($p) use ($activity, $request) {
+                    return array_merge($p, [
+                        'activity_id'   => $activity->id,
+                        'notify_user_id'=> (int) $activity->assigned_to_id,
+                        'created_by_id' => (int) (auth()->id() ?? 0) ?: null,
+                    ]);
+                }, $prepared);
+                \App\Models\ActivityReminder::insert($rows);
+            }
+        } catch (\Throwable $e) {
+            // Do not break creation flow on reminders error
+            \Log::warning('ActivityController.store: failed to save reminders', ['error' => $e->getMessage()]);
+        }
+
         return redirect()->route('activities.show', $activity)->with('success','وظیفه ایجاد شد.');
     }
 

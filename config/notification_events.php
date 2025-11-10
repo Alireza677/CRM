@@ -99,5 +99,22 @@ return [
                 ],
             ],
         ],
+
+        'activities' => [
+            'label' => 'وظایف',
+            'events' => [
+                'reminder.due' => [
+                    'label' => 'یادآوری موعد وظیفه',
+                    'default_channels' => ['database'],
+                    'placeholders' => ['{activity_subject}', '{due_at}'],
+                    'default_subject' => 'یادآوری وظیفه: {activity_subject}',
+                    'default_body' => 'موعد: {due_at}',
+                    'supports' => [
+                        'channel_templates' => true,
+                        'conditions' => false,
+                    ],
+                ],
+            ],
+        ],
     ],
 ];

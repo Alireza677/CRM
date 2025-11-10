@@ -47,6 +47,20 @@
                                     <a href="{{ route('sales.documents.download', $doc) }}" title="دانلود">
                                         <i class="fas fa-download"></i>
                                     </a>
+                                    @php
+                                        $isAdmin = auth()->check() && ((method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('admin')) || (auth()->user()->is_admin ?? false));
+                                        $isOwner = auth()->check() && (int)($doc->user_id ?? 0) === (int)auth()->id();
+                                    @endphp
+                                    @if($isAdmin || $isOwner)
+                                        <form action="{{ route('sales.documents.destroy', $doc) }}" method="POST" class="inline"
+                                              onsubmit="return confirm('آیا از حذف این سند اطمینان دارید؟');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900" title="حذف">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </li>
                         @endforeach
@@ -97,6 +111,20 @@
                                     <a href="{{ route('sales.documents.download', $doc) }}" title="دانلود">
                                         <i class="fas fa-download"></i>
                                     </a>
+                                    @php
+                                        $isAdmin = auth()->check() && ((method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('admin')) || (auth()->user()->is_admin ?? false));
+                                        $isOwner = auth()->check() && (int)($doc->user_id ?? 0) === (int)auth()->id();
+                                    @endphp
+                                    @if($isAdmin || $isOwner)
+                                        <form action="{{ route('sales.documents.destroy', $doc) }}" method="POST" class="inline"
+                                              onsubmit="return confirm('آیا از حذف این سند اطمینان دارید؟');">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-900" title="حذف">
+                                                <i class="fas fa-trash-alt"></i>
+                                            </button>
+                                        </form>
+                                    @endif
                                 </div>
                             </li>
                         @endforeach
@@ -112,4 +140,3 @@
         </div>
     </div>
 @endsection
-

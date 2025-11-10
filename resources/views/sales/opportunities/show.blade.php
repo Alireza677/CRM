@@ -142,7 +142,7 @@
         </aside>
 
         {{-- محتوای اصلی --}}
-        <main class="flex-1 px-4 md:px-8 pb-8 md:mr-64 md:ml-0">
+    <main class="flex-1 px-4 md:px-8 pb-8 md:mr-0 md:ml-0">
 
             {{-- هدر دسکتاپ: فقط عنوان --}}
             <div class="hidden md:flex justify-between items-center mb-6 mt-8">

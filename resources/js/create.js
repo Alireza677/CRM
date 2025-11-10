@@ -151,7 +151,7 @@
           }
         }
     // --- Ready ---
-    $(function () {
+  $(function () {
       makeLiveFilter({ inputId: 'contactSearchInput', tbodyId: 'contactTableBody', noResId: 'contactNoResults' });
       makeLiveFilter({ inputId: 'organizationSearchInput', tbodyId: 'organizationTableBody', noResId: 'organizationNoResults' });
   
@@ -172,6 +172,73 @@
          if (s) $('#due_at_display').persianDatepicker('setMinDate', s);
        } catch (e) {}
      });
+
+      // ------- Reminders (dynamic) -------
+      (function initReminders() {
+        const container = document.getElementById('remindersContainer');
+        const btnAdd = document.getElementById('btnAddReminder');
+        if (!container || !btnAdd) return;
+
+        let idx = 0;
+
+        function makeRow(i, preset) {
+          const row = document.createElement('div');
+          row.className = 'flex flex-col md:flex-row gap-2 items-start md:items-center';
+
+          const typeSel = document.createElement('select');
+          typeSel.name = `reminders[${i}][type]`;
+          typeSel.className = 'rounded-md border p-2 text-sm';
+          typeSel.innerHTML = `
+            <option value="30m_before">نیم ساعت قبل</option>
+            <option value="1h_before">یک ساعت قبل</option>
+            <option value="1d_before">یک روز قبل</option>
+            <option value="same_day">همان روز، ساعت مشخص</option>
+          `;
+
+          const timeWrap = document.createElement('div');
+          timeWrap.className = 'flex items-center gap-2';
+          const timeLbl = document.createElement('span');
+          timeLbl.className = 'text-sm text-gray-600';
+          timeLbl.textContent = 'ساعت:';
+          const timeInp = document.createElement('input');
+          timeInp.type = 'time';
+          timeInp.className = 'rounded-md border p-2 text-sm';
+          timeInp.name = `reminders[${i}][time]`;
+          timeInp.placeholder = '08:00';
+          timeWrap.appendChild(timeLbl);
+          timeWrap.appendChild(timeInp);
+
+          const removeBtn = document.createElement('button');
+          removeBtn.type = 'button';
+          removeBtn.className = 'px-2 py-1 text-sm rounded-md bg-red-50 text-red-700 hover:bg-red-100';
+          removeBtn.textContent = 'حذف';
+          removeBtn.addEventListener('click', () => row.remove());
+
+          function updateVisibility() {
+            const v = typeSel.value;
+            const showTime = (v === 'same_day');
+            timeWrap.style.display = showTime ? 'flex' : 'none';
+          }
+          typeSel.addEventListener('change', updateVisibility);
+
+          // Apply preset (if any)
+          if (preset?.type) typeSel.value = preset.type;
+          if (preset?.time) timeInp.value = preset.time;
+          updateVisibility();
+
+          row.appendChild(typeSel);
+          row.appendChild(timeWrap);
+          row.appendChild(removeBtn);
+          return row;
+        }
+
+        btnAdd.addEventListener('click', () => {
+          container.appendChild(makeRow(idx++));
+        });
+
+        // Optionally prefill from server-side old() values if present in a data blob
+        // Developers can inject old reminders via a script tag if needed.
+      })();
    });
  })();
   

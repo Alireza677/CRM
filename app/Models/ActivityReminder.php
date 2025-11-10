@@ -1,0 +1,31 @@
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
+
+class ActivityReminder extends Model
+{
+    use SoftDeletes;
+
+    protected $fillable = [
+        'activity_id',
+        'kind',             // relative | same_day
+        'offset_minutes',   // for kind=relative (negative minutes before due)
+        'time_of_day',      // for kind=same_day (HH:MM)
+        'notify_user_id',
+        'sent_at',
+        'created_by_id',
+    ];
+
+    protected $casts = [
+        'sent_at' => 'datetime',
+    ];
+
+    public function activity(): BelongsTo { return $this->belongsTo(Activity::class); }
+    public function notifyUser(): BelongsTo { return $this->belongsTo(User::class, 'notify_user_id'); }
+    public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by_id'); }
+}
+

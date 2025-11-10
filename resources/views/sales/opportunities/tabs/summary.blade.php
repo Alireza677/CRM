@@ -67,7 +67,7 @@
     <div class="bg-pink-50 rounded-lg p-4 shadow flex items-center justify-between">
         <div>
             <h3 class="text-lg font-semibold text-pink-800">پیش‌فاکتورها</h3>
-            <p class="text-sm text-pink-600 mt-1">تعداد: 0</p>
+            <p class="text-sm text-pink-600 mt-1">تعداد: {{ $opportunity->proformas()->count() }}</p>
         </div>
         <i class="fas fa-file-invoice text-3xl text-pink-400"></i>
     </div>

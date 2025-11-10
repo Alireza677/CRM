@@ -41,6 +41,7 @@
 
         <!-- Main Menu Items -->
         <nav class="p-4 space-y-2">
+            
             <button @click="$store.menu.openSubMenu('marketing')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='marketing' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">بازاریابی</button>
@@ -62,6 +63,9 @@
             <button @click="$store.menu.openSubMenu('documents')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='documents' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">اسناد</button>
+            <button @click="$store.menu.openSubMenu('calendar')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='calendar' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">تقویم</button>        
             <button @click="$store.menu.openSubMenu('settings')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='settings' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">تنظیمات</button>
@@ -89,6 +93,7 @@
         <div class="flex flex-col h-full">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center">
                 <h2 class="text-lg font-semibold text-gray-800">
+                    <template x-if="$store.menu.activeMenu === 'calendar'">تقویم</template>
                     <template x-if="$store.menu.activeMenu === 'marketing'">بازاریابی</template>
                     <template x-if="$store.menu.activeMenu === 'sales'">فروش</template>
                     <template x-if="$store.menu.activeMenu === 'projects'">پروژه‌ها</template>
@@ -105,6 +110,14 @@
             </div>
 
             <nav class="p-4 space-y-2 flex-1 overflow-y-auto">
+                <template x-if="$store.menu.activeMenu === 'calendar'">
+                    <div class="space-y-2">
+                        <a href="{{ route('calendar.index') }}" class="menu-item">مشاهده تقویم</a>
+                        @role('admin')
+                            <a href="{{ route('holidays.index') }}" class="menu-item">مدیریت تعطیلات</a>
+                        @endrole
+                    </div>
+                </template>
                 <template x-if="$store.menu.activeMenu === 'sales'">
                     <div class="space-y-2">
                         <a href="{{ route('sales.opportunities.index') }}" class="menu-item">فرصت‌های فروش</a>

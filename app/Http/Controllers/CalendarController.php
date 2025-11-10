@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\Activity;
+use App\Models\Holiday;
+use Carbon\Carbon;
 
 class CalendarController extends Controller
 {
@@ -43,6 +45,18 @@ class CalendarController extends Controller
             });
         }
 
-        return response()->json($q->get()->map->toCalendarEvent()->values());
+        $activities = $q->get()->map->toCalendarEvent()->values()->all();
+
+        // Holidays are global and always visible
+        $startDate = $start ? Carbon::parse($start)->toDateString() : null;
+        $endDate   = $end   ? Carbon::parse($end)->toDateString()   : null;
+
+        $hq = Holiday::query();
+        if ($startDate) $hq->where('date', '>=', $startDate);
+        if ($endDate)   $hq->where('date', '<=', $endDate);
+
+        $holidays = $hq->get()->map->toCalendarEvent()->values()->all();
+
+        return response()->json(array_values(array_merge($activities, $holidays)));
     }
 }

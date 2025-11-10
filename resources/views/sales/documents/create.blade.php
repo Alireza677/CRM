@@ -20,7 +20,7 @@
         {{-- ارسال خودکار فرصت از صفحه خودش --}}
         <input type="hidden" name="opportunity_id" value="{{ $defaultOpportunityId }}">
         <div class="p-3 rounded bg-green-50 text-green-700 text-sm">
-            این سند برای فرصت شماره {{ $defaultOpportunityId }} ثبت خواهد شد.
+            این سند برای «{{ $defaultOpportunityName ?? ('فرصت شماره ' . $defaultOpportunityId) }}» ثبت خواهد شد.
             <a class="underline" href="{{ route('sales.opportunities.show', $defaultOpportunityId) }}">نمایش فرصت</a>
         </div>
     @else
