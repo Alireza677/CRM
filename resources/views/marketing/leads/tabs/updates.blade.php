@@ -13,6 +13,19 @@
         'next_follow_up_date' => 'پیگیری بعدی',
     ];
 
+    $creationLabels = [
+        'full_name' => 'نام کامل',
+        'company' => 'شرکت',
+        'lead_source' => 'منبع',
+        'lead_status' => 'وضعیت',
+        'customer_type' => 'نوع مشتری',
+        'assigned_to' => 'ارجاع شده به',
+        'next_follow_up_date' => 'پیگیری بعدی',
+        'mobile' => 'موبایل',
+        'phone' => 'تلفن',
+        'email' => 'ایمیل',
+    ];
+
     $users = \App\Models\User::pluck('name', 'id')->toArray();
 @endphp
 
@@ -25,16 +38,22 @@
                     {{ $activity->causer ? 'توسط ' . $activity->causer->name : 'سیستم' }}
                 </div>
 
-                <div class="text-sm text-gray-800">
-                    {!! $activity->description !!}
-                </div>
+                @php
+                    $eventType = $activity->event ?? $activity->description ?? null;
+                    $isCreated = $eventType === 'created';
+                @endphp
+
+                @if($isCreated)
+                    <div class="text-sm text-green-700 font-semibold">سرنخ جدید ایجاد شد</div>
+                @else
+                    <div class="text-sm text-gray-800"> تغییری ایجاد شد</div>
+                @endif
 
                 @php
                     $attributes = $activity->getExtraProperty('attributes');
                     $old = $activity->getExtraProperty('old') ?? [];
                     $new = $attributes ?? [];
 
-                    // نرمالایز برای مقایسه‌ی دقیق (Null/خالی، Trim، تاریخ)
                     $normalize = function ($v, $k) {
                         if (is_string($v)) { $v = trim($v); if ($v === '') $v = null; }
                         if ($k === 'next_follow_up_date' && !empty($v)) {
@@ -43,26 +62,40 @@
                         return $v;
                     };
 
-                    // تبدیل برای نمایش زیباتر (نام کاربر/تاریخ/…)
                     $display = function ($v, $k) use ($users) {
-                        if ($k === 'assigned_to' && is_numeric($v)) {
+                        if ($k === 'assigned_to' && (is_numeric($v) || is_string($v))) {
                             return $users[$v] ?? $v;
                         }
                         if ($k === 'next_follow_up_date' && !empty($v)) {
-                            try { return jdate($v)->format('Y/m/d'); } catch (\Exception $e) { /* ignore */ }
+                            try { return jdate($v)->format('Y/m/d'); } catch (\Exception $e) {}
                         }
-                        return \App\Helpers\UpdateHelper::beautify($v ?? '-', $k);
+                        return UpdateHelper::beautify($v ?? '-', $k);
                     };
                 @endphp
 
-                @if (!empty($new))
+                @if($isCreated)
+                    @php
+                        $orderedKeys = [
+                            'full_name','company','lead_source','lead_status','customer_type','assigned_to','next_follow_up_date','mobile','phone','email'
+                        ];
+                    @endphp
+                    <ul class="mt-2 text-sm space-y-1 text-gray-700">
+                        @foreach($orderedKeys as $key)
+                            @php $val = $new[$key] ?? null; @endphp
+                            @continue(is_null($val) || (is_string($val) && trim($val) === ''))
+                            <li class="flex flex-row-reverse justify-end items-center gap-1 flex-wrap">
+                                <span class="text-gray-800">{{ $display($val, $key) }}</span>
+                                <span class="text-gray-600">{{ $creationLabels[$key] ?? $key }}</span>
+                            </li>
+                        @endforeach
+                    </ul>
+                @elseif (!empty($new))
+                    
                     <ul class="mt-2 text-sm space-y-1 text-gray-700">
                         @foreach($new as $key => $newRaw)
-                            @continue(!isset($fields[$key])) {{-- فقط فیلدهای تعریف‌شده --}}
+                            @continue(!isset($fields[$key]))
                             @php
                                 $oldRaw = $old[$key] ?? null;
-
-                                // مقایسه‌ی نرمالایز شده؛ اگر برابر باشند، نمایش نده
                                 $oldNorm = $normalize($oldRaw, $key);
                                 $newNorm = $normalize($newRaw, $key);
                             @endphp

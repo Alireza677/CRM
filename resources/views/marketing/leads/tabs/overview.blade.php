@@ -5,11 +5,7 @@
         <h2 class="text-sm font-semibold text-gray-700 mb-4">فیلدهای کلیدی</h2>
 
         <div class="space-y-3">
-            <!-- نام -->
-            <div class="flex justify-between items-center bg-gray-50 rounded px-3 py-2 text-sm">
-                <span class="text-gray-600">نام سرنخ:</span>
-                <span class="text-gray-900">{{ $lead->first_name }} {{ $lead->last_name }}</span>
-            </div>
+            
 
             <!-- شرکت -->
             <div class="flex justify-between items-center bg-gray-50 rounded px-3 py-2 text-sm">
