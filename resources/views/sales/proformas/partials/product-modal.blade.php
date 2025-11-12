@@ -18,7 +18,7 @@
         </div>
 
         <div id="productSelectionWrapper">
-            <div class="overflow-y-auto max-h-64 border rounded">
+            <div class="overflow-y-auto max-h-80 border rounded">
                 <table class="min-w-full text-sm text-right">
                     <thead class="bg-gray-100 text-gray-700 sticky top-0">
                         <tr>
@@ -34,7 +34,7 @@
                                 data-name="{{ Str::lower($product->name) }}"
                                 data-price="{{ (int) $product->unit_price }}"
                             >
-                                <td class="px-4 py-2 text-center">
+                                <td class="px-3 py-1 text-center whitespace-nowrap">
                                     <input
                                         type="checkbox"
                                         name="selected_products[]"
@@ -42,18 +42,11 @@
                                         data-name="{{ $product->name }}"
                                         data-price="{{ $product->unit_price }}"
                                         data-id="{{ $product->id }}"
-                                    >
-                                    <input
-                                        type="number"
-                                        name="product_quantities[{{ $product->id }}]"
-                                        value="1"
-                                        min="1"
-                                        class="form-control mt-1 text-sm modal-quantity-input border rounded px-2 py-1"
-                                        style="width: 60px;"
+                                        class="h-4 w-4 align-middle"
                                     >
                                 </td>
-                                <td class="px-4 py-2">{{ $product->name }}</td>
-                                <td class="px-4 py-2">{{ number_format($product->unit_price) }}</td>
+                                <td class="px-3 py-1">{{ $product->name }}</td>
+                                <td class="px-3 py-1">{{ number_format($product->unit_price) }}</td>
                             </tr>
                         @endforeach
                     </tbody>
@@ -66,10 +59,10 @@
             </div>
 
             <div class="flex justify-between mt-4">
-                <button type="button" onclick="handleProductSelection()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
+                <button type="button" onclick="handleProductSelection(); resetProductModal()" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700 text-sm">
                     افزودن
                 </button>
-                <button type="button" onclick="closeProductModal()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 text-sm">
+                <button type="button" onclick="closeProductModal(); resetProductModal()" class="bg-gray-300 px-4 py-2 rounded hover:bg-gray-400 text-sm">
                     بستن
                 </button>
             </div>
@@ -83,9 +76,37 @@
     const $input = document.getElementById('productSearchInput');
     const $tbody = document.getElementById('productTableBody');
     const $noResults = document.getElementById('noResultsRow');
+    const $modal = document.getElementById('productModal');
+    const $scrollContainer = $modal ? $modal.querySelector('.overflow-y-auto') : null;
 
     if (!$input || !$tbody) return;
 
+    // ریست وضعیت مودال: تیک‌ها، تعدادها و جستجو
+    function resetProductModal() {
+        // پاک کردن چک‌باکس‌ها
+        $tbody.querySelectorAll('input[type="checkbox"]').forEach(cb => {
+            cb.checked = false;
+        });
+        // پاک کردن جستجو و نمایش همه سطرها
+        if ($input) $input.value = '';
+        Array.from($tbody.querySelectorAll('tr')).forEach(tr => tr.classList.remove('hidden'));
+        if ($noResults) $noResults.classList.add('hidden');
+        if ($scrollContainer) $scrollContainer.scrollTop = 0;
+    }
+
+    // در دسترس عمومی برای فراخوانی از دکمه‌ها
+    window.resetProductModal = resetProductModal;
+
+    // هر بار مودال نمایش داده شد (حذف کلاس hidden)، ریست شود
+    if ($modal) {
+        const observer = new MutationObserver(() => {
+            const isHidden = $modal.classList.contains('hidden');
+            if (!isHidden) {
+                resetProductModal();
+            }
+        });
+        observer.observe($modal, { attributes: true, attributeFilter: ['class'] });
+    }
     // تبدیل اعداد فارسی/عربی به انگلیسی برای جستجو روی قیمت
     function normalizeDigits(str) {
         if (!str) return '';
