@@ -9,7 +9,7 @@ use Carbon\Carbon;
 class Holiday extends Model
 {
     protected $fillable = [
-        'date', 'title', 'notify', 'created_by_id', 'notify_sent_at',
+        'date', 'title', 'notify', 'notify_message', 'created_by_id', 'notify_sent_at',
     ];
 
     protected $casts = [
@@ -83,4 +83,3 @@ class Holiday extends Model
         ];
     }
 }
-

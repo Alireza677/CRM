@@ -104,8 +104,29 @@
                                     <td class="px-3 py-2">{{ $log->to }}</td>
                                     <td class="px-3 py-2">{{ \Illuminate\Support\Str::limit($log->message, 80) }}</td>
                                     <td class="px-3 py-2">
-                                        @if($log->status_code === 200)
-                                            <span class="text-green-700">ارسال شده</span>
+                                        @php $s = $log->status; @endphp
+                                        @if($s)
+                                            @php
+                                                $color = match($s) {
+                                                    'delivered' => 'text-green-700',
+                                                    'failed', 'rejected' => 'text-red-700',
+                                                    'sent','accepted','queued','pending' => 'text-yellow-700',
+                                                    default => 'text-gray-700'
+                                                };
+                                                $label = match($s) {
+                                                    'delivered' => 'تحویل شد',
+                                                    'failed' => 'ناموفق',
+                                                    'rejected' => 'رد شد',
+                                                    'sent' => 'ارسال شد',
+                                                    'accepted' => 'پذیرفته شد',
+                                                    'queued' => 'در صف',
+                                                    'pending' => 'در انتظار',
+                                                    default => $s,
+                                                };
+                                            @endphp
+                                            <span class="{{ $color }}" title="{{ $log->status_updated_at ? ('بروزرسانی: ' . $log->status_updated_at) : '' }}">{{ $label }}</span>
+                                        @elseif($log->status_code === 200)
+                                            <span class="text-green-700">ارسال شد</span>
                                         @elseif($log->status_text === 'ERROR' || ($log->status_code && $log->status_code >= 400))
                                             <span class="text-red-700">ارسال نشده</span>
                                         @else

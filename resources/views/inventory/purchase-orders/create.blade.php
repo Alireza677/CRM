@@ -110,7 +110,13 @@
       <div class="mt-6 bg-white p-6 rounded shadow">
         <div class="mb-4">
           <label class="block text-sm font-medium mb-1">افزودن تصویر یا سند</label>
-          <input type="file" name="attachments[]" accept="image/*" multiple class="block w-full text-sm text-gray-700" />
+          <div class="flex items-center gap-3">
+            <input id="attachments_input" type="file" name="attachments[]" accept="image/*" multiple class="sr-only" />
+            <label for="attachments_input" class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white text-sm hover:bg-indigo-700 cursor-pointer focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500">
+              انتخاب فایل‌ها
+            </label>
+            <span id="attachments_placeholder" class="text-sm text-gray-500">هیچ فایلی انتخاب نشده</span>
+          </div>
           <p class="text-xs text-gray-500 mt-1">فرمت‌های مجاز: JPG, PNG — حداکثر ۱۰ مگابایت برای هر فایل</p>
         </div>
 
@@ -436,5 +442,24 @@
   }
   usageSelect && usageSelect.addEventListener('change', toggleOperationalExpense);
   toggleOperationalExpense();
+
+  // بروزرسانی متن انتخاب فایل‌ها (فارسی)
+  (function() {
+    const input = document.getElementById('attachments_input');
+    const placeholder = document.getElementById('attachments_placeholder');
+    if (!input || !placeholder) return;
+    function update() {
+      const files = input.files;
+      if (!files || files.length === 0) {
+        placeholder.textContent = 'هیچ فایلی انتخاب نشده';
+      } else if (files.length === 1) {
+        placeholder.textContent = files[0].name;
+      } else {
+        placeholder.textContent = files.length + ' فایل انتخاب شد';
+      }
+    }
+    input.addEventListener('change', update);
+    update();
+  })();
 </script>
 @endsection

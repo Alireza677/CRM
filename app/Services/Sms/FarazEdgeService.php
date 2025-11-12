@@ -22,6 +22,19 @@ class FarazEdgeService
         }
     }
 
+    /**
+     * Optionally fetch delivery statuses for given provider message IDs.
+     * If the provider does not support bulk fetch or endpoint is unknown, returns an empty array.
+     * Expected return shape: [ id => ['status' => 'delivered'|'failed'|..., 'error_code' => ?, 'error_message' => ?], ...]
+     */
+    public function fetchStatuses(array $providerIds): array
+    {
+        // Placeholder: implement provider-specific query if available.
+        // Keeping this non-throwing to avoid breaking scheduled job in environments without network.
+        Log::channel('sms')->info('[SMS][FETCH] fetchStatuses called', ['count' => count($providerIds)]);
+        return [];
+    }
+
     public function sendWebservice(string|array $recipients, string $message, ?string $from = null, ?string $sendTimeUtc = null): array
     {
         $traceId = bin2hex(random_bytes(6));

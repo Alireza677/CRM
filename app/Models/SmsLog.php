@@ -16,6 +16,10 @@ class SmsLog extends Model
         'provider_message_id',
         'status_code',
         'status_text',
+        'status',
+        'status_updated_at',
+        'error_code',
+        'error_message',
         'provider_response',
         'sent_by', // 👈 فیلد جدید برای ثبت کاربر ارسال‌کننده
     ];
@@ -23,6 +27,7 @@ class SmsLog extends Model
     protected $casts = [
         'values'            => 'array',
         'provider_response' => 'array',
+        'status_updated_at' => 'datetime',
     ];
 
     /**

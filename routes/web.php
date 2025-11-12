@@ -538,6 +538,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/admin/holidays', [HolidayController::class, 'store'])->name('holidays.store');
             Route::get('/admin/holidays/{holiday}/edit', [HolidayController::class, 'edit'])->name('holidays.edit');
             Route::put('/admin/holidays/{holiday}', [HolidayController::class, 'update'])->name('holidays.update');
+            Route::get('/admin/holidays/{holiday}', [HolidayController::class, 'show'])->name('holidays.show');
         });
     });
 

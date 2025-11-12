@@ -1,101 +1,104 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="container py-12" dir="rtl">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
-        <h2 class="text-2xl font-semibold text-gray-800 mb-8">داشبورد</h2>
+<div class="w-[90%] mx-auto py-12" dir="rtl">
+    <div class=" mx-auto sm:px-6 lg:px-8">
+        <div class="grid gap-x-6 gap-y-12 grid-cols-[repeat(auto-fit,minmax(280px,1fr))]">
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            {{-- کارت ۲: ایجاد سرنخ --}}
-            <div class="backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
-                <div class="text-green-500 text-4xl mb-3">🧩</div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">سرنخ</h3>
+            {{-- کارت ۱: فرصت فروش --}}
+            <div class="relative backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 pt-4 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
+                <div class="absolute -top-6 flex justify-center">
+                    <img src="{{ asset('images/sales-pipeline.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow-lg">
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2 mt-6">فرصت فروش</h3>
+                <p class="text-sm text-gray-700 mb-4">فرصت‌ فروش جدیدی را ثبت و پیگیری کنید.</p>
+                <div class="flex flex-row gap-4">
+                    <a href="{{ route('sales.opportunities.index') }}" class="text-sm text-blue-600 hover:text-indigo-800 font-semibold transition">
+                        مشاهده  
+                    </a>
+                    <a href="{{ route('sales.opportunities.create') }}" class="text-sm text-blue-600 hover:text-indigo-800 font-semibold transition">
+                        + ایجاد
+                    </a>
+                </div>
+            </div>
+
+            {{-- کارت ۲: سرنخ --}}
+            <div class="relative backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 pt-4 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
+                <div class="absolute -top-6 flex justify-center">
+                    <img src="{{ asset('images/recruitment.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow-lg">
+                </div>
+                <h3 class="text-lg font-bold text-gray-800 mb-2 mt-6">سرنخ</h3>
                 <p class="text-sm text-gray-700 mb-4">مشتریان بالقوه را به سرنخ فروش تبدیل کنید.</p>
                 <div class="flex flex-row gap-4">
-                <a href="{{ route('marketing.leads.index') }}" class="text-green-600 hover:text-green-800 font-semibold transition">
-                     مشاهده سرنخ‌ها
-                </a>
-                <a href="{{ route('marketing.leads.create') }}" class="text-green-600 hover:text-green-800 font-semibold transition">
-                     ایجاد سرنخ جدید
-                </a>
+                    <a href="{{ route('marketing.leads.index') }}" class="text-sm text-green-600 hover:text-indigo-800 font-semibold transition">
+                        مشاهده 
+                    </a>
+                    <a href="{{ route('marketing.leads.create') }}" class="text-sm text-green-600 hover:text-indigo-800 font-semibold transition">
+                        + ایجاد  
+                    </a>
                 </div>
             </div>
 
-            {{-- کارت ۱: ایجاد فرصت فروش --}}
-            <div class="backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
-                <div class="text-blue-500 text-4xl mb-3">📈</div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">فرصت فروش</h3>
-                <p class="text-sm text-gray-700 mb-4">فرصت‌های فروش جدیدی را ثبت و پیگیری کنید.</p>
-                <div class="flex flex-row gap-4">
-                <a href="{{ route('sales.opportunities.index') }}" class="text-blue-600 hover:text-blue-800 font-semibold transition">
-                     مشاهده فرصت‌های فروش
-                </a>
-                <a href="{{ route('sales.opportunities.create') }}"  class="text-blue-600 hover:text-blue-800 font-semibold transition">
-                     ایجاد فرصت جدید
-                </a>
+            {{-- کارت ۳: مخاطبین --}}
+            <div class="relative backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 pt-4 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
+                <div class="absolute -top-6 flex justify-center">
+                    <img src="{{ asset('images/contacts-book.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow-lg">
                 </div>
-            </div>
-
-            {{-- کارت ۳: اعلانات --}}
-            <div class="backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
-                <div class="text-yellow-500 text-4xl mb-3">🔔</div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">اعلانات</h3>
-                <p class="text-sm text-gray-700 mb-4">آخرین رویدادها و اعلان‌های مربوط به شما.</p>
-                <a href="{{ route('notifications.index') }}" class="text-yellow-600 hover:text-yellow-800 font-semibold transition">
-                    مشاهده اعلانات
-                </a>
-            </div>
-
-            {{-- کارت ۵: پیش‌فاکتور --}}
-            <div class="backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
-                <div class="text-red-500 text-4xl mb-3">🧾</div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">پیش‌فاکتورها</h3>
-                <p class="text-sm text-gray-700 mb-4">ایجاد یا بررسی پیش‌فاکتورهای صادرشده.</p>
-                <div class="flex flex-row gap-4">
-                <a href="{{ route('sales.proformas.index') }}" class="text-red-600 hover:text-red-800 font-semibold transition">
-                    مشاهده پیش‌فاکتورها
-                </a>
-                <a href="{{ route('sales.proformas.create') }}" class="text-red-600 hover:text-red-800 font-semibold transition">
-                    ایجاد پیش‌فاکتور جدید
-                </a>
-                </div>
-            </div>
-
-            {{-- کارت ۴: مخاطبین --}}
-            <div class="backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
-                <div class="text-purple-500 text-4xl mb-3">👤</div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">مخاطبین</h3>
+                <h3 class="text-lg font-bold text-gray-800 mb-2 mt-6">مخاطبین</h3>
                 <p class="text-sm text-gray-700 mb-4">مشاهده و مدیریت لیست مخاطبین ثبت‌شده.</p>
                 <div class="flex flex-row gap-4">
-                
-                <a href="{{ route('sales.contacts.index') }}" class="text-purple-600 hover:text-purple-800 font-semibold transition">
-                    مشاهده مخاطبین
-                </a>
-                <a href="{{ route('sales.contacts.create') }}" class="text-purple-600 hover:text-purple-800 font-semibold transition">
-                    ایجاد مخاطب جدید
-                </a>
+                    <a href="{{ route('sales.contacts.index') }}" class="text-sm text-purple-600 hover:text-indigo-800 font-semibold transition">
+                        مشاهده 
+                    </a>
+                    <a href="{{ route('sales.contacts.create') }}" class="text-sm text-purple-600 hover:text-indigo-800 font-semibold transition">
+                        + ایجاد  
+                    </a>
                 </div>
             </div>
 
-            {{-- کارت ۶: سازمان‌ها --}}
-            <div class="backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
-                <div class="text-indigo-500 text-4xl mb-3">🏢</div>
-                <h3 class="text-lg font-bold text-gray-800 mb-2">سازمان‌ها</h3>
-                <p class="text-sm text-gray-700 mb-4">مدیریت شرکت‌ها و سازمان‌های ثبت‌شده.</p>
-                <div class="flex flex-row gap-4">
-                <a href="{{ route('sales.organizations.index') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold transition">
-                    مشاهده سازمان‌ها
-                </a>
-                <a href="{{ route('sales.organizations.create') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold transition">
-                    ایجاد سازمان جدید
-                </a>
+            {{-- کارت ۴: پیش‌فاکتور --}}
+            <div class="relative backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 pt-4 flex flex-col items-center text-center transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
+                <div class="absolute -top-6 flex justify-center">
+                    <img src="{{ asset('images/invoice.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow-lg">
                 </div>
-                
+                <h3 class="text-lg font-bold text-gray-800 mb-2 mt-6">پیش‌فاکتورها</h3>
+                <p class="text-sm text-gray-700 mb-4">ایجاد یا بررسی پیش‌فاکتورهای صادرشده.</p>
+                <div class="flex flex-row gap-4">
+                    <a href="{{ route('sales.proformas.index') }}" class="text-sm text-red-600 hover:text-indigo-800 font-semibold transition">
+                        مشاهده 
+                    </a>
+                    <a href="{{ route('sales.proformas.create') }}" class="text-sm text-red-600 hover:text-indigo-800 font-semibold transition">
+                        + ایجاد  
+                    </a>
+                </div>
             </div>
+
+
+            {{-- کارت ۶: سازمان‌ها --}}
+           <div class="backdrop-blur-md bg-white/30 border border-white/20 shadow-md rounded-2xl p-6 pt-4 flex flex-col items-center text-center relative transition hover:shadow-[0_12px_24px_-4px_rgba(0,0,0,0.2)]">
+                <div class="absolute -top-6 flex justify-center">
+                    <img src="{{ asset('images/organization.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow-lg">
+                </div>
+
+                <h3 class="text-lg font-bold text-gray-800 mb-2 mt-6">سازمان‌ها</h3>
+                <p class="text-sm text-gray-700 mb-4">مدیریت شرکت‌ها و سازمان‌های ثبت‌شده.</p>
+
+                <div class="flex flex-row gap-4">
+                    <a href="{{ route('sales.organizations.index') }}" 
+                    class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold transition">
+                        مشاهده 
+                    </a>
+                    <a href="{{ route('sales.organizations.create') }}" 
+                    class="text-sm text-indigo-600 hover:text-indigo-800 font-semibold transition">
+                        + ایجاد  
+                    </a>
+                </div>
+            </div>
+
         </div>
 
         {{-- بخش دو ستونه: وظایف + پیگیری‌های امروز + اعلانات --}}
-        <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3">
+<div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3 max-w-6xl mx-auto">
 
             {{-- باکس وظایف تکمیل‌نشده --}}
             <div class="w-full max-w-[400px] h-[400px] bg-white border border-gray-200 shadow rounded-none flex flex-col">

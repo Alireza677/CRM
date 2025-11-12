@@ -1,135 +1,143 @@
 @extends('layouts.app')
 
 @section('content')
-@php
-    $q = request('q', '');
+    @php
+        // Normalize incoming controller payload: $results = [contacts, organizations, opportunities, proformas]
+        $q = $q ?? request('q');
+        $results = $results ?? [];
 
-    function hi($text, $q) {
-        if (!$q || !$text) return e($text);
-        $safe = preg_quote($q, '/');
-        return preg_replace('/(' . $safe . ')/iu', '<mark class="px-1 rounded bg-yellow-200">$1</mark>', e($text));
-    }
+        $mapToTitleUrl = function ($collection, $type) {
+            return collect($collection ?? [])->map(function ($item) use ($type) {
+                // If already normalized
+                if (is_array($item) && (isset($item['url']) || isset($item['title']))) {
+                    return [
+                        'title' => $item['title'] ?? ($item['label'] ?? ''),
+                        'url'   => $item['url']   ?? '#',
+                    ];
+                }
 
-    $icons = [
-        'contacts'      => '👤',
-        'organizations' => '🏢',
-        'opportunities' => '📈',
-        'proformas'     => '🧾',
-    ];
+                // Model normalization
+                switch ($type) {
+                    case 'contacts':
+                        $title = $item->full_name
+                            ?? trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? ''))
+                            ?: ($item->name ?? ('Contact #'.($item->id ?? '')));
+                        $url = route('sales.contacts.show', $item->id ?? $item);
+                        break;
+                    case 'organizations':
+                        $title = $item->name ?? $item->title ?? ('Org #'.($item->id ?? ''));
+                        $url = route('sales.organizations.show', $item->id ?? $item);
+                        break;
+                    case 'opportunities':
+                        $title = $item->name ?? $item->subject ?? $item->title ?? ('Opportunity #'.($item->id ?? ''));
+                        $url = route('sales.opportunities.show', $item->id ?? $item);
+                        break;
+                    case 'proformas':
+                        $title = $item->subject ?? $item->title ?? ('PF-'.($item->id ?? ''));
+                        $url = route('sales.proformas.show', $item->id ?? $item);
+                        break;
+                    default:
+                        $title = (string) ($item->title ?? $item->name ?? $item->id ?? '');
+                        $url = '#';
+                }
 
-    $labels = [
-        'contacts'      => 'مخاطبین',
-        'organizations' => 'سازمان‌ها',
-        'opportunities' => 'فرصت‌های فروش',
-        'proformas'     => 'پیش‌فاکتورها',
-    ];
+                return [
+                    'title' => $title,
+                    'url'   => $url,
+                ];
+            })->values()->all();
+        };
 
-    $total = collect($results ?? [])->flatten(1)->count();
-@endphp
+        $contacts      = $mapToTitleUrl($results['contacts']      ?? [], 'contacts');
+        $organizations  = $mapToTitleUrl($results['organizations']  ?? [], 'organizations');
+        $opportunities  = $mapToTitleUrl($results['opportunities']  ?? [], 'opportunities');
+        $proformas      = $mapToTitleUrl($results['proformas']      ?? [], 'proformas');
 
-<div class="container py-10" dir="rtl">
-  <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+        // Counts and totals
+        $counts = [
+            'contacts'      => count($contacts),
+            'organizations' => count($organizations),
+            'opportunities' => count($opportunities),
+            'proformas'     => count($proformas),
+        ];
+        $total = array_sum($counts);
+        $moduleCount = collect($counts)->filter(fn ($c) => $c > 0)->count();
 
-    <div class="flex items-center justify-between mb-6">
-      <h1 class="text-2xl font-bold text-gray-800">نتایج جستجو برای «{{ $q }}»</h1>
-      <form action="{{ route('global.search') }}" method="get" class="w-full max-w-md">
-        <div class="relative">
-          <input name="q" value="{{ $q }}"
-                 class="w-full rounded-2xl border border-gray-300 pr-4 pl-12 py-2 focus:ring-2 focus:ring-indigo-500 focus:border-indigo-500"
-                 placeholder="جستجو در کل سامانه..." />
-          <span class="absolute left-3 top-1/2 -translate-y-1/2 text-2xl">🔎</span>
+        // Convert to ['label','url'] for the card partial API
+        $toCardItems = function (array $items) {
+            return collect($items)->map(fn ($it) => [
+                'label' => $it['title'] ?? '',
+                'url'   => $it['url']   ?? '#',
+            ])->all();
+        };
+
+        $contactItems      = $toCardItems($contacts);
+        $organizationItems = $toCardItems($organizations);
+        $opportunityItems  = $toCardItems($opportunities);
+        $proformaItems     = $toCardItems($proformas);
+    @endphp
+
+    <div x-data="{ isLoading: false }" class="max-w-7xl mx-auto px-4 lg:px-8 py-8">
+        <div class="flex flex-col gap-3">
+            <h2 class="text-xl font-semibold">نتایج جستجو برای «{{ $q ?? '' }}»</h2>
+            <p class="text-sm text-slate-600" aria-live="polite">🔍 {{ $total }} نتیجه در {{ $moduleCount }} ماژول</p>
+
+            <form method="GET" action="{{ route('global.search') }}" x-on:submit="isLoading = true" class="relative">
+                <input
+                    type="text"
+                    name="q"
+                    value="{{ $q ?? '' }}"
+                    dir="rtl"
+                    placeholder="جستجو..."
+                    class="w-full rounded-xl border border-slate-200 bg-white/70 backdrop-blur pe-10 ps-4 py-2.5 text-sm text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-sky-400/30 focus:border-sky-400/50 transition"
+                />
+                <div class="pointer-events-none absolute right-3 top-1/2 -translate-y-1/2 text-slate-400">
+                    @includeIf('icons.contact', ['class' => 'w-5 h-5'])
+                </div>
+            </form>
         </div>
-      </form>
+
+        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
+            @include('global-search._module-card', [
+                'title' => 'مخاطبین',
+                'icon' => 'icons.contact',
+                'tintClass' => 'text-violet-600',
+                'items' => $contactItems,
+                'count' => $counts['contacts'],
+                'allUrl' => route('sales.contacts.index'),
+                'emptyCtaText' => 'مشاهده همه مخاطبین',
+            ])
+
+            @include('global-search._module-card', [
+                'title' => 'سازمان‌ها',
+                'icon' => 'icons.organization',
+                'tintClass' => 'text-sky-600',
+                'items' => $organizationItems,
+                'count' => $counts['organizations'],
+                'allUrl' => route('sales.organizations.index'),
+                'emptyCtaText' => 'مشاهده همه سازمان‌ها',
+            ])
+
+            @include('global-search._module-card', [
+                'title' => 'فرصت‌ها',
+                'icon' => 'icons.opportunity',
+                'tintClass' => 'text-emerald-600',
+                'items' => $opportunityItems,
+                'count' => $counts['opportunities'],
+                'allUrl' => route('sales.opportunities.index'),
+                'emptyCtaText' => 'مشاهده همه فرصت‌ها',
+            ])
+
+            @include('global-search._module-card', [
+                'title' => 'پیش‌فاکتورها',
+                'icon' => 'icons.proforma',
+                'tintClass' => 'text-orange-600',
+                'items' => $proformaItems,
+                'count' => $counts['proformas'],
+                'allUrl' => route('sales.proformas.index'),
+                'emptyCtaText' => 'مشاهده همه پیش‌فاکتورها',
+            ])
+        </div>
     </div>
-
-    <div class="mb-8">
-      <div class="rounded-2xl bg-white/70 backdrop-blur border border-gray-200 p-4 shadow-sm flex items-center gap-4">
-        <div class="text-3xl">📊</div>
-        <div>
-          <div class="font-semibold text-gray-800">تعداد نتایج: {{ $total }}</div>
-          <div class="text-gray-600 text-sm">نتایج به تفکیک نوع رکورد در باکس‌های زیر نمایش داده شده‌اند.</div>
-        </div>
-      </div>
-    </div>
-
-    <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
-      @forelse(($results ?? []) as $groupKey => $items)
-        <div class="rounded-2xl bg-white/80 backdrop-blur border border-gray-200 shadow-md">
-          <div class="px-5 py-4 border-b border-gray-200 flex items-center justify-between">
-            <div class="flex items-center gap-3">
-              <span class="text-2xl">{{ $icons[$groupKey] ?? '🔹' }}</span>
-              <h2 class="font-bold text-gray-800">{{ $labels[$groupKey] ?? $groupKey }}</h2>
-            </div>
-            <span class="text-xs bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full">{{ $items->count() }} نتیجه</span>
-          </div>
-
-          @if($items->isEmpty())
-            <div class="p-5 text-gray-500">موردی یافت نشد.</div>
-          @else
-            <ul class="divide-y divide-gray-200">
-              @foreach($items as $item)
-                <li class="p-5 hover:bg-gray-50 transition">
-                  <div class="flex flex-col gap-2">
-
-                    <div class="flex items-center justify-between gap-3">
-                      <a href="{{ $item->show_url ?? '#' }}" class="text-indigo-700 hover:text-indigo-900 font-semibold truncate">
-                        {!! hi($item->title ?? ($item->name ?? ('#'.$item->id)), $q) !!}
-                      </a>
-                      @php $chip = $item->status ?? $item->stage ?? $item->approval_stage ?? null; @endphp
-                      @if($chip)
-                        <span class="text-xs px-2 py-1 rounded-full bg-gray-100 text-gray-700 shrink-0">{{ $chip }}</span>
-                      @endif
-                    </div>
-
-                    @if(!empty($item->summary) || !empty($item->description))
-                      <p class="text-sm text-gray-600 line-clamp-2">
-                        {!! hi(Str::limit(strip_tags($item->summary ?? $item->description), 180), $q) !!}
-                      </p>
-                    @endif
-
-                    <div class="flex flex-wrap gap-2 text-xs text-gray-600">
-                      @if(isset($item->phone) && $item->phone)
-                        <span class="px-2 py-1 bg-gray-100 rounded">📞 {{ $item->phone }}</span>
-                      @endif
-                      @if(isset($item->email) && $item->email)
-                        <span class="px-2 py-1 bg-gray-100 rounded">✉️ {{ $item->email }}</span>
-                      @endif
-                      @if(isset($item->organization) && $item->organization)
-                        <span class="px-2 py-1 bg-gray-100 rounded">🏢 {{ $item->organization->name ?? $item->organization_name }}</span>
-                      @endif
-                      @if(isset($item->amount))
-                        <span class="px-2 py-1 bg-gray-100 rounded">💷 {{ number_format($item->amount) }}</span>
-                      @endif
-                      @if(isset($item->total))
-                        <span class="px-2 py-1 bg-gray-100 rounded">💷 {{ number_format($item->total) }}</span>
-                      @endif
-                      @if(isset($item->assigned_to) && $item->assigned_to)
-                        <span class="px-2 py-1 bg-gray-100 rounded">👤 ارجاع: {{ $item->assigned_to->name ?? $item->assigned_to_name }}</span>
-                      @endif
-                      @if(isset($item->updated_at))
-                        <span class="px-2 py-1 bg-gray-100 rounded">🗓 آخرین بروزرسانی: {{ jdate($item->updated_at)->format('Y/m/d H:i') }}</span>
-                      @endif
-                    </div>
-
-                    <div class="mt-2 flex items-center gap-2">
-                      <a href="{{ $item->show_url ?? '#' }}" class="text-sm px-3 py-1.5 rounded-xl bg-indigo-600 text-white hover:bg-indigo-700">مشاهده</a>
-                      @if(!empty($item->edit_url))
-                        <a href="{{ $item->edit_url }}" class="text-sm px-3 py-1.5 rounded-xl bg-white border border-gray-300 text-gray-700 hover:bg-gray-50">ویرایش</a>
-                      @endif
-                    </div>
-
-                  </div>
-                </li>
-              @endforeach
-            </ul>
-          @endif
-        </div>
-      @empty
-        <div class="rounded-2xl bg-white/80 backdrop-blur border border-gray-200 p-8 text-center text-gray-600">
-          هیچ نتیجه‌ای یافت نشد.
-        </div>
-      @endforelse
-    </div>
-  </div>
-</div>
 @endsection
+
