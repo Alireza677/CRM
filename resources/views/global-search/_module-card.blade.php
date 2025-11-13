@@ -66,9 +66,7 @@
                             </button>
                         @endif
 
-                        <a href="{{ $allUrl }}" class="inline-flex items-center text-sm {{ $tintClass }} hover:opacity-90 active:opacity-80 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300/50 rounded px-2 py-1">
-                            مشاهده همه
-                        </a>
+                        
                     </div>
                 </div>
             </div>
