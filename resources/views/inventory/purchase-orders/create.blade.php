@@ -1,6 +1,12 @@
 @extends('layouts.app')
 
 @section('content')
+@php
+  $breadcrumb = [
+    ['title' => 'سفارش‌های خرید', 'url' => route('inventory.purchase-orders.index')],
+    ['title' => 'ایجاد سفارش خرید'],
+  ];
+@endphp
 <div class="py-12" dir="rtl">
   <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
     <h2 class="text-2xl font-bold mb-6">ایجاد سفارش خرید</h2>
@@ -153,6 +159,7 @@
                     <option value="کیلوگرم">کیلوگرم</option>
                     <option value="مترمربع">متر مربع</option>
                     <option value="دستگاه">دستگاه</option>
+                    <option value="برگ">برگ</option>
                   </select>
                 </td>
                 <td class="px-3 py-2">
