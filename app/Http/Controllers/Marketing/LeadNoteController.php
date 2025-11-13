@@ -42,7 +42,7 @@ class LeadNoteController extends Controller
             $mentionedUsers = User::whereIn('username', $usernames)->get();
 
             foreach ($mentionedUsers as $user) {
-                $user->notify(new MentionedInNote($note));
+                // unified via NotificationRouter template system
                 try {
                     $router = app(\App\Services\Notifications\NotificationRouter::class);
                     $context = [

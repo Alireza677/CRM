@@ -18,6 +18,13 @@
 
                 // Model normalization
                 switch ($type) {
+                    case 'leads':
+                        $title = trim(((string)($item->prefix ?? '')) . ' ' . ((string)($item->full_name ?? '')));
+                        if ($title === '') {
+                            $title = $item->company ?? ('Lead #'.($item->id ?? ''));
+                        }
+                        $url = route('sales.leads.show', $item->id ?? $item);
+                        break;
                     case 'contacts':
                         $title = $item->full_name
                             ?? trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? ''))
@@ -48,6 +55,7 @@
             })->values()->all();
         };
 
+        $leads         = $mapToTitleUrl($results['leads']         ?? [], 'leads');
         $contacts      = $mapToTitleUrl($results['contacts']      ?? [], 'contacts');
         $organizations  = $mapToTitleUrl($results['organizations']  ?? [], 'organizations');
         $opportunities  = $mapToTitleUrl($results['opportunities']  ?? [], 'opportunities');
@@ -55,6 +63,7 @@
 
         // Counts and totals
         $counts = [
+            'leads'         => count($leads),
             'contacts'      => count($contacts),
             'organizations' => count($organizations),
             'opportunities' => count($opportunities),
@@ -71,6 +80,7 @@
             ])->all();
         };
 
+        $leadItems         = $toCardItems($leads);
         $contactItems      = $toCardItems($contacts);
         $organizationItems = $toCardItems($organizations);
         $opportunityItems  = $toCardItems($opportunities);
@@ -99,13 +109,21 @@
 
         <div class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
             @include('global-search._module-card', [
+                'title' => 'سرنخ‌ها',
+                'icon' => 'icons.contact',
+                'tintClass' => 'text-rose-600',
+                'items' => $leadItems,
+                'count' => $counts['leads'],
+                'allUrl' => route('sales.leads.index'),
+            ])
+
+            @include('global-search._module-card', [
                 'title' => 'مخاطبین',
                 'icon' => 'icons.contact',
                 'tintClass' => 'text-violet-600',
                 'items' => $contactItems,
                 'count' => $counts['contacts'],
                 'allUrl' => route('sales.contacts.index'),
-                'emptyCtaText' => 'مشاهده همه مخاطبین',
             ])
 
             @include('global-search._module-card', [
@@ -115,7 +133,6 @@
                 'items' => $organizationItems,
                 'count' => $counts['organizations'],
                 'allUrl' => route('sales.organizations.index'),
-                'emptyCtaText' => 'مشاهده همه سازمان‌ها',
             ])
 
             @include('global-search._module-card', [
@@ -125,7 +142,6 @@
                 'items' => $opportunityItems,
                 'count' => $counts['opportunities'],
                 'allUrl' => route('sales.opportunities.index'),
-                'emptyCtaText' => 'مشاهده همه فرصت‌ها',
             ])
 
             @include('global-search._module-card', [
@@ -135,7 +151,6 @@
                 'items' => $proformaItems,
                 'count' => $counts['proformas'],
                 'allUrl' => route('sales.proformas.index'),
-                'emptyCtaText' => 'مشاهده همه پیش‌فاکتورها',
             ])
         </div>
     </div>

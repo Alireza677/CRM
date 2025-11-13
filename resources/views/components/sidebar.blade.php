@@ -17,18 +17,18 @@
     ></div>
 
     <aside 
-    x-show="$store.menu.mainMenuOpen"
-    x-cloak
-    class="fixed top-0 right-0 h-full bg-white shadow-lg z-50 w-[50vw] md:w-[250px] transform transition-transform duration-300 ease-in-out"
-    :class="{ 'translate-x-0': $store.menu.mainMenuOpen, 'translate-x-full': !$store.menu.mainMenuOpen }"
-    x-transition:enter="transition-transform ease-out duration-300"
-    x-transition:enter-start="translate-x-full"
-    x-transition:enter-end="translate-x-0"
-    x-transition:leave="transition-transform ease-in duration-300"
-    x-transition:leave-start="translate-x-0"
-    x-transition:leave-end="translate-x-full"
-    dir="rtl"
-    @click.away="$store.menu.mainMenuOpen = false; $store.menu.subMenuOpen = false; $store.menu.activeMenu = null;"
+        x-show="$store.menu.mainMenuOpen"
+        x-cloak
+        class="fixed top-0 right-0 h-full bg-white shadow-lg z-50 w-[50vw] md:w-[250px] transform transition-transform duration-300 ease-in-out"
+        :class="{ 'translate-x-0': $store.menu.mainMenuOpen, 'translate-x-full': !$store.menu.mainMenuOpen }"
+        x-transition:enter="transition-transform ease-out duration-300"
+        x-transition:enter-start="translate-x-full"
+        x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition-transform ease-in duration-300"
+        x-transition:leave-start="translate-x-0"
+        x-transition:leave-end="translate-x-full"
+        dir="rtl"
+        @click.away="$store.menu.mainMenuOpen = false; $store.menu.subMenuOpen = false; $store.menu.activeMenu = null;"
     >
 
         <!-- دکمه داشبورد -->
@@ -44,51 +44,79 @@
             
             <button @click="$store.menu.openSubMenu('marketing')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='marketing' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">بازاریابی</button>
+                    :class="$store.menu.activeMenu==='marketing' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                بازاریابی
+            </button>
+
             <button @click="$store.menu.openSubMenu('sales')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='sales' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">فروش</button>
+                    :class="$store.menu.activeMenu==='sales' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                فروش
+            </button>
+
             <button @click="$store.menu.openSubMenu('projects')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='projects' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">پروژه‌ها</button>
+                    :class="$store.menu.activeMenu==='projects' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                پروژه‌ها
+            </button>
+
             <button @click="$store.menu.openSubMenu('inventory')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='inventory' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'"> تأمین و خرید</button>
+                    :class="$store.menu.activeMenu==='inventory' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                تأمین و خرید
+            </button>
+
             {{--<button @click="$store.menu.openSubMenu('print-templates')"
                      class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                     :class="$store.menu.activeMenu==='print-templates' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">قالب‌های پرینت</button>--}}
+                     :class="$store.menu.activeMenu==='print-templates' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                قالب‌های پرینت
+            </button>--}}
+
             {{--<button @click="$store.menu.openSubMenu('forms')"
                      class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                     :class="$store.menu.activeMenu==='forms' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">فرم‌ها</button>--}}
+                     :class="$store.menu.activeMenu==='forms' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                فرم‌ها
+            </button>--}}
+
             <button @click="$store.menu.openSubMenu('documents')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='documents' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">اسناد</button>
+                    :class="$store.menu.activeMenu==='documents' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                اسناد
+            </button>
+
             <button @click="$store.menu.openSubMenu('calendar')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='calendar' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">تقویم</button>        
+                    :class="$store.menu.activeMenu==='calendar' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                تقویم
+            </button>        
+
             <button @click="$store.menu.openSubMenu('settings')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
-                    :class="$store.menu.activeMenu==='settings' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">تنظیمات</button>
+                    :class="$store.menu.activeMenu==='settings' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                تنظیمات
+            </button>
 
+            <a href="{{ route('employee.portal.index') }}" class="w-full block text-right px-4 py-2 text-gray-700 rounded transition duration-200 hover:bg-gray-50">
+                پرتال کارمند
+            </a>
         </nav>
     </aside>
 
     <!-- Submenu (Left of Main Menu) -->
     <aside 
-    x-show="$store.menu.subMenuOpen"
-    x-cloak
-    class="fixed top-0 right-[50vw] h-full bg-white shadow-lg z-40 w-[50vw] md:right-[250px] md:w-[250px] transform transition-transform duration-300 ease-in-out"
-    :class="{ 'translate-x-0': $store.menu.subMenuOpen, 'translate-x-full': !$store.menu.subMenuOpen }"
-    x-transition:enter="transition-transform ease-out duration-300"
-    x-transition:enter-start="translate-x-full"
-    x-transition:enter-end="translate-x-0"
-    x-transition:leave="transition-transform ease-in duration-300"
-    x-transition:leave-start="translate-x-0"
-    x-transition:leave-end="translate-x-full"
-    dir="rtl"
-    @mousedown.away="$store.menu.subMenuOpen = false"
+        x-show="$store.menu.subMenuOpen"
+        x-cloak
+        class="fixed top-0 right-[50vw] h-full bg-white shadow-lg z-40 w-[50vw] md:right-[250px] md:w-[250px] transform transition-transform duration-300 ease-in-out"
+        :class="{ 'translate-x-0': $store.menu.subMenuOpen, 'translate-x-full': !$store.menu.subMenuOpen }"
+        x-transition:enter="transition-transform ease-out duration-300"
+        x-transition:enter-start="translate-x-full"
+        x-transition:enter-end="translate-x-0"
+        x-transition:leave="transition-transform ease-in duration-300"
+        x-transition:leave-start="translate-x-0"
+        x-transition:leave-end="translate-x-full"
+        dir="rtl"
+        @mousedown.away="$store.menu.subMenuOpen = false"
     >
-
 
         <div class="flex flex-col h-full">
             <div class="p-4 border-b border-gray-200 flex justify-between items-center">
@@ -118,6 +146,7 @@
                         @endrole
                     </div>
                 </template>
+
                 <template x-if="$store.menu.activeMenu === 'sales'">
                     <div class="space-y-2">
                         <a href="{{ route('sales.opportunities.index') }}" class="menu-item">فرصت‌های فروش</a>
@@ -170,10 +199,10 @@
                         <a href="{{ route('settings.automation.edit') }}" class="menu-item">اتوماسیون</a>
                         <a href="{{ route('settings.notifications.index') }}" class="menu-item">تنظیمات اعلان‌ها</a>
                         <a href="{{ route('roles.matrix') }}" class="menu-item">ماتریس دسترسی نقش‌ها</a>
-                        @endrole
-                        @can('reports.view')
-                            <a href="{{ route('admin.role-permissions') }}" class="menu-item">گزارش نقش‌ها و دسترسی‌ها</a>
-                        @endcan
+                    @endrole
+                    @can('reports.view')
+                        <a href="{{ route('admin.role-permissions') }}" class="menu-item">گزارش نقش‌ها و دسترسی‌ها</a>
+                    @endcan
                     </div>
                 </template>
 
@@ -190,7 +219,7 @@
                 <template x-if="$store.menu.activeMenu === 'documents'">
                     <div class="space-y-2">
                         <a href="{{ route('reports.dashboard') }}" class="menu-item">داشبورد گزارش‌ها</a>
-                        <a href="{{ route('reports.index') }}" class="menu-item">همهٔ گزارش‌ها</a>
+                        <a href="{{ route('reports.index') }}" class="menu-item">همه گزارش‌ها</a>
                     </div>
                 </template>
 
@@ -214,7 +243,7 @@
   /* لایه دوم (زیرمنو) */
   .relative.z-50 > aside:nth-of-type(2) {
     width: 50vw !important;
-    right: 50vw !important; /* دقیقا کنار منوی اصلی باز می‌شود */
+    right: 50vw !important; /* دقیقاً کنار منوی اصلی باز می‌شود */
   }
 }
 
@@ -232,6 +261,7 @@
     right: 250px !important; /* کنار لایه اول */
   }
 }
+
 /* زیرمنو: آیتم‌ها عمودی زیر هم */
 @media (max-width: 767.98px), (min-width: 768px) {
   /* ظرف لیست زیرمنو را ستونی کن */

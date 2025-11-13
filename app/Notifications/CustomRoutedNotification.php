@@ -29,6 +29,8 @@ class CustomRoutedNotification extends Notification implements ShouldQueue
     {
         return [
             'title'  => $this->subject,
+            // compatibility for UIs expecting 'message'
+            'message'=> $this->subject,
             'body'   => $this->body,
             'url'    => $this->url,
             'module' => $this->module,
@@ -36,4 +38,3 @@ class CustomRoutedNotification extends Notification implements ShouldQueue
         ];
     }
 }
-

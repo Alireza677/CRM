@@ -3,7 +3,7 @@
 @section('content')
 @php
     $breadcrumb = [
-        ['title' => 'انبار', 'url' => '#'],
+        ['title' => 'سفارش های خرید', 'url' => route('inventory.purchase-orders.index')],
         ['title' => 'جزئیات سفارش: ' . ($purchaseOrder->subject ?? '-')]
     ];
 @endphp
@@ -38,6 +38,9 @@
                 <nav class="space-y-1">
                     <a href="#" data-url="{{ route('inventory.purchase-orders.tab', ['purchaseOrder' => $purchaseOrder->id, 'tab' => 'info']) }}" class="load-tab flex items-center justify-between px-3 py-2 rounded bg-blue-100 text-blue-800 font-semibold">
                         <span class="flex items-center space-x-2 rtl:space-x-reverse"><i class="fas fa-info-circle"></i><span>اطلاعات</span></span>
+                    </a>
+                    <a href="#" data-url="{{ route('inventory.purchase-orders.tab', ['purchaseOrder' => $purchaseOrder->id, 'tab' => 'items']) }}" class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        <i class="fas fa-list text-gray-500"></i><span>آیتم‌ها</span>
                     </a>
                     <a href="#" data-url="{{ route('inventory.purchase-orders.tab', ['purchaseOrder' => $purchaseOrder->id, 'tab' => 'updates']) }}" class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-sync-alt text-gray-500"></i><span>به‌روزرسانی‌ها</span>

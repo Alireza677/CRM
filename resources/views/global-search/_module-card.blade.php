@@ -5,7 +5,7 @@
     'items' => [],           // array of ['label' => '', 'url' => '']
     'count' => 0,
     'allUrl' => '#',
-    'emptyCtaText' => 'مشاهده همه',
+    'emptyCtaText' => ' ',
 ])
 
 <div class="rounded-2xl bg-white/70 backdrop-blur-md shadow-sm hover:shadow-md transition ring-1 ring-black/5 p-5">

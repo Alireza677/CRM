@@ -92,7 +92,18 @@ class TaskNoteController extends Controller
                     $note->mentions()->sync($mentionIds);
                     $users = User::whereIn('id', $mentionIds)->get();
                     foreach ($users as $u) {
-                        $u->notify(new MentionedInNote($note, $project, $task));
+                        try {
+                            $router = app(\App\Services\Notifications\NotificationRouter::class);
+                            $context = [
+                                'note_body' => $note->body,
+                                'mentioned_user' => $u,
+                                'mentioned_user_name' => $u->name,
+                                'context_label' => 'Task',
+                                'url' => route('projects.tasks.show', [$project, $task]) . '#note-' . $note->id,
+                            ];
+                            $router->route('notes', 'note.mentioned', $context, [$u]);
+                        } catch (\Throwable $e) { /* ignore router errors */ }
+
                         $note->mentions()->updateExistingPivot($u->id, ['notified_at' => now()]);
                     }
                 }

@@ -170,6 +170,9 @@ class PurchaseOrderController extends Controller
         if (in_array($tab, ['documents', 'info'], true)) {
             $purchaseOrder->loadMissing('documents');
         }
+        if ($tab === 'items') {
+            $purchaseOrder->loadMissing('items');
+        }
         if ($tab === 'info') {
             $data['poSettings'] = PurchaseOrderWorkflowSetting::first();
         }

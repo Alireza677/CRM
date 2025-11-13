@@ -59,6 +59,7 @@ use App\Http\Controllers\ReportController;
 use App\Http\Controllers\Admin\RoleReportController;
 use App\Http\Controllers\Admin\RolePermissionMatrixController;
 use App\Http\Controllers\HolidayController;
+use App\Http\Controllers\EmployeePortalController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -111,7 +112,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('marketing/leads/{lead}/convert', [SalesLeadController::class, 'convertToOpportunity'])
         ->name('marketing.leads.convert');
 
-    // حذف گروهی از کنترلری که خودت ویرایشش کردی
+    // حذف گروهی از کنترلی که خودت ویرایشش کردی
     Route::post('/marketing/leads/bulk-delete', [SalesLeadController::class, 'bulkDelete'])->name('marketing.leads.bulk-delete');
 
     // سایر عملیات مربوط به تب‌ها و نوت‌ها
@@ -313,9 +314,9 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('products', ProductController::class)->except(['show'])->whereNumber('product');
         Route::resource('suppliers', SupplierController::class);          // => inventory.suppliers.index
         // Tabs loader for purchase orders (info, documents, notes, updates)
-        Route::get('purchase-orders/{purchaseOrder}/tab/{tab}', [PurchaseOrderController::class, 'loadTab'])
-            ->whereIn('tab', ['info','documents','notes','updates'])
-            ->name('purchase-orders.tab');
+          Route::get('purchase-orders/{purchaseOrder}/tab/{tab}', [PurchaseOrderController::class, 'loadTab'])
+              ->whereIn('tab', ['info','items','documents','notes','updates'])
+              ->name('purchase-orders.tab');
 
         // Notes on purchase orders
         Route::post('purchase-orders/{purchaseOrder}/notes', [\App\Http\Controllers\PurchaseOrderNoteController::class, 'store'])
@@ -485,7 +486,7 @@ Route::middleware(['auth'])->group(function () {
                 |-------------------------
                 */
 
-                // ثبت یادداشتِ جدید برای تسک
+                // ثبت یادداشت جدید برای تسک
                 Route::post('tasks/{task}/notes', [TaskNoteController::class, 'store'])
                     ->middleware('can:view,task') // یا can:create, App\Models\Note اگر پالیسی جدا دارید
                     ->name('tasks.notes.store')
@@ -530,7 +531,16 @@ Route::middleware(['auth'])->group(function () {
             ->name('activities.complete');
 
         Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
-        Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events'); // فید ایونت‌ها
+        Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events');
+        Route::prefix('employee-portal')->name('employee.portal.')->group(function () {
+            Route::get('/', [EmployeePortalController::class, 'index'])->name('index');
+            Route::get('/contract', [EmployeePortalController::class, 'contract'])->name('contract');
+            Route::get('/leave-request', [EmployeePortalController::class, 'leaveRequest'])->name('leave.request');
+            Route::post('/leave-request', [EmployeePortalController::class, 'submitLeaveRequest'])->name('leave.submit');
+            Route::get('/leaves', [EmployeePortalController::class, 'leaves'])->name('leaves');
+            Route::get('/payslips', [EmployeePortalController::class, 'payslips'])->name('payslips');
+            Route::get('/insurance', [EmployeePortalController::class, 'insurance'])->name('insurance');
+        }); // فید ایونت‌ها
 
         // Admin: Holidays management
         Route::middleware(['role:admin'])->group(function () {

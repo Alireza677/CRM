@@ -4,6 +4,7 @@ namespace App\Services\Notifications;
 
 use App\Models\NotificationRule;
 use App\Models\User;
+use App\Support\NotificationTemplateResolver;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Support\Arr;
 use App\Services\Sms\FarazEdgeService;
@@ -166,7 +167,87 @@ class NotificationRouter
     public function route(string $module, string $event, array $context, array $recipients): void
     {
         $rule = $this->findRule($module, $event, $context);
-        if (!$rule) return;
+        if (!$rule) {
+            // Fallback: use template resolver + default channels from config
+            $def = config("notification_events.modules.$module.events.$event");
+            if (!$def) return;
+
+            $channels = (array) ($def['default_channels'] ?? ['database']);
+
+            // Normalize recipients to User models
+            $recipients = array_values(array_filter(array_map(function ($r) {
+                if ($r instanceof User) return $r;
+                if (is_numeric($r)) return User::find((int) $r);
+                return null;
+            }, $recipients)));
+
+            $url = $context['url'] ?? null;
+
+            foreach ($recipients as $user) {
+                if (in_array('database', $channels, true)) {
+                    try {
+                        $tpl = NotificationTemplateResolver::resolve($module, $event, 'database', $context);
+                        $body = (string) ($tpl['body'] ?? '');
+                        if ($body !== '') {
+                            $user->notify(new \App\Notifications\CustomRoutedNotification(
+                                $module,
+                                $event,
+                                (string) ($tpl['subject'] ?? ''),
+                                $body,
+                                $url
+                            ));
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('NotificationRouter: fallback database notify failed', [
+                            'user_id' => $user->id,
+                            'module'  => $module,
+                            'event'   => $event,
+                            'error'   => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                if (in_array('email', $channels, true) && $user->email) {
+                    try {
+                        $tpl = NotificationTemplateResolver::resolve($module, $event, 'email', $context);
+                        $subj = (string) ($tpl['subject'] ?? '');
+                        $body = (string) ($tpl['body'] ?? '');
+                        if ($subj !== '' || $body !== '') {
+                            Mail::to($user->email)->queue(new \App\Mail\RoutedNotificationMail($subj, $body, $url));
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('NotificationRouter: fallback email failed', [
+                            'user_id' => $user->id,
+                            'email'   => $user->email,
+                            'module'  => $module,
+                            'event'   => $event,
+                            'error'   => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                if (in_array('sms', $channels, true) && $user->mobile) {
+                    try {
+                        $tpl = NotificationTemplateResolver::resolve($module, $event, 'sms', $context);
+                        $text = (string) ($tpl['body'] ?? '');
+                        if ($text !== '') {
+                            /** @var FarazEdgeService $sms */
+                            $sms = app(FarazEdgeService::class);
+                            $sms->sendWebservice($user->mobile, $text);
+                        }
+                    } catch (\Throwable $e) {
+                        Log::error('NotificationRouter: fallback sms failed', [
+                            'user_id' => $user->id,
+                            'mobile'  => $user->mobile,
+                            'module'  => $module,
+                            'event'   => $event,
+                            'error'   => $e->getMessage(),
+                        ]);
+                    }
+                }
+            }
+            return;
+        }
 
         $rendered = $this->renderTemplates($rule, $context);
         $this->dispatch($rule, $rendered, $recipients, [

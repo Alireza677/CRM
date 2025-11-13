@@ -1,22 +1,23 @@
 @extends('layouts.app')
 
-@section('title', 'مدیریت تعطیلات شرکت')
+@section('title', 'مدیریت رویدادهای شرکت')
 
 @section('content')
   @php
     $breadcrumb = [
-      ['title' => 'مدیریت تعطیلات']
+      ['title' => 'مدیریت رویداد']
     ];
   @endphp
   <div class="max-w-4xl mx-auto px-4 py-6" dir="rtl">
-    <h1 class="text-2xl font-semibold mb-6">مدیریت تعطیلات شرکت</h1>
+    <h1 class="text-2xl font-semibold mb-6">مدیریت رویدادهای شرکت</h1>
+              <span class="text-gray-500 text-sm mr-2">  با ثبت رویداد جدید علاوه بر نمایش مناسبت در تقویم میتوانید برای کاربران پیامک نیز ارسال کنید.</span>
 
     @if (session('status'))
       <div class="mb-4 rounded bg-green-50 text-green-700 px-3 py-2">{{ session('status') }}</div>
     @endif
 
     <div class="bg-white rounded-md shadow p-4 mb-8">
-      <h2 class="font-semibold mb-3">ثبت تعطیلی جدید</h2>
+      <h2 class="font-semibold mb-3">ثبت رویداد جدید</h2>
       <form id="holidayForm" action="{{ route('holidays.store') }}" method="POST" class="space-y-4">
         @csrf
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -76,7 +77,7 @@
         </div>
         <div class="pt-2">
           <button class="px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">ثبت</button>
-          <span class="text-gray-500 text-sm mr-2">با زدن دکمه ثبت پیامک برای کاربران ارسال می شود.</span>
+          
         </div>
         
         <!-- Users Modal -->

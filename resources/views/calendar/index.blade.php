@@ -5,10 +5,18 @@
 @section('content')
   <div class="max-w-7xl mx-auto px-4 py-6">
     <div class="flex items-center justify-between mb-3">
-      <a href="{{ route('activities.create') }}"
-         class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
-         + ایجاد وظیفه
-      </a>
+      <div class="flex items-center gap-2">
+        <a href="{{ route('activities.create') }}"
+           class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
+           + ایجاد وظیفه
+        </a>
+        @role('admin')
+          <a href="{{ route('holidays.index') }}"
+             class="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
+             ثبت رویداد جدید
+          </a>
+        @endrole
+      </div>
 
       <!-- فیلتر تقویم: شخصی / مشترک -->
       <div id="calendar-filter" class="flex gap-2" dir="rtl">

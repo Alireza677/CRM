@@ -8,6 +8,7 @@ use App\Models\Contact;
 use App\Models\Organization;
 use App\Models\Opportunity;
 use App\Models\Proforma;
+use App\Models\SalesLead;
 
 class GlobalSearchController extends Controller
 {
@@ -22,6 +23,31 @@ class GlobalSearchController extends Controller
     public function index(Request $request)
     {
         $q = trim($request->get('q', ''));
+
+        /* ===================== Leads ===================== */
+        $leads = SalesLead::query()
+            ->when($q, function ($qq) use ($q) {
+                $table = (new SalesLead)->getTable();
+                $qq->where(function ($w) use ($table, $q) {
+                    $this->likeIfExists($w, $table, 'full_name', $q);
+                    $this->likeIfExists($w, $table, 'company', $q);
+                    $this->likeIfExists($w, $table, 'email', $q);
+                    $this->likeIfExists($w, $table, 'mobile', $q);
+                    $this->likeIfExists($w, $table, 'phone', $q);
+                    $this->likeIfExists($w, $table, 'lead_source', $q);
+                    $this->likeIfExists($w, $table, 'lead_status', $q);
+                });
+            })
+            ->limit(20)->get()
+            ->map(function ($lead) {
+                $person = trim(((string)($lead->prefix ? $lead->prefix . ' ' : '')) . ((string)($lead->full_name ?? '')));
+                $lead->title    = $person !== '' ? $person : ($lead->company ?: ('Lead #'.$lead->id));
+                $lead->summary  = $lead->notes ?? null;
+                $lead->phone    = $lead->phone ?? $lead->mobile ?? null;
+                $lead->email    = $lead->email ?? null;
+                $lead->show_url = route('sales.leads.show', $lead);
+                return $lead;
+            });
 
         /* ===================== Contacts ===================== */
         $contacts = Contact::query()
@@ -124,6 +150,7 @@ class GlobalSearchController extends Controller
             });
 
         $results = collect([
+            'leads'         => $leads,
             'contacts'      => $contacts,
             'organizations' => $organizations,
             'opportunities' => $opportunities,

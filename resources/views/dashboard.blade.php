@@ -207,6 +207,10 @@
                                                 : '#' ));
                                     $title = $data['message'] ?? $data['title'] ?? 'اعلان جدید';
                                 @endphp
+                                @php
+                                    // Prefer template-based title over legacy message
+                                    $title = $data['title'] ?? $data['message'] ?? $title;
+                                @endphp
 
                                 <li>
                                     <a href="{{ $itemUrl }}" class="block px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 transition outline-none" aria-label="مشاهده اعلان">
