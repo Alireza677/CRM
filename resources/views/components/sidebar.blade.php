@@ -66,6 +66,12 @@
                 تأمین و خرید
             </button>
 
+            <button @click="$store.menu.openSubMenu('support')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='support' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                خدمات پس از فروش
+            </button>
+
             {{--<button @click="$store.menu.openSubMenu('print-templates')"
                      class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                      :class="$store.menu.activeMenu==='print-templates' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
@@ -126,6 +132,7 @@
                     <template x-if="$store.menu.activeMenu === 'sales'">فروش</template>
                     <template x-if="$store.menu.activeMenu === 'projects'">پروژه‌ها</template>
                     <template x-if="$store.menu.activeMenu === 'inventory'">موجودی</template>
+                    <template x-if="$store.menu.activeMenu === 'support'">خدمات پس از فروش</template>
                     <template x-if="$store.menu.activeMenu === 'print-templates'">قالب‌های پرینت</template>
                     <template x-if="$store.menu.activeMenu === 'forms'">فرم‌ها</template>
                     <template x-if="$store.menu.activeMenu === 'settings'">تنظیمات</template>
@@ -175,6 +182,13 @@
                         <a href="{{ route('inventory.products.index') }}" class="menu-item">محصولات</a>
                         <a href="{{ route('inventory.suppliers.index') }}" class="menu-item">تأمین‌کنندگان</a>
                         <a href="{{ route('inventory.purchase-orders.index') }}" class="menu-item">سفارش‌های خرید</a>
+                    </div>
+                </template>
+
+                <template x-if="$store.menu.activeMenu === 'support'">
+                    <div class="space-y-2">
+                        <a href="{{ route('support.after-sales-services.index') }}" class="menu-item">فرم‌های خدمات پس از فروش</a>
+                        <a href="{{ route('support.after-sales-services.create') }}" class="menu-item">ثبت فرم جدید</a>
                     </div>
                 </template>
 

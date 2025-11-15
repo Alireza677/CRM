@@ -15,6 +15,7 @@ use App\Http\Controllers\Marketing\LeadNoteController;
 use App\Http\Controllers\SalesController;
 use App\Http\Controllers\InventoryController;
 use App\Http\Controllers\SupportController;
+use App\Http\Controllers\Support\AfterSalesServiceController;
 use App\Http\Controllers\ProjectsController;
 use App\Http\Controllers\ToolsController;
 use App\Http\Controllers\AdminController;
@@ -327,6 +328,9 @@ Route::middleware(['auth'])->group(function () {
 
     // Other Modules
     Route::get('/support', [SupportController::class, 'index'])->name('support');
+    Route::prefix('support')->name('support.')->group(function () {
+        Route::resource('after-sales-services', AfterSalesServiceController::class)->names('after-sales-services');
+    });
     Route::get('/tools', [ToolsController::class, 'index'])->name('tools');
     Route::get('/admin', [AdminController::class, 'index'])->name('admin');
     Route::get('/customize', [CustomizeController::class, 'index'])->name('customize');
