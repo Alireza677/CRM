@@ -327,7 +327,7 @@
             </div>
 
             <div>
-                <label for="spot_heating_systems" class="block font-medium text-sm text-gray-700">تعداد سامانه گرمایش موضعی پیشنهادی</label>
+                <label for="spot_heating_systems" class="block font-medium text-sm text-gray-700">تعداد سامانه موضعی45kw پیشنهادی</label>
                 <input type="number" min="0" step="1" name="spot_heating_systems" id="spot_heating_systems"
                        value="{{ old('spot_heating_systems', $lead->spot_heating_systems ?? '') }}"
                        class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
