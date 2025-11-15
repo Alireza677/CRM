@@ -25,6 +25,18 @@ class LeadController extends Controller
                 'mobile' => 'nullable|string|max:20',
                 'lead_source' => 'required|string|max:100',
                 'assigned_to' => 'required|integer|exists:users,id',
+                'building_usage' => 'nullable|string|max:255',
+                'internal_temperature' => 'nullable|numeric',
+                'external_temperature' => 'nullable|numeric',
+                'building_length' => 'nullable|numeric',
+                'building_width' => 'nullable|numeric',
+                'eave_height' => 'nullable|numeric',
+                'ridge_height' => 'nullable|numeric',
+                'wall_material' => 'nullable|string|max:255',
+                'insulation_status' => 'nullable|string|max:20',
+                'spot_heating_systems' => 'nullable|integer',
+                'central_200_systems' => 'nullable|integer',
+                'central_300_systems' => 'nullable|integer',
             ]);
 
             // افزودن فیلدهای پیش‌فرض

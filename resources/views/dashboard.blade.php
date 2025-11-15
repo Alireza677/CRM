@@ -7,7 +7,7 @@
      {{-- کارت ۲: سرنخ --}}
     <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
         <div class="absolute -top-4 flex justify-center">
-            <img src="{{ asset('images/recruitment.png') }}" alt="icon" class="w-8 h-8 object-contain drop-shadow">
+            <img src="{{ asset('images/recruitment.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
         <h3 class="text-sm font-bold text-gray-800 mb-1 mt-4">سرنخ</h3>
         <p class="text-xs text-gray-700 mb-2 leading-relaxed">
@@ -25,7 +25,7 @@
     {{-- کارت ۱: فرصت فروش --}}
     <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
         <div class="absolute -top-4 flex justify-center">
-            <img src="{{ asset('images/sales-pipeline.png') }}" alt="icon" class="w-8 h-8 object-contain drop-shadow">
+            <img src="{{ asset('images/sales-pipeline.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
         <h3 class="text-sm font-bold text-gray-800 mb-1 mt-4">فرصت فروش</h3>
         <p class="text-xs text-gray-700 mb-2 leading-relaxed">
@@ -44,7 +44,7 @@
     {{-- کارت ۴: پیش‌فاکتور --}}
     <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
         <div class="absolute -top-4 flex justify-center">
-            <img src="{{ asset('images/invoice.png') }}" alt="icon" class="w-8 h-8 object-contain drop-shadow">
+            <img src="{{ asset('images/invoice.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
         <h3 class="text-sm font-bold text-gray-800 mb-1 mt-4">پیش‌فاکتورها</h3>
         <p class="text-xs text-gray-700 mb-2 leading-relaxed">
@@ -83,7 +83,7 @@
     {{-- کارت ۳: مخاطبین --}}
     <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
         <div class="absolute -top-4 flex justify-center">
-            <img src="{{ asset('images/contacts-book.png') }}" alt="icon" class="w-8 h-8 object-contain drop-shadow">
+            <img src="{{ asset('images/contacts-book.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
         <h3 class="text-sm font-bold text-gray-800 mb-1 mt-4">مخاطبین</h3>
         <p class="text-xs text-gray-700 mb-2 leading-relaxed">

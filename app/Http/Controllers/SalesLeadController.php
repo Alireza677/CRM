@@ -112,6 +112,18 @@ class SalesLeadController extends Controller
             'state' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
             'notes' => 'nullable|string',
+            'building_usage' => 'nullable|string|max:255',
+            'internal_temperature' => 'nullable|numeric',
+            'external_temperature' => 'nullable|numeric',
+            'building_length' => 'nullable|numeric|min:0',
+            'building_width' => 'nullable|numeric|min:0',
+            'eave_height' => 'nullable|numeric|min:0',
+            'ridge_height' => 'nullable|numeric|min:0',
+            'wall_material' => 'nullable|string|max:255',
+            'insulation_status' => 'nullable|string|in:good,medium,weak',
+            'spot_heating_systems' => 'nullable|integer|min:0',
+            'central_200_systems' => 'nullable|integer|min:0',
+            'central_300_systems' => 'nullable|integer|min:0',
         ], [
             'full_name.required' => 'نام و نام خانوادگی الزامی است.',
             'email.email' => 'فرمت ایمیل نامعتبر است.',
@@ -247,6 +259,18 @@ class SalesLeadController extends Controller
             // پس توی ولیدیشن هم آزاد می‌ذاریم که خطا نده،
             // ولی بعداً حذفش می‌کنیم.
             'notes' => 'nullable|string',
+            'building_usage' => 'nullable|string|max:255',
+            'internal_temperature' => 'nullable|numeric',
+            'external_temperature' => 'nullable|numeric',
+            'building_length' => 'nullable|numeric|min:0',
+            'building_width' => 'nullable|numeric|min:0',
+            'eave_height' => 'nullable|numeric|min:0',
+            'ridge_height' => 'nullable|numeric|min:0',
+            'wall_material' => 'nullable|string|max:255',
+            'insulation_status' => 'nullable|string|in:good,medium,weak',
+            'spot_heating_systems' => 'nullable|integer|min:0',
+            'central_200_systems' => 'nullable|integer|min:0',
+            'central_300_systems' => 'nullable|integer|min:0',
         ]);
 
         if ($validator->fails()) {
