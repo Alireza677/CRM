@@ -189,15 +189,15 @@
                     </div>
 
                     <div class="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
-                        <span class="text-gray-500">تعداد سامانه موضعی 45kw پیشنهادی</span>
+                        <span class="text-gray-500">تعداد سامانه موضعی 45kw محاسبه شده</span>
                         <span class="font-semibold text-gray-900">{{ $formatMetric($lead->spot_heating_systems) }}</span>
                     </div>
                     <div class="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
-                        <span class="text-gray-500">تعداد سامانه مرکزی آگرین پیشنهادی</span>
+                        <span class="text-gray-500">تعداد سامانه مرکزی آگرین محاسبه شده</span>
                         <span class="font-semibold text-gray-900">{{ $formatMetric($lead->central_200_systems) }}</span>
                     </div>
                     <div class="flex items-center justify-between border border-gray-100 rounded-xl px-4 py-3">
-                        <span class="text-gray-500">تعداد سامانه مرکزی اوها ۳۰۰ پیشنهادی</span>
+                        <span class="text-gray-500">تعداد سامانه مرکزی اوها ۳۰۰ محاسبه شده</span>
                         <span class="font-semibold text-gray-900">{{ $formatMetric($lead->central_300_systems) }}</span>
                     </div>
                 </div>
