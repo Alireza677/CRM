@@ -30,7 +30,8 @@
                   <th class="px-4 py-3 text-xs text-right text-gray-500">پرداخت‌شده</th>
                   <th class="px-4 py-3 text-xs text-right text-gray-500">مانده</th>
                   <th class="px-4 py-3 text-xs text-right text-gray-500">درخواست‌کننده</th>
-              </tr>
+                  <th class="px-4 py-3 text-xs text-right text-gray-500">اقدامات</th>
+                </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
                 @php use Morilog\Jalali\Jalalian; @endphp
@@ -77,10 +78,23 @@
                     <td class="px-4 py-3 text-sm text-gray-900">{{ number_format($order->previously_paid_amount ?? 0, 0) }} ریال</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ number_format($order->remaining_payable_amount ?? 0, 0) }} ریال</td>
                     <td class="px-4 py-3 text-sm text-gray-900">{{ $order->requested_by_name }}</td>
+                    <td class="px-4 py-3 text-sm text-gray-900">
+                      @can('delete', $order)
+                        <form action="{{ route('inventory.purchase-orders.destroy', $order) }}" method="POST" class="inline" onsubmit="return confirm('سفارش خرید حذف شود؟');">
+                          @csrf
+                          @method('DELETE')
+                          <button type="submit" class="px-3 py-1 text-xs font-semibold text-white bg-red-600 rounded hover:bg-red-700 focus:outline-none focus:ring-2 focus:ring-offset-1 focus:ring-red-500">
+                            حذف
+                          </button>
+                        </form>
+                      @else
+                        <span class="text-gray-400 text-xs">—</span>
+                      @endcan
+                    </td>
                   </tr>
                 @empty
                   <tr>
-                    <td colspan="11" class="text-center py-4 text-sm text-gray-500">سفارشی ثبت نشده است.</td>
+                    <td colspan="12" class="text-center py-4 text-sm text-gray-500">سفارشی ثبت نشده است.</td>
                   </tr>
                 @endforelse
               </tbody>

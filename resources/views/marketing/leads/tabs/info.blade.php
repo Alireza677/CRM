@@ -126,7 +126,7 @@
         <div class="lg:col-span-12 rounded-2xl border border-gray-200 bg-white shadow-sm hover:shadow-md transition">
             <div class="p-5 space-y-4">
                 <div class="flex flex-col gap-1">
-                    <h2 class="text-base font-semibold text-gray-900">اطلاعات ساختمان</h2>
+                    <h2 class="text-base font-semibold text-gray-900">اطلاعات  ساختمان یا سازه</h2>
                     <p class="text-sm text-gray-500">مرور داده‌های فنی برای طراحی یا پیشنهاد سیستم</p>
                 </div>
 

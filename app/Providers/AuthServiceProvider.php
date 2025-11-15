@@ -23,6 +23,8 @@ use App\Models\Organization;
 use App\Policies\OrganizationPolicy;
 use App\Models\Document;
 use App\Policies\DocumentPolicy;
+use App\Models\PurchaseOrder;
+use App\Policies\PurchaseOrderPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -36,6 +38,7 @@ class AuthServiceProvider extends ServiceProvider
         \App\Models\Project::class => \App\Policies\ProjectPolicy::class,
         Task::class => TaskPolicy::class,
         Report::class => ReportPolicy::class,
+        PurchaseOrder::class => PurchaseOrderPolicy::class,
     ];
 
     public function boot(): void
@@ -48,4 +51,3 @@ class AuthServiceProvider extends ServiceProvider
         });
     }
 }
-

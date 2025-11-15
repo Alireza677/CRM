@@ -721,4 +721,42 @@ class PurchaseOrderController extends Controller
         $purchaseOrder->save();
         return back()->with('success', 'وضعیت به «تحویل انبار» تغییر یافت.');
     }
+
+    public function destroy(PurchaseOrder $purchaseOrder)
+    {
+        try {
+            $this->authorize('delete', $purchaseOrder);
+
+            DB::transaction(function () use ($purchaseOrder) {
+                foreach (['notes', 'documents', 'items', 'approvals', 'activities'] as $relation) {
+                    if (! method_exists($purchaseOrder, $relation)) {
+                        continue;
+                    }
+
+                    try {
+                        $purchaseOrder->{$relation}()->delete();
+                    } catch (\Throwable $e) {
+                        Log::warning('PurchaseOrder.destroy: relation delete failed', [
+                            'relation' => $relation,
+                            'purchase_order_id' => $purchaseOrder->id,
+                            'error' => $e->getMessage(),
+                        ]);
+                    }
+                }
+
+                $purchaseOrder->delete();
+            });
+
+            return redirect()
+                ->route('inventory.purchase-orders.index')
+                ->with('success', 'سفارش خرید با موفقیت حذف شد.');
+        } catch (\Throwable $e) {
+            Log::error('PurchaseOrder.destroy: failed to delete purchase order', [
+                'purchase_order_id' => $purchaseOrder->id ?? null,
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'خطا در حذف سفارش خرید. لطفاً دوباره تلاش کنید.');
+        }
+    }
 }
