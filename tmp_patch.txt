@@ -1,0 +1,131 @@
+*** Begin Patch
+*** Update File: app/Http/Controllers/Api/ServiceRequestController.php
+@@
+-namespace App\Http\Controllers\Api;
+-
+-use App\Http\Controllers\Controller;
+-use App\Models\AfterSalesService;
+-use Illuminate\Http\JsonResponse;
+-use Illuminate\Http\Request;
+-use Illuminate\Support\Facades\Log;
++namespace App\Http\Controllers\Api;
++
++use App\Http\Controllers\Controller;
++use App\Models\AfterSalesService;
++use Illuminate\Http\JsonResponse;
++use Illuminate\Http\Request;
++use Illuminate\Support\Facades\Log;
++use Illuminate\Support\Facades\Validator;
+@@
+-        Log::info('Received after-sales service request', [
+-            'raw_body' => ->getContent(),
+-            'ip' => ->ip(),
+-            'user_agent' => ->userAgent(),
+-        ]);
+-
+-        try {
+-             = ->validate([
+-                'customer_name' => ['required', 'string', 'max:255'],
+-                'address' => ['required', 'string', 'max:1000'],
+-                'coordinator_name' => ['required', 'string', 'max:255'],
+-                'coordinator_mobile' => ['required', 'string', 'max:32'],
+-                'issue_description' => ['required', 'string', 'max:2000'],
+-            ]);
+-
+-             = AfterSalesService::create( + [
+-                'created_by_id' => 1,
+-            ]);
+-
+-            Log::info('After-sales service request stored', [
+-                'service_request_id' => ->id,
+-            ]);
+-
+-            return response()->json([
+-                'status' => 'success',
+-                'service_request_id' => ->id,
+-            ], 201);
+-        } catch (\Throwable ) {
+-            Log::error('Failed to store after-sales service request', [
+-                'message' => ->getMessage(),
+-                'trace' => ->getTraceAsString(),
+-            ]);
+-
+-            return response()->json([
+-                'status' => 'error',
+-                'message' => 'Unable to create service request at this time.',
+-            ], 500);
+-        }
++        Log::info('POST /api/service-requests hit', [
++            'method' => ->getMethod(),
++            'ip' => ->ip(),
++            'client' => [
++                'user_agent' => ->userAgent(),
++            ],
++            'request_input' => ->all(),
++            'headers' => ->headers->all(),
++            'raw_body' => ->getContent(),
++        ]);
++
++        try {
++             = Validator::make(->all(), [
++                'customer_name' => ['required', 'string', 'max:255'],
++                'address' => ['required', 'string', 'max:1000'],
++                'coordinator_name' => ['required', 'string', 'max:255'],
++                'coordinator_mobile' => ['required', 'string', 'max:32'],
++                'issue_description' => ['required', 'string', 'max:2000'],
++            ]);
++
++            if (->fails()) {
++                 = ->errors()->toArray();
++
++                Log::warning('After-sales service request validation failed', [
++                    'errors' => ,
++                ]);
++
++                return response()->json([
++                    'status' => 'error',
++                    'message' => 'Validation failed.',
++                    'errors' => ,
++                ], 422);
++            }
++
++             = ->validated();
++
++            Log::info('Validation passed for after-sales service request', [
++                'validated_data' => ,
++            ]);
++
++             =  + [
++                'created_by_id' => 1,
++            ];
++
++            Log::info('Persisting after-sales service request', [
++                'payload' => ,
++            ]);
++
++             = AfterSalesService::create();
++
++            Log::info('After-sales service request stored', [
++                'service_request_id' => ->id,
++            ]);
++
++            return response()->json([
++                'status' => 'success',
++                'service_request_id' => ->id,
++            ], 201);
++        } catch (\Throwable ) {
++            Log::error('Failed to store after-sales service request', [
++                'message' => ->getMessage(),
++                'file' => ->getFile(),
++                'line' => ->getLine(),
++                'trace' => ->getTraceAsString(),
++            ]);
++
++            return response()->json([
++                'status' => 'error',
++                'message' => 'Unable to create service request at this time.',
++            ], 500);
++        }
+     }
+ }
+*** End Patch
