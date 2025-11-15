@@ -20,9 +20,9 @@
       <h2 class="font-semibold mb-3">ثبت رویداد جدید</h2>
       <form id="holidayForm" action="{{ route('holidays.store') }}" method="POST" class="space-y-4">
         @csrf
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
           <div>
-            <label class="block text-sm mb-1">تاریخ</label>
+            <label class="block text-sm mb-1">از تاریخ</label>
             <input type="hidden" id="date" name="date" value="{{ old('date') }}">
             <input type="text"
                    id="date_shamsi"
@@ -31,6 +31,19 @@
                    placeholder="YYYY/MM/DD"
                    autocomplete="off">
             @error('date')
+              <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
+            @enderror
+          </div>
+          <div>
+            <label class="block text-sm mb-1">تا تاریخ</label>
+            <input type="hidden" id="date_end" name="date_end" value="{{ old('date_end') }}">
+            <input type="text"
+                   id="date_end_shamsi"
+                   class="persian-datepicker w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                   data-alt-field="date_end"
+                   placeholder="YYYY/MM/DD"
+                   autocomplete="off">
+            @error('date_end')
               <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
             @enderror
           </div>
@@ -45,7 +58,7 @@
           </div>
           <div class="flex items-center gap-2 mt-6 md:mt-0">
             <input id="notify" name="notify" type="checkbox" value="1" class="rounded" {{ old('notify') ? 'checked' : '' }}>
-            <label for="notify">ارسال اعلان (SMS)  </label>
+            <label for="notify">ارسال پیامک (SMS)  </label>
           </div>
         </div>
         <div id="notify_message_wrapper" class="md:col-span-3 {{ old('notify') ? '' : 'hidden' }}">
@@ -157,7 +170,8 @@
         <table class="min-w-full text-sm">
           <thead class="bg-gray-50">
             <tr>
-              <th class="text-right px-3 py-2">تاریخ</th>
+              <th class="text-right px-3 py-2">از تاریخ</th>
+              <th class="text-right px-3 py-2">تا تاریخ</th>
               <th class="text-right px-3 py-2">عنوان</th>
               <th class="text-right px-3 py-2">ارسال اعلان</th>
               <th class="text-left px-3 py-2">اقدامات</th>
@@ -167,6 +181,7 @@
           @forelse ($holidays as $h)
             <tr class="border-t">
               <td class="px-3 py-2">{{ optional($h->date)->format('Y-m-d') }}</td>
+              <td class="px-3 py-2">{{ optional($h->date_end ?? $h->date)->format('Y-m-d') }}</td>
               <td class="px-3 py-2">{{ $h->title ?: 'تعطیلی شرکت' }}</td>
               <td class="px-3 py-2">{{ $h->notify ? 'بله' : 'خیر' }}</td>
               <td class="px-3 py-2 text-left flex items-center gap-3">
@@ -180,7 +195,7 @@
               </td>
             </tr>
           @empty
-            <tr><td colspan="4" class="px-3 py-6 text-center text-gray-500">موردی ثبت نشده است</td></tr>
+            <tr><td colspan="5" class="px-3 py-6 text-center text-gray-500">موردی ثبت نشده است</td></tr>
           @endforelse
           </tbody>
         </table>

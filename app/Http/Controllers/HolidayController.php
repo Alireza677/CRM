@@ -10,6 +10,7 @@ use App\Services\Sms\FarazEdgeService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Validation\ValidationException;
 use Morilog\Jalali\Jalalian;
 use Carbon\Carbon;
 
@@ -33,6 +34,7 @@ class HolidayController extends Controller
     {
         $data = $request->validate([
             'date'   => ['required','string'], // accepts Jalali (Y/m/d) or Gregorian (Y-m-d)
+            'date_end' => ['nullable','string'],
             'title'  => ['nullable','string','max:255'],
             'notify' => ['sometimes','boolean'],
             'notify_message' => ['nullable','string','max:1000'],
@@ -40,8 +42,11 @@ class HolidayController extends Controller
             'notify_user_ids.*' => ['integer','exists:users,id'],
         ]);
 
+        [$startDate, $endDate] = $this->normalizeDateRange($data['date'], $data['date_end'] ?? null);
+
         $data['notify'] = (bool)($data['notify'] ?? false);
-        $data['date'] = $this->parseDateToYmd($data['date']);
+        $data['date'] = $startDate;
+        $data['date_end'] = $endDate;
         $data['created_by_id'] = Auth::id();
         if (!$data['notify']) {
             $data['notify_message'] = null;
@@ -93,12 +98,8 @@ class HolidayController extends Controller
                     // تولید متن پیش‌فرض اگر خالی بود
                     $msg = trim((string) ($holiday->notify_message ?? ''));
                     if ($msg === '') {
-                        $greg = optional($holiday->date)->format('Y-m-d');
-                        try {
-                            $shamsi = $holiday->date ? Jalalian::fromCarbon($holiday->date)->format('Y/m/d') : null;
-                        } catch (\Throwable $e) { $shamsi = null; }
                         $title = $holiday->title ?: 'تعطیلی شرکت';
-                        $msg = "اطلاعیه {$title}: در تاریخ " . ($shamsi ?: $greg) . " تعطیل هستیم.";
+                        $msg = "اطلاعیه {$title}: در تاریخ " . $this->formatHolidayDateRangeForSms($holiday) . " تعطیل هستیم.";
                     }
 
                     try {
@@ -160,6 +161,7 @@ class HolidayController extends Controller
     {
         $data = $request->validate([
             'date'   => ['required','string'],
+            'date_end' => ['nullable','string'],
             'title'  => ['nullable','string','max:255'],
             'notify' => ['sometimes','boolean'],
             'notify_message' => ['nullable','string','max:1000'],
@@ -168,9 +170,12 @@ class HolidayController extends Controller
             'notify_user_ids.*' => ['integer','exists:users,id'],
         ]);
 
+        [$startDate, $endDate] = $this->normalizeDateRange($data['date'], $data['date_end'] ?? null);
+
         // Build payload without forcing notify when field is absent on the form
         $payload = [
-            'date'  => $this->parseDateToYmd($data['date']),
+            'date'  => $startDate,
+            'date_end' => $endDate,
             'title' => $data['title'] ?? null,
         ];
         if ($request->has('notify')) {
@@ -224,11 +229,8 @@ class HolidayController extends Controller
                 if (!empty($recipients)) {
                     $msg = trim((string) ($holiday->notify_message ?? ''));
                     if ($msg === '') {
-                        $greg = optional($holiday->date)->format('Y-m-d');
-                        try { $shamsi = $holiday->date ? Jalalian::fromCarbon($holiday->date)->format('Y/m/d') : null; }
-                        catch (\Throwable $e) { $shamsi = null; }
                         $title = $holiday->title ?: 'تعطیلی شرکت';
-                        $msg = "اطلاعیه {$title}: در تاریخ " . ($shamsi ?: $greg) . " تعطیل هستیم.";
+                        $msg = "اطلاعیه {$title}: در تاریخ " . $this->formatHolidayDateRangeForSms($holiday) . " تعطیل هستیم.";
                     }
 
                     try {
@@ -314,6 +316,57 @@ class HolidayController extends Controller
             'usersByMobile' => $usersByMobile,
             'uniqueMessages' => $logs->pluck('message')->unique()->values(),
         ]);
+    }
+
+    protected function normalizeDateRange(string $startInput, ?string $endInput = null): array
+    {
+        $start = $this->parseDateToYmd($startInput);
+        $end = ($endInput !== null && $endInput !== '') ? $this->parseDateToYmd($endInput) : $start;
+
+        $startCarbon = Carbon::createFromFormat('Y-m-d', $start);
+        $endCarbon = Carbon::createFromFormat('Y-m-d', $end);
+
+        if ($endCarbon->lt($startCarbon)) {
+            throw ValidationException::withMessages([
+                'date_end' => 'تاریخ پایان نمی‌تواند قبل از تاریخ آغاز باشد.',
+            ]);
+        }
+
+        return [$startCarbon->toDateString(), $endCarbon->toDateString()];
+    }
+
+    protected function formatHolidayDateRangeForSms(Holiday $holiday): string
+    {
+        $start = $holiday->date;
+        $end = $holiday->date_end ?: $holiday->date;
+
+        $startGreg = $start ? $start->format('Y-m-d') : null;
+        $endGreg = $end ? $end->format('Y-m-d') : null;
+
+        $startJalali = null;
+        $endJalali = null;
+        if ($start) {
+            try { $startJalali = Jalalian::fromCarbon($start)->format('Y/m/d'); }
+            catch (\Throwable $e) { $startJalali = null; }
+        }
+        if ($end) {
+            try { $endJalali = Jalalian::fromCarbon($end)->format('Y/m/d'); }
+            catch (\Throwable $e) { $endJalali = null; }
+        }
+
+        if ($startJalali && $endJalali) {
+            return $startJalali === $endJalali
+                ? $startJalali
+                : ($startJalali . ' تا ' . $endJalali);
+        }
+
+        if ($startGreg && $endGreg) {
+            return $startGreg === $endGreg
+                ? $startGreg
+                : ($startGreg . ' تا ' . $endGreg);
+        }
+
+        return $startGreg ?: ($endGreg ?? 'تاریخ');
     }
 
     protected function parseDateToYmd(string $value): string

@@ -9,11 +9,12 @@ use Carbon\Carbon;
 class Holiday extends Model
 {
     protected $fillable = [
-        'date', 'title', 'notify', 'notify_message', 'created_by_id', 'notify_sent_at',
+        'date', 'date_end', 'title', 'notify', 'notify_message', 'created_by_id', 'notify_sent_at',
     ];
 
     protected $casts = [
         'date' => 'date',
+        'date_end' => 'date',
         'notify' => 'boolean',
         'notify_sent_at' => 'datetime',
     ];
@@ -27,23 +28,36 @@ class Holiday extends Model
 
     public function setDateAttribute($value): void
     {
+        $this->attributes['date'] = $this->normalizeDateValue($value);
+    }
+
+    public function setDateEndAttribute($value): void
+    {
+        $this->attributes['date_end'] = $this->normalizeDateValue($value);
+    }
+
+    protected function normalizeDateValue($value): ?string
+    {
+        if ($value instanceof Carbon) {
+            return $value->toDateString();
+        }
+
         if (is_string($value)) {
             $v = $this->toEnDigits(trim($value));
             // Try direct Y-m-d first
             try {
                 $c = Carbon::createFromFormat('Y-m-d', $v)->startOfDay();
-                $this->attributes['date'] = $c->toDateString();
-                return;
+                return $c->toDateString();
             } catch (\Throwable $e) { /* continue */ }
 
             // Try parse Jalali like 1402/01/15
             $c = $this->parseJalaliToCarbonDate($v);
             if ($c) {
-                $this->attributes['date'] = $c->toDateString();
-                return;
+                return $c->toDateString();
             }
         }
-        $this->attributes['date'] = $value;
+
+        return $value ?: null;
     }
 
     protected function parseJalaliToCarbonDate(?string $value): ?Carbon
@@ -71,10 +85,15 @@ class Holiday extends Model
 
     public function toCalendarEvent(): array
     {
+        $start = optional($this->date)->toDateString();
+        $endCandidate = $this->date_end ?: $this->date;
+        $end = $endCandidate ? $endCandidate->copy()->addDay()->toDateString() : null;
+
         return [
             'id'    => 'h-'.$this->id,
             'title' => $this->title ?: 'تعطیلی شرکت',
-            'start' => optional($this->date)->toDateString(),
+            'start' => $start,
+            'end'   => $end,
             'allDay'=> true,
             'color' => '#ef4444', // red-500
             'extendedProps' => [

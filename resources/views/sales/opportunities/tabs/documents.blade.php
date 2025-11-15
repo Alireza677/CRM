@@ -21,7 +21,7 @@
                     </tr>
                 </thead>
                 <tbody>
-                    @foreach ($opportunity->documents as $document)
+                    @foreach ($opportunity->documents->sortByDesc('created_at') as $document)
                         <tr class="border-t hover:bg-gray-50">
                             <td class="px-4 py-2">{{ $document->title ?? '---' }}</td>
                             <td class="px-4 py-2">{{ $document->type ?? '---' }}</td>

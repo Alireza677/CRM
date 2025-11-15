@@ -142,7 +142,7 @@
                     <div class="space-y-2">
                         <a href="{{ route('calendar.index') }}" class="menu-item">مشاهده تقویم</a>
                         @role('admin')
-                            <a href="{{ route('holidays.index') }}" class="menu-item">مدیریت تعطیلات</a>
+                            <a href="{{ route('holidays.index') }}" class="menu-item">مدیریت رویدادها</a>
                         @endrole
                     </div>
                 </template>

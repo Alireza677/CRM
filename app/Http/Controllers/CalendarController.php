@@ -52,8 +52,12 @@ class CalendarController extends Controller
         $endDate   = $end   ? Carbon::parse($end)->toDateString()   : null;
 
         $hq = Holiday::query();
-        if ($startDate) $hq->where('date', '>=', $startDate);
-        if ($endDate)   $hq->where('date', '<=', $endDate);
+        if ($startDate) {
+            $hq->whereRaw('COALESCE(date_end, date) >= ?', [$startDate]);
+        }
+        if ($endDate) {
+            $hq->where('date', '<=', $endDate);
+        }
 
         $holidays = $hq->get()->map->toCalendarEvent()->values()->all();
 

@@ -12,11 +12,29 @@
         @method('PUT')
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
           <div>
-            <label class="block text-sm mb-1">تاریخ</label>
-            <input name="date" type="text" required placeholder="مثال: 1403/08/20 یا 2025-11-10"
-                   class="w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
-                   value="{{ old('date', optional($holiday->date)->format('Y-m-d')) }}">
+            <label class="block text-sm mb-1">از تاریخ</label>
+            <input type="hidden" id="date" name="date" value="{{ old('date', optional($holiday->date)->format('Y-m-d')) }}">
+            <input type="text"
+                   id="date_shamsi"
+                   class="persian-datepicker w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                   data-alt-field="date"
+                   placeholder="YYYY/MM/DD"
+                   autocomplete="off"
+                   required>
             @error('date')
+              <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
+            @enderror
+          </div>
+          <div>
+            <label class="block text-sm mb-1">تا تاریخ</label>
+            <input type="hidden" id="date_end" name="date_end" value="{{ old('date_end', optional($holiday->date_end ?? $holiday->date)->format('Y-m-d')) }}">
+            <input type="text"
+                   id="date_end_shamsi"
+                   class="persian-datepicker w-full rounded-md border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                   data-alt-field="date_end"
+                   placeholder="YYYY/MM/DD"
+                   autocomplete="off">
+            @error('date_end')
               <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
             @enderror
           </div>

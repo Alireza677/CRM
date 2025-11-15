@@ -15,8 +15,13 @@
     <div class="bg-white rounded-md shadow p-4 mb-6">
       <div class="grid grid-cols-1 md:grid-cols-2 gap-4 text-sm">
         <div>
-          <div class="text-gray-500">تاریخ</div>
+          <div class="text-gray-500">از تاریخ</div>
           <div class="font-medium">{{ $holiday->date ? \Morilog\Jalali\Jalalian::fromCarbon($holiday->date)->format('Y/m/d') : '—' }}</div>
+        </div>
+        <div>
+          <div class="text-gray-500">تا تاریخ</div>
+          @php $endDate = $holiday->date_end ?? $holiday->date; @endphp
+          <div class="font-medium">{{ $endDate ? \Morilog\Jalali\Jalalian::fromCarbon($endDate)->format('Y/m/d') : '—' }}</div>
         </div>
         <div>
           <div class="text-gray-500">عنوان</div>
