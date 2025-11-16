@@ -194,18 +194,33 @@
         $a1 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',1)->orderByDesc('approved_at')->first();
         $a2 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',2)->orderByDesc('approved_at')->first();
         $a3 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',3)->orderByDesc('approved_at')->first();
+        $r1 = $purchaseOrder->approvals()->with('approver')->where('status','rejected')->where('step',1)->orderByDesc('approved_at')->first();
+        $r2 = $purchaseOrder->approvals()->with('approver')->where('status','rejected')->where('step',2)->orderByDesc('approved_at')->first();
+        $r3 = $purchaseOrder->approvals()->with('approver')->where('status','rejected')->where('step',3)->orderByDesc('approved_at')->first();
         $a1UserId = (int) ($a1?->user_id ?? 0);
         $a2UserId = (int) ($a2?->user_id ?? 0);
         $a3UserId = (int) ($a3?->user_id ?? 0);
+        $r1UserId = (int) ($r1?->user_id ?? 0);
+        $r2UserId = (int) ($r2?->user_id ?? 0);
+        $r3UserId = (int) ($r3?->user_id ?? 0);
         $firstMainApproved = $a1UserId && $a1UserId === $firstApproverId;
         $firstSubApproved = $a1UserId && $a1UserId === $firstApproverSubstituteId;
         $secondMainApproved = $a2UserId && $a2UserId === $secondApproverId;
         $secondSubApproved = $a2UserId && $a2UserId === $secondApproverSubstituteId;
         $accountingMainApproved = $a3UserId && $a3UserId === $accountingApproverId;
         $accountingSubApproved = $a3UserId && $a3UserId === $accountingApproverSubstituteId;
+        $firstMainRejected = $r1UserId && $r1UserId === $firstApproverId;
+        $firstSubRejected = $r1UserId && $r1UserId === $firstApproverSubstituteId;
+        $secondMainRejected = $r2UserId && $r2UserId === $secondApproverId;
+        $secondSubRejected = $r2UserId && $r2UserId === $secondApproverSubstituteId;
+        $accountingMainRejected = $r3UserId && $r3UserId === $accountingApproverId;
+        $accountingSubRejected = $r3UserId && $r3UserId === $accountingApproverSubstituteId;
         $a1AtFa = $a1?->approved_at ? \App\Helpers\DateHelper::toJalali($a1->approved_at, 'H:i Y/m/d') : null;
         $a2AtFa = $a2?->approved_at ? \App\Helpers\DateHelper::toJalali($a2->approved_at, 'H:i Y/m/d') : null;
         $a3AtFa = $a3?->approved_at ? \App\Helpers\DateHelper::toJalali($a3->approved_at, 'H:i Y/m/d') : null;
+        $a1RejectedAtFa = $r1?->approved_at ? \App\Helpers\DateHelper::toJalali($r1->approved_at, 'H:i Y/m/d') : null;
+        $a2RejectedAtFa = $r2?->approved_at ? \App\Helpers\DateHelper::toJalali($r2->approved_at, 'H:i Y/m/d') : null;
+        $a3RejectedAtFa = $r3?->approved_at ? \App\Helpers\DateHelper::toJalali($r3->approved_at, 'H:i Y/m/d') : null;
         $pendingLabel = match($purchaseOrder->status) {
             'supervisor_approval' => 'در انتظار تأیید سرپرست کارخانه',
             'manager_approval'    => 'در انتظار تأیید مدیر کل',
@@ -267,30 +282,72 @@
         </tr>
 
         {{-- تایید سرپرست کارخانه --}}
+        @php
+            $a1StatusClass = 'bg-amber-50 text-amber-800';
+            $a1StatusLabel = 'در انتظار تأیید';
+            if ($a1RejectedAtFa) {
+                $a1StatusClass = 'bg-red-50 text-red-800';
+                $a1StatusLabel = 'رد شده';
+            } elseif ($a1AtFa) {
+                $a1StatusClass = 'bg-green-50 text-green-800';
+                $a1StatusLabel = 'تأیید شده';
+            }
+            $a1DateDisplay = $a1RejectedAtFa ?? $a1AtFa ?? '—';
+            $firstMainCellClass = $firstMainApproved ? 'bg-green-100' : ($firstMainRejected ? 'bg-red-100 text-red-800' : '');
+            $firstSubCellClass = $firstSubApproved ? 'bg-green-100' : ($firstSubRejected ? 'bg-red-100 text-red-800' : '');
+        @endphp
         <tr>
             <td class="border p-2">تأیید سرپرست کارخانه</td>
-            <td class="border p-2 {{ $a1AtFa ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800' }}">{{ $a1AtFa ? 'تأیید شده' : 'در انتظار تأیید' }}</td>
-            <td class="border p-2">{{ $a1AtFa ?: '—' }}</td>
-            <td class="border p-2 {{ $firstMainApproved ? 'bg-green-100' : '' }}">{{ $firstApproverName }}</td>
-            <td class="border p-2 {{ $firstSubApproved ? 'bg-green-100' : '' }}">{{ $firstApproverSubstituteName }}</td>
+            <td class="border p-2 {{ $a1StatusClass }}">{{ $a1StatusLabel }}</td>
+            <td class="border p-2">{{ $a1DateDisplay }}</td>
+            <td class="border p-2 {{ $firstMainCellClass }}">{{ $firstApproverName }}</td>
+            <td class="border p-2 {{ $firstSubCellClass }}">{{ $firstApproverSubstituteName }}</td>
         </tr>
 
         {{-- تایید مدیر کل --}}
+        @php
+            $a2StatusClass = 'bg-amber-50 text-amber-800';
+            $a2StatusLabel = 'در انتظار تأیید';
+            if ($a2RejectedAtFa) {
+                $a2StatusClass = 'bg-red-50 text-red-800';
+                $a2StatusLabel = 'رد شده';
+            } elseif ($a2AtFa) {
+                $a2StatusClass = 'bg-green-50 text-green-800';
+                $a2StatusLabel = 'تأیید شده';
+            }
+            $a2DateDisplay = $a2RejectedAtFa ?? $a2AtFa ?? '—';
+            $secondMainCellClass = $secondMainApproved ? 'bg-green-100' : ($secondMainRejected ? 'bg-red-100 text-red-800' : '');
+            $secondSubCellClass = $secondSubApproved ? 'bg-green-100' : ($secondSubRejected ? 'bg-red-100 text-red-800' : '');
+        @endphp
         <tr>
             <td class="border p-2">تأیید مدیر کل</td>
-            <td class="border p-2 {{ $a2AtFa ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800' }}">{{ $a2AtFa ? 'تأیید شده' : 'در انتظار تأیید' }}</td>
-            <td class="border p-2">{{ $a2AtFa ?: '—' }}</td>
-            <td class="border p-2 {{ $secondMainApproved ? 'bg-green-100' : '' }}">{{ $secondApproverName }}</td>
-            <td class="border p-2 {{ $secondSubApproved ? 'bg-green-100' : '' }}">{{ $secondApproverSubstituteName }}</td>
+            <td class="border p-2 {{ $a2StatusClass }}">{{ $a2StatusLabel }}</td>
+            <td class="border p-2">{{ $a2DateDisplay }}</td>
+            <td class="border p-2 {{ $secondMainCellClass }}">{{ $secondApproverName }}</td>
+            <td class="border p-2 {{ $secondSubCellClass }}">{{ $secondApproverSubstituteName }}</td>
         </tr>
 
         {{-- تایید حسابداری --}}
+        @php
+            $a3StatusClass = 'bg-amber-50 text-amber-800';
+            $a3StatusLabel = 'در انتظار تأیید';
+            if ($a3RejectedAtFa) {
+                $a3StatusClass = 'bg-red-50 text-red-800';
+                $a3StatusLabel = 'رد شده';
+            } elseif ($a3AtFa) {
+                $a3StatusClass = 'bg-green-50 text-green-800';
+                $a3StatusLabel = 'تأیید شده';
+            }
+            $a3DateDisplay = $a3RejectedAtFa ?? $a3AtFa ?? '—';
+            $accountingMainCellClass = $accountingMainApproved ? 'bg-green-100' : ($accountingMainRejected ? 'bg-red-100 text-red-800' : '');
+            $accountingSubCellClass = $accountingSubApproved ? 'bg-green-100' : ($accountingSubRejected ? 'bg-red-100 text-red-800' : '');
+        @endphp
         <tr>
             <td class="border p-2">تأیید حسابداری / پرداخت</td>
-            <td class="border p-2 {{ $a3AtFa ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800' }}">{{ $a3AtFa ? 'تأیید شده' : 'در انتظار تأیید' }}</td>
-            <td class="border p-2">{{ $a3AtFa ?: '—' }}</td>
-            <td class="border p-2 {{ $accountingMainApproved ? 'bg-green-100' : '' }}">{{ $accountingApproverName }}</td>
-            <td class="border p-2 {{ $accountingSubApproved ? 'bg-green-100' : '' }}">{{ $accountingApproverSubstituteName }}</td>
+            <td class="border p-2 {{ $a3StatusClass }}">{{ $a3StatusLabel }}</td>
+            <td class="border p-2">{{ $a3DateDisplay }}</td>
+            <td class="border p-2 {{ $accountingMainCellClass }}">{{ $accountingApproverName }}</td>
+            <td class="border p-2 {{ $accountingSubCellClass }}">{{ $accountingApproverSubstituteName }}</td>
         </tr>
     </tbody>
 </table>
