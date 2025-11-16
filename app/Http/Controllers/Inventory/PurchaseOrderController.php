@@ -162,7 +162,8 @@ class PurchaseOrderController extends Controller
             $data['allUsers'] = User::whereNotNull('username')->get();
         }
         if ($tab === 'updates') {
-            $data['activities'] = Activity::where('subject_type', PurchaseOrder::class)
+            $data['activities'] = Activity::with('causer')
+                ->where('subject_type', PurchaseOrder::class)
                 ->where('subject_id', $purchaseOrder->id)
                 ->latest()
                 ->get();

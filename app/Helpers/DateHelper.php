@@ -81,6 +81,60 @@ class DateHelper
         }
     }
 
+    /**
+     * Normalize any incoming date (Jalali or Gregorian, string or Carbon) to Y-m-d (Gregorian).
+     */
+    public static function normalizeDateInput($value): ?string
+    {
+        if ($value instanceof Carbon) {
+            return $value->copy()->setTimezone(self::TZ_TEHRAN)->setTime(12, 0, 0)->format('Y-m-d');
+        }
+
+        if ($value instanceof \DateTimeInterface) {
+            return Carbon::instance($value)->setTimezone(self::TZ_TEHRAN)->setTime(12, 0, 0)->format('Y-m-d');
+        }
+
+        if ($value === null) {
+            return null;
+        }
+
+        $value = trim(self::convertPersianToEnglishNumbers((string) $value));
+        if ($value === '') {
+            return null;
+        }
+
+        if (preg_match('/^(\d{4})[-\/](\d{1,2})[-\/](\d{1,2})(?:\s+.*)?$/', $value, $matches)) {
+            $year = (int) $matches[1];
+            $month = (int) $matches[2];
+            $day = (int) $matches[3];
+            $dateOnly = sprintf('%04d-%02d-%02d', $year, $month, $day);
+
+            if (str_contains($value, '/') || $year < 1700) {
+                return self::toGregorian($dateOnly);
+            }
+
+            try {
+                return Carbon::parse($dateOnly, 'UTC')
+                    ->setTimezone(self::TZ_TEHRAN)
+                    ->setTime(12, 0, 0)
+                    ->format('Y-m-d');
+            } catch (Exception $e) {
+                \Log::warning("DateHelper::normalizeDateInput unable to parse date segment: {$value}");
+                return null;
+            }
+        }
+
+        try {
+            return Carbon::parse($value, 'UTC')
+                ->setTimezone(self::TZ_TEHRAN)
+                ->setTime(12, 0, 0)
+                ->format('Y-m-d');
+        } catch (Exception $e) {
+            \Log::warning("DateHelper::normalizeDateInput invalid input: {$value}");
+            return null;
+        }
+    }
+
     /** اعداد فارسی → انگلیسی */
     public static function convertPersianToEnglishNumbers(string $input): string
     {

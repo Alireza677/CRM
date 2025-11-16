@@ -147,11 +147,11 @@ class SalesLeadController extends Controller
             // Ensure creator ownership is recorded for visibility scopes
             $validated['owner_user_id'] = Auth::id();
             $validated['do_not_email'] = $request->has('do_not_email');
-            $validated['lead_date'] = DateHelper::toGregorian((string)($validated['lead_date'] ?? ''));
+            $validated['lead_date'] = DateHelper::normalizeDateInput($validated['lead_date'] ?? null);
             if (strtolower((string)($validated['lead_status'] ?? '')) === 'lost') {
                 $validated['next_follow_up_date'] = null; // سرکاری → تاریخ پیگیری بعدی لازم نیست
             } else {
-                $validated['next_follow_up_date'] = DateHelper::toGregorian((string)($validated['next_follow_up_date'] ?? ''));
+                $validated['next_follow_up_date'] = DateHelper::normalizeDateInput($validated['next_follow_up_date'] ?? null);
             }
 
             \Log::info('🔵 Final data before create:', $validated);
@@ -215,12 +215,12 @@ class SalesLeadController extends Controller
         \Log::info('🔵 Request all:', $request->all());
 
         // 🟢 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
-        $leadDateConv = DateHelper::toGregorian((string)($request->lead_date ?? ''));
+        $leadDateConv = DateHelper::normalizeDateInput($request->lead_date ?? null);
         $statusVal = (string)($request->lead_status ?? '');
         if (strtolower($statusVal) === 'lost') {
             $nextFollowUpConv = null;
         } else {
-            $nextFollowUpConv = DateHelper::toGregorian((string)($request->next_follow_up_date ?? ''));
+            $nextFollowUpConv = DateHelper::normalizeDateInput($request->next_follow_up_date ?? null);
         }
         $request->merge([
             'lead_date' => $leadDateConv,

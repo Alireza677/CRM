@@ -15,7 +15,7 @@
       class="space-y-5">
     @csrf
 
-    {{-- فرصت فروش --}}
+    {{-- فرصت یا سفارش خرید --}}
     @if(!empty($defaultOpportunityId))
         {{-- ارسال خودکار فرصت از صفحه خودش --}}
         <input type="hidden" name="opportunity_id" value="{{ $defaultOpportunityId }}">
@@ -40,6 +40,18 @@
                 <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
             @enderror
         </div>
+    @endif
+
+    @if(!empty($defaultPurchaseOrderId))
+        {{-- ارسال خودکار سفارش خرید --}}
+        <input type="hidden" name="purchase_order_id" value="{{ $defaultPurchaseOrderId }}">
+        <div class="p-3 rounded bg-blue-50 text-blue-700 text-sm">
+            این سند برای «{{ $defaultPurchaseOrderSubject ?? ('سفارش خرید شماره ' . $defaultPurchaseOrderId) }}» ثبت خواهد شد.
+            <a class="underline" href="{{ route('inventory.purchase-orders.show', $defaultPurchaseOrderId) }}">نمایش سفارش خرید</a>
+        </div>
+        @error('purchase_order_id')
+            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+        @enderror
     @endif
 
     {{-- عنوان --}}

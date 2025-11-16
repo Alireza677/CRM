@@ -10,6 +10,7 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use App\Models\Opportunity;
+use App\Models\PurchaseOrder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 
 
@@ -27,7 +28,7 @@ class DocumentController extends Controller
     public function index()
     {
         $documents = Document::visibleFor(auth()->user(), 'documents')
-            ->with(['opportunity','user'])
+            ->with(['opportunity','purchaseOrder','user'])
             ->latest()
             ->paginate(10);
 
@@ -65,24 +66,46 @@ class DocumentController extends Controller
             }
         }
 
-        return view('sales.documents.create',
-            compact('breadcrumb','opportunities','defaultOpportunityId','defaultOpportunityName'));
+        $defaultPurchaseOrderId = null;
+        $defaultPurchaseOrderSubject = null;
+        if ($request->filled('purchase_order_id')) {
+            $poId = (int) $request->query('purchase_order_id');
+            $po = PurchaseOrder::select('id','subject')->find($poId);
+            if ($po) {
+                $defaultPurchaseOrderId = $po->id;
+                $defaultPurchaseOrderSubject = $po->subject ?: ('سفارش خرید شماره ' . $po->id);
+            }
+        }
+
+        return view(
+            'sales.documents.create',
+            compact(
+                'breadcrumb',
+                'opportunities',
+                'defaultOpportunityId',
+                'defaultOpportunityName',
+                'defaultPurchaseOrderId',
+                'defaultPurchaseOrderSubject'
+            )
+        );
     }
 
     public function store(Request $request)
     {
         $request->validate([
-            'title'          => ['required','string','max:255'],
-            'file'           => ['required','file','max:10240','mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
-            'opportunity_id' => ['nullable','integer','exists:opportunities,id'],
+            'title'             => ['required','string','max:255'],
+            'file'              => ['required','file','max:10240','mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
+            'opportunity_id'    => ['nullable','integer','exists:opportunities,id'],
+            'purchase_order_id' => ['nullable','integer','exists:purchase_orders,id'],
         ]);
 
         $path = $request->file('file')->store('documents', 'public');
 
         $data = [
-            'title' => $request->input('title'),
-            'file_path'      => $path,
-            'opportunity_id' => $request->integer('opportunity_id') ?: null,
+            'title'             => $request->input('title'),
+            'file_path'         => $path,
+            'opportunity_id'    => $request->integer('opportunity_id') ?: null,
+            'purchase_order_id' => $request->integer('purchase_order_id') ?: null,
         ];
 
         if (Schema::hasColumn('documents', 'user_id')) {
@@ -91,11 +114,41 @@ class DocumentController extends Controller
 
         $document = Document::create($data);
 
+        if ($document->purchase_order_id) {
+            try {
+                $purchaseOrder = PurchaseOrder::find($document->purchase_order_id);
+            } catch (\Throwable $e) {
+                $purchaseOrder = null;
+            }
+
+            if ($purchaseOrder) {
+                activity('purchase_order')
+                    ->performedOn($purchaseOrder)
+                    ->causedBy($request->user())
+                    ->event('document_added')
+                    ->withProperties([
+                        'document' => [
+                            'id' => $document->id,
+                            'title' => $document->title,
+                            'file_path' => $document->file_path,
+                            'extension' => pathinfo($document->file_path ?? '', PATHINFO_EXTENSION),
+                        ],
+                    ])
+                    ->log('document_added');
+            }
+        }
+
         // اگر از صفحه یک فرصت آمده‌ایم، برگرد همانجا (UX بهتر)
         if ($document->opportunity_id) {
             return redirect()
                 ->route('sales.opportunities.show', $document->opportunity_id)
                 ->with('success', 'سند برای این فرصت ثبت شد.');
+        }
+
+        if ($document->purchase_order_id) {
+            return redirect()
+                ->route('inventory.purchase-orders.show', $document->purchase_order_id)
+                ->with('success', 'سند برای این سفارش خرید ثبت شد.');
         }
 
         return redirect()
@@ -202,14 +255,16 @@ class DocumentController extends Controller
         $this->authorizeManageDocument($document); // ⬅ فقط مالک/ادمین
 
         $request->validate([
-            'title'           => ['required','string','max:255'],
-            'file'            => ['nullable','file','max:10240', 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
-            'opportunity_id'  => ['nullable','integer','exists:opportunities,id'],
+            'title'             => ['required','string','max:255'],
+            'file'              => ['nullable','file','max:10240', 'mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
+            'opportunity_id'    => ['nullable','integer','exists:opportunities,id'],
+            'purchase_order_id' => ['nullable','integer','exists:purchase_orders,id'],
         ]);
 
         $updates = [
-            'title'          => $request->input('title'),
-            'opportunity_id' => $request->input('opportunity_id'),
+            'title'             => $request->input('title'),
+            'opportunity_id'    => $request->input('opportunity_id'),
+            'purchase_order_id' => $request->input('purchase_order_id'),
         ];
 
         if ($request->hasFile('file')) {

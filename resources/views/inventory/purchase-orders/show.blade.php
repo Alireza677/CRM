@@ -55,7 +55,7 @@
             </div>
         </aside>
 
-        <main class="flex-1 px-4 md:px-8 pb-8 md:mr-64 md:ml-0">
+        <main class="flex-1 px-4 md:px-8 pb-8 md:ml-0">
             <div class="hidden md:flex justify-between items-center mb-6 mt-8">
                 <h1 class="text-2xl font-bold text-gray-800">سفارش خرید: {{ $purchaseOrder->subject }}</h1>
                 <div class="flex items-center gap-2">

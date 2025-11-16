@@ -1,5 +1,11 @@
 <div class="bg-white p-6 rounded shadow">
-    <h3 class="text-lg font-semibold text-gray-700 mb-4">اسناد سفارش خرید</h3>
+    <div class="flex items-center justify-between mb-4">
+        <h3 class="text-lg font-semibold text-gray-700">اسناد سفارش خرید</h3>
+        <a href="{{ route('sales.documents.create', ['purchase_order_id' => $purchaseOrder->id]) }}"
+           class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
+            افزودن سند
+        </a>
+    </div>
 
     @if ($purchaseOrder->documents && $purchaseOrder->documents->count())
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">

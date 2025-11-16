@@ -4,10 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Spatie\Activitylog\LogOptions;
+use Spatie\Activitylog\Traits\LogsActivity;
+use Spatie\Activitylog\Traits\CausesActivity;
 
 class PurchaseOrder extends Model
 {
     use HasFactory;
+    use LogsActivity;
+    use CausesActivity;
 
     protected $fillable = [
         'subject',
@@ -134,5 +139,36 @@ class PurchaseOrder extends Model
                 }
             }
         });
+    }
+
+    public function getActivitylogOptions(): LogOptions
+    {
+        return LogOptions::defaults()
+            ->logOnly([
+                'subject',
+                'purchase_type',
+                'supplier_id',
+                'requested_by',
+                'request_date',
+                'purchase_date',
+                'needed_by_date',
+                'status',
+                'settlement_type',
+                'usage_type',
+                'operational_expense_type',
+                'project_name',
+                'vat_percent',
+                'vat_amount',
+                'total_amount',
+                'total_with_vat',
+                'previously_paid_amount',
+                'remaining_payable_amount',
+                'assigned_to',
+                'ready_for_delivery_notified_at',
+                'description',
+            ])
+            ->useLogName('purchase_order')
+            ->logOnlyDirty()
+            ->dontSubmitEmptyLogs();
     }
 }

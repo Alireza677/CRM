@@ -179,9 +179,30 @@
         $createdAtFa = \App\Helpers\DateHelper::toJalali($purchaseOrder->created_at, 'H:i Y/m/d');
         // Ensure workflow settings are available for substitute names
         $wf = $wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first());
+        $firstApproverId = (int) ($wf?->first_approver_id ?? 0);
+        $secondApproverId = (int) ($wf?->second_approver_id ?? 0);
+        $accountingApproverId = (int) ($wf?->accounting_user_id ?? 0);
+        $firstApproverSubstituteId = (int) ($wf?->first_approver_substitute_id ?? 0);
+        $secondApproverSubstituteId = (int) ($wf?->second_approver_substitute_id ?? 0);
+        $accountingApproverSubstituteId = (int) ($wf?->accounting_approver_substitute_id ?? 0);
+        $firstApproverName = optional($wf?->firstApprover)->name ?: '—';
+        $secondApproverName = optional($wf?->secondApprover)->name ?: '—';
+        $accountingApproverName = optional($wf?->accountingUser)->name ?: '—';
+        $firstApproverSubstituteName = optional($wf?->firstApproverSubstitute)->name ?: '—';
+        $secondApproverSubstituteName = optional($wf?->secondApproverSubstitute)->name ?: '—';
+        $accountingApproverSubstituteName = optional($wf?->accountingApproverSubstitute)->name ?: '—';
         $a1 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',1)->orderByDesc('approved_at')->first();
         $a2 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',2)->orderByDesc('approved_at')->first();
         $a3 = $purchaseOrder->approvals()->with('approver')->where('status','approved')->where('step',3)->orderByDesc('approved_at')->first();
+        $a1UserId = (int) ($a1?->user_id ?? 0);
+        $a2UserId = (int) ($a2?->user_id ?? 0);
+        $a3UserId = (int) ($a3?->user_id ?? 0);
+        $firstMainApproved = $a1UserId && $a1UserId === $firstApproverId;
+        $firstSubApproved = $a1UserId && $a1UserId === $firstApproverSubstituteId;
+        $secondMainApproved = $a2UserId && $a2UserId === $secondApproverId;
+        $secondSubApproved = $a2UserId && $a2UserId === $secondApproverSubstituteId;
+        $accountingMainApproved = $a3UserId && $a3UserId === $accountingApproverId;
+        $accountingSubApproved = $a3UserId && $a3UserId === $accountingApproverSubstituteId;
         $a1AtFa = $a1?->approved_at ? \App\Helpers\DateHelper::toJalali($a1->approved_at, 'H:i Y/m/d') : null;
         $a2AtFa = $a2?->approved_at ? \App\Helpers\DateHelper::toJalali($a2->approved_at, 'H:i Y/m/d') : null;
         $a3AtFa = $a3?->approved_at ? \App\Helpers\DateHelper::toJalali($a3->approved_at, 'H:i Y/m/d') : null;
@@ -222,34 +243,62 @@
     @endphp
 
     <h3 class="text-md font-semibold mb-3">تایم‌لاین تأییدات</h3>
-    <div class="space-y-2 text-sm">
-        <div class="flex justify-between">
-            <span class="text-gray-600">ثبت سفارش</span>
-            <span class="font-medium">{{ $createdAtFa ?: '—' }}</span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">تأیید سرپرست کارخانه</span>
-            <span class="font-medium">
-                {{ $a1AtFa ?: '-' }} @if($a1?->approver) - {{ $a1->approver->name }} @php $__sub = optional(($wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first()))?->firstApproverSubstitute)->name ?? null; @endphp @if($__sub) ({{ $__sub }}) @endif @endif
-            </span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">تأیید مدیر کل</span>
-            <span class="font-medium">
-                {{ $a2AtFa ?: '-' }} @if($a2?->approver) - {{ $a2->approver->name }} @php $__sub = optional(($wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first()))?->secondApproverSubstitute)->name ?? null; @endphp @if($__sub) ({{ $__sub }}) @endif @endif
-            </span>
-        </div>
-        <div class="flex justify-between">
-            <span class="text-gray-600">تأیید حسابداری / پرداخت</span>
-            <span class="font-medium">
-                {{ $a3AtFa ?: '-' }} @if($a3?->approver) - {{ $a3->approver->name }} @php $__sub = optional(($wf ?? ($poSettings ?? \App\Models\PurchaseOrderWorkflowSetting::first()))?->accountingApproverSubstitute)->name ?? null; @endphp @if($__sub) ({{ $__sub }}) @endif @endif
-            </span>
-        </div>
-        @if($pendingLabel && !($a3AtFa))
-            <div class="pt-2 text-gray-500">{{ $pendingLabel }}</div>
-        @endif
-    </div>
-</div>
+
+<table class="min-w-full border border-gray-300 text-sm">
+    <thead class="bg-gray-100">
+        <tr>
+            <th class="border p-2 text-right">عنوان</th>
+            <th class="border p-2 text-right">وضعیت</th>
+            <th class="border p-2 text-right">تاریخ و ساعت</th>
+            <th class="border p-2 text-right">تأییدکننده اصلی</th>
+            <th class="border p-2 text-right">تأییدکننده جایگزین</th>
+        </tr>
+    </thead>
+
+    <tbody>
+
+        {{-- ثبت سفارش --}}
+        <tr>
+            <td class="border p-2">ثبت سفارش</td>
+            <td class="border p-2 bg-blue-50 text-blue-800">ایجاد شده</td>
+            <td class="border p-2">{{ $createdAtFa ?: '—' }}</td>
+            <td class="border p-2">{{ optional($purchaseOrder->requestedByUser)->name ?: '—' }}</td>
+            <td class="border p-2">—</td>
+        </tr>
+
+        {{-- تایید سرپرست کارخانه --}}
+        <tr>
+            <td class="border p-2">تأیید سرپرست کارخانه</td>
+            <td class="border p-2 {{ $a1AtFa ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800' }}">{{ $a1AtFa ? 'تأیید شده' : 'در انتظار تأیید' }}</td>
+            <td class="border p-2">{{ $a1AtFa ?: '—' }}</td>
+            <td class="border p-2 {{ $firstMainApproved ? 'bg-green-100' : '' }}">{{ $firstApproverName }}</td>
+            <td class="border p-2 {{ $firstSubApproved ? 'bg-green-100' : '' }}">{{ $firstApproverSubstituteName }}</td>
+        </tr>
+
+        {{-- تایید مدیر کل --}}
+        <tr>
+            <td class="border p-2">تأیید مدیر کل</td>
+            <td class="border p-2 {{ $a2AtFa ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800' }}">{{ $a2AtFa ? 'تأیید شده' : 'در انتظار تأیید' }}</td>
+            <td class="border p-2">{{ $a2AtFa ?: '—' }}</td>
+            <td class="border p-2 {{ $secondMainApproved ? 'bg-green-100' : '' }}">{{ $secondApproverName }}</td>
+            <td class="border p-2 {{ $secondSubApproved ? 'bg-green-100' : '' }}">{{ $secondApproverSubstituteName }}</td>
+        </tr>
+
+        {{-- تایید حسابداری --}}
+        <tr>
+            <td class="border p-2">تأیید حسابداری / پرداخت</td>
+            <td class="border p-2 {{ $a3AtFa ? 'bg-green-50 text-green-800' : 'bg-amber-50 text-amber-800' }}">{{ $a3AtFa ? 'تأیید شده' : 'در انتظار تأیید' }}</td>
+            <td class="border p-2">{{ $a3AtFa ?: '—' }}</td>
+            <td class="border p-2 {{ $accountingMainApproved ? 'bg-green-100' : '' }}">{{ $accountingApproverName }}</td>
+            <td class="border p-2 {{ $accountingSubApproved ? 'bg-green-100' : '' }}">{{ $accountingApproverSubstituteName }}</td>
+        </tr>
+    </tbody>
+</table>
+<p class="text-xs text-gray-600 mt-2">
+    در این جدول، نام مسئول اصلی و جایگزین هر مرحله از تایید سفارش نمایش داده می‌شود؛
+    زمانی که یکی از آن‌ها اقدام به تأیید کند، وضعیت به «تأیید شده» تغییر می‌کند و سلول همان فرد به رنگ سبز در می‌آید تا مشخص باشد تأیید توسط چه کسی انجام شده است.
+</p>
+
 
 <div class="bg-white rounded-lg shadow-md p-6 mt-4 font-vazirmatn" lang="fa" dir="rtl">
     <h3 class="text-md font-semibold mb-2">تصمیم‌گیری</h3>

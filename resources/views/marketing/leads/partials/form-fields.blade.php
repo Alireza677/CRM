@@ -32,8 +32,19 @@
         catch (\Exception $e) { $next_follow_up_shamsi = jdate()->addDays(7)->format('Y/m/d'); }
     }
 
-    $lead_date_miladi        = old('lead_date') ?? ($lead->lead_date ?? '');
-    $next_follow_up_miladi   = old('next_follow_up_date') ?? ($lead->next_follow_up_date ?? '');
+    $lead_date_miladi = old('lead_date');
+    if (is_null($lead_date_miladi)) {
+        $lead_date_miladi = $lead->lead_date
+            ? \Illuminate\Support\Carbon::parse($lead->lead_date)->format('Y-m-d')
+            : '';
+    }
+
+    $next_follow_up_miladi = old('next_follow_up_date');
+    if (is_null($next_follow_up_miladi)) {
+        $next_follow_up_miladi = $lead->next_follow_up_date
+            ? \Illuminate\Support\Carbon::parse($lead->next_follow_up_date)->format('Y-m-d')
+            : '';
+    }
 @endphp
 
 <div class="space-y-8" dir="rtl">
