@@ -59,7 +59,8 @@
         <aside id="mobileSidebar"
   class="fixed right-0 top-[115px] h-full w-72 bg-white shadow-lg z-50 border-l
          transform translate-x-full transition-transform duration-200 ease-out
-         md:translate-x-0 md:sticky md:top-[115px] md:h-[calc(100vh-115px)] md:w-64 md:z-40 md:overflow-y-auto">
+         md:static md:inset-auto md:transform-none md:translate-x-0
+         md:w-64 md:h-auto md:z-auto md:shadow-none md:border-0 md:overflow-visible md:mt-8">
 
             <div class="p-4">
                 <div class="flex items-center justify-between mb-2 md:mb-4">
