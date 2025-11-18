@@ -47,8 +47,8 @@ class AfterSalesServiceController extends Controller
         ]);
 
         return redirect()
-            ->route('support.after-sales-services.show', $service)
-            ->with('success', 'فرم خدمات پس از فروش با موفقیت ثبت شد.');
+            ->route('support.after-sales-services.index')
+            ->with('success', 'ÙØ±Ù… Ø®Ø¯Ù…Ø§Øª Ù¾Ø³ Ø§Ø² ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø«Ø¨Øª Ø´Ø¯.');
     }
 
     public function show(AfterSalesService $afterSalesService): View
@@ -67,7 +67,7 @@ class AfterSalesServiceController extends Controller
 
         return redirect()
             ->route('support.after-sales-services.show', $afterSalesService)
-            ->with('success', 'فرم خدمات پس از فروش با موفقیت بروزرسانی شد.');
+            ->with('success', 'ÙØ±Ù… Ø®Ø¯Ù…Ø§Øª Ù¾Ø³ Ø§Ø² ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯.');
     }
 
     public function destroy(AfterSalesService $afterSalesService): RedirectResponse
@@ -76,6 +76,22 @@ class AfterSalesServiceController extends Controller
 
         return redirect()
             ->route('support.after-sales-services.index')
-            ->with('success', 'فرم خدمات پس از فروش حذف شد.');
+            ->with('success', 'ÙØ±Ù… Ø®Ø¯Ù…Ø§Øª Ù¾Ø³ Ø§Ø² ÙØ±ÙˆØ´ Ø­Ø°Ù Ø´Ø¯.');
+    }
+
+    public function bulkDestroy(Request $request): RedirectResponse
+    {
+        $validated = $request->validate([
+            'ids' => ['required', 'array'],
+            'ids.*' => ['integer', 'exists:after_sales_services,id'],
+        ]);
+
+        $deletedCount = AfterSalesService::whereIn('id', $validated['ids'])->delete();
+
+        return redirect()
+            ->route('support.after-sales-services.index')
+            ->with('success', $deletedCount ? 'ÙØ±Ù…â€ŒÙ‡Ø§ÛŒ Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ Ø­Ø°Ù Ø´Ø¯Ù†Ø¯.' : 'Ù…ÙˆØ±Ø¯ÛŒ Ø¨Ø±Ø§ÛŒ Ø­Ø°Ù ÛŒØ§ÙØª Ù†Ø´Ø¯.');
     }
 }
+
+

@@ -84,6 +84,13 @@ class User extends Authenticatable
             ->withPivot('notified_at');
     }
 
+    public function favoriteLeads()
+    {
+        return $this->belongsToMany(SalesLead::class, 'lead_favorites', 'user_id', 'lead_id')
+            ->withTimestamps()
+            ->withPivot('created_at');
+    }
+
     public function isAdmin(): bool
     {
         // 1) فلگ دیتابیس

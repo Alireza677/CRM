@@ -71,6 +71,19 @@
                         }
                         return UpdateHelper::beautify($v ?? '-', $k);
                     };
+
+                    $conversionInfo = null;
+                    if (! $isCreated) {
+                        $newConvertedId = $new['converted_opportunity_id'] ?? null;
+                        $oldConvertedId = $old['converted_opportunity_id'] ?? null;
+                        if (!empty($newConvertedId) && empty($oldConvertedId)) {
+                            $conversionInfo = [
+                                'opportunity_id' => $newConvertedId,
+                                'converted_by'   => $new['converted_by'] ?? null,
+                                'converted_at'   => $new['converted_at'] ?? null,
+                            ];
+                        }
+                    }
                 @endphp
 
                 @if($isCreated)
@@ -90,7 +103,47 @@
                         @endforeach
                     </ul>
                 @elseif (!empty($new))
-                    
+                    @if(!empty($conversionInfo))
+                        @php
+                            $conversionUserName = null;
+                            if (!empty($conversionInfo['converted_by'])) {
+                                $conversionUserName = $users[$conversionInfo['converted_by']] ?? null;
+                            }
+
+                            $conversionDateText = null;
+                            if (!empty($conversionInfo['converted_at'])) {
+                                try {
+                                    $conversionDateText = jdate(\Carbon\Carbon::parse($conversionInfo['converted_at']))->format('Y/m/d H:i');
+                                } catch (\Exception $e) {
+                                    $conversionDateText = null;
+                                }
+                            }
+                            if (empty($conversionDateText)) {
+                                $conversionDateText = jdate($activity->created_at)->format('Y/m/d H:i');
+                            }
+
+                            $opportunityLink = null;
+                            if (!empty($conversionInfo['opportunity_id'])) {
+                                $opportunityLink = route('sales.opportunities.show', $conversionInfo['opportunity_id']);
+                            }
+                        @endphp
+                        <div class="mt-2 text-sm text-gray-700 space-y-1">
+                            <p>
+                                سرنخ فروش
+                                @if($conversionUserName)
+                                    توسط <span class="font-semibold">{{ $conversionUserName }}</span>
+                                @endif
+                                در تاریخ <span class="font-semibold">{{ $conversionDateText }}</span>
+                                به فرصت فروش تبدیل شد.
+                            </p>
+                            @if($opportunityLink)
+                                <a href="{{ $opportunityLink }}" class="text-blue-600 hover:text-blue-800 underline">
+                                    نمایش فرصت
+                                </a>
+                            @endif
+                        </div>
+                    @endif
+
                     <ul class="mt-2 text-sm space-y-1 text-gray-700">
                         @foreach($new as $key => $newRaw)
                             @continue(!isset($fields[$key]))

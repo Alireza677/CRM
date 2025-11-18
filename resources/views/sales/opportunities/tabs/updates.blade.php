@@ -4,6 +4,13 @@
     use App\Helpers\FormOptionsHelper;
 @endphp
 
+@php
+    $leadCreationOrderedKeys = [
+        'full_name','company','lead_source','lead_status','customer_type','assigned_to','next_follow_up_date','mobile','phone','email'
+    ];
+    $users = \App\Models\User::pluck('name', 'id')->toArray();
+@endphp
+
 <div class="space-y-6">
     @forelse($activities as $activity)
         <div class="bg-white shadow-sm rounded-lg p-4 border relative">
@@ -15,16 +22,20 @@
             @php
                 $eventType = $activity->event ?? $activity->description ?? null;
                 $isCreated = $eventType === 'created';
+                $copiedFromLead = ($activity->properties['copied_from'] ?? null) === 'lead';
             @endphp
 
             @if($isCreated)
                 <div class="text-sm mb-2 font-semibold text-green-700">فرصت فروش جدید ایجاد شد</div>
+                @if($copiedFromLead)
+                    <div class="text-xs text-gray-500 mb-2">این رویداد از لاگ‌های سرنخ منتقل شده است.</div>
+                @endif
 
                 @php
                     $attrs = $activity->properties['attributes'] ?? [];
-                    $orderedKeys = [
-                        'name', 'type', 'stage', 'organization_id', 'contact_id', 'source', 'assigned_to', 'success_rate', 'amount', 'next_follow_up', 'description'
-                    ];
+                    $orderedKeys = $copiedFromLead
+                        ? $leadCreationOrderedKeys
+                        : ['name', 'type', 'stage', 'organization_id', 'contact_id', 'source', 'assigned_to', 'success_rate', 'amount', 'next_follow_up', 'description'];
                 @endphp
 
                 <ul class="text-sm text-gray-800 space-y-1">
@@ -38,7 +49,7 @@
                             } else {
                                 switch ($key) {
                                     case 'assigned_to':
-                                        $value = \App\Models\User::find($raw)?->name ?? $raw;
+                                        $value = $users[$raw] ?? $raw;
                                         break;
                                     case 'organization_id':
                                         $value = \App\Models\Organization::find($raw)?->name ?? $raw;
@@ -78,15 +89,18 @@
                     <span class="font-semibold text-blue-700">{{ $activity->causer->name ?? 'سیستم' }}</span>
                     تغییری ایجاد کرد.
                 </div>
+                @if($copiedFromLead)
+                    <div class="text-xs text-gray-500 mb-2">این رویداد از لاگ‌های سرنخ منتقل شده است.</div>
+                @endif
 
                 <ul class="text-sm text-gray-800 space-y-1">
                     @foreach($activity->properties['attributes'] ?? [] as $key => $new)
                         @php
                             $old = $activity->properties['old'][$key] ?? null;
 
-                            if ($key === 'assigned_to') {
-                                $oldValue = \App\Models\User::find($old)?->name ?? $old;
-                                $newValue = \App\Models\User::find($new)?->name ?? $new;
+                            if (in_array($key, ['assigned_to', 'converted_by'], true)) {
+                                $oldValue = $users[$old] ?? $old;
+                                $newValue = $users[$new] ?? $new;
                             } else {
                                 $oldValue = UpdateHelper::beautify($old, $key);
                                 $newValue = UpdateHelper::beautify($new, $key);
@@ -110,3 +124,4 @@
         <div class="text-center text-gray-400">هیچ بروزرسانی‌ای ثبت نشده است.</div>
     @endforelse
 </div>
+

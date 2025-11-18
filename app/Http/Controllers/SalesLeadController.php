@@ -6,14 +6,17 @@ use App\Models\SalesLead;
 use App\Models\Opportunity;
 use App\Models\Organization;
 use App\Models\Contact;
+use App\Models\Note;
 use Illuminate\Support\Carbon;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
 use App\Helpers\FormOptionsHelper;
 use Illuminate\Validation\Rule;
 use App\Helpers\DateHelper;
+use Spatie\Activitylog\Models\Activity;
 
 class SalesLeadController extends Controller
 {
@@ -22,22 +25,23 @@ class SalesLeadController extends Controller
         $this->middleware('auth');
         $this->middleware('role:Admin')->only('destroy');
     }
+
     public function index(Request $request)
     {
         $query = SalesLead::visibleFor(auth()->user(), 'leads')->with('assignedUser');
 
-        // جستجوی عمومی
+        // جست‌وجوی عمومی
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
                 $q->where('first_name', 'like', "%{$search}%")
-                ->orWhere('last_name', 'like', "%{$search}%")
-                ->orWhere('company', 'like', "%{$search}%")
-                ->orWhere('state', 'like', "%{$search}%");
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('company', 'like', "%{$search}%")
+                    ->orWhere('state', 'like', "%{$search}%");
             });
         }
 
-       // فیلتر بر اساس فیلدهای خاص
+        // فیلتر بر اساس فیلدهای خاص
         if ($request->filled('lead_source')) {
             $query->where('lead_source', $request->lead_source);
         }
@@ -57,21 +61,41 @@ class SalesLeadController extends Controller
         if ($request->filled('mobile')) {
             $query->where(function ($q) use ($request) {
                 $q->where('mobile', 'like', '%' . $request->mobile . '%')
-                ->orWhere('phone', 'like', '%' . $request->mobile . '%');
+                    ->orWhere('phone', 'like', '%' . $request->mobile . '%');
             });
         }
 
-
         // صفحه‌بندی
-        $leads = $query->latest()->paginate(10)->appends($request->query());
+        $perPageOptions = [20, 50, 100, 200];
+        $perPage = (int) $request->input('per_page', 20);
+        if (! in_array($perPage, $perPageOptions, true)) {
+            $perPage = 20;
+        }
+
+        $leads = $query->latest()->paginate($perPage)->appends($request->query());
+
+        $favoriteLeadIds = [];
+        if ($request->user()) {
+            $favoriteLeadIds = \DB::table('lead_favorites')
+                ->where('user_id', $request->user()->id)
+                ->whereIn('lead_id', $leads->pluck('id'))
+                ->pluck('lead_id')
+                ->toArray();
+        }
 
         // داده‌های کمکی
         $users = User::all();
         $leadSources = \App\Helpers\FormOptionsHelper::leadSources();
 
-        return view('marketing.leads.index', compact('leads', 'users', 'leadSources'));
+        return view('marketing.leads.index', compact(
+            'leads',
+            'users',
+            'leadSources',
+            'favoriteLeadIds',
+            'perPage',
+            'perPageOptions'
+        ));
     }
-
 
     public function create()
     {
@@ -80,11 +104,10 @@ class SalesLeadController extends Controller
         return view('marketing.leads.create', compact('users', 'referrals'));
     }
 
-    
     public function store(Request $request)
     {
-        \Log::info('🟡 store() method started');
-        \Log::info('🟡 Raw request input:', $request->all());
+        \Log::info('🪙 store() method started');
+        \Log::info('🪙 Raw request input:', $request->all());
 
         $validator = Validator::make($request->all(), [
             'prefix' => 'nullable|string|max:10',
@@ -127,7 +150,7 @@ class SalesLeadController extends Controller
         ], [
             'full_name.required' => 'نام و نام خانوادگی الزامی است.',
             'email.email' => 'فرمت ایمیل نامعتبر است.',
-            'website.url' => 'فرمت وب سایت نامعتبر است.',
+            'website.url' => 'فرمت وب‌سایت نامعتبر است.',
         ]);
 
         if ($validator->fails()) {
@@ -139,17 +162,19 @@ class SalesLeadController extends Controller
             $validated = $validator->validated();
             \Log::info('🟢 Validation passed:', $validated);
 
-            // 🟠 جدا کردن یادداشت اولیه
+            // 🧩 جدا کردن یادداشت اولیه
             $noteContent = $validated['notes'] ?? null;
             unset($validated['notes']);
 
             $validated['created_by'] = Auth::id();
-            // Ensure creator ownership is recorded for visibility scopes
+            // ثبت مالکیت ایجادکننده برای محدوده‌های دسترسی
             $validated['owner_user_id'] = Auth::id();
             $validated['do_not_email'] = $request->has('do_not_email');
             $validated['lead_date'] = DateHelper::normalizeDateInput($validated['lead_date'] ?? null);
+
             if (strtolower((string)($validated['lead_status'] ?? '')) === 'lost') {
-                $validated['next_follow_up_date'] = null; // سرکاری → تاریخ پیگیری بعدی لازم نیست
+                // اگر وضعیت «از دست رفته» بود، تاریخ پیگیری بعدی نیاز نیست
+                $validated['next_follow_up_date'] = null;
             } else {
                 $validated['next_follow_up_date'] = DateHelper::normalizeDateInput($validated['next_follow_up_date'] ?? null);
             }
@@ -161,21 +186,21 @@ class SalesLeadController extends Controller
             if ($lead && $lead->id) {
                 \Log::info('✅ Sales lead created successfully with ID: ' . $lead->id);
 
-                // 🟢 ثبت یادداشت اولیه در جدول notes
+                // 📝 ثبت یادداشت اولیه در جدول notes
                 if (!empty($noteContent)) {
                     $lead->notes()->create([
                         'body' => $noteContent,
                         'user_id' => auth()->id(),
                     ]);
-                    \Log::info('📝 Initial note saved for lead ID: ' . $lead->id);
+                    \Log::info('📓 Initial note saved for lead ID: ' . $lead->id);
                 }
 
                 return redirect()->route('marketing.leads.index')
                     ->with('success', 'سرنخ فروش با موفقیت ایجاد شد.');
             } else {
-                \Log::error('🛑 Sales lead creation failed. No ID returned.');
+                \Log::error('🧨 Sales lead creation failed. No ID returned.');
                 return redirect()->back()
-                    ->with('error', 'خطا در ایجاد سرنخ فروش. لطفا دوباره تلاش کنید.')
+                    ->with('error', 'خطا در ایجاد سرنخ فروش. لطفاً دوباره تلاش کنید.')
                     ->withInput();
             }
         } catch (\Exception $e) {
@@ -186,20 +211,17 @@ class SalesLeadController extends Controller
         }
     }
 
-    
-
     public function bulkDelete(Request $request)
     {
-        
         $leadIds = $request->input('selected_leads', []);
-        
+
         if (!empty($leadIds)) {
             SalesLead::whereIn('id', $leadIds)->delete();
         }
 
-        return redirect()->route('marketing.leads.index')->with('success', 'سرنخ‌ها با موفقیت حذف شدند.');
+        return redirect()->route('marketing.leads.index')
+            ->with('success', 'سرنخ‌ها با موفقیت حذف شدند.');
     }
-
 
     public function edit(SalesLead $lead)
     {
@@ -208,13 +230,12 @@ class SalesLeadController extends Controller
         return view('marketing.leads.edit', compact('lead', 'users', 'referrals'));
     }
 
-    
     public function update(Request $request, SalesLead $lead)
     {
         \Log::info('🔵 update() reached');
         \Log::info('🔵 Request all:', $request->all());
 
-        // 🟢 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
+        // 🧮 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
         $leadDateConv = DateHelper::normalizeDateInput($request->lead_date ?? null);
         $statusVal = (string)($request->lead_status ?? '');
         if (strtolower($statusVal) === 'lost') {
@@ -226,7 +247,8 @@ class SalesLeadController extends Controller
             'lead_date' => $leadDateConv,
             'next_follow_up_date' => $nextFollowUpConv,
         ]);
-        \Log::info('🔁 Converted dates:', [
+
+        \Log::info('🧾 Converted dates:', [
             'lead_date' => $request->lead_date,
             'next_follow_up_date' => $request->next_follow_up_date,
         ]);
@@ -255,10 +277,11 @@ class SalesLeadController extends Controller
             'state' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
 
-            // 👇 در آپدیت می‌خوایم اصلاً نادیده بگیریمش؛
-            // پس توی ولیدیشن هم آزاد می‌ذاریم که خطا نده،
-            // ولی بعداً حذفش می‌کنیم.
+            // 👇 در آپدیت می‌خواهیم «notes» را عملاً نادیده بگیریم؛
+            // پس در ولیدیشن هم آزاد می‌گذاریم تا خطا ندهد،
+            // ولی بعداً مقدارش را از داده‌های نهایی حذف می‌کنیم.
             'notes' => 'nullable|string',
+
             'building_usage' => 'nullable|string|max:255',
             'internal_temperature' => 'nullable|numeric',
             'external_temperature' => 'nullable|numeric',
@@ -281,7 +304,7 @@ class SalesLeadController extends Controller
 
         // ✅ یادداشت اولیه در آپدیت نباید تغییر کند
         if (array_key_exists('notes', $validated)) {
-            \Log::info('🧯 Removing notes from update payload to keep initial note immutable.');
+            \Log::info('🧱 Removing notes from update payload to keep initial note immutable.');
             unset($validated['notes']);
         }
 
@@ -291,10 +314,8 @@ class SalesLeadController extends Controller
         $lead->update($validated);
 
         return redirect()->route('marketing.leads.index')
-            ->with('success', 'سرنخ فروش با موفقیت بروزرسانی شد.');
+            ->with('success', 'سرنخ فروش با موفقیت به‌روزرسانی شد.');
     }
-
-
 
     public function destroy(SalesLead $lead)
     {
@@ -309,8 +330,9 @@ class SalesLeadController extends Controller
         $lead->load(['lastNote', 'assignedTo']);
         $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
         $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
-        
-        $allUsers = User::whereNotNull('username')->get(); // ✅ این خط اضافه شود
+
+        // ✅ این خط اضافه شد تا فقط کاربرانی که نام کاربری دارند برگردند
+        $allUsers = User::whereNotNull('username')->get();
 
         return view('marketing.leads.show', compact('lead', 'allUsers'));
     }
@@ -327,72 +349,124 @@ class SalesLeadController extends Controller
         }
 
         try {
-            $organization = null;
-            if (!empty($lead->company)) {
-                $organization = Organization::firstOrCreate(
-                    ['name' => $lead->company],
-                    [
-                        'phone' => $lead->phone ?? $lead->mobile,
-                        'city' => $lead->city,
-                        'state' => $lead->state,
-                        'address' => $lead->address,
-                    ]
-                );
-            }
-
-            $firstName = null;
-            $lastName = null;
-            if (!empty($lead->full_name)) {
-                $parts = preg_split('/\s+/', trim($lead->full_name));
-                $lastName = array_pop($parts);
-                $firstName = trim(implode(' ', $parts));
-                if ($firstName === '') {
-                    $firstName = $lastName;
-                    $lastName = '';
+            DB::transaction(function () use ($lead) {
+                $organization = null;
+                if (!empty($lead->company)) {
+                    $organization = Organization::firstOrCreate(
+                        ['name' => $lead->company],
+                        [
+                            'phone' => $lead->phone ?? $lead->mobile,
+                            'city' => $lead->city,
+                            'state' => $lead->state,
+                            'address' => $lead->address,
+                        ]
+                    );
                 }
-            }
 
-            $contact = null;
-            if (!empty($firstName) || !empty($lastName)) {
-                $contact = Contact::create([
-                    'first_name' => $firstName,
-                    'last_name'  => $lastName,
-                    'email'      => $lead->email,
-                    'mobile'     => $lead->mobile,
-                    'phone'      => $lead->phone,
-                    'company'    => $lead->company,
-                    'city'       => $lead->city,
-                    'state'      => $lead->state,
-                    'address'    => $lead->address,
-                    'organization_id' => $organization?->id,
-                    'assigned_to' => $lead->assigned_to,
+                $firstName = null;
+                $lastName = null;
+                if (!empty($lead->full_name)) {
+                    $parts = preg_split('/\s+/', trim($lead->full_name));
+                    $lastName = array_pop($parts);
+                    $firstName = trim(implode(' ', $parts));
+                    if ($firstName === '') {
+                        $firstName = $lastName;
+                        $lastName = '';
+                    }
+                }
+
+                $contact = null;
+                if (!empty($firstName) || !empty($lastName)) {
+                    $contact = Contact::create([
+                        'first_name' => $firstName,
+                        'last_name'  => $lastName,
+                        'email'      => $lead->email,
+                        'mobile'     => $lead->mobile,
+                        'phone'      => $lead->phone,
+                        'company'    => $lead->company,
+                        'city'       => $lead->city,
+                        'state'      => $lead->state,
+                        'address'    => $lead->address,
+                        'organization_id' => $organization?->id,
+                        'assigned_to' => $lead->assigned_to,
+                    ]);
+                }
+
+                $name = $lead->company
+                    ? ('فرصت - ' . $lead->company)
+                    : ('فرصت - ' . ($lead->full_name ?: ('سرنخ #' . $lead->id)));
+
+                $opportunity = Opportunity::create([
+                    'name'             => $name,
+                    'organization_id'  => $organization?->id,
+                    'contact_id'       => $contact?->id,
+                    'assigned_to'      => $lead->assigned_to,
+                    'source'           => $lead->lead_source,
+                    'next_follow_up'   => $lead->next_follow_up_date,
+                    'description'      => $lead->notes,
+                    'stage'            => 'new',
                 ]);
-            }
 
-            $name = $lead->company ? ('فرصت - ' . $lead->company) : ('فرصت - ' . ($lead->full_name ?: ('سرنخ #' . $lead->id)));
+                $lead->converted_at = Carbon::now();
+                $lead->converted_opportunity_id = $opportunity->id;
+                $lead->converted_by = Auth::id();
+                $lead->save();
 
-            $opportunity = Opportunity::create([
-                'name'             => $name,
-                'organization_id'  => $organization?->id,
-                'contact_id'       => $contact?->id,
-                'assigned_to'      => $lead->assigned_to,
-                'source'           => $lead->lead_source,
-                'next_follow_up'   => $lead->next_follow_up_date,
-                'description'      => $lead->notes,
-                'stage'            => 'new',
-            ]);
+                $this->transferLeadNotesToOpportunity($lead, $opportunity);
+                $this->transferLeadActivitiesToOpportunity($lead, $opportunity);
 
-            $lead->converted_at = Carbon::now();
-            $lead->converted_opportunity_id = $opportunity->id;
-            $lead->converted_by = Auth::id();
-            $lead->save();
+            });
 
             return redirect()
                 ->route('marketing.leads.index')
                 ->with('success', 'سرنخ با موفقیت به فرصت فروش تبدیل شد.');
         } catch (\Throwable $e) {
-            return redirect()->back()->with('error', 'خطا در تبدیل سرنخ به فرصت: ' . $e->getMessage());
+            return redirect()->back()
+                ->with('error', 'خطا در تبدیل سرنخ به فرصت: ' . $e->getMessage());
         }
     }
 
+    private function transferLeadNotesToOpportunity(SalesLead $lead, Opportunity $opportunity): void
+    {
+        $lead->leadNotes()
+            ->with('mentions')
+            ->get()
+            ->each(function (Note $note) use ($opportunity) {
+                $newNote = $note->replicate(['noteable_id', 'noteable_type']);
+                $newNote->noteable_id = $opportunity->id;
+                $newNote->noteable_type = Opportunity::class;
+                $newNote->save();
+
+                if ($note->mentions->isNotEmpty()) {
+                    $payload = $note->mentions->mapWithKeys(function ($user) {
+                        return [
+                            $user->id => [
+                                'created_at'  => $user->pivot->created_at,
+                                'updated_at'  => $user->pivot->updated_at,
+                                'notified_at' => $user->pivot->notified_at,
+                            ],
+                        ];
+                    })->toArray();
+
+                    $newNote->mentions()->sync($payload);
+                }
+            });
+    }
+
+    private function transferLeadActivitiesToOpportunity(SalesLead $lead, Opportunity $opportunity): void
+    {
+        $lead->activities()
+            ->get()
+            ->each(function (Activity $activity) use ($opportunity, $lead) {
+                $newActivity = $activity->replicate(['subject_id', 'subject_type', 'log_name']);
+                $newActivity->subject_id = $opportunity->id;
+                $newActivity->subject_type = Opportunity::class;
+                $newActivity->log_name = 'opportunity';
+                $properties = $activity->properties ? $activity->properties->toArray() : [];
+                $properties['copied_from'] = 'lead';
+                $properties['copied_lead_id'] = $lead->id;
+                $newActivity->properties = $properties;
+                $newActivity->save();
+            });
+    }
 }

@@ -34,6 +34,7 @@ class UpdateHelper
                     : ($value === '2' ? 'مشتری حقوقی' : $value);
 
             case 'next_follow_up':
+            case 'next_follow_up_date':
                 Log::info('next_follow_up (raw):', ['value' => $value]);
 
                 try {
@@ -61,6 +62,20 @@ class UpdateHelper
                     ]);
                     return $value;
                 }
+            case 'converted_at':
+                if (empty($value)) {
+                    return null;
+                }
+                try {
+                    return DateHelper::toJalali(Carbon::parse($value), 'Y/m/d H:i');
+                } catch (\Throwable $e) {
+                    return $value;
+                }
+            case 'converted_opportunity_id':
+                if ($value === '') {
+                    return $value;
+                }
+                return '#' . ltrim($value, '#');
 
             default:
                 return $value;

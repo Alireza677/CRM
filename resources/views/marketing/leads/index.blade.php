@@ -2,6 +2,7 @@
 
 @php
     $breadcrumb = [['title' => 'سرنخ‌های فروش']];
+    $favoriteLeadIds = $favoriteLeadIds ?? [];
 @endphp
 
 @section('content')
@@ -92,13 +93,18 @@
             @csrf
 
             <div class="flex justify-start items-center mb-4">
-                <div></div>
+                
                 <div class="flex gap-2">
                     {{-- دکمه ایجاد سرنخ --}}
                     <a href="{{ route('marketing.leads.create') }}"
                     class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">
                         <i class="fas fa-plus ml-2"></i>
                         ایجاد سرنخ
+                    </a>
+                    <a href="{{ route('marketing.leads.favorites.index') }}"
+                        class="inline-flex items-center px-4 py-2 bg-amber-500 text-white rounded-md shadow hover:bg-amber-600">
+                        <i class="fas fa-star ml-2"></i>
+                        علاقه‌مندی‌ها
                     </a>
                     {{-- دکمه حذف انتخاب‌شده‌ها: فقط برای ادمین --}}
                     @role('admin')
@@ -125,6 +131,30 @@
                         </a>
                     @endrole
 
+                </div>
+                <div>
+                    <form method="GET" action="{{ route('marketing.leads.index') }}" class="flex items-center gap-2 text-sm">
+                        <label for="per-page-select" class="text-gray-700 whitespace-nowrap">تعداد نمایش:</label>
+                        <select id="per-page-select"
+                                name="per_page"
+                                class="border rounded-md px-2 py-1 focus:outline-none focus:ring"
+                                onchange="this.form.submit()">
+                            @foreach($perPageOptions as $option)
+                                <option value="{{ $option }}" {{ (int) $perPage === (int) $option ? 'selected' : '' }}>
+                                    {{ $option }}
+                                </option>
+                            @endforeach
+                        </select>
+                        @foreach(request()->except('per_page', 'page') as $name => $value)
+                            @if(is_array($value))
+                                @foreach($value as $item)
+                                    <input type="hidden" name="{{ $name }}[]" value="{{ $item }}">
+                                @endforeach
+                            @else
+                                <input type="hidden" name="{{ $name }}" value="{{ $value }}">
+                            @endif
+                        @endforeach
+                    </form>
                 </div>
             </div>
 
@@ -188,6 +218,17 @@
                 </td>
                 <td class="px-6 py-2 text-center">
                     <div class="flex items-center gap-3 justify-center">
+                        @php
+                            $isFavorite = in_array($lead->id, $favoriteLeadIds);
+                            $favoriteFormId = 'favorite-toggle-' . $lead->id;
+                        @endphp
+                        <button
+                            type="submit"
+                            form="{{ $favoriteFormId }}"
+                            class="inline-flex items-center text-xs px-2 py-1 rounded {{ $isFavorite ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
+                            aria-label="{{ $isFavorite ? 'حذف از علاقه‌مندی' : 'افزودن به علاقه‌مندی' }}">
+                            <i class="{{ $isFavorite ? 'fas' : 'far' }} fa-star ml-1"></i>
+                        </button>
                         <a href="{{ route('marketing.leads.edit', $lead) }}" class="text-blue-500 hover:underline">ویرایش</a>
                         @if(empty($lead->converted_at))
                             <button
@@ -221,6 +262,18 @@
         </form>
     </div>
 </div>
+
+@foreach($leads as $lead)
+    @php
+        $isFavorite = in_array($lead->id, $favoriteLeadIds);
+    @endphp
+    <form id="favorite-toggle-{{ $lead->id }}" method="POST" action="{{ $isFavorite ? route('marketing.leads.favorites.destroy', $lead) : route('marketing.leads.favorites.store', $lead) }}" style="display:none">
+        @csrf
+        @if($isFavorite)
+            @method('DELETE')
+        @endif
+    </form>
+@endforeach
 
 <!-- Standalone form for conversion (outside bulk-delete form to avoid nested forms) -->
 <form id="lead-convert-form" method="POST" style="display:none">
