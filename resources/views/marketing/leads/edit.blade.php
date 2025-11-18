@@ -1,9 +1,4 @@
 @extends('layouts.app')
-@php
-$breadcrumb = [
-        ['title' => 'سرنخ‌های فروش', 'url' => route('marketing.leads.index')],
-        ['title' => 'ویرایش سرنخ']
-    ];@endphp
 @section('content')
 <div class="container py-6" dir="rtl">
     <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">

@@ -17,9 +17,12 @@ use App\Helpers\FormOptionsHelper;
 use Illuminate\Validation\Rule;
 use App\Helpers\DateHelper;
 use Spatie\Activitylog\Models\Activity;
+use App\Http\Controllers\Concerns\LeadsBreadcrumbs;
 
 class SalesLeadController extends Controller
 {
+    use LeadsBreadcrumbs;
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -94,14 +97,17 @@ class SalesLeadController extends Controller
             'favoriteLeadIds',
             'perPage',
             'perPageOptions'
-        ));
+        ))->with('breadcrumb', $this->leadsBreadcrumb([], false));
     }
 
     public function create()
     {
         $users = User::all();
         $referrals = $users;
-        return view('marketing.leads.create', compact('users', 'referrals'));
+        return view('marketing.leads.create', compact('users', 'referrals'))
+            ->with('breadcrumb', $this->leadsBreadcrumb([
+                ['title' => 'ایجاد سرنخ'],
+            ]));
     }
 
     public function store(Request $request)
@@ -227,7 +233,10 @@ class SalesLeadController extends Controller
     {
         $users = User::all();
         $referrals = $users;
-        return view('marketing.leads.edit', compact('lead', 'users', 'referrals'));
+        return view('marketing.leads.edit', compact('lead', 'users', 'referrals'))
+            ->with('breadcrumb', $this->leadsBreadcrumb([
+                ['title' => 'ویرایش سرنخ'],
+            ]));
     }
 
     public function update(Request $request, SalesLead $lead)
@@ -334,7 +343,10 @@ class SalesLeadController extends Controller
         // ✅ این خط اضافه شد تا فقط کاربرانی که نام کاربری دارند برگردند
         $allUsers = User::whereNotNull('username')->get();
 
-        return view('marketing.leads.show', compact('lead', 'allUsers'));
+        return view('marketing.leads.show', compact('lead', 'allUsers'))
+            ->with('breadcrumb', $this->leadsBreadcrumb([
+                ['title' => 'جزئیات سرنخ'],
+            ]));
     }
 
     public function loadTab(SalesLead $lead, $tab)

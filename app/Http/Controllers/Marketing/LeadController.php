@@ -3,22 +3,29 @@
 namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\LeadsBreadcrumbs;
 use Illuminate\Http\Request;
 use App\Models\SalesLead as Lead;
 use Spatie\Activitylog\Models\Activity;
 
 class LeadController extends Controller
 {
+    use LeadsBreadcrumbs;
+
     public function show(Lead $lead)
     {
         // شمارش یادداشت‌ها را به مدل تزریق‌شده اضافه کن
-        $lead->loadCount('notes'); // اگر لازم بود: ->loadCount(['notes','opportunities'])
-        return view('marketing.leads.show', compact('lead'));
+        $lead->loadCount('notes'); // اگر لازم بود: ->loadCount(['notes', 'opportunities'])
+
+        return view('marketing.leads.show', compact('lead'))
+            ->with('breadcrumb', $this->leadsBreadcrumb([
+                ['title' => 'جزئیات سرنخ'],
+            ]));
     }
 
     public function loadTab(Lead $lead, $tab)
     {
-        // امنه که همیشه اینو لود کنیم (حجمش ناچیزه) تا تو هر تب به notes_count دسترسی داشته باشی
+        // عمداً همیشه notes_count را لود می‌کنیم (حجمش ناچیز است) تا در همه تب‌ها به notes_count دسترسی داشته باشیم
         $lead->loadCount('notes');
 
         switch ($tab) {

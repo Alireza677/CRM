@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\LeadsBreadcrumbs;
 use Illuminate\Http\Request;
 use App\Models\SalesLead;
 use App\Models\User;
@@ -10,6 +11,8 @@ use App\Notifications\MentionedInNote;
 
 class LeadNoteController extends Controller
 {
+    use LeadsBreadcrumbs;
+
     public function store(Request $request, SalesLead $lead)
     {
         $request->validate([
@@ -71,7 +74,10 @@ class LeadNoteController extends Controller
     public function show(SalesLead $lead)
     {
         $allUsers = User::whereNotNull('username')->get();
-        return view('marketing.leads.show', compact('lead', 'allUsers'));
+        return view('marketing.leads.show', compact('lead', 'allUsers'))
+            ->with('breadcrumb', $this->leadsBreadcrumb([
+                ['title' => 'جزئیات سرنخ'],
+            ]));
     }
 }
 

@@ -3,11 +3,14 @@
 namespace App\Http\Controllers\Marketing;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\Concerns\LeadsBreadcrumbs;
 use App\Models\SalesLead;
 use Illuminate\Http\Request;
 
 class LeadFavoriteController extends Controller
 {
+    use LeadsBreadcrumbs;
+
     public function __construct()
     {
         $this->middleware('auth');
@@ -22,7 +25,10 @@ class LeadFavoriteController extends Controller
             ->orderByDesc('lead_favorites.created_at')
             ->paginate(10);
 
-        return view('marketing.leads.favorites', compact('leads'));
+        return view('marketing.leads.favorites', compact('leads'))
+            ->with('breadcrumb', $this->leadsBreadcrumb([
+                ['title' => 'علاقه‌مندی‌ها'],
+            ]));
     }
 
     public function store(Request $request, SalesLead $lead)

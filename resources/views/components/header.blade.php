@@ -1,3 +1,5 @@
+@props(['breadcrumb' => []])
+
 <header 
     x-data="{
         mainMenuOpen: false,
@@ -180,8 +182,13 @@
     </div>
 </header>
 
+<!-- Global breadcrumb fixed under header -->
+<div class="fixed top-16 left-0 right-0 z-40">
+    <x-breadcrumb :items="$breadcrumb" />
+</div>
+
 <!-- Spacer -->
-<div class="h-16"></div>
+<div class="h-14"></div>
 
 
 

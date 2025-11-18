@@ -1,7 +1,6 @@
 @extends('layouts.app')
 
 @php
-    $breadcrumb = [['title' => 'سرنخ‌های فروش']];
     $favoriteLeadIds = $favoriteLeadIds ?? [];
 @endphp
 

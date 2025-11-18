@@ -1,12 +1,5 @@
 ﻿@extends('layouts.app')
 
-@php
-    $breadcrumb = [
-        ['title' => 'سرنخ‌های فروش', 'url' => route('marketing.leads.index')],
-        ['title' => 'علاقه‌مندی‌ها'],
-    ];
-@endphp
-
 @section('content')
 @if(session('success'))
     <div class="bg-green-100 text-green-800 px-4 py-2 rounded mb-4">

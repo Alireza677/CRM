@@ -68,14 +68,15 @@ Route::get('/', function () {
 });
 
 Route::get('/test-faraz-sms', function (FarazEdgeService $sms) {
-    // Ø´Ù…Ø§Ø±Ù‡â€ŒÙ‡Ø§ Ø¨Ø§ÛŒØ¯ E.164 Ø¨Ø§Ø´Ù†Ø¯: +98912XXXXXXX
+    // شماره‌ها باید در فرمت E.164 باشند: +98912XXXXXXX
     return $sms->sendWebservice(
-        ['+98912XXXXXXX'],                    // ÛŒÚ© ÛŒØ§ Ú†Ù†Ø¯ Ú¯ÛŒØ±Ù†Ø¯Ù‡
-        'Ø³Ù„Ø§Ù…! ØªØ³Øª Ø§Ø±Ø³Ø§Ù„ Ø§Ø² CRM âœ…',           // Ù…ØªÙ† Ù¾ÛŒØ§Ù…
-        null,                                 // Ø§Ø² Ø´Ù…Ø§Ø±Ù‡ Ù¾ÛŒØ´â€ŒÙØ±Ø¶ .env
-        null                                  // ÛŒØ§ Ù…Ø«Ù„Ø§Ù‹ '2025-03-12 21:20:02' (UTC)
+        ['+98912XXXXXXX'],                    // یک یا چند گیرنده
+        'سلام! تست ارسال از CRM ✅',          // متن پیام
+        null,                                 // استفاده از شماره پیش‌فرض تعریف‌شده در .env
+        null                                  // یا مثلاً '2025-03-12 21:20:02' (UTC) برای ارسال زمان‌بندی‌شده
     );
 });
+
 // Temporary debug route to verify inline image streaming
 Route::get('/debug/test-image', function () {
     $path = public_path('test.png');
@@ -108,19 +109,22 @@ Route::middleware(['auth'])->group(function () {
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
+    // Marketing & Leads
     Route::get('/marketing', [MarketingController::class, 'index'])->name('marketing');
     Route::get('marketing/leads/favorites', [LeadFavoriteController::class, 'index'])->name('marketing.leads.favorites.index');
     Route::post('marketing/leads/{lead}/favorite', [LeadFavoriteController::class, 'store'])->name('marketing.leads.favorites.store');
     Route::delete('marketing/leads/{lead}/favorite', [LeadFavoriteController::class, 'destroy'])->name('marketing.leads.favorites.destroy');
-    // Ø±ÛŒØ³ÙˆØ±Ø³ Ø§ØµÙ„ÛŒ Ú©Ù‡ Ù†Ù…Ø§ÛŒØ´ØŒ ÙˆÛŒØ±Ø§ÛŒØ´ØŒ Ø­Ø°Ù Ùˆ Ø§ÛŒØ¬Ø§Ø¯ Ø³Ø±Ù†Ø®â€ŒÙ‡Ø§ Ø±Ø§ Ù¾ÙˆØ´Ø´ Ù…ÛŒâ€ŒØ¯Ù‡Ø¯
+
+    // ریسورس اصلی که نمایش، ویرایش، حذف و ایجاد سرنخ‌ها را پوشش می‌دهد
     Route::resource('marketing/leads', SalesLeadController::class)->names('marketing.leads');
+
     Route::post('marketing/leads/{lead}/convert', [SalesLeadController::class, 'convertToOpportunity'])
         ->name('marketing.leads.convert');
 
-    // Ø­Ø°Ù Ú¯Ø±ÙˆÙ‡ÛŒ Ø§Ø² Ú©Ù†ØªØ±Ù„ÛŒ Ú©Ù‡ Ø®ÙˆØ¯Øª ÙˆÛŒØ±Ø§ÛŒØ´Ø´ Ú©Ø±Ø¯ÛŒ
+    // حذف گروهی از کنترلی که خودت ویرایشش کردی
     Route::post('/marketing/leads/bulk-delete', [SalesLeadController::class, 'bulkDelete'])->name('marketing.leads.bulk-delete');
 
-    // Ø³Ø§ÛŒØ± Ø¹Ù…Ù„ÛŒØ§Øª Ù…Ø±Ø¨ÙˆØ· Ø¨Ù‡ ØªØ¨â€ŒÙ‡Ø§ Ùˆ Ù†ÙˆØªâ€ŒÙ‡Ø§
+    // سایر عملیات مربوط به تب‌ها و یادداشت‌ها
     Route::prefix('marketing/leads')->group(function () {
         Route::get('{lead}/tab/{tab}', [LeadController::class, 'loadTab'])->name('marketing.leads.tab');
         Route::post('{lead}/notes', [LeadNoteController::class, 'store'])->name('marketing.leads.notes.store');
@@ -136,7 +140,8 @@ Route::middleware(['auth'])->group(function () {
 
     //// Sales
     Route::prefix('sales')->name('sales.')->group(function () {
-        // ÙØ±ØµØªâ€ŒÙ‡Ø§ÛŒ ÙØ±ÙˆØ´
+
+        // فرصت‌های فروش
         // Opportunities (with permission middleware)
         Route::get('opportunities/create', [OpportunityController::class, 'create'])
             ->name('opportunities.create')
@@ -150,13 +155,16 @@ Route::middleware(['auth'])->group(function () {
         Route::put('opportunities/{opportunity}', [OpportunityController::class, 'update'])
             ->name('opportunities.update')
             ->middleware('can:update,opportunity');
+
         // Bulk delete opportunities (placed before parameter route to avoid conflicts)
         Route::delete('opportunities/bulk-delete', [OpportunityController::class, 'bulkDelete'])
             ->name('opportunities.bulk_delete');
+
         Route::delete('opportunities/{opportunity}', [OpportunityController::class, 'destroy'])
             ->whereNumber('opportunity')
             ->name('opportunities.destroy')
             ->middleware('can:delete,opportunity');
+
         // Import (Dry run + Confirm)
         Route::get('opportunities/import', [OpportunityImportController::class, 'create'])->name('opportunities.import');
         Route::post('opportunities/import/dry-run', [OpportunityImportController::class, 'dryRun'])->name('opportunities.import.dryrun');
@@ -164,17 +172,20 @@ Route::middleware(['auth'])->group(function () {
 
         Route::resource('opportunities', OpportunityController::class)->names('opportunities')
             ->except(['create','store','edit','update','destroy']);
+
         Route::get('opportunities/{opportunity}/tab/{tab}', [OpportunityController::class, 'loadTab'])->name('opportunities.tab');
         Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])->name('opportunities.notes.store');
 
-        // Ø³Ø±Ù†Ø®â€ŒÙ‡Ø§
+        // سرنخ‌ها
         Route::get('leads/export', [LeadExportController::class, 'export'])
             ->name('leads.export');
-        // Ø§Ú©Ø³Ù¾ÙˆØ±Øª Ø¨Ø§ ÙØ±Ù…Øª Ø¯Ø± Ù…Ø³ÛŒØ±: /sales/leads/export/xlsx
+
+        // اکسپورت با فرمت در مسیر: /sales/leads/export/xlsx
         Route::get('leads/export/{format}', [LeadExportController::class, 'export'])
             ->whereIn('format', ['csv', 'xlsx'])
             ->name('leads.export.format');
-        // Ø³Ø±Ù†Ø®â€ŒÙ‡Ø§ (Ù…ÙˆØ¬ÙˆØ¯)
+
+        // سرنخ‌ها (موجود)
         Route::get('leads/create', [SalesLeadController::class, 'create'])
             ->name('leads.create')
             ->middleware('can:leads.create');
@@ -193,7 +204,7 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('leads', SalesLeadController::class)->names('leads')
             ->except(['create','store','edit','update','destroy']);
 
-        // Ø§Ø³Ù†Ø§Ø¯
+        // اسناد
         // Custom index to show two separate paginated sections (opportunities, purchase orders)
         Route::get('documents', function () {
             // Enforce policy: deny if role has no documents.view.* permission
@@ -214,8 +225,8 @@ Route::middleware(['auth'])->group(function () {
                 ->paginate(20, ['*'], 'po_page');
 
             $breadcrumb = [
-                ['title' => 'Ø¯Ø§Ø´Ø¨ÙˆØ±Ø¯', 'url' => route('dashboard')],
-                ['title' => 'Ø§Ø³Ù†Ø§Ø¯'],
+                ['title' => 'داشبورد', 'url' => route('dashboard')],
+                ['title' => 'اسناد'],
             ];
 
             return view('sales.documents.index_split', compact('opportunityDocs','purchaseOrderDocs','breadcrumb'));
@@ -226,7 +237,7 @@ Route::middleware(['auth'])->group(function () {
         Route::get('documents/{document}/view', [DocumentController::class, 'view'])->name('documents.view');
         Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
 
-        // Ù…Ø®Ø§Ø·Ø¨ÛŒÙ†
+        // مخاطبین
         Route::get('contacts/import', [ContactImportController::class, 'showForm'])
             ->name('contacts.import.form');
         Route::post('contacts/import', [ContactImportController::class, 'import'])
@@ -239,20 +250,21 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])
             ->name('contacts.bulk_delete');
         Route::get('contacts/{contact}/tab/{tab}', [ContactController::class, 'loadTab'])->name('contacts.tab');
+
         // AJAX lightweight create endpoints for inline modals
         Route::post('ajax/contacts', [AjaxCreateController::class, 'contact'])->name('ajax.contacts.store');
         Route::post('ajax/organizations', [AjaxCreateController::class, 'organization'])->name('ajax.organizations.store');
 
         Route::resource('contacts', ContactController::class);
 
-        // Ø³Ø§Ø²Ù…Ø§Ù†â€ŒÙ‡Ø§
+        // سازمان‌ها
         Route::get('organizations/import', [OrganizationImportController::class, 'importForm'])->name('organizations.import.form');
         Route::post('organizations/import', [OrganizationImportController::class, 'import'])->name('organizations.import');
-        Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // Ù‚Ø¨Ù„ Ø§Ø² resource
+        Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // قبل از resource
         Route::get('organizations/{organization}/tab/{tab}', [OrganizationController::class, 'loadTab'])->name('organizations.tab');
         Route::resource('organizations', OrganizationController::class)->names('organizations');
 
-        // Ù¾ÛŒØ´â€ŒÙØ§Ú©ØªÙˆØ±
+        // پیش‌فاکتور
         Route::get('proformas/import', [ProformaImportController::class, 'Form'])->name('proformas.import.form');
         Route::post('proformas/import', [ProformaImportController::class, 'import'])->name('proformas.import');
         Route::delete('proformas/bulk-delete', [ProformaController::class, 'bulkDestroy'])->name('proformas.bulk-destroy');
@@ -261,7 +273,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('proformas/{proforma}/items', [ProformaController::class, 'storeItems'])->name('proformas.items.store');
         Route::post('proformas/{proforma}/send-for-approval', [ProformaController::class, 'sendForApproval'])->name('proformas.sendForApproval');
 
-        // ØªØµÙ…ÛŒÙ…â€ŒÚ¯ÛŒØ±ÛŒ Ù…Ø±Ø­Ù„Ù‡â€ŒØ§ÛŒ: approve | reject
+        // تصمیم‌گیری مرحله‌ای: approve | reject
         Route::post('proformas/{proforma}/approvals/{step}/{decision}', [ProformaApprovalController::class, 'decide'])
             ->whereNumber('step')
             ->whereIn('decision', ['approve','reject'])
@@ -269,17 +281,17 @@ Route::middleware(['auth'])->group(function () {
         Route::post('proformas/{proforma}/reject', [ProformaController::class, 'reject'])
             ->name('proformas.reject');
 
-        // Ø±ÙˆØª Ù‚Ø¯ÛŒÙ…ÛŒ Ø¨Ø±Ø§ÛŒ ØªØ£ÛŒÛŒØ¯ Ù†Ù‡Ø§ÛŒÛŒ (Ø¯Ø± ØµÙˆØ±Øª Ø§Ø³ØªÙØ§Ø¯Ù‡ Ø¬Ø§Ù‡Ø§ÛŒ Ø¯ÛŒÚ¯Ø±)
+        // روت قدیمی برای تأیید نهایی (در صورت استفاده جاهای دیگر)
         Route::post('proformas/{proforma}/approve', [ProformaController::class, 'approve'])
             ->name('proformas.approve');
 
-        // Ù†Ù‚Ù„â€ŒÙ‚ÙˆÙ„â€ŒÙ‡Ø§
+        // نقل‌قول‌ها
         Route::resource('quotations', QuotationController::class);
 
-        // Ø¯Ø§Ø´Ø¨ÙˆØ±Ø¯ ÙØ±ÙˆØ´
+        // داشبورد فروش
         Route::get('/', [SalesController::class, 'index'])->name('index');
 
-        // Ù†Ø³Ø®Ù‡ Ù‚Ø¯ÛŒÙ…ÛŒ (Ø¯Ø± ØµÙˆØ±Øª Ù†ÛŒØ§Ø²)
+        // نسخه قدیمی (در صورت نیاز)
         Route::get('proforma-invoice', [ProformaInvoiceController::class, 'index'])->name('proforma.index');
     });
 
@@ -287,6 +299,7 @@ Route::middleware(['auth'])->group(function () {
     Route::post('inventory/purchase-orders/{purchaseOrder}/status', [PurchaseOrderController::class, 'updateStatus'])
         ->name('inventory.purchase-orders.updateStatus')
         ->whereNumber('purchaseOrder');
+
     // Workflow actions: approve / reject current stage
     Route::post('inventory/purchase-orders/{purchaseOrder}/approve', [PurchaseOrderController::class, 'approve'])
         ->name('inventory.purchase-orders.approve')
@@ -294,13 +307,14 @@ Route::middleware(['auth'])->group(function () {
     Route::post('inventory/purchase-orders/{purchaseOrder}/reject', [PurchaseOrderController::class, 'reject'])
         ->name('inventory.purchase-orders.reject')
         ->whereNumber('purchaseOrder');
+
     // After accounting approval: creator marks delivered to warehouse
     Route::post('inventory/purchase-orders/{purchaseOrder}/deliver-to-warehouse', [PurchaseOrderController::class, 'deliverToWarehouse'])
         ->name('inventory.purchase-orders.deliverToWarehouse')
         ->whereNumber('purchaseOrder');
 
     Route::prefix('inventory')->name('inventory.')->group(function () {
-        // --- Import routes (Ù‚Ø¨Ù„ Ø§Ø² resource Ù‡Ø§) ---
+        // --- Import routes (قبل از resource ها) ---
         Route::get('products/import', [ProductImportController::class, 'create'])->name('products.import');
         Route::post('products/import/dry-run', [ProductImportController::class, 'dryRun'])->name('products.import.dryrun');
         Route::post('products/import/confirm', [ProductImportController::class, 'store'])->name('products.import.store');
@@ -318,10 +332,11 @@ Route::middleware(['auth'])->group(function () {
         // --- Resources ---
         Route::resource('products', ProductController::class)->except(['show'])->whereNumber('product');
         Route::resource('suppliers', SupplierController::class);          // => inventory.suppliers.index
+
         // Tabs loader for purchase orders (info, documents, notes, updates)
-          Route::get('purchase-orders/{purchaseOrder}/tab/{tab}', [PurchaseOrderController::class, 'loadTab'])
-              ->whereIn('tab', ['info','items','documents','notes','updates'])
-              ->name('purchase-orders.tab');
+        Route::get('purchase-orders/{purchaseOrder}/tab/{tab}', [PurchaseOrderController::class, 'loadTab'])
+            ->whereIn('tab', ['info','items','documents','notes','updates'])
+            ->name('purchase-orders.tab');
 
         // Notes on purchase orders
         Route::post('purchase-orders/{purchaseOrder}/notes', [\App\Http\Controllers\PurchaseOrderNoteController::class, 'store'])
@@ -335,11 +350,13 @@ Route::middleware(['auth'])->group(function () {
 
     // Other Modules
     Route::get('/support', [SupportController::class, 'index'])->name('support');
+
     Route::prefix('support')->name('support.')->group(function () {
         Route::delete('after-sales-services/bulk-delete', [AfterSalesServiceController::class, 'bulkDestroy'])
             ->name('after-sales-services.bulk-destroy');
         Route::resource('after-sales-services', AfterSalesServiceController::class)->names('after-sales-services');
     });
+
     Route::get('/tools', [ToolsController::class, 'index'])->name('tools');
     Route::get('/admin', [AdminController::class, 'index'])->name('admin');
     Route::get('/customize', [CustomizeController::class, 'index'])->name('customize');
@@ -431,6 +448,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('sms/lists/{list}/contacts/{contact}', [SmsController::class, 'removeContactFromList'])->name('sms.lists.contacts.remove');
         Route::post('sms/lists/{list}/send', [SmsController::class, 'sendToList'])->name('sms.lists.send');
     });
+
     Route::get('/global-search', [GlobalSearchController::class, 'index'])->name('global.search');
 
     Route::scopeBindings()->group(function () {
@@ -447,8 +465,8 @@ Route::middleware(['auth'])->group(function () {
 
         Route::prefix('projects/{project}')
             ->name('projects.')
-            ->middleware('can:view,project')  // Ú©Ø§Ø±Ø¨Ø± Ø¨Ø§ÛŒØ¯ Ø¹Ø¶Ùˆ Ù¾Ø±ÙˆÚ˜Ù‡ Ø¨Ø§Ø´Ø¯
-            ->scopeBindings()                 // Ø¨Ø§ÛŒÙ†Ø¯ÛŒÙ†Ú¯ ØªÙˆ Ø¯Ø± ØªÙˆ: task Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ project Ùˆ note Ù…ØªØ¹Ù„Ù‚ Ø¨Ù‡ task
+            ->middleware('can:view,project')  // کاربر باید عضو پروژه باشد
+            ->scopeBindings()                 // بایندینگ تو در تو: task متعلق به project و note متعلق به task
             ->group(function () {
 
                 /*
@@ -457,18 +475,18 @@ Route::middleware(['auth'])->group(function () {
                 |-------------------------
                 */
 
-                // Ø§ÛŒØ¬Ø§Ø¯ ØªØ³Ú©
+                // ایجاد تسک
                 Route::post('tasks', [TaskController::class, 'store'])
                     ->name('tasks.store')
                     ->whereNumber('project');
 
-                // Ù†Ù…Ø§ÛŒØ´ ØªØ³Ú© (Ø¨Ø§ ÛŒØ§Ø¯Ø¯Ø§Ø´Øªâ€ŒÙ‡Ø§) => Ø¨Ù‡ TaskNoteController Ù…Ù†ØªÙ‚Ù„ Ø´Ø¯
+                // نمایش تسک (با یادداشت‌ها) => به TaskNoteController منتقل شد
                 Route::get('tasks/{task}', [TaskNoteController::class, 'show'])
                     ->name('tasks.show')
                     ->whereNumber('project')
                     ->whereNumber('task');
 
-                // ÙˆÛŒØ±Ø§ÛŒØ´/Ø¨Ù‡â€ŒØ±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ/Ø­Ø°Ù ØªÙˆØ³Ø· TaskController
+                // ویرایش/به‌روزرسانی/حذف توسط TaskController
                 Route::get('tasks/{task}/edit', [TaskController::class, 'edit'])
                     ->middleware('can:update,task')
                     ->name('tasks.edit')
@@ -487,7 +505,7 @@ Route::middleware(['auth'])->group(function () {
                     ->whereNumber('project')
                     ->whereNumber('task');
 
-                // Ø¹Ù„Ø§Ù…Øª Ø²Ø¯Ù† Ø¨Ù‡â€ŒØ¹Ù†ÙˆØ§Ù† Ø§Ù†Ø¬Ø§Ù…â€ŒØ´Ø¯Ù‡
+                // علامت زدن به‌عنوان انجام‌شده
                 Route::post('tasks/{task}/done', [TaskController::class, 'markDone'])
                     ->middleware('can:update,task')
                     ->name('tasks.done')
@@ -500,14 +518,14 @@ Route::middleware(['auth'])->group(function () {
                 |-------------------------
                 */
 
-                // Ø«Ø¨Øª ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø¬Ø¯ÛŒØ¯ Ø¨Ø±Ø§ÛŒ ØªØ³Ú©
+                // ثبت یادداشت جدید برای تسک
                 Route::post('tasks/{task}/notes', [TaskNoteController::class, 'store'])
-                    ->middleware('can:view,task') // ÛŒØ§ can:create, App\Models\Note Ø§Ú¯Ø± Ù¾Ø§Ù„ÛŒØ³ÛŒ Ø¬Ø¯Ø§ Ø¯Ø§Ø±ÛŒØ¯
+                    ->middleware('can:view,task') // یا can:create, App\Models\Note اگر پالیسی جدا دارید
                     ->name('tasks.notes.store')
                     ->whereNumber('project')
                     ->whereNumber('task');
 
-                // Ø­Ø°Ù ÛŒØ§Ø¯Ø¯Ø§Ø´Øª
+                // حذف یادداشت
                 Route::delete('tasks/{task}/notes/{note}', [TaskNoteController::class, 'destroy'])
                     ->middleware('can:delete,note')
                     ->name('tasks.notes.destroy')
@@ -540,12 +558,13 @@ Route::middleware(['auth'])->group(function () {
     Route::middleware(['auth'])->group(function () {
         Route::resource('activities', ActivityController::class);
 
-        // Ø¯Ú©Ù…Ù‡ ØªØºÛŒÛŒØ± ÙˆØ¶Ø¹ÛŒØª Ø¨Ù‡ ØªÚ©Ù…ÛŒÙ„ Ø´Ø¯Ù‡
+        // دکمه تغییر وضعیت به تکمیل شده
         Route::patch('activities/{activity}/complete', [\App\Http\Controllers\ActivityController::class, 'markComplete'])
             ->name('activities.complete');
 
         Route::get('/calendar', [CalendarController::class, 'index'])->name('calendar.index');
         Route::get('/calendar/events', [CalendarController::class, 'events'])->name('calendar.events');
+
         Route::prefix('employee-portal')->name('employee.portal.')->group(function () {
             Route::get('/', [EmployeePortalController::class, 'index'])->name('index');
             Route::get('/contract', [EmployeePortalController::class, 'contract'])->name('contract');
@@ -554,7 +573,7 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/leaves', [EmployeePortalController::class, 'leaves'])->name('leaves');
             Route::get('/payslips', [EmployeePortalController::class, 'payslips'])->name('payslips');
             Route::get('/insurance', [EmployeePortalController::class, 'insurance'])->name('insurance');
-        }); // ÙÛŒØ¯ Ø§ÛŒÙˆÙ†Øªâ€ŒÙ‡Ø§
+        }); // فید ایونت‌ها
 
         // Admin: Holidays management
         Route::middleware(['role:admin'])->group(function () {
@@ -569,4 +588,3 @@ Route::middleware(['auth'])->group(function () {
 });
 
 require __DIR__.'/auth.php';
-

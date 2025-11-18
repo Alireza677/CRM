@@ -26,8 +26,11 @@
     <div class="flex">
         <div id="mobileOverlay" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden"></div>
 
-        <aside id="mobileSidebar" class="fixed right-0 top-[115px] h-full w-72 bg-white shadow-lg z-50 border-l transform translate-x-full transition-transform duration-200 ease-out md:translate-x-0 md:sticky md:top-[115px] md:h-[calc(100vh-115px)] md:w-64 md:z-40 md:overflow-y-auto">
-            <div class="p-4">
+<aside id="mobileSidebar"
+  class="fixed right-0 top-[105px] h-[calc(100vh-115px)] w-72 bg-white shadow-lg z-40 border-l
+         transform translate-x-full transition-transform duration-200 ease-out
+         md:translate-x-0 md:w-64 md:overflow-y-auto"> 
+                    <div class="p-4">
                 <div class="flex items-center justify-between mb-2 md:mb-4">
                     <h2 class="text-m font-bold text-gray-600">{{ $purchaseOrder->subject }}</h2>
                     <button id="closeSidebarBtn" class="md:hidden inline-flex items-center justify-center w-8 h-8 rounded-lg hover:bg-gray-100" aria-label="بستن منو">
@@ -55,7 +58,7 @@
             </div>
         </aside>
 
-        <main class="flex-1 px-4 md:px-8 pb-8 md:ml-0">
+<main class="flex-1 px-4 md:px-8 pb-8 mr-0 md:mr-64">
             <div class="hidden md:flex justify-between items-center mb-6 mt-8">
                 <h1 class="text-2xl font-bold text-gray-800">سفارش خرید: {{ $purchaseOrder->subject }}</h1>
                 <div class="flex items-center gap-2">

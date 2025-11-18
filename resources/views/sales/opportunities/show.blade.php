@@ -56,11 +56,11 @@
         {{-- سایدبار: آف‌کانواس در موبایل / ثابت در دسکتاپ --}}
         <div id="mobileOverlay" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden"></div>
 
-        <aside id="mobileSidebar"
-  class="fixed right-0 top-[115px] h-full w-72 bg-white shadow-lg z-50 border-l
+    <aside id="mobileSidebar"
+class="fixed right-0 top-[105px] h-[calc(100vh-115px)] w-72 bg-white shadow-lg z-40 border-l
          transform translate-x-full transition-transform duration-200 ease-out
-         md:static md:inset-auto md:transform-none md:translate-x-0
-         md:w-64 md:h-auto md:z-auto md:shadow-none md:border-0 md:overflow-visible md:mt-8">
+         md:translate-x-0 md:w-64 md:overflow-y-auto">
+
 
             <div class="p-4">
                 <div class="flex items-center justify-between mb-2 md:mb-4">
@@ -143,7 +143,7 @@
         </aside>
 
         {{-- محتوای اصلی --}}
-    <main class="flex-1 px-4 md:px-8 pb-8 md:mr-0 md:ml-0">
+    <main class="flex-1 px-4 md:px-8 pb-8 mr-0 md:mr-64">
 
             {{-- هدر دسکتاپ: فقط عنوان --}}
             <div class="hidden md:flex justify-between items-center mb-6 mt-8">

@@ -51,10 +51,9 @@
 <body x-data="{ mainMenuOpen: false, subMenuOpen: false, activeMenu: null, openSubMenu(name) { this.subMenuOpen = true; this.activeMenu = name; } }"
       class="font-sans antialiased">
 <div class="min-h-screen bg-gray-100">
-    <x-header />
+    <x-header :breadcrumb="$breadcrumb ?? []" />
     <x-sidebar />
 
-    <x-breadcrumb :items="$breadcrumb ?? []" />
     <div class=" ">
         @yield('header')
     </div>
