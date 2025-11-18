@@ -34,6 +34,11 @@ class LeadNoteController extends Controller
             'user_id' => auth()->id(),
         ]);
 
+        $formTitle = trim((string) ($lead->getNotificationTitle() ?? $lead->full_name ?? $lead->company ?? $lead->name ?? ''));
+        if ($formTitle === '') {
+            $formTitle = '????';
+        }
+
         // ساخت URL مقصد برای همین یادداشت
         $noteUrl = route('marketing.leads.show', $lead->id) . '#note-' . $note->id;
 
@@ -50,6 +55,8 @@ class LeadNoteController extends Controller
                         'mentioned_user' => $user,
                         'mentioned_user_name' => $user->name,
                         'context_label' => 'سرنخ',
+                        'form_title' => $formTitle,
+                        'actor' => auth()->user(),
                         'url' => route('marketing.leads.show', $lead->id) . '#note-' . $note->id,
                     ];
                     $router->route('notes', 'note.mentioned', $context, [$user]);
@@ -67,3 +74,5 @@ class LeadNoteController extends Controller
         return view('marketing.leads.show', compact('lead', 'allUsers'));
     }
 }
+
+

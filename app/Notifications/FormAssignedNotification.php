@@ -40,22 +40,89 @@ class FormAssignedNotification extends Notification implements ShouldQueue
         return $channels;
     }
 
-    public function toDatabase($notifiable): array
+        public function toDatabase($notifiable): array
+
     {
 
         [$routeName, $label, $param] = $this->routeMeta();
+
         $formTitle = $this->formTitle();
-        
+
+        $url       = $routeName ? route($routeName, [$param => $this->form->getRouteKey()]) : null;
+
+        $module    = $this->resolveModule();
+
+        $event     = 'assigned.changed';
+
+
+
+        try {
+
+            $ctx = $this->buildTemplateContext($notifiable, $url, $formTitle);
+
+            $tpl = \App\Support\NotificationTemplateResolver::resolve($module, $event, 'database', $ctx);
+
+            $subject = trim((string) ($tpl['subject'] ?? ''));
+
+            $body    = trim((string) ($tpl['body'] ?? ''));
+
+            if ($subject !== '' || $body !== '') {
+
+                return array_filter([
+
+                    'module'     => $module,
+
+                    'event'      => $event,
+
+                    'title'      => $subject ?: null,
+
+                    'message'    => $body !== '' ? $body : $subject,
+
+                    'body'       => $body ?: null,
+
+                    'form_id'    => (string) $this->form->getKey(),
+
+                    'form_type'  => get_class($this->form),
+
+                    'assigned_by'=> $this->assignedBy ? $this->assignedBy->name : null,
+
+                    'route_name' => $routeName,
+
+                    'url'        => $url,
+
+                ]);
+
+            }
+
+        } catch (\Throwable $e) {
+
+            // fall through to legacy payload
+
+        }
+
+
+
         return [
-            'message'      => $this->customMessage ?? "{$label} «{$formTitle}» به شما ارجاع داده شد.",
+
+            'message'      => $this->customMessage ?? "{$label} A?{$formTitle}A? O"U? O'U.O OO?O?OO1 O_OO_U? O'O_.",
+
             'form_id'      => (string) $this->form->getKey(),
+
             'form_type'    => get_class($this->form),
+
             'assigned_by'  => $this->assignedBy ? $this->assignedBy->name : null,
+
             'title'        => $this->customTitle ?? null,
+
             'route_name'   => $routeName,
-            'url'          => $routeName ? route($routeName, [$param => $this->form->getRouteKey()]) : null,
+
+            'url'          => $url,
+
         ];
+
     }
+
+
 
     public function toMail($notifiable): MailMessage
     {
@@ -66,17 +133,11 @@ class FormAssignedNotification extends Notification implements ShouldQueue
         $subject = $this->customTitle ?: 'مورد جدید به شما ارجاع شد';
         $intro   = $this->customMessage ?: "یک {$label} جدید برای شما ارجاع شد:";
 
-        // Try DB/email template for leads.assigned.changed (and similar) first
+        // Try DB/email template for leads/opportunities/proformas assigned.changed first
         try {
-            $module = 'leads';
+            $module = $this->resolveModule();
             $event  = 'assigned.changed';
-            $ctx = [
-                'lead_name' => (string) $formTitle,
-                'old_user'  => (string) ($this->assignedBy?->name ?? ''),
-                'new_user'  => (string) ($notifiable->name ?? ''),
-                'url'       => $url,
-                'actor.name'=> (string) ($this->assignedBy?->name ?? ''),
-            ];
+            $ctx = $this->buildTemplateContext($notifiable, $url, $formTitle);
             $tpl = \App\Support\NotificationTemplateResolver::resolve($module, $event, 'email', $ctx);
             $subj = trim((string) ($tpl['subject'] ?? ''));
             $body = trim((string) ($tpl['body'] ?? ''));
@@ -130,6 +191,37 @@ class FormAssignedNotification extends Notification implements ShouldQueue
     }
 
 
+    protected function resolveModule(): string
+    {
+        if ($this->form instanceof \App\Models\Opportunity) {
+            return 'opportunities';
+        }
+        if ($this->form instanceof \App\Models\Proforma) {
+            return 'proformas';
+        }
+        return 'leads';
+    }
+
+    protected function buildTemplateContext($notifiable, ?string $url, ?string $formTitle = null): array
+    {
+        $title   = $formTitle ?? $this->formTitle();
+        $oldName = (string) ($this->assignedBy?->name ?? '');
+        $newName = (string) ($notifiable->name ?? '');
+
+        return [
+            'model'        => $this->form,
+            'form_title'   => $title,
+            'lead_name'    => $title,
+            'old_user'     => $oldName,
+            'new_user'     => $newName,
+            'old_assignee' => $oldName,
+            'new_assignee' => $newName,
+            'sender_name'  => $oldName,
+            'actor'        => $this->assignedBy,
+            'url'          => $url ?: url('/'),
+        ];
+    }
+
     protected function formTitle(): string
     {
         if (method_exists($this->form, 'getNotificationTitle')) {

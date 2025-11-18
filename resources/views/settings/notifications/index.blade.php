@@ -13,7 +13,7 @@
             <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div class="p-6 text-gray-900">
                     <div class="flex items-center justify-between mb-4">
-                        <h1 class="text-2xl font-semibold text-right">ماتریس تنظیمات اعلان‌ها</h1>
+                        <h1 class="text-2xl font-semibold text-right"> تنظیمات اعلان‌ها</h1>
                         <a href="{{ route('settings.index') }}" class="text-blue-600 hover:underline">بازگشت به تنظیمات</a>
                     </div>
 
@@ -29,6 +29,50 @@
                             <button @click="clearSearch()" class="px-3 py-1.5 bg-gray-100 rounded border">پاک‌سازی</button>
                         </div>
                     </div>
+
+                    @if($purchaseOrderSection)
+                        <div class="mb-8 border rounded-lg overflow-hidden" x-data="{ showCreate: false, sectionOpen: true }" @po-rules-cancel.window="showCreate=false">
+                            <div class="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer" @click="sectionOpen = !sectionOpen; if(!sectionOpen){ showCreate = false }">
+                                <div class="flex items-center gap-3">
+                                    <svg x-bind:class="{ 'rotate-180': sectionOpen }" class="w-4 h-4 text-gray-600 transition-transform duration-200" viewBox="0 0 20 20" fill="currentColor">
+                                        <path fill-rule="evenodd" d="M5.293 7.293a1 1 0 011.414 0L10 10.586l3.293-3.293a1 1 0 111.414 1.414l-4 4a1 1 0 01-1.414 0l-4-4a1 1 0 010-1.414z" clip-rule="evenodd" />
+                                    </svg>
+                                    <div class="text-lg font-semibold text-gray-800">{{ $purchaseOrderSection['module_label'] ?? 'سفارش‌های خرید' }}</div>
+                                    <div class="text-sm text-gray-600">{{ $purchaseOrderSection['event_label'] ?? 'تغییر وضعیت' }}</div>
+                                </div>
+                                <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" @click.stop="showCreate = !showCreate">+ اعلان جدید</button>
+                            </div>
+                            <div class="divide-y divide-gray-200" x-show="sectionOpen" x-transition x-cloak>
+                                <div x-show="showCreate" x-cloak class="bg-blue-50/60">
+                                    @php
+                                        $poCreateRow = $purchaseOrderSection['defaults'] ?? [];
+                                        $poCreateRow['form_action'] = route('settings.notifications.store');
+                                    @endphp
+                                    @include('settings.notifications.partials.purchase-order-rule-row', [
+                                        'row' => $poCreateRow,
+                                        'section' => $purchaseOrderSection,
+                                        'poStatuses' => $poStatuses ?? [],
+                                        'channelOptions' => $channelOptions,
+                                    ])
+                                </div>
+                                @forelse($purchaseOrderSection['rules'] as $poRule)
+                                    @php
+                                        $poRow = $poRule;
+                                        $poRow['form_action'] = route('settings.notifications.update', $poRule['id']);
+                                        $poRow['delete_action'] = route('settings.notifications.destroy', $poRule['id']);
+                                    @endphp
+                                    @include('settings.notifications.partials.purchase-order-rule-row', [
+                                        'row' => $poRow,
+                                        'section' => $purchaseOrderSection,
+                                        'poStatuses' => $poStatuses ?? [],
+                                        'channelOptions' => $channelOptions,
+                                    ])
+                                @empty
+                                    <div class="p-4 text-sm text-gray-500">هیچ قانون فعالی برای این بخش ثبت نشده است.</div>
+                                @endforelse
+                            </div>
+                        </div>
+                    @endif
 
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200">
@@ -96,6 +140,7 @@
                                             previewLocal(){
                                                 const dummy = {
                                                     '{po_number}':'PO-1001',
+                                                    '{po_subject}':'PO Subject',
                                                     '{from_status}':'from-status',
                                                     '{to_status}':'to-status',
                                                     '{requester_name}':'Requester Name',
@@ -108,6 +153,7 @@
                                                     '{note_excerpt}':'Note excerpt...',
                                                     '{mentioned_user}':'Mentioned User',
                                                     '{context}':'Context',
+                '{form_title}':'????? ??? ?????',
                                                 };
                                                 let s = this.subject || '';
                                                 let b = this.body || '';
@@ -285,91 +331,35 @@
                                                 </form>
                                             @endif
 
-                                            <!-- Modal (teleported to body for consistent Alpine scope) -->
-                                                    <template x-teleport="body">
-                                                    <!-- اضافه شد: overflow-y-auto برای اسکرول عمودی کل مودال -->
-                                                    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" aria-modal="true" role="dialog">
-                                                        <div class="absolute inset-0 bg-black/30" @click="closeEditor()" x-transition.opacity></div>
+                                          <!-- Modal (teleported to body for consistent Alpine scope) -->
+                                            @include('settings.notifications.partials.notification-template-editor', [
+                                                'editorConfig' => [
+                                                    'panelClasses' => 'relative max-w-4xl mx-auto my-10 sm:my-16 bg-white border rounded-lg p-4 shadow max-h-[90vh] overflow-y-auto',
 
-                                                        <!-- تغییر: mt به my تا بالا و پایین فاصله داشته باشد -->
-                                                        <!-- اضافه شد: max-h-[90vh] و overflow-y-auto تا بدنه مودال داخل خودش اسکرول شود -->
-                                                        <div class="relative max-w-4xl mx-auto my-10 sm:my-16 bg-white border rounded-lg p-4 shadow
-                                                                    max-h-[90vh] overflow-y-auto"
-                                                            dir="rtl"
-                                                            x-show="showModal"
-                                                            x-transition.opacity.scale.origin-top>
-                                                        <div class="flex items-center justify-between mb-3">
-                                                            <h3 class="text-lg font-semibold">ویرایش قالب اعلان</h3>
-                                                            <button type="button" class="text-gray-500 hover:text-gray-700" @click="closeEditor()">بستن</button>
-                                                        </div>
+                                                    // برچسب‌ها
+                                                    'bodyLabel' => 'متن اعلان (ایمیل / اعلان داخلی)',
+                                                    'smsLabel' => 'متن پیامک (SMS)',
 
-                                                        <div class="grid grid-cols-1 gap-3">
-                                                            <div>
-                                                            <label class="block text-sm text-gray-700 mb-1">عنوان</label>
-                                                            <input type="text" x-ref="subjectArea" @focus="focusedField='subject'" x-model="subject"
-                                                                    class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                                            </div>
+                                                    // Placeholderها
+                                                    'bodyPlaceholder' => 'متن کامل اعلان (ایمیل یا اعلان داخلی) را اینجا وارد کنید. می‌توانید از توکن‌های بالا برای شخصی‌سازی متن استفاده کنید.',
+                                                    'smsPlaceholder' => 'متن پیامکی که برای کاربر ارسال می‌شود را اینجا وارد کنید. در صورت نیاز می‌توانید از همان توکن‌ها استفاده کنید.',
 
-                                                            <div>
-                                                            <label class="block text-sm text-gray-700 mb-1">متن</label>
-                                                            <textarea x-ref="bodyArea" @focus="focusedField='body'" x-model="body" rows="8"
-                                                                        placeholder="برای شروع می‌توانید از کلیدواژه‌ها استفاده کنید"
-                                                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
-                                                            </div>
+                                                    // متن راهنما برای توکن‌ها
+                                                    'showTokenHelperText' => true,
+                                                    'tokenHelperText' => 'برای شخصی‌سازی اعلان‌ها می‌توانید از توکن‌های زیر استفاده کنید. این توکن‌ها هنگام ارسال، با مقادیر واقعی (مثل نام کاربر، شماره سفارش و ...) جایگزین می‌شوند.',
 
-                                                            <div>
-                                                            <label class="block text-sm text-gray-700 mb-1">متن پیامک (SMS)</label>
-                                                            <textarea x-ref="smsArea" @focus="focusedField='sms'" x-model="sms" rows="4"
-                                                                        placeholder="متن کوتاه پیامک؛ از کلیدواژه‌ها می‌توانید استفاده کنید"
-                                                                        class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"></textarea>
-                                                            </div>
+                                                    // متن انتهایی توکن‌ها
+                                                    'showTokenFooter' => true,
+                                                    'tokenFooterText' => 'نمونه‌هایی از توکن‌های قابل استفاده در متن اعلان و پیامک:',
 
-                                                            <div class="text-xs text-gray-500 mb-1">از کلیدواژه‌ها برای جای‌گذاری خودکار استفاده کنید.</div>
+                                                    // چینش دکمه‌ها
+                                                    'buttonsLayout' => 'text-right',
 
-                                                            <div class="flex items-center gap-2 mb-2">
-                                                            <input type="text" x-model="pQ" @keydown="onKeyNav($event)" placeholder="جستجو در کلیدواژه‌ها..."
-                                                                    class="w-64 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                                                            </div>
+                                                    // متن دکمه‌ها
+                                                    'saveButtonText' => 'ذخیره تغییرات',
+                                                ],
+                                            ])
 
-                                                            <div class="flex flex-wrap gap-2" @keydown="onKeyNav($event)" tabindex="0">
-                                                            <template x-for="(tok, idx) in filteredTokens()" :key="tok">
-                                                                <div :class="'px-2 py-1 rounded border text-xs cursor-pointer flex items-center gap-2 '+(idx===selectedIdx?'bg-blue-50 border-blue-300':'bg-gray-50 border-gray-200')"
-                                                                    @click="insertToken(tok)" @mouseenter="selectedIdx=idx">
-                                                                <span x-text="tok"></span>
-                                                                <button type="button" class="text-gray-400 hover:text-gray-600" @click.stop="copyToken(tok)">کپی</button>
-                                                                </div>
-                                                            </template>
-                                                            </div>
-
-                                                            <div class="text-xs text-gray-500">
-                                                            از کلیدواژه‌ها برای جای‌گذاری خودکار استفاده کنید:
-                                                            <span x-text="placeholders.join('، ')"></span>،
-                                                            <code>{url}</code> یا <code>@{{ url }}</code>، <code>@{{ actor.name }}</code>
-                                                            </div>
-
-                                                            <div class="text-right mt-2">
-                                                            <button type="button" class="px-4 py-2 bg-gray-200 rounded mr-2" @click="renderPreview()">به‌روزرسانی پیش‌نمایش</button>
-                                                            <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" @click="saveTemplates()">ذخیره</button>
-                                                            <button type="button" class="px-4 py-2 bg-gray-200 rounded mr-2" @click="closeEditor()">انصراف</button>
-                                                            </div>
-
-                                                            <div class="mt-2">
-                                                            <div class="text-sm font-medium mb-1">پیش‌نمایش</div>
-                                                            <div class="p-3 bg-gray-50 rounded border text-sm whitespace-pre-line">
-                                                                <div class="font-semibold" x-text="preview.subject"></div>
-                                                                <div x-text="preview.body"></div>
-                                                                <template x-if="(channels||[]).includes('sms') && (sms||'').trim() !== ''">
-                                                                <div class="mt-2">
-                                                                    <div class="font-semibold">SMS:</div>
-                                                                    <div x-text="preview.sms"></div>
-                                                                </div>
-                                                                </template>
-                                                            </div>
-                                                            </div>
-                                                        </div>
-                                                        </div>
-                                                    </div>
-                                                    </template>
 
                                         </td>
                                     </tr>
@@ -385,6 +375,14 @@
                     @endif
                     @if(session('error'))
                         <div x-data="{show:true}" x-show="show" x-init="setTimeout(()=>show=false,4000)" class="fixed bottom-6 left-6 bg-red-600 text-white px-4 py-2 rounded shadow">{{ session('error') }}</div>
+                    @endif
+                    @if($errors->has('error'))
+                        <div x-data="{show:true}" x-show="show" x-init="setTimeout(()=>show=false,5000)" class="fixed bottom-6 left-6 bg-red-600 text-white px-4 py-2 rounded shadow">
+                            {{ $errors->first('error') }}
+                            @if(session('request_id'))
+                                <div class="text-xs opacity-80 mt-1">کد پیگیری: {{ session('request_id') }}</div>
+                            @endif
+                        </div>
                     @endif
                     <div x-data="{show:false,text:'',color:'green'}" @toast.window="show=true; text=$event.detail.text||''; color=$event.detail.color||'green'; setTimeout(()=>show=false,3000)" x-show="show" x-cloak :class="color==='red'?'bg-red-600':'bg-green-600'" class="fixed bottom-6 left-6 text-white px-4 py-2 rounded shadow">
                         <span x-text="text"></span>
@@ -417,6 +415,7 @@ function notificationsMatrix() {
         renderPreview(){
             const dummy = {
                 '{po_number}':'PO-1001',
+                '{po_subject}':'PO Subject',
                 '{from_status}':'ایجاد',
                 '{to_status}':'تأیید',
                 '{requester_name}':'کاربر درخواست‌کننده',
@@ -429,6 +428,7 @@ function notificationsMatrix() {
                 '{note_excerpt}':'نمونه متن یادداشت...',
                 '{mentioned_user}':'کاربر منشن‌شده',
                 '{context}':'زمینه مرتبط',
+                '{form_title}':'????? ??? ?????',
             };
             let s = this.subject || '';
             let b = this.body || '';
@@ -448,5 +448,212 @@ function notificationsMatrix() {
         }
     }
 }
+
+function notificationRuleRow(config = {}) {
+    return {
+        showModal: false,
+        enabled: config.enabled ?? false,
+        channels: config.channels ?? [],
+        conditions: config.conditions ?? null,
+        subject: config.subject ?? '',
+        body: config.body ?? '',
+        internal: config.internal ?? (config.body ?? ''),
+        sms: config.sms ?? '',
+        placeholders: config.placeholders ?? [],
+        formAction: config.formAction ?? '',
+        hasId: !!config.hasId,
+        module: config.module ?? '',
+        event: config.event ?? '',
+        previewUrl: config.previewUrl ?? '',
+        csrfToken: config.csrfToken ?? (document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || ''),
+        isPreviewing: false,
+        pQ: '',
+        selectedIdx: 0,
+        focusedField: 'body',
+        preview: {subject:'', body:'', internal:'', sms:''},
+        init() {
+            this.preview = this.computeFallbackPreview();
+            if (this.previewUrl) {
+                this.renderPreview();
+            }
+        },
+        get tokens() {
+            return (this.placeholders || []).concat(['{form_title}','{sender_name}','{status}','{url}','@{{ url }}','@{{ actor.name }}']);
+        },
+        filteredTokens() {
+            const q = (this.pQ || '').toLowerCase();
+            if (!q) return this.tokens;
+            return this.tokens.filter(t => (t || '').toLowerCase().includes(q));
+        },
+        insertToken(token) {
+            const field = this.focusedField === 'subject'
+                ? this.$refs.subjectArea
+                : (this.focusedField === 'sms' ? this.$refs.smsArea : this.$refs.bodyArea);
+            if (!field) return;
+            const start = field.selectionStart || 0;
+            const end = field.selectionEnd || 0;
+            const val = field.value || '';
+            const newVal = val.substring(0, start) + token + val.substring(end);
+            field.value = newVal;
+            field.dispatchEvent(new Event('input', { bubbles: true }));
+            this.$nextTick(() => {
+                const pos = start + token.length;
+                field.setSelectionRange(pos, pos);
+                field.focus();
+            });
+        },
+        copyToken(token) {
+            if (navigator.clipboard) {
+                navigator.clipboard.writeText(token).catch(() => {});
+            }
+        },
+        onKeyNav(e) {
+            const len = this.filteredTokens().length;
+            if (!len) return;
+            if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+                e.preventDefault();
+                this.selectedIdx = (this.selectedIdx - 1 + len) % len;
+            } else if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+                e.preventDefault();
+                this.selectedIdx = (this.selectedIdx + 1) % len;
+            } else if (e.key === 'Enter') {
+                e.preventDefault();
+                const tok = this.filteredTokens()[this.selectedIdx];
+                if (tok) this.insertToken(tok);
+            }
+        },
+        computeFallbackPreview() {
+            const dummy = {
+                '{po_number}':'PO-1001',
+                '{po_subject}':'PO Subject',
+                '{from_status}':'from-status',
+                '{to_status}':'to-status',
+                '{requester_name}':'Requester Name',
+                '{proforma_number}':'PF-2001',
+                '{customer_name}':'Customer Name',
+                '{approver_name}':'Approver Name',
+                '{lead_name}':'Lead Name',
+                '{old_user}':'Old User',
+                '{new_user}':'New User',
+                '{note_excerpt}':'Note excerpt...',
+                '{mentioned_user}':'Mentioned User',
+                '{context}':'Context',
+                '{form_title}':'عنوان فرم',
+            };
+            let s = this.subject || '';
+            let b = this.body || '';
+            let d = this.internal || '';
+            let m = this.sms || '';
+            Object.entries(dummy).forEach(([k, v]) => {
+                s = s.split(k).join(v);
+                b = b.split(k).join(v);
+                d = d.split(k).join(v);
+                m = m.split(k).join(v);
+            });
+            const replaceGlobals = text => text
+                .split('@{{ url }}').join('https://crm.local/item')
+                .split('@{{ actor.name }}').join('Actor Name');
+            s = replaceGlobals(s);
+            b = replaceGlobals(b);
+            d = replaceGlobals(d);
+            m = replaceGlobals(m);
+            return { subject: s, body: b, internal: d, sms: m };
+        },
+        previewLocal() {
+            if (this.preview && (this.preview.subject || this.preview.body || this.preview.sms)) {
+                return this.preview;
+            }
+            return this.computeFallbackPreview();
+        },
+        async renderPreview() {
+            if (!this.previewUrl) {
+                this.preview = this.computeFallbackPreview();
+                return;
+            }
+            this.isPreviewing = true;
+            try {
+                const res = await fetch(this.previewUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': this.csrfToken || (document.querySelector('meta[name=\"csrf-token\"]')?.getAttribute('content') || ''),
+                    },
+                    body: JSON.stringify({
+                        module: this.module,
+                        event: this.event,
+                        subject: this.subject || '',
+                        body: this.body || '',
+                        sms: this.sms || '',
+                    }),
+                });
+                if (!res.ok) {
+                    throw new Error('preview_failed');
+                }
+                const data = await res.json();
+                this.preview = {
+                    subject: data.preview?.subject ?? (this.subject || ''),
+                    body: data.preview?.body ?? (this.body || ''),
+                    internal: data.preview?.body ?? (this.internal || this.body || ''),
+                    sms: data.preview?.sms ?? (this.sms || ''),
+                };
+            } catch (e) {
+                try { console.error(e); } catch (_) {}
+                this.preview = this.computeFallbackPreview();
+            } finally {
+                this.isPreviewing = false;
+            }
+        },
+        openEditor() {
+            try {
+                this.showModal = true;
+                this.renderPreview();
+                document.body.style.overflow = 'hidden';
+                this.$nextTick(() => { this.$refs.bodyArea?.focus(); });
+            } catch (e) {
+                this.showModal = false;
+                document.body.style.overflow = '';
+                try { console.error(e); } catch (_) {}
+            }
+        },
+        closeEditor() {
+            this.showModal = false;
+            document.body.style.overflow = '';
+        },
+        async saveTemplates() {
+            if (!this.hasId) {
+                this.closeEditor();
+                return;
+            }
+            try {
+                const form = this.$refs.rowForm;
+                if (!form) return;
+                const fd = new FormData(form);
+                fd.set('subject_template', this.subject || '');
+                fd.set('body_template', this.body || '');
+                fd.set('internal_template', this.internal || '');
+                fd.set('sms_template', this.sms || '');
+                const method = 'POST';
+                fd.set('_method', 'PUT');
+                const res = await fetch(this.formAction, { method, headers: { 'Accept': 'application/json' }, body: fd });
+                if (!res.ok) {
+                    const data = await res.json().catch(() => ({}));
+                    throw new Error(data.message || 'خطا در ذخیره‌سازی متن اعلان');
+                }
+                const data = await res.json();
+                if (data && data.rule) {
+                    this.subject = data.rule.subject_template || this.subject;
+                    this.body = data.rule.body_template || this.body;
+                    this.sms = data.rule.sms_template || this.sms;
+                }
+                this.closeEditor();
+                this.$dispatch('toast', { color: 'green', text: 'متن اعلان ذخیره شد' });
+            } catch (err) {
+                this.$dispatch('toast', { color: 'red', text: (err && err.message) ? err.message : 'خطا در ذخیره‌سازی' });
+            }
+        },
+    };
+}
 </script>
+
 @endpush

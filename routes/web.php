@@ -323,6 +323,9 @@ Route::middleware(['auth'])->group(function () {
         Route::post('purchase-orders/{purchaseOrder}/notes', [\App\Http\Controllers\PurchaseOrderNoteController::class, 'store'])
             ->name('purchase-orders.notes.store');
 
+        Route::delete('purchase-orders/bulk-destroy', [PurchaseOrderController::class, 'bulkDestroy'])
+            ->name('purchase-orders.bulk-destroy');
+
         Route::resource('purchase-orders', PurchaseOrderController::class);
     });
 
@@ -393,6 +396,7 @@ Route::middleware(['auth'])->group(function () {
 
             // Notification Settings Matrix
             Route::get('/notifications', [NotificationRuleController::class, 'index'])->name('notifications.index');
+            Route::post('/notifications/preview', [NotificationRuleController::class, 'preview'])->name('notifications.preview');
             Route::post('/notifications', [NotificationRuleController::class, 'store'])->name('notifications.store');
             Route::put('/notifications/{notificationRule}', [NotificationRuleController::class, 'update'])->name('notifications.update');
             Route::patch('/notifications/{notificationRule}', [NotificationRuleController::class, 'update']);

@@ -27,14 +27,23 @@ class NotificationRulesTest extends TestCase
 
     public function test_condition_matching_purchase_order_status(): void
     {
-        NotificationRule::create([
+        $first = NotificationRule::create([
             'module' => 'purchase_orders',
             'event' => 'status.changed',
             'enabled' => true,
             'channels' => ['database'],
             'conditions' => ['from_status' => 'created', 'to_status' => 'approved'],
             'subject_template' => 'PO {po_number}',
-            'body_template' => 'از {from_status} به {to_status}',
+            'body_template' => '{from_status} -> {to_status}',
+        ]);
+        $second = NotificationRule::create([
+            'module' => 'purchase_orders',
+            'event' => 'status.changed',
+            'enabled' => true,
+            'channels' => ['database'],
+            'conditions' => ['from_status' => 'approved', 'to_status' => 'delivered'],
+            'subject_template' => 'PO {po_number} delivered',
+            'body_template' => '{from_status} -> {to_status}',
         ]);
 
         $router = new NotificationRouter();
@@ -43,6 +52,14 @@ class NotificationRulesTest extends TestCase
             'new_status' => 'approved',
         ]);
         $this->assertNotNull($rule);
+        $this->assertSame($first->id, $rule->id);
+
+        $rule2 = $router->findRule('purchase_orders','status.changed', [
+            'prev_status' => 'approved',
+            'new_status' => 'delivered',
+        ]);
+        $this->assertNotNull($rule2);
+        $this->assertSame($second->id, $rule2->id);
 
         $noRule = $router->findRule('purchase_orders','status.changed', [
             'prev_status' => 'approved',
@@ -78,6 +95,47 @@ class NotificationRulesTest extends TestCase
 
         Notification::assertSentTo($recipient, CustomRoutedNotification::class);
         Mail::assertQueued(RoutedNotificationMail::class);
+    }
+
+    public function test_rules_with_specific_conditions_are_prioritized(): void
+    {
+        $fallback = NotificationRule::create([
+            'module' => 'purchase_orders',
+            'event' => 'status.changed',
+            'enabled' => true,
+            'channels' => ['database'],
+            'conditions' => ['from_status' => '', 'to_status' => ''],
+            'subject_template' => 'Default {po_number}',
+            'body_template' => 'Default template',
+        ]);
+
+        $specific = NotificationRule::create([
+            'module' => 'purchase_orders',
+            'event' => 'status.changed',
+            'enabled' => true,
+            'channels' => ['database'],
+            'conditions' => ['from_status' => 'created', 'to_status' => 'manager_approval'],
+            'subject_template' => 'Custom {po_number}',
+            'body_template' => 'Custom template',
+        ]);
+
+        $router = new NotificationRouter();
+
+        $match = $router->findRule('purchase_orders', 'status.changed', [
+            'prev_status' => 'created',
+            'new_status' => 'manager_approval',
+        ]);
+
+        $this->assertNotNull($match);
+        $this->assertSame($specific->id, $match->id, 'Specific rule should win when conditions match');
+
+        $fallbackMatch = $router->findRule('purchase_orders', 'status.changed', [
+            'prev_status' => 'manager_approval',
+            'new_status' => 'accounting_approval',
+        ]);
+
+        $this->assertNotNull($fallbackMatch);
+        $this->assertSame($fallback->id, $fallbackMatch->id, 'Fallback rule should handle unmatched conditions');
     }
 }
 

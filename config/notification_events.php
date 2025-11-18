@@ -15,16 +15,20 @@ return [
                 'status.changed' => [
                     'label' => 'تغییر وضعیت',
                     'default_channels' => ['database'],
-                    'placeholders' => ['{po_number}', '{from_status}', '{to_status}', '{requester_name}'],
+                    'placeholders' => ['{po_number}', '{po_subject}', '{from_status}', '{to_status}', '{requester_name}'],
                     'default_subject' => 'تغییر وضعیت سفارش خرید {po_number}',
                     'default_body' => 'وضعیت سفارش خرید {po_number} از {from_status} به {to_status} تغییر یافت. درخواست‌کننده: {requester_name}',
                     // اگر برای این رویداد هم ویرایش قالب می‌خواهی:
-                    'supports' => ['channel_templates' => true, 'conditions' => true],
+                    'supports' => [
+                        'channel_templates' => true,
+                        'conditions' => true,
+                        'multiple_rules' => true,
+                    ],
                 ],
                 'ready_for_delivery' => [
                     'label' => 'آماده برای تحویل به انبار',
                     'default_channels' => ['database','email'],
-                    'placeholders' => ['{po_number}', '{requester_name}'],
+                    'placeholders' => ['{po_number}', '{po_subject}', '{requester_name}'],
                     'default_subject' => 'سفارش خرید {po_number} تأیید شد',
                     'default_body' => 'سفارش خرید {po_number} شما تأیید شد. لطفاً وضعیت را به «تحویل به انبار» تغییر دهید.',
                     'supports' => ['channel_templates' => true, 'conditions' => false],
@@ -74,7 +78,7 @@ return [
                 'note.mentioned' => [
                     'label' => 'منشن در یادداشت',
                     'default_channels' => ['database'],
-                    'placeholders' => ['{note_excerpt}', '{mentioned_user}', '{context}'],
+                    'placeholders' => ['{note_excerpt}', '{mentioned_user}', '{context}', '{form_title}'],
                     'default_subject' => '{mentioned_user} در یادداشت منشن شد',
                     'default_body' => 'در {context} شما منشن شدید: {note_excerpt}',
                     // اختیاری: اگر می‌خواهی قابل ویرایش شود

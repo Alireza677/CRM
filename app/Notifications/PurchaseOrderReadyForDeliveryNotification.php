@@ -29,29 +29,54 @@ class PurchaseOrderReadyForDeliveryNotification extends Notification implements 
         return ['database', 'mail'];
     }
 
-    public function toDatabase($notifiable): array
-    {
-        $po = PurchaseOrder::query()->find($this->purchaseOrderId);
-        $title = $po?->subject ?: ($po?->po_number ?: '---');
-        $url = route('inventory.purchase-orders.show', $this->purchaseOrderId);
+        public function toDatabase($notifiable): array
+    {
+        $po = PurchaseOrder::query()->with('requestedByUser')->find($this->purchaseOrderId);
+        $title = $po?->subject ?: ($po?->po_number ?: '---');
+        $url = route('inventory.purchase-orders.show', $this->purchaseOrderId);
+
+        $sender = User::query()->find($this->sentById);
+        $senderName = $sender?->name ?? '---';
+
+        try {
+            $ctx = $this->buildTemplateContext($notifiable, $po, $sender, $url, (string) $title);
+            $tpl = \App\Support\NotificationTemplateResolver::resolve('purchase_orders', 'ready_for_delivery', 'database', $ctx);
+            $subject = trim((string) ($tpl['subject'] ?? ''));
+            $body    = trim((string) ($tpl['body'] ?? ''));
+            if ($subject !== '' || $body !== '') {
+                return [
+                    'module'      => 'purchase_orders',
+                    'event'       => 'ready_for_delivery',
+                    'title'       => $subject ?: null,
+                    'body'        => $body ?: null,
+                    'message'     => $body !== '' ? $body : $subject,
+                    'form_id'     => $this->purchaseOrderId,
+                    'form_type'   => 'PurchaseOrder',
+                    'sent_by'     => $senderName,
+                    'sent_by_id'  => $this->sentById,
+                    'url'         => $url,
+                ];
+            }
+        } catch (\Throwable $e) {
+            // fallback to legacy payload
+        }
+
+        return [
+            'message'    => 'O3U?OO?O' OrO?UOO_ O'U.O O?OUOUOO_ O'O_. U,O?U?OU< U^OO1UOO? O?O O"U? A?O?O-U^UOU, O"U? OU+O"OO?A? O?O?UOUOO? O_U?UOO_.',
+            'form_id'    => $this->purchaseOrderId,
+            'form_type'  => 'PurchaseOrder',
+            'sent_by'    => $senderName,
+            'sent_by_id' => $this->sentById,
+            'title'      => (string) $title,
+            'url'        => $url,
+        ];
+    }
+
 
-        $sender = User::query()->find($this->sentById);
-        $senderName = $sender?->name ?? '---';
-
-        return [
-            'message'    => 'سفارش خرید شما تایید شد. لطفاً وضعیت را به «تحویل به انبار» تغییر دهید.',
-            'form_id'    => $this->purchaseOrderId,
-            'form_type'  => 'PurchaseOrder',
-            'sent_by'    => $senderName,
-            'sent_by_id' => $this->sentById,
-            'title'      => (string) $title,
-            'url'        => $url,
-        ];
-    }
 
     public function toMail($notifiable): MailMessage
     {
-        $po = PurchaseOrder::query()->find($this->purchaseOrderId);
+        $po = PurchaseOrder::query()->with('requestedByUser')->find($this->purchaseOrderId);
         $title = $po?->subject ?: ($po?->po_number ?: '---');
         $url = route('inventory.purchase-orders.show', $this->purchaseOrderId);
         $recipientName = $notifiable->name ?? '';
@@ -61,12 +86,7 @@ class PurchaseOrderReadyForDeliveryNotification extends Notification implements 
 
         // Try DB/email template first: purchase_orders.ready_for_delivery
         try {
-            $ctx = [
-                'po_number'      => (string) ($po?->po_number ?? ('#'.(string)($po?->id ?? ''))),
-                'requester_name' => (string) ($recipientName ?: ''),
-                'url'            => $url,
-                'actor.name'     => $senderName,
-            ];
+            $ctx = $this->buildTemplateContext($notifiable, $po, $sender, $url, (string) $title);
             $tpl = \App\Support\NotificationTemplateResolver::resolve('purchase_orders', 'ready_for_delivery', 'email', $ctx);
             $subj = trim((string) ($tpl['subject'] ?? ''));
             $body = trim((string) ($tpl['body'] ?? ''));
@@ -87,5 +107,23 @@ class PurchaseOrderReadyForDeliveryNotification extends Notification implements 
             ->line('عنوان سفارش: ' . (string) $title)
             ->line('ارسال کننده: ' . $senderName)
             ->action('مشاهده سفارش در CRM', $url);
+    }
+
+    protected function buildTemplateContext($notifiable, ?PurchaseOrder $po, ?User $sender, string $url, string $title): array
+    {
+        $requester = (string) optional($po?->requestedByUser)->name;
+        $recipientName = (string) ($notifiable->name ?? '');
+
+        return [
+            'purchase_order' => $po,
+            'po'             => $po,
+            'po_number'      => (string) ($po?->po_number ?? ('#'.(string)($po?->id ?? ''))),
+            'po_subject'     => (string) ($po?->subject ?? ($po?->po_number ?? ('#'.(string)($po?->id ?? '')))),
+            'requester_name' => $requester !== '' ? $requester : $recipientName,
+            'form_title'     => $title,
+            'sender_name'    => (string) ($sender?->name ?? ''),
+            'actor'          => $sender,
+            'url'            => $url,
+        ];
     }
 }

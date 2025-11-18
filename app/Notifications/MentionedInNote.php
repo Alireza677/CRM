@@ -73,6 +73,79 @@ class MentionedInNote extends Notification implements ShouldQueue
             ];
         }
 
+        try {
+
+            [$contextLabel, $formTitle] = $this->resolveMailMeta($entity);
+
+            $ctx = [
+
+                'note_body'          => (string) ($this->note->body ?? ''),
+
+                'note_excerpt'       => (string) Str::limit((string) ($this->note->body ?? ''), 120),
+
+                'mentioned_user'     => (string) ($notifiable->name ?? ''),
+
+                'mentioned_user_name'=> (string) ($notifiable->name ?? ''),
+
+                'context'            => (string) $contextLabel,
+
+                'context_label'      => (string) $contextLabel,
+                'form_title'         => (string) $formTitle,
+
+                'url'                => $baseUrl ? ($baseUrl . '#note-' . $this->note->id) : null,
+
+                'actor'              => $author,
+
+                'sender_name'        => $authorName,
+
+            ];
+
+            $tpl = \App\Support\NotificationTemplateResolver::resolve('notes', 'note.mentioned', 'database', $ctx);
+
+            $title = trim((string) ($tpl['subject'] ?? ''));
+
+            $bodyTemplate  = trim((string) ($tpl['body'] ?? ''));
+
+            if ($title !== '' || $bodyTemplate !== '') {
+
+                $payload = [
+
+                    'module'    => 'notes',
+
+                    'event'     => 'note.mentioned',
+
+                    'title'     => $title ?: null,
+
+                    'body'      => $bodyTemplate ?: null,
+
+                    'message'   => $bodyTemplate !== '' ? $bodyTemplate : $title,
+
+                    'note_id'   => $this->note->id,
+
+                    'noteable_type' => $this->note->noteable_type,
+
+                    'noteable_id'   => $this->note->noteable_id,
+
+                    'by_user_id'    => $author?->id,
+
+                    'by_user_name'  => $authorName,
+
+                    'url'           => $baseUrl ? ($baseUrl . '#note-' . $this->note->id) : null,
+
+                ] + $extra;
+
+                return array_filter($payload);
+
+            }
+
+        } catch (\Throwable $e) {
+
+            // ignore template errors and use legacy payload
+
+        }
+
+
+
         return array_filter([
             'type'            => 'mention',
             'message'         => $message,
@@ -103,11 +176,16 @@ class MentionedInNote extends Notification implements ShouldQueue
         // Try DB/email template for notes.note.mentioned first
         try {
             $ctx = [
+                'note_body'      => (string) ($this->note->body ?? ''),
                 'note_excerpt'   => (string) \Illuminate\Support\Str::limit((string) ($this->note->body ?? ''), 120),
                 'mentioned_user' => (string) ($notifiable->name ?? ''),
+                'mentioned_user_name' => (string) ($notifiable->name ?? ''),
                 'context'        => (string) $modelType,
+                'context_label'  => (string) $modelType,
+                'form_title'     => (string) $title,
                 'url'            => $url ?: url('/'),
-                'actor.name'     => (string) optional($this->note->author ?? null)->name,
+                'actor'          => $this->note->author ?? $this->note->user,
+                'sender_name'    => (string) optional($this->note->author ?? null)->name,
             ];
             $tpl = \App\Support\NotificationTemplateResolver::resolve('notes', 'note.mentioned', 'email', $ctx);
             $subj = trim((string) ($tpl['subject'] ?? ''));

@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
   <div class="py-12">
@@ -15,10 +15,24 @@
             <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700">جستجو</button>
           </form>
 
-          <div class="overflow-x-auto">
-            <table class="min-w-full divide-y divide-gray-200">
+          @php
+            use Morilog\Jalali\Jalalian;
+            $canBulkDeletePurchaseOrders = auth()->check() && auth()->user()->can('purchase_orders.delete.own');
+          @endphp
+
+          <form id="bulk-delete-form" action="{{ route('inventory.purchase-orders.bulk-destroy') }}" method="POST" class="space-y-4">
+            @csrf
+            @method('DELETE')
+
+            <div class="overflow-x-auto">
+              <table class="min-w-full divide-y divide-gray-200">
               <thead class="bg-gray-50">
                 <tr>
+                  @if ($canBulkDeletePurchaseOrders)
+                    <th class="px-4 py-3 text-xs text-center text-gray-500">
+                      <input type="checkbox" id="purchase-orders-select-all" class="h-4 w-4 text-blue-600 border-gray-300 rounded">
+                    </th>
+                  @endif
                   <th class="px-4 py-3 text-xs text-right text-gray-500">شماره</th>
                   <th class="px-4 py-3 text-xs text-right text-gray-500">عنوان</th>
                   <th class="px-4 py-3 text-xs text-right text-gray-500">نوع</th>
@@ -34,9 +48,17 @@
                 </tr>
               </thead>
               <tbody class="bg-white divide-y divide-gray-200">
-                @php use Morilog\Jalali\Jalalian; @endphp
                 @forelse($purchaseOrders as $order)
-                  <tr>
+                  <tr class="js-po-row" data-order-id="{{ $order->id }}">
+                    @if ($canBulkDeletePurchaseOrders)
+                      <td class="px-4 py-3 text-sm text-center">
+                        @can('delete', $order)
+                          <input type="checkbox" name="selected_orders[]" value="{{ $order->id }}" class="h-4 w-4 text-blue-600 border-gray-300 rounded js-po-row-checkbox">
+                        @else
+                          <span class="text-gray-300 text-xs">—</span>
+                        @endcan
+                      </td>
+                    @endif
                     <td class="px-4 py-3 text-sm text-gray-900 whitespace-nowrap">
                       {{ $order->po_number ?? ('#'.$order->id) }}
                     </td>
@@ -94,12 +116,21 @@
                   </tr>
                 @empty
                   <tr>
-                    <td colspan="12" class="text-center py-4 text-sm text-gray-500">سفارشی ثبت نشده است.</td>
+                    <td colspan="{{ $canBulkDeletePurchaseOrders ? 13 : 12 }}" class="text-center py-4 text-sm text-gray-500">سفارشی ثبت نشده است.</td>
                   </tr>
                 @endforelse
               </tbody>
             </table>
           </div>
+
+            @if ($canBulkDeletePurchaseOrders)
+              <div class="flex justify-end">
+                <button type="submit" id="bulk-delete-button" class="px-4 py-2 text-sm font-semibold text-white bg-red-600 rounded hover:bg-red-700 disabled:opacity-50 disabled:cursor-not-allowed">
+                  حذف انتخاب‌شده‌ها
+                </button>
+              </div>
+            @endif
+          </form>
 
           <div class="mt-4">
             {{ $purchaseOrders->links() }}
@@ -109,3 +140,68 @@
     </div>
   </div>
 @endsection
+
+@push('scripts')
+  <script>
+    document.addEventListener('DOMContentLoaded', function () {
+      const form = document.getElementById('bulk-delete-form');
+      if (!form) {
+        return;
+      }
+
+      const rowCheckboxes = Array.from(form.querySelectorAll('.js-po-row-checkbox'));
+      const selectAllCheckbox = document.getElementById('purchase-orders-select-all');
+      const deleteButton = document.getElementById('bulk-delete-button');
+
+      const updateButtonAndRows = () => {
+        const checkedCount = rowCheckboxes.filter((checkbox) => checkbox.checked).length;
+        if (deleteButton) {
+          deleteButton.disabled = checkedCount === 0;
+        }
+
+        rowCheckboxes.forEach((checkbox) => {
+          const row = checkbox.closest('.js-po-row');
+          if (row) {
+            row.classList.toggle('bg-blue-50', checkbox.checked);
+          }
+        });
+
+        if (selectAllCheckbox) {
+          const enabledCheckboxes = rowCheckboxes.filter((checkbox) => !checkbox.disabled);
+          const enabledCount = enabledCheckboxes.length;
+          selectAllCheckbox.indeterminate = checkedCount > 0 && checkedCount < enabledCount;
+          selectAllCheckbox.checked = enabledCount > 0 && checkedCount === enabledCount;
+          selectAllCheckbox.disabled = enabledCount === 0;
+        }
+      };
+
+      rowCheckboxes.forEach((checkbox) => {
+        checkbox.addEventListener('change', updateButtonAndRows);
+      });
+
+      if (selectAllCheckbox) {
+        selectAllCheckbox.addEventListener('change', function () {
+          rowCheckboxes.forEach((checkbox) => {
+            checkbox.checked = Boolean(this.checked);
+          });
+          updateButtonAndRows();
+        });
+      }
+
+      form.addEventListener('submit', function (event) {
+        const hasSelection = rowCheckboxes.some((checkbox) => checkbox.checked);
+        if (!hasSelection) {
+          event.preventDefault();
+          alert('هیچ سفارشی انتخاب نشده است.');
+          return;
+        }
+
+        if (!window.confirm('سفارش‌های انتخاب‌شده حذف شوند؟')) {
+          event.preventDefault();
+        }
+      });
+
+      updateButtonAndRows();
+    });
+  </script>
+@endpush

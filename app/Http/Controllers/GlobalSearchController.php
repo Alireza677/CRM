@@ -112,6 +112,7 @@ class GlobalSearchController extends Controller
             ->when($q, function ($qq) use ($q) {
                 $table = (new Opportunity)->getTable();
                 $qq->where(function ($w) use ($table, $q) {
+                    $this->likeIfExists($w, $table, 'name', $q);
                     $this->likeIfExists($w, $table, 'subject', $q);
                     $this->likeIfExists($w, $table, 'title', $q);
                     $this->likeIfExists($w, $table, 'stage', $q);

@@ -24,6 +24,11 @@ class OpportunityNoteController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
+        $formTitle = trim((string) ($opportunity->getNotificationTitle() ?? $opportunity->name ?? ''));
+        if ($formTitle === '') {
+            $formTitle = $opportunity->id ? ('فرصت فروش #' . $opportunity->id) : 'فرصت فروش';
+        }
+
         // استخراج username ها (آرایه یا CSV یا از متن با @)
         $usernames = $this->extractMentions($validated['mentions'] ?? null, $note->body);
 
@@ -39,6 +44,8 @@ class OpportunityNoteController extends Controller
                         'mentioned_user' => $user,
                         'mentioned_user_name' => $user->name,
                         'context_label' => 'فرصت فروش',
+                        'form_title' => $formTitle,
+                        'actor' => auth()->user(),
                         'url' => route('sales.opportunities.show', $opportunity->id) . '#note-' . $note->id,
                     ];
                     $router->route('notes', 'note.mentioned', $context, [$user]);

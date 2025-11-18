@@ -20,14 +20,15 @@
 ## قالب‌ها و کلیدواژه‌ها
 
 - برای هر رویداد، فهرستی از کلیدواژه‌های مجاز در پیکربندی تعریف می‌شود. نمونه:
-  - `{po_number}`, `{from_status}`, `{to_status}`, `{requester_name}`
+  - `{po_number}`, `{po_subject}`, `{from_status}`, `{to_status}`, `{requester_name}`
   - `{proforma_number}`, `{customer_name}`, `{approver_name}`
   - `{lead_name}`, `{old_user}`, `{new_user}`
-  - `{note_excerpt}`, `{mentioned_user}`, `{context}`
+  - `{note_excerpt}`, `{mentioned_user}`, `{context}`, `{form_title}`
 
 - کلیدواژه‌های عمومی نیز پشتیبانی می‌شوند:
   - `{{ url }}`: لینک به صفحه مربوطه
   - `{{ actor.name }}`: نام کاربری که رویداد را انجام داده است (در صورت وجود)
+  - `{form_title}`: عنوان فرم یا رکورد مربوط (مثل نام فرصت فروش)
 
 نمونه قالب موضوع: `تغییر وضعیت سفارش خرید {po_number}`
 
@@ -64,4 +65,3 @@ php artisan db:seed --class=Database\\Seeders\\NotificationRuleSeeder
 - همه اعلان‌ها/ایمیل‌های جدید `ShouldQueue` هستند؛ برای پردازش صف:
   - `php artisan queue:work`
 - متن‌ها راست‌به‌چپ (RTL) و فارسی هستند.
-

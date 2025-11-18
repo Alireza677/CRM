@@ -22,6 +22,11 @@ class PurchaseOrderNoteController extends Controller
             'user_id' => $request->user()->id,
         ]);
 
+        $formTitle = trim((string) ($purchaseOrder->subject ?? $purchaseOrder->po_number ?? ''));
+        if ($formTitle === '') {
+            $formTitle = $purchaseOrder->id ? ('Purchase Order #' . $purchaseOrder->id) : 'Purchase Order';
+        }
+
         $usernames = $this->extractMentions($validated['mentions'] ?? null, $note->body);
         if (!empty($usernames)) {
             $mentionedUsers = User::whereIn('username', $usernames)->get();
@@ -33,6 +38,8 @@ class PurchaseOrderNoteController extends Controller
                         'mentioned_user' => $user,
                         'mentioned_user_name' => $user->name,
                         'context_label' => 'Purchase Order',
+                        'form_title' => $formTitle,
+                        'actor' => auth()->user(),
                         'url' => route('inventory.purchase-orders.show', $purchaseOrder->id) . '#note-' . $note->id,
                     ];
                     $router->route('notes', 'note.mentioned', $context, [$user]);

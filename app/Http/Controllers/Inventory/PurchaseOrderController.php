@@ -7,7 +7,6 @@ use App\Models\PurchaseOrder;
 use App\Models\PurchaseOrderWorkflowSetting;
 use App\Models\Supplier;
 use App\Models\User;
-use App\Notifications\FormApprovalNotification;
 use App\Notifications\PurchaseOrderReadyForDeliveryNotification;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -72,7 +71,7 @@ class PurchaseOrderController extends Controller
         $this->middleware('permission:purchase_orders.update.own|purchase_orders.update.team|purchase_orders.update.department')
             ->only(['edit', 'update', 'approve', 'reject', 'updateStatus', 'deliverToWarehouse']);
         $this->middleware('permission:purchase_orders.delete.own')
-            ->only(['destroy']);
+            ->only(['destroy', 'bulkDestroy']);
     }
     public function index(Request $request)
     {
@@ -391,16 +390,45 @@ class PurchaseOrderController extends Controller
             if (Schema::hasColumn('purchase_orders', 'operational_expense_type')) { $data['operational_expense_type'] = $validated['operational_expense_type'] ?? null; }
             $po = PurchaseOrder::create($data);
 
-            // Assign first approver (if configured) and notify
+            // Assign first approver (if configured) and notify through router
             try {
                 $wf = PurchaseOrderWorkflowSetting::first();
                 $firstApproverId = $this->effectiveApproverId(optional($wf)->first_approver_id, optional($wf)->first_approver_substitute_id);
                 if ($firstApproverId) {
                     $po->assigned_to = $firstApproverId;
+                    if ($po->status === 'created') {
+                        $po->status = 'supervisor_approval';
+                    }
                     $po->save();
-                    $firstApprover = User::find($firstApproverId);
-                    if ($firstApprover && method_exists($firstApprover, 'notify')) {
-                        $firstApprover->notify(FormApprovalNotification::fromModel($po, auth()->id() ?? 0));
+                    try {
+                        $router = app(\App\Services\Notifications\NotificationRouter::class);
+                        $context = [
+                            'purchase_order' => $po,
+                            'po' => $po,
+                            'form_title' => (string) ($po->subject ?? ($po->po_number ?? '')),
+                            'prev_status' => 'created',
+                            'new_status' => 'supervisor_approval',
+                            'actor' => auth()->user(),
+                    'sender_name' => optional(auth()->user())->name,
+                            'sender_name' => optional(auth()->user())->name,
+                            'url' => route('inventory.purchase-orders.show', $po->id),
+                        ];
+                        Log::channel('notifications')->info('purchase_orders.router.dispatch', [
+                            'action' => 'store.assign_first_approver',
+                            'po_id' => $po->id,
+                            'recipients' => [$firstApproverId],
+                            'context' => [
+                                'prev_status' => $context['prev_status'],
+                                'new_status' => $context['new_status'],
+                            ],
+                        ]);
+                        $router->route('purchase_orders', 'status.changed', $context, [$firstApproverId]);
+                    } catch (\Throwable $e) {
+                        Log::warning('PurchaseOrder.store: NotificationRouter failed for first approver', [
+                            'error' => $e->getMessage(),
+                            'po_id' => $po->id,
+                            'approver_id' => $firstApproverId,
+                        ]);
                     }
                 }
             } catch (\Throwable $e) {
@@ -509,29 +537,31 @@ class PurchaseOrderController extends Controller
                 }
             }
 
-            if ($nextUserId) {
-                $user = User::find($nextUserId);
-                if ($user && method_exists($user, 'notify')) {
-                    try { $user->notify(FormApprovalNotification::fromModel($purchaseOrder, auth()->id() ?? 0)); }
-                    catch (\Throwable $e) { Log::error('PurchaseOrder.updateStatus: failed to send notification', ['error' => $e->getMessage(), 'po_id' => $purchaseOrder->id, 'user_id' => $nextUserId]); }
-                }
-            }
-
             try {
-                if (app()->bound(\App\Services\Notifications\NotificationRouter::class)) {
-                    $router = app(\App\Services\Notifications\NotificationRouter::class);
-                    $context = [
-                        'purchase_order' => $purchaseOrder,
-                        'prev_status' => $currentStatus,
-                        'new_status' => $newStatus,
-                        'actor' => auth()->user(),
-                        'url' => route('inventory.purchase-orders.show', $purchaseOrder->id),
-                    ];
-                    $recipients = [];
-                    if (! empty($purchaseOrder->requested_by)) { $recipients[] = (int) $purchaseOrder->requested_by; }
-                    if (! empty($purchaseOrder->assigned_to)) { $recipients[] = (int) $purchaseOrder->assigned_to; }
-                    $router->route('purchase_orders', 'status.changed', $context, $recipients);
-                }
+                $router = app(\App\Services\Notifications\NotificationRouter::class);
+                $context = [
+                    'purchase_order' => $purchaseOrder,
+                    'po' => $purchaseOrder,
+                    'form_title' => (string) ($purchaseOrder->subject ?? ($purchaseOrder->po_number ?? '')),
+                    'prev_status' => $currentStatus,
+                    'new_status' => $newStatus,
+                    'actor' => auth()->user(),
+                    'sender_name' => optional(auth()->user())->name,
+                    'url' => route('inventory.purchase-orders.show', $purchaseOrder->id),
+                ];
+                $recipients = [];
+                if (! empty($purchaseOrder->requested_by)) { $recipients[] = (int) $purchaseOrder->requested_by; }
+                if (! empty($purchaseOrder->assigned_to)) { $recipients[] = (int) $purchaseOrder->assigned_to; }
+                Log::channel('notifications')->info('purchase_orders.router.dispatch', [
+                    'action' => 'update_status',
+                    'po_id' => $purchaseOrder->id,
+                    'recipients' => $recipients,
+                    'context' => [
+                        'prev_status' => $context['prev_status'],
+                        'new_status' => $context['new_status'],
+                    ],
+                ]);
+                $router->route('purchase_orders', 'status.changed', $context, $recipients);
             } catch (\Throwable $e) { Log::warning('PurchaseOrder.updateStatus: NotificationRouter failed', ['error' => $e->getMessage()]); }
         });
 
@@ -562,7 +592,9 @@ class PurchaseOrderController extends Controller
         if (! $expectedId || (int) auth()->id() !== (int) $expectedId) {
             return back()->with('error', 'دسترسی برای تأیید این مرحله ندارید.');
         }
-        DB::transaction(function () use ($purchaseOrder, $settings, $step, $expectedId) {
+        $previousStatus = $purchaseOrder->status;
+
+        DB::transaction(function () use ($purchaseOrder, $settings, $step, $expectedId, $previousStatus) {
             \App\Models\Approval::updateOrCreate(
                 [
                     'approvable_type' => \App\Models\PurchaseOrder::class,
@@ -598,14 +630,6 @@ class PurchaseOrderController extends Controller
             }
             if ($nextAssignId) { $purchaseOrder->assigned_to = $nextAssignId; }
             $purchaseOrder->save();
-            if ($nextAssignId) {
-                $user = User::find($nextAssignId);
-                if ($user && method_exists($user, 'notify')) {
-                    try { $user->notify(FormApprovalNotification::fromModel($purchaseOrder, auth()->id() ?? 0)); }
-                    catch (\Throwable $e) { Log::error('PurchaseOrder.approve: failed to notify next user', ['error' => $e->getMessage(), 'po_id' => $purchaseOrder->id, 'user_id' => $nextAssignId]); }
-                }
-            }
-
             // After step 3 approval, when PO advances to post-approval stage
             // send a one-time notification to requester to deliver to warehouse
             if ($step === 3
@@ -629,20 +653,30 @@ class PurchaseOrderController extends Controller
                 }
             }
             try {
-                if (app()->bound(\App\Services\Notifications\NotificationRouter::class)) {
-                    $router = app(\App\Services\Notifications\NotificationRouter::class);
-                    $context = [
-                        'purchase_order' => $purchaseOrder,
-                        'prev_status' => 'approval_step_'.$step,
-                        'new_status' => $purchaseOrder->status,
-                        'actor' => auth()->user(),
-                        'url' => route('inventory.purchase-orders.show', $purchaseOrder->id),
-                    ];
-                    $recipients = [];
-                    if (! empty($purchaseOrder->requested_by)) { $recipients[] = (int) $purchaseOrder->requested_by; }
-                    if (! empty($purchaseOrder->assigned_to)) { $recipients[] = (int) $purchaseOrder->assigned_to; }
-                    $router->route('purchase_orders', 'status.changed', $context, $recipients);
-                }
+                $router = app(\App\Services\Notifications\NotificationRouter::class);
+                $context = [
+                    'purchase_order' => $purchaseOrder,
+                    'po' => $purchaseOrder,
+                    'form_title' => (string) ($purchaseOrder->subject ?? ($purchaseOrder->po_number ?? '')),
+                    'prev_status' => $previousStatus ?? 'created',
+                    'new_status' => $purchaseOrder->status,
+                    'actor' => auth()->user(),
+                    'sender_name' => optional(auth()->user())->name,
+                    'url' => route('inventory.purchase-orders.show', $purchaseOrder->id),
+                ];
+                $recipients = [];
+                if (! empty($purchaseOrder->requested_by)) { $recipients[] = (int) $purchaseOrder->requested_by; }
+                if (! empty($purchaseOrder->assigned_to)) { $recipients[] = (int) $purchaseOrder->assigned_to; }
+                Log::channel('notifications')->info('purchase_orders.router.dispatch', [
+                    'action' => 'approve',
+                    'po_id' => $purchaseOrder->id,
+                    'recipients' => $recipients,
+                    'context' => [
+                        'prev_status' => $context['prev_status'],
+                        'new_status' => $context['new_status'],
+                    ],
+                ]);
+                $router->route('purchase_orders', 'status.changed', $context, $recipients);
             } catch (\Throwable $e) { Log::warning('PurchaseOrder.approve: NotificationRouter failed', ['error' => $e->getMessage()]); }
         });
         return back()->with('success', 'سفارش در این مرحله تأیید شد.');
@@ -671,7 +705,9 @@ class PurchaseOrderController extends Controller
         if (! $expectedId || (int) auth()->id() !== (int) $expectedId) {
             return back()->with('error', 'دسترسی برای رد این مرحله ندارید.');
         }
-        DB::transaction(function () use ($purchaseOrder, $step, $expectedId, $validated) {
+        $previousStatus = $purchaseOrder->status;
+
+        DB::transaction(function () use ($purchaseOrder, $step, $expectedId, $validated, $previousStatus) {
             try {
                 $purchaseOrder->notes()->create([
                     'body' => "دلیل رد سفارش خرید:\n".trim((string) $validated['reject_reason']),
@@ -685,26 +721,31 @@ class PurchaseOrderController extends Controller
                 [ 'approvable_type' => \App\Models\PurchaseOrder::class, 'approvable_id' => $purchaseOrder->id, 'user_id' => auth()->id() ?? $expectedId, 'step' => $step ],
                 ['status' => 'rejected', 'approved_at' => now()]
             );
-            $creator = User::find($purchaseOrder->requested_by);
-            if ($creator && method_exists($creator, 'notify')) {
-                try { $creator->notify(FormApprovalNotification::fromModel($purchaseOrder, auth()->id() ?? 0)); }
-                catch (\Throwable $e) { Log::error('PurchaseOrder.reject: failed to notify creator', ['error' => $e->getMessage(), 'po_id' => $purchaseOrder->id, 'user_id' => $purchaseOrder->requested_by]); }
-            }
             try {
-                if (app()->bound(\App\Services\Notifications\NotificationRouter::class)) {
-                    $router = app(\App\Services\Notifications\NotificationRouter::class);
-                    $context = [
-                        'purchase_order' => $purchaseOrder,
-                        'prev_status' => 'approval_step_'.$step,
-                        'new_status' => 'rejected',
-                        'actor' => auth()->user(),
-                        'url' => route('inventory.purchase-orders.show', $purchaseOrder->id),
-                    ];
-                    $recipients = [];
-                    if (! empty($purchaseOrder->requested_by)) { $recipients[] = (int) $purchaseOrder->requested_by; }
-                    if (! empty($purchaseOrder->assigned_to)) { $recipients[] = (int) $purchaseOrder->assigned_to; }
-                    $router->route('purchase_orders', 'status.changed', $context, $recipients);
-                }
+                $router = app(\App\Services\Notifications\NotificationRouter::class);
+                $context = [
+                    'purchase_order' => $purchaseOrder,
+                    'po' => $purchaseOrder,
+                    'form_title' => (string) ($purchaseOrder->subject ?? ($purchaseOrder->po_number ?? '')),
+                    'prev_status' => $previousStatus ?? 'created',
+                    'new_status' => 'rejected',
+                    'actor' => auth()->user(),
+                    'sender_name' => optional(auth()->user())->name,
+                    'url' => route('inventory.purchase-orders.show', $purchaseOrder->id),
+                ];
+                $recipients = [];
+                if (! empty($purchaseOrder->requested_by)) { $recipients[] = (int) $purchaseOrder->requested_by; }
+                if (! empty($purchaseOrder->assigned_to)) { $recipients[] = (int) $purchaseOrder->assigned_to; }
+                Log::channel('notifications')->info('purchase_orders.router.dispatch', [
+                    'action' => 'reject',
+                    'po_id' => $purchaseOrder->id,
+                    'recipients' => $recipients,
+                    'context' => [
+                        'prev_status' => $context['prev_status'],
+                        'new_status' => $context['new_status'],
+                    ],
+                ]);
+                $router->route('purchase_orders', 'status.changed', $context, $recipients);
             } catch (\Throwable $e) { Log::warning('PurchaseOrder.reject: NotificationRouter failed', ['error' => $e->getMessage()]); }
         });
         return back()->with('success', 'سفارش رد شد.');
@@ -723,29 +764,34 @@ class PurchaseOrderController extends Controller
         return back()->with('success', 'وضعیت به «تحویل انبار» تغییر یافت.');
     }
 
+    private function deletePurchaseOrderWithRelations(PurchaseOrder $purchaseOrder): void
+    {
+        foreach (['notes', 'documents', 'items', 'approvals', 'activities'] as $relation) {
+            if (! method_exists($purchaseOrder, $relation)) {
+                continue;
+            }
+
+            try {
+                $purchaseOrder->{$relation}()->delete();
+            } catch (\Throwable $e) {
+                Log::warning('PurchaseOrder.deleteRelations: relation delete failed', [
+                    'relation' => $relation,
+                    'purchase_order_id' => $purchaseOrder->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+        }
+
+        $purchaseOrder->delete();
+    }
+
     public function destroy(PurchaseOrder $purchaseOrder)
     {
         try {
             $this->authorize('delete', $purchaseOrder);
 
             DB::transaction(function () use ($purchaseOrder) {
-                foreach (['notes', 'documents', 'items', 'approvals', 'activities'] as $relation) {
-                    if (! method_exists($purchaseOrder, $relation)) {
-                        continue;
-                    }
-
-                    try {
-                        $purchaseOrder->{$relation}()->delete();
-                    } catch (\Throwable $e) {
-                        Log::warning('PurchaseOrder.destroy: relation delete failed', [
-                            'relation' => $relation,
-                            'purchase_order_id' => $purchaseOrder->id,
-                            'error' => $e->getMessage(),
-                        ]);
-                    }
-                }
-
-                $purchaseOrder->delete();
+                $this->deletePurchaseOrderWithRelations($purchaseOrder);
             });
 
             return redirect()
@@ -758,6 +804,45 @@ class PurchaseOrderController extends Controller
             ]);
 
             return back()->with('error', 'خطا در حذف سفارش خرید. لطفاً دوباره تلاش کنید.');
+        }
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        try {
+            $data = $request->validate([
+                'selected_orders' => ['required', 'array'],
+                'selected_orders.*' => ['integer', 'distinct', 'exists:purchase_orders,id'],
+            ], [
+                'selected_orders.required' => 'هیچ سفارشی انتخاب نشده است.',
+            ]);
+
+            $purchaseOrders = PurchaseOrder::whereIn('id', $data['selected_orders'])->get();
+
+            if ($purchaseOrders->isEmpty()) {
+                return back()->with('error', 'سفارشی برای حذف یافت نشد.');
+            }
+
+            foreach ($purchaseOrders as $purchaseOrder) {
+                $this->authorize('delete', $purchaseOrder);
+            }
+
+            DB::transaction(function () use ($purchaseOrders) {
+                foreach ($purchaseOrders as $purchaseOrder) {
+                    $this->deletePurchaseOrderWithRelations($purchaseOrder);
+                }
+            });
+
+            return redirect()
+                ->route('inventory.purchase-orders.index')
+                ->with('success', 'سفارش‌های انتخاب‌شده با موفقیت حذف شدند.');
+        } catch (\Throwable $e) {
+            Log::error('PurchaseOrder.bulkDestroy: failed to delete purchase orders', [
+                'ids' => $request->input('selected_orders', []),
+                'error' => $e->getMessage(),
+            ]);
+
+            return back()->with('error', 'حذف گروهی سفارش‌ها ناموفق بود. لطفاً دوباره تلاش کنید.');
         }
     }
 }

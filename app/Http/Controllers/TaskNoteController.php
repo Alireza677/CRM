@@ -72,6 +72,11 @@ class TaskNoteController extends Controller
                 ]);
                 $task->notes()->save($note);
 
+                $formTitle = trim((string) ($task->title ?? ''));
+                if ($formTitle === '') {
+                    $formTitle = $task->id ? ('Task #' . $task->id) : 'Task';
+                }
+
                 // فیلتر منشن‌ها: فقط کاربران موجود و عضو پروژه
                 $incomingIds = collect($data['mentions'] ?? [])
                     ->map(fn($v) => (int)$v)
@@ -99,6 +104,8 @@ class TaskNoteController extends Controller
                                 'mentioned_user' => $u,
                                 'mentioned_user_name' => $u->name,
                                 'context_label' => 'Task',
+                                'form_title' => $formTitle,
+                                'actor' => auth()->user(),
                                 'url' => route('projects.tasks.show', [$project, $task]) . '#note-' . $note->id,
                             ];
                             $router->route('notes', 'note.mentioned', $context, [$u]);

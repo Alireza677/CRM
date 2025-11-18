@@ -39,37 +39,14 @@ class FormApprovalNotification extends Notification implements ShouldQueue
         $label = $this->labelFor($this->formType);
         [$title, $url] = $this->resolveTitleAndUrl($this->formType, $this->formId);
 
+        $model = $this->resolveModelInstance();
         $sender = User::query()->find($this->sentById);
         $senderName = $sender?->name ?? '---';
 
         // Prefer template-based content if available (database channel)
         if (class_exists(\App\Support\NotificationTemplateResolver::class)) {
             [$module, $event] = $this->resolveModuleEvent();
-            $ctx = [
-                'form_title' => $title ?: '---',
-                'sender_name'=> $senderName,
-                'url'        => $url,
-                'actor.name' => $senderName,
-            ];
-            // For purchase order status event, also provide curly placeholders
-            // so templates render correctly in the database channel.
-            if ($module === 'purchase_orders' && $event === 'status.changed') {
-                try {
-                    $po = \App\Models\PurchaseOrder::query()->find($this->formId);
-                    if ($po) {
-                        $statuses = \App\Models\PurchaseOrder::statuses();
-                        $statusLabel = (string) ($statuses[$po->status] ?? $po->status ?? '');
-                        $ctx = array_merge($ctx, [
-                            'po_number'      => (string) ($po->po_number ?? ('#'.(string)$po->id)),
-                            'from_status'    => $statusLabel,
-                            'to_status'      => $statusLabel,
-                            'requester_name' => (string) optional($po->requestedByUser)->name,
-                        ]);
-                    }
-                } catch (\Throwable $e) {
-                    // ignore and continue with generic context
-                }
-            }
+            $ctx = $this->buildTemplateContext($model, $sender, $notifiable, $title ?: '---', $url);
             // Try database template first, then fall back to email template
             $tpl = \App\Support\NotificationTemplateResolver::resolve($module, $event, 'database', $ctx)
                 ?? \App\Support\NotificationTemplateResolver::resolve($module, $event, 'email', $ctx)
@@ -125,14 +102,7 @@ class FormApprovalNotification extends Notification implements ShouldQueue
         $sender = User::query()->find($this->sentById);
         $senderName = $sender?->name ?? '---';
 
-        $model = null;
-        if ($this->formType === 'Proforma') {
-            $model = Proforma::query()->find($this->formId);
-        } elseif ($this->formType === 'Opportunity') {
-            $model = Opportunity::query()->find($this->formId);
-        } elseif ($this->formType === 'PurchaseOrder') {
-            $model = PurchaseOrder::query()->find($this->formId);
-        }
+        $model = $this->resolveModelInstance();
 
         $get = function (array $keys, $default = '---') use ($model) {
             if (! $model) {
@@ -207,24 +177,7 @@ class FormApprovalNotification extends Notification implements ShouldQueue
         // Try DB/email template first; fallback to existing content
         try {
             [$module, $event] = $this->resolveModuleEvent();
-            $ctx = [
-                'form_title'  => $title ?: '---',
-                'approver_name' => (string) ($notifiable->name ?? ''),
-                'customer_name' => (string) ($model->organization_name ?? optional($model?->organization)->name ?? ''),
-                'proforma_number' => (string) ($model->proforma_number ?? ('#'.($model->id ?? ''))),
-                'url'         => $url,
-                'actor.name'  => $senderName,
-            ];
-            if ($module === 'purchase_orders' && $event === 'status.changed' && $model instanceof PurchaseOrder) {
-                $statuses = PurchaseOrder::statuses();
-                $statusLabel = (string) ($statuses[$model->status] ?? $model->status ?? '');
-                $ctx = array_merge($ctx, [
-                    'po_number'      => (string) ($model->po_number ?? ('#'.(string)$model->id)),
-                    'from_status'    => $statusLabel,
-                    'to_status'      => $statusLabel,
-                    'requester_name' => (string) optional($model->requestedByUser)->name,
-                ]);
-            }
+            $ctx = $this->buildTemplateContext($model, $sender, $notifiable, $title ?: '---', $url);
             $tpl = \App\Support\NotificationTemplateResolver::resolve($module, $event, 'email', $ctx);
             $subj = trim((string) ($tpl['subject'] ?? ''));
             $body = trim((string) ($tpl['body'] ?? ''));
@@ -256,6 +209,54 @@ class FormApprovalNotification extends Notification implements ShouldQueue
             ->line("تاریخ ایجاد: {$creationDate}")
             ->action('مشاهده فرم در CRM', $url ?: url('/'))
             ->line('لطفاً پس از بررسی اقدام لازم را انجام دهید.');
+    }
+
+    protected function resolveModelInstance(): ?object
+    {
+        if ($this->formType === 'Proforma') {
+            return Proforma::query()->with('organization')->find($this->formId);
+        }
+
+        if ($this->formType === 'Opportunity') {
+            return Opportunity::query()->find($this->formId);
+        }
+
+        if ($this->formType === 'PurchaseOrder') {
+            return PurchaseOrder::query()->with('requestedByUser')->find($this->formId);
+        }
+
+        return null;
+    }
+
+    protected function buildTemplateContext($model, ?User $sender, $notifiable, string $title, ?string $url): array
+    {
+        $ctx = [
+            'model'         => $model,
+            'form_title'    => $title ?: '---',
+            'sender_name'   => (string) ($sender?->name ?? ''),
+            'actor'         => $sender,
+            'url'           => $url ?: url('/'),
+            'approver_name' => (string) ($notifiable->name ?? ''),
+        ];
+
+        if ($model instanceof PurchaseOrder) {
+            $ctx['purchase_order'] = $model;
+            $ctx['po'] = $model;
+            $ctx['po_number'] = (string) ($model->po_number ?? ('#'.(string)$model->id));
+            $ctx['po_subject'] = (string) ($model->subject ?? $ctx['po_number']);
+            $ctx['requester_name'] = (string) optional($model->requestedByUser)->name;
+            $statuses = PurchaseOrder::statuses();
+            $statusLabel = (string) ($statuses[$model->status] ?? $model->status ?? '');
+            $ctx['from_status'] = $ctx['from_status'] ?? $statusLabel;
+            $ctx['to_status'] = $ctx['to_status'] ?? $statusLabel;
+            $ctx['status'] = $ctx['status'] ?? $statusLabel;
+        } elseif ($model instanceof Proforma) {
+            $ctx['proforma'] = $model;
+            $ctx['proforma_number'] = (string) ($model->proforma_number ?? ('#'.($model->id ?? '')));
+            $ctx['customer_name'] = (string) ($model->organization_name ?? optional($model->organization)->name ?? '');
+        }
+
+        return $ctx;
     }
 
     protected function resolveTitleAndUrl(string $formType, int $id): array

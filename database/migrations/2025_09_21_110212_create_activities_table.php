@@ -5,36 +5,45 @@ use Illuminate\Database\Schema\Blueprint;
 use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration {
-    public function up(): void {
-        Schema::create('activities', function (Blueprint $table) {
-            $table->id();
-            $table->string('subject');
-            $table->dateTime('start_at');
-            $table->dateTime('due_at')->nullable();
 
-            $table->foreignId('assigned_to_id')->constrained('users')->cascadeOnDelete();
+    public function up()
+    {
+        // فقط اگر جدول activities وجود ندارد، بسازش
+        if (! Schema::hasTable('activities')) {
+            Schema::create('activities', function (Blueprint $table) {
+                $table->id();
+                $table->string('subject');
+                $table->dateTime('start_at');
+                $table->dateTime('due_at')->nullable();
 
-            // مربوط به: مخاطب/سازمان با رابطه پلی‌مورفیک
-            $table->nullableMorphs('related'); // related_type, related_id
+                $table->foreignId('assigned_to_id')->constrained('users')->cascadeOnDelete();
 
-            // وضعیت و اولویت
-            $table->enum('status', ['not_started','in_progress','completed','scheduled'])->default('not_started');
-            $table->enum('priority', ['normal','medium','high'])->default('normal');
+                // مربوط به: مخاطب/سازمان با رابطه پلی‌مورفیک
+                $table->nullableMorphs('related'); // related_type, related_id
 
-            $table->text('description')->nullable();
-            $table->boolean('is_private')->default(false); // خصوصی/عمومی
+                // وضعیت و اولویت
+                $table->enum('status', ['not_started','in_progress','completed','scheduled'])->default('not_started');
+                $table->enum('priority', ['normal','medium','high'])->default('normal');
 
-            $table->foreignId('created_by_id')->constrained('users')->cascadeOnDelete();
-            $table->foreignId('updated_by_id')->nullable()->constrained('users')->nullOnDelete();
+                $table->text('description')->nullable();
+                $table->boolean('is_private')->default(false); // خصوصی/عمومی
 
-            $table->softDeletes();
-            $table->timestamps();
+                $table->foreignId('created_by_id')->constrained('users')->cascadeOnDelete();
+                $table->foreignId('updated_by_id')->nullable()->constrained('users')->nullOnDelete();
 
-            $table->index(['start_at','due_at']);
-            $table->index(['assigned_to_id','is_private']);
-        });
+                $table->softDeletes();
+                $table->timestamps();
+
+                $table->index(['start_at','due_at']);
+                $table->index(['assigned_to_id','is_private']);
+            });
+        }
     }
-    public function down(): void {
-        Schema::dropIfExists('activities');
+
+    public function down()
+    {
+        if (Schema::hasTable('activities')) {
+            Schema::dropIfExists('activities');
+        }
     }
 };

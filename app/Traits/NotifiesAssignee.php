@@ -42,11 +42,31 @@ trait NotifiesAssignee
                 };
                 if ($module) {
                     $router = app(\App\Services\Notifications\NotificationRouter::class);
+                    $title = null;
+                    if (method_exists($this, 'getNotificationTitle')) {
+                        $title = $this->getNotificationTitle();
+                    } else {
+                        foreach (['subject', 'name', 'title'] as $prop) {
+                            if (!empty($this->{$prop})) {
+                                $title = $this->{$prop};
+                                break;
+                            }
+                        }
+                    }
+                    $oldAssigneeName = null;
+                    if ($oldAssignedTo) {
+                        $oldAssigneeName = \App\Models\User::query()->find($oldAssignedTo)?->name ?? $oldAssignedTo;
+                    }
+                    $newAssigneeName = optional($this->assignedTo)->name;
                     $context = [
                         'model' => $this,
-                        'old_assignee' => $oldAssignedTo,
-                        'new_assignee' => optional($this->assignedTo)->name,
+                        'form_title' => (string) ($title ?? ''),
+                        'old_assignee' => $oldAssigneeName,
+                        'new_assignee' => $newAssigneeName,
+                        'old_user'      => $oldAssigneeName,
+                        'new_user'      => $newAssigneeName,
                         'actor' => $currentUser,
+                        'sender_name' => optional($currentUser)->name,
                         'url' => method_exists($this, 'getKey') ? request()->fullUrl() : null,
                     ];
                     $router->route($module, 'assigned.changed', $context, [$this->assigned_to]);

@@ -7,11 +7,15 @@ use App\Models\NotificationRule;
 use App\Models\NotificationTemplate;
 use App\Models\PurchaseOrder; // برای دسترسی به لیست وضعیت‌های سفارش خرید
 use Illuminate\Http\Request;
+use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
+use App\Models\User;
+use App\Support\NotificationPlaceholderRenderer;
 
 class NotificationRuleController extends Controller
 {
@@ -42,6 +46,9 @@ class NotificationRuleController extends Controller
         $channelOptions = $config['channels'] ?? ['database' => 'داخلی (سیستم)', 'email' => 'ایمیل'];
 
         $channelOptions['sms'] = $channelOptions['sms'] ?? 'SMS';
+        $excludedMatrixEvents = [
+            'purchase_orders' => ['ready_for_delivery'],
+        ];
         $rules = NotificationRule::query()
             ->orderByDesc('updated_at')
             ->get()
@@ -53,10 +60,47 @@ class NotificationRuleController extends Controller
             ->groupBy(fn($t) => $t->module.'.'.$t->event);
 
         $matrix = [];
+        $dynamicSections = [];
         foreach ($modules as $moduleKey => $module) {
             $moduleLabel = $module['label'] ?? $moduleKey;
             foreach (($module['events'] ?? []) as $eventKey => $eventDef) {
+                if (in_array($eventKey, $excludedMatrixEvents[$moduleKey] ?? [], true)) {
+                    continue;
+                }
                 $key = $moduleKey.'.'.$eventKey;
+
+                if ($this->supportsMultipleRules($moduleKey, $eventKey)) {
+                    $existingRules = NotificationRule::query()
+                        ->where('module', $moduleKey)
+                        ->where('event', $eventKey)
+                        ->orderBy('created_at')
+                        ->get();
+
+                    $dynamicSections[$key] = [
+                        'module' => $moduleKey,
+                        'module_label' => $moduleLabel,
+                        'event' => $eventKey,
+                        'event_label' => $eventDef['label'] ?? $eventKey,
+                        'rules' => $existingRules->map(fn($rule) => $this->buildRuleRowPayload(
+                            $moduleKey,
+                            $moduleLabel,
+                            $eventKey,
+                            $eventDef,
+                            $rule,
+                            $templates
+                        ))->values()->all(),
+                        'defaults' => $this->buildRuleRowPayload(
+                            $moduleKey,
+                            $moduleLabel,
+                            $eventKey,
+                            $eventDef,
+                            null,
+                            $templates
+                        ),
+                    ];
+                    continue;
+                }
+
                 $existing = $rules->get($key);
 
                 $tplGroup = $templates->get($key) ?? collect();
@@ -122,7 +166,15 @@ class NotificationRuleController extends Controller
         // تهیه گزینه‌های وضعیت سفارش خرید برای استفاده در دراپ‌داون شروط
         $poStatuses = PurchaseOrder::statuses(); // ['code' => 'label']
 
-        return view('settings.notifications.index', compact('matrix','channelOptions','poStatuses'));
+        $purchaseOrderSection = $dynamicSections['purchase_orders.status.changed'] ?? null;
+
+        return view('settings.notifications.index', [
+            'matrix' => $matrix,
+            'channelOptions' => $channelOptions,
+            'poStatuses' => $poStatuses,
+            'dynamicSections' => $dynamicSections,
+            'purchaseOrderSection' => $purchaseOrderSection,
+        ]);
     }
 
     public function store(Request $request)
@@ -191,10 +243,12 @@ class NotificationRuleController extends Controller
                 $eventKey  = $data['event'];
                 $supports = $cfg['modules'][$moduleKey]['events'][$eventKey]['supports'] ?? [];
                 $supportsConditions = (bool)($supports['conditions'] ?? false);
+                $supportsMultiple = $this->supportsMultipleRules($moduleKey, $eventKey);
                 Log::channel('notifications')->info('notifications.store supports.computed', array_merge($this->logCtx($reqId), [
                     'module' => $moduleKey,
                     'event'  => $eventKey,
                     'supports_conditions' => $supportsConditions,
+                    'supports_multiple' => $supportsMultiple,
                 ]));
 
                 $this->validateConditionsSchema(
@@ -229,52 +283,66 @@ class NotificationRuleController extends Controller
 
                 $userId = Auth::id();
 
-                $rule = NotificationRule::updateOrCreate(
-                    ['module' => $data['module'], 'event' => $data['event']],
-                    [
-                        'enabled' => $request->boolean('enabled'),
-                        'channels' => $selectedChannels,
-                        'conditions' => $request->has('conditions')
-                            ? (function($in){ $f = array_filter((array) $in, fn($v) => $v !== null && $v !== ''); return empty($f) ? null : $f; })($request->input('conditions'))
-                            : null,
-                        'subject_template' => $data['subject_template'] ?? null,
-                        'body_template' => $data['body_template'] ?? null,
-                        'sms_template' => $data['sms_template'] ?? null,
-                        'created_by' => $userId,
-                        'updated_by' => $userId,
-                    ]
-                );
+                $payload = [
+                    'enabled' => $request->boolean('enabled'),
+                    'channels' => $selectedChannels,
+                    'conditions' => $request->has('conditions')
+                        ? (function ($in) {
+                            $filtered = array_filter((array) $in, fn($v) => $v !== null && $v !== '');
+                            return empty($filtered) ? null : $filtered;
+                        })($request->input('conditions'))
+                        : null,
+                    'subject_template' => $data['subject_template'] ?? null,
+                    'body_template' => $data['body_template'] ?? null,
+                    'sms_template' => $data['sms_template'] ?? null,
+                    'created_by' => $userId,
+                    'updated_by' => $userId,
+                ];
+
+                if ($supportsMultiple) {
+                    $rule = NotificationRule::create(array_merge([
+                        'module' => $data['module'],
+                        'event' => $data['event'],
+                    ], $payload));
+                } else {
+                    $rule = NotificationRule::updateOrCreate(
+                        ['module' => $data['module'], 'event' => $data['event']],
+                        $payload
+                    );
+                }
+
                 Log::channel('notifications')->info('notifications.store rule upserted', [
                     'request_id' => $reqId,
                     'rule_id' => $rule->id,
                 ]);
 
-                // Upsert فقط برای کانال‌های انتخاب‌شده (کانال‌های انتخاب‌نشده دست‌نخورده می‌مانند)
-                foreach ($selectedChannels as $ch) {
-                    if ($ch === 'email') {
-                        $this->upsertChannelTemplate(
-                            $data['module'], $data['event'], 'email',
-                            $data['subject_template'] ?? null,
-                            $data['body_template'] ?? null,
-                            $userId,
-                            $reqId
-                        );
-                    } elseif ($ch === 'database') {
-                        $this->upsertChannelTemplate(
-                            $data['module'], $data['event'], 'database',
-                            null,
-                            ($data['internal_template'] ?? null) ?: ($data['body_template'] ?? null),
-                            $userId,
-                            $reqId
-                        );
-                    } elseif ($ch === 'sms') {
-                        $this->upsertChannelTemplate(
-                            $data['module'], $data['event'], 'sms',
-                            null,
-                            $data['sms_template'] ?? null,
-                            $userId,
-                            $reqId
-                        );
+                if (!$supportsMultiple) {
+                    foreach ($selectedChannels as $ch) {
+                        if ($ch === 'email') {
+                            $this->upsertChannelTemplate(
+                                $data['module'], $data['event'], 'email',
+                                $data['subject_template'] ?? null,
+                                $data['body_template'] ?? null,
+                                $userId,
+                                $reqId
+                            );
+                        } elseif ($ch === 'database') {
+                            $this->upsertChannelTemplate(
+                                $data['module'], $data['event'], 'database',
+                                null,
+                                ($data['internal_template'] ?? null) ?: ($data['body_template'] ?? null),
+                                $userId,
+                                $reqId
+                            );
+                        } elseif ($ch === 'sms') {
+                            $this->upsertChannelTemplate(
+                                $data['module'], $data['event'], 'sms',
+                                null,
+                                $data['sms_template'] ?? null,
+                                $userId,
+                                $reqId
+                            );
+                        }
                     }
                 }
             } catch (\Throwable $e) {
@@ -324,8 +392,7 @@ class NotificationRuleController extends Controller
 
             // موفقیت
             if ($request->wantsJson()) {
-                $rule = NotificationRule::where('module', $data['module'])->where('event', $data['event'])->first();
-
+                $rule = $rule->fresh();
                 $queries = DB::getQueryLog();
                 $durationMs = (int) round((microtime(true) - $t0) * 1000);
                 Log::channel('notifications')->info('notifications.store finish', array_merge($this->logCtx($reqId), [
@@ -433,6 +500,7 @@ class NotificationRuleController extends Controller
             $eventKey  = $notificationRule->event; // literal key may contain dots
             $supports = $cfg['modules'][$moduleKey]['events'][$eventKey]['supports'] ?? [];
             $supportsConditions = (bool)($supports['conditions'] ?? false);
+            $supportsMultiple = $this->supportsMultipleRules($moduleKey, $eventKey);
 
             // Normalize incoming condition fields from flat or nested keys
             $from = $request->input('conditions.from_status', $request->input('from_status'));
@@ -448,6 +516,7 @@ class NotificationRuleController extends Controller
                 'from_status' => $from,
                 'to_status' => $to,
                 'supports_conditions' => $supportsConditions,
+                'supports_multiple' => $supportsMultiple,
             ]));
 
             $this->validateConditionsSchema(
@@ -503,32 +572,34 @@ class NotificationRuleController extends Controller
             ]);
 
             // Upsert per-channel فقط در صورت وجود فیلدهای مربوط به همان کانال
-            if ($request->hasAny(['subject_template','body_template'])) {
-                $this->upsertChannelTemplate(
-                    $notificationRule->module, $notificationRule->event, 'email',
-                    $data['subject_template'] ?? $notificationRule->subject_template,
-                    $data['body_template'] ?? $notificationRule->body_template,
-                    Auth::id(),
-                    $reqId
-                );
-            }
-            if (array_key_exists('internal_template', $data)) {
-                $this->upsertChannelTemplate(
-                    $notificationRule->module, $notificationRule->event, 'database',
-                    null,
-                    ($data['internal_template'] ?? null) ?: ($data['body_template'] ?? $notificationRule->body_template),
-                    Auth::id(),
-                    $reqId
-                );
-            }
-            if (array_key_exists('sms_template', $data)) {
-                $this->upsertChannelTemplate(
-                    $notificationRule->module, $notificationRule->event, 'sms',
-                    null,
-                    $data['sms_template'] ?? $notificationRule->sms_template,
-                    Auth::id(),
-                    $reqId
-                );
+            if (!$supportsMultiple) {
+                if ($request->hasAny(['subject_template','body_template'])) {
+                    $this->upsertChannelTemplate(
+                        $notificationRule->module, $notificationRule->event, 'email',
+                        $data['subject_template'] ?? $notificationRule->subject_template,
+                        $data['body_template'] ?? $notificationRule->body_template,
+                        Auth::id(),
+                        $reqId
+                    );
+                }
+                if (array_key_exists('internal_template', $data)) {
+                    $this->upsertChannelTemplate(
+                        $notificationRule->module, $notificationRule->event, 'database',
+                        null,
+                        ($data['internal_template'] ?? null) ?: ($data['body_template'] ?? $notificationRule->body_template),
+                        Auth::id(),
+                        $reqId
+                    );
+                }
+                if (array_key_exists('sms_template', $data)) {
+                    $this->upsertChannelTemplate(
+                        $notificationRule->module, $notificationRule->event, 'sms',
+                        null,
+                        $data['sms_template'] ?? $notificationRule->sms_template,
+                        Auth::id(),
+                        $reqId
+                    );
+                }
             }
         } catch (\Throwable $e) {
             Log::channel('notifications')->error('notifications.update error', [
@@ -632,6 +703,57 @@ class NotificationRuleController extends Controller
 
         return redirect()->route('settings.notifications.index')
             ->with('status', 'قانون حذف شد.');
+    }
+
+    private function supportsMultipleRules(string $module, string $event): bool
+    {
+        $modules = config('notification_events.modules', []);
+        $eventDef = $modules[$module]['events'][$event] ?? [];
+        $supports = $eventDef['supports'] ?? [];
+
+        return (bool) ($supports['multiple_rules'] ?? false);
+    }
+
+    private function buildRuleRowPayload(string $moduleKey, string $moduleLabel, string $eventKey, array $eventDef, ?NotificationRule $rule, Collection $templates): array
+    {
+        $key = $moduleKey.'.'.$eventKey;
+        $tplGroup = $templates->get($key) ?? collect();
+        $tplByChannel = $tplGroup->keyBy('channel');
+        $emailTpl = $tplByChannel->get('email');
+        $dbTpl    = $tplByChannel->get('database');
+        $smsTpl   = $tplByChannel->get('sms');
+
+        $subject = $rule?->subject_template
+            ?? $emailTpl?->subject_template
+            ?? ($eventDef['default_subject'] ?? '');
+        $body = $rule?->body_template
+            ?? $emailTpl?->body_template
+            ?? ($eventDef['default_body'] ?? '');
+        $internal = $rule?->body_template
+            ?? $dbTpl?->body_template
+            ?? ($eventDef['default_body'] ?? '');
+        $sms = $rule?->sms_template
+            ?? $smsTpl?->body_template
+            ?? ($eventDef['default_sms'] ?? ($eventDef['default_body'] ?? ''));
+
+        return [
+            'id' => $rule?->id,
+            'module' => $moduleKey,
+            'module_label' => $moduleLabel,
+            'event' => $eventKey,
+            'event_label' => $eventDef['label'] ?? $eventKey,
+            'enabled' => $rule?->enabled ?? false,
+            'channels' => $rule?->channels ?? ($eventDef['default_channels'] ?? ['database']),
+            'conditions' => [
+                'from_status' => data_get($rule?->conditions, 'from_status', ''),
+                'to_status' => data_get($rule?->conditions, 'to_status', ''),
+            ],
+            'subject_template' => $subject,
+            'body_template' => $body,
+            'internal_template' => $internal,
+            'sms_template' => $sms,
+            'placeholders' => $eventDef['placeholders'] ?? [],
+        ];
     }
 
     private function validateConditionsSchema(string $module, string $event, $conditions, bool $supportsConditions = false): void
@@ -754,4 +876,141 @@ class NotificationRuleController extends Controller
             'has_body' => $body !== null && $body !== '',
         ]);
     }
+
+    public function preview(Request $request)
+    {
+        $data = $request->validate([
+            'module'  => 'required|string',
+            'event'   => 'required|string',
+            'subject' => 'nullable|string',
+            'body'    => 'nullable|string',
+            'sms'     => 'nullable|string',
+        ]);
+
+        $templates = [
+            'subject' => $data['subject'] ?? '',
+            'body'    => $data['body'] ?? '',
+            'sms'     => $data['sms'] ?? '',
+        ];
+
+        $rendered = NotificationPlaceholderRenderer::render(
+            $data['module'],
+            $data['event'],
+            $templates,
+            $this->buildPreviewContext($data['module'], $data['event'])
+        );
+
+        return response()->json([
+            'preview' => [
+                'subject' => $rendered['subject'] ?? '',
+                'body'    => $rendered['body'] ?? '',
+                'sms'     => $rendered['sms'] ?? '',
+            ],
+        ]);
+    }
+
+    
+    protected function buildPreviewContext(string $module, string $event): array
+    {
+        $actor = Auth::user();
+
+        $context = [
+            'actor'       => $actor,
+            'sender_name' => (string) ($actor->name ?? 'کاربر سامانه'),
+            'url'         => url('/preview'),
+        ];
+
+        if ($module === 'purchase_orders') {
+            $po = PurchaseOrder::query()
+                ->with('requestedByUser')
+                ->latest('id')
+                ->first();
+
+            if (! $po) {
+                $po = PurchaseOrder::make([
+                    'id'        => 1001,
+                    'po_number' => 'PO-1001',
+                    'subject'   => 'سفارش خرید نمونه',
+                    'status'    => 'supervisor_approval',
+                ]);
+
+                $requester = $actor
+                    ? tap($actor->replicate(), function ($clone) {
+                        $clone->name = $clone->name ?: 'درخواست‌کننده نمونه';
+                    })
+                    : new User(['name' => 'درخواست‌کننده نمونه']);
+
+                $po->setRelation('requestedByUser', $requester);
+            }
+
+            $context['purchase_order'] = $po;
+            $context['po']             = $po;
+            $context['prev_status']    = $po->status ?: 'created';
+            $context['new_status']     = $po->status === 'created'
+                ? 'supervisor_approval'
+                : ($po->status ?? 'supervisor_approval');
+            $context['form_title']     = (string) ($po->subject ?? $po->po_number ?? 'سفارش خرید نمونه');
+            $context['url']            = $po->id
+                ? route('inventory.purchase-orders.show', $po->id)
+                : route('inventory.purchase-orders.index');
+        } elseif ($module === 'proformas') {
+            $pf = \App\Models\Proforma::query()
+                ->with('organization')
+                ->latest('id')
+                ->first() ?: \App\Models\Proforma::make([
+                    'id'               => 2001,
+                    'proforma_number'  => 'PF-2001',
+                    'subject'          => 'پیش‌فاکتور نمونه',
+                    'organization_name'=> 'مشتری نمونه',
+                ]);
+
+            $context['proforma']        = $pf;
+            $context['model']           = $pf;
+            $context['proforma_number'] = $pf->proforma_number ?? 'PF-2001';
+            $context['customer_name']   = $pf->organization_name ?? optional($pf->organization)->name ?? 'مشتری نمونه';
+            $context['approver_name']   = (string) ($actor->name ?? 'تأییدکننده نمونه');
+            $context['form_title']      = (string) ($pf->subject ?? $pf->proforma_number ?? 'پیش‌فاکتور نمونه');
+            $context['url']             = route('sales.proformas.show', $pf->id ?? 0);
+        } elseif (in_array($module, ['leads', 'opportunities'], true)) {
+            $lead = \App\Models\SalesLead::query()->latest('id')->first()
+                ?: \App\Models\SalesLead::make(['name' => 'سرنخ فروش نمونه']);
+
+            $name = $lead->name ?? 'سرنخ فروش نمونه';
+
+            $context['model']        = $lead;
+            $context['lead_name']    = $name;
+            $context['old_assignee'] = 'کاربر قبلی';
+            $context['new_assignee'] = 'کاربر جدید';
+            $context['old_user']     = 'کاربر قبلی';
+            $context['new_user']     = 'کاربر جدید';
+            $context['form_title']   = $name;
+        } elseif ($module === 'notes') {
+            $context['note_body']           = 'این یک متن نمونه برای بدنه یادداشت است.';
+            $context['note_excerpt']        = 'این یک متن نمونه برای بدنه یادداشت است.';
+            $context['mentioned_user']      = 'کاربر یادشده';
+            $context['mentioned_user_name'] = 'کاربر یادشده';
+            $context['context_label']       = 'زمینه مرتبط';
+            $context['form_title']          = 'نمونه عنوان فرم';
+        } elseif ($module === 'activities') {
+            $activity = new \App\Models\Activity([
+                'subject'       => 'فعالیت نمونه',
+                'due_at_jalali' => '1404/01/15 10:00',
+            ]);
+
+            $context['activity']   = $activity;
+            $context['form_title'] = $activity->subject;
+        } elseif ($module === 'reports') {
+            $context['report_title'] = 'گزارش نمونه سیستم';
+            $context['form_title']   = $context['report_title'];
+        }
+
+        if (empty($context['form_title'])) {
+            $context['form_title'] = 'فرم نمونه';
+        }
+
+        return $context;
+    }
+
+
+
 }

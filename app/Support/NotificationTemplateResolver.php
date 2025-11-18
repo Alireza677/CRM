@@ -5,6 +5,7 @@ namespace App\Support;
 use App\Models\NotificationRule;
 use App\Models\NotificationTemplate;
 use Illuminate\Support\Facades\Cache;
+use App\Support\NotificationPlaceholderRenderer;
 
 class NotificationTemplateResolver
 {
@@ -73,28 +74,24 @@ class NotificationTemplateResolver
             }
         }
 
-        // Render placeholders if any text is present
-        $render = function (?string $text) use ($context) {
-            if ($text === null || $text === '') return $text;
-            $out = $text;
-            foreach ($context as $k => $v) {
-                // Support both {token} and raw token without braces, plus safe string cast
-                $val = is_string($v) ? $v : (is_scalar($v) ? (string) $v : '');
-                $out = str_replace('{'.$k.'}', $val, $out);
-            }
-            // Allow legacy moustache-like tokens
-            if (isset($context['url'])) {
-                $out = str_replace(['{{ url }}','@{{ url }}'], (string) $context['url'], $out);
-            }
-            if (isset($context['actor.name'])) {
-                $out = str_replace(['{{ actor.name }}','@{{ actor.name }}'], (string) $context['actor.name'], $out);
-            }
-            return $out;
-        };
+        $templates = [];
+        if ($subject !== null) {
+            $templates['subject'] = $subject;
+        }
+        if ($body !== null) {
+            $templates['body'] = $body;
+        }
+
+        $rendered = NotificationPlaceholderRenderer::render(
+            $module,
+            $event,
+            $templates,
+            $context
+        );
 
         return [
-            'subject' => $render($subject),
-            'body'    => $render($body),
+            'subject' => $templates ? ($rendered['subject'] ?? null) : null,
+            'body'    => $templates ? ($rendered['body'] ?? null) : null,
         ];
     }
 }

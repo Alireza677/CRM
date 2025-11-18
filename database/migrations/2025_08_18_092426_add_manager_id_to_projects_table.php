@@ -6,8 +6,26 @@ use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
 
 return new class extends Migration {
-    public function up(): void
+
+    public function up()
     {
+        // اگر درایور دیتابیس sqlite است (محیط تست)،
+        // این مایگریشن را ساده و بدون دستورات MySQL اجرا کن
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            // فقط مطمئن شو ستون manager_id وجود دارد و nullable است
+            if (! Schema::hasColumn('projects', 'manager_id')) {
+                Schema::table('projects', function (Blueprint $table) {
+                    $table->unsignedBigInteger('manager_id')->nullable()->after('id');
+                });
+            }
+            // روی SQLite فعلاً نیازی به FK واقعی و دستکاری اطلاعات نیست
+            return;
+        }
+
+        // ---------------------------
+        // از اینجا به بعد: منطق اصلی برای MySQL
+        // ---------------------------
+
         // 0) Drop any existing FK on projects.manager_id (name-agnostic)
         $constraint = DB::table('information_schema.KEY_COLUMN_USAGE')
             ->select('CONSTRAINT_NAME')
@@ -22,7 +40,7 @@ return new class extends Migration {
         }
 
         // 1) Ensure the column exists and is BIGINT UNSIGNED NULLABLE (to match users.id = bigIncrements)
-        if (!Schema::hasColumn('projects', 'manager_id')) {
+        if (! Schema::hasColumn('projects', 'manager_id')) {
             Schema::table('projects', function (Blueprint $table) {
                 $table->unsignedBigInteger('manager_id')->nullable()->after('id');
             });
@@ -51,7 +69,7 @@ return new class extends Migration {
             ->whereNotNull('REFERENCED_TABLE_NAME')
             ->exists();
 
-        if (!$hasFk) {
+        if (! $hasFk) {
             DB::statement("
                 ALTER TABLE `projects`
                 ADD CONSTRAINT `projects_manager_id_foreign`
@@ -61,8 +79,13 @@ return new class extends Migration {
         }
     }
 
-    public function down(): void
+    public function down()
     {
+        // در محیط تست (sqlite) نیازی به دستکاری نیست
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
         // Drop FK if exists
         $constraint = DB::table('information_schema.KEY_COLUMN_USAGE')
             ->select('CONSTRAINT_NAME')

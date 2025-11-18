@@ -6,21 +6,33 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up()
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->dropColumn('email');
-        });
+        // اگر روی SQLite هستیم (محیط تست)، اصلاً این مایگریشن را اجرا نکن
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
+        // فقط اگر جدول و ستون email وجود داشته باشد، حذفش کن (برای MySQL و بقیه)
+        if (Schema::hasTable('organizations') && Schema::hasColumn('organizations', 'email')) {
+            Schema::table('organizations', function (Blueprint $table) {
+                $table->dropColumn('email');
+            });
+        }
     }
-    
+
     public function down()
     {
-        Schema::table('organizations', function (Blueprint $table) {
-            $table->string('email'); // اگه بخوای برگردونی
-        });
+        // اگر روی SQLite هستیم، کاری نکن
+        if (Schema::getConnection()->getDriverName() === 'sqlite') {
+            return;
+        }
+
+        // فقط اگر جدول وجود دارد و ستون email وجود ندارد، دوباره اضافه‌اش کن
+        if (Schema::hasTable('organizations') && ! Schema::hasColumn('organizations', 'email')) {
+            Schema::table('organizations', function (Blueprint $table) {
+                $table->string('email')->nullable();
+            });
+        }
     }
-    
 };
