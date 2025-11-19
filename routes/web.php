@@ -112,6 +112,7 @@ Route::middleware(['auth'])->group(function () {
     // Marketing & Leads
     Route::get('/marketing', [MarketingController::class, 'index'])->name('marketing');
     Route::get('marketing/leads/favorites', [LeadFavoriteController::class, 'index'])->name('marketing.leads.favorites.index');
+    Route::get('marketing/leads/converted', [SalesLeadController::class, 'converted'])->name('marketing.leads.converted');
     Route::post('marketing/leads/{lead}/favorite', [LeadFavoriteController::class, 'store'])->name('marketing.leads.favorites.store');
     Route::delete('marketing/leads/{lead}/favorite', [LeadFavoriteController::class, 'destroy'])->name('marketing.leads.favorites.destroy');
 

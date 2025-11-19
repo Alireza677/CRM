@@ -105,6 +105,11 @@
                         <i class="fas fa-star ml-2"></i>
                         علاقه‌مندی‌ها
                     </a>
+                    <a href="{{ route('marketing.leads.converted') }}"
+                        class="inline-flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md shadow hover:bg-emerald-600">
+                        <i class="fas fa-sync ml-2"></i>
+                        سرنخ‌های تبدیل‌شده
+                    </a>
                     {{-- دکمه حذف انتخاب‌شده‌ها: فقط برای ادمین --}}
                     @role('admin')
                         <button type="submit"

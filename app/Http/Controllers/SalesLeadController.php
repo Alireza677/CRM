@@ -32,6 +32,7 @@ class SalesLeadController extends Controller
     public function index(Request $request)
     {
         $query = SalesLead::visibleFor(auth()->user(), 'leads')->with('assignedUser');
+        $query->whereNull('converted_at');
 
         // جست‌وجوی عمومی
         if ($request->filled('search')) {
@@ -98,6 +99,77 @@ class SalesLeadController extends Controller
             'perPage',
             'perPageOptions'
         ))->with('breadcrumb', $this->leadsBreadcrumb([], false));
+    }
+
+    public function converted(Request $request)
+    {
+        $query = SalesLead::visibleFor(auth()->user(), 'leads')
+            ->with(['assignedUser', 'convertedOpportunity'])
+            ->whereNotNull('converted_at');
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->where('first_name', 'like', "%{$search}%")
+                    ->orWhere('last_name', 'like', "%{$search}%")
+                    ->orWhere('company', 'like', "%{$search}%")
+                    ->orWhere('state', 'like', "%{$search}%");
+            });
+        }
+
+        if ($request->filled('lead_source')) {
+            $query->where('lead_source', $request->lead_source);
+        }
+
+        if ($request->filled('lead_status')) {
+            $query->where('lead_status', $request->lead_status);
+        }
+
+        if ($request->filled('assigned_to')) {
+            $query->where('assigned_to', $request->assigned_to);
+        }
+
+        if ($request->filled('full_name')) {
+            $query->where('full_name', 'like', '%' . $request->full_name . '%');
+        }
+
+        if ($request->filled('mobile')) {
+            $query->where(function ($q) use ($request) {
+                $q->where('mobile', 'like', '%' . $request->mobile . '%')
+                    ->orWhere('phone', 'like', '%' . $request->mobile . '%');
+            });
+        }
+
+        $perPageOptions = [20, 50, 100, 200];
+        $perPage = (int) $request->input('per_page', 20);
+        if (! in_array($perPage, $perPageOptions, true)) {
+            $perPage = 20;
+        }
+
+        $leads = $query->latest('converted_at')->paginate($perPage)->appends($request->query());
+
+        $favoriteLeadIds = [];
+        if ($request->user()) {
+            $favoriteLeadIds = \DB::table('lead_favorites')
+                ->where('user_id', $request->user()->id)
+                ->whereIn('lead_id', $leads->pluck('id'))
+                ->pluck('lead_id')
+                ->toArray();
+        }
+
+        $users = User::all();
+        $leadSources = \App\Helpers\FormOptionsHelper::leadSources();
+
+        return view('marketing.leads.converted', compact(
+            'leads',
+            'users',
+            'leadSources',
+            'favoriteLeadIds',
+            'perPage',
+            'perPageOptions'
+        ))->with('breadcrumb', $this->leadsBreadcrumb([
+            ['title' => 'سرنخ‌های تبدیل‌شده'],
+        ], false));
     }
 
     public function create()
