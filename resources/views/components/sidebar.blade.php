@@ -32,45 +32,56 @@
     >
 
         <!-- دکمه داشبورد -->
+        @can('sidebar_dashboard.view')
         <div class="p-4 border-b border-gray-200">
             <a href="{{ route('dashboard') }}"
                 class="w-full block text-right px-4 py-2 text-white bg-blue-600 hover:bg-blue-700 rounded transition duration-200 text-sm font-medium shadow">
                  داشبورد
             </a>
         </div>
+        @endcan
 
         <!-- Main Menu Items -->
         <nav class="p-4 space-y-2">
             
+            @can('sidebar_marketing.view')
             <button @click="$store.menu.openSubMenu('marketing')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='marketing' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 بازاریابی
             </button>
+            @endcan
 
+            @can('sidebar_sales.view')
             <button @click="$store.menu.openSubMenu('sales')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='sales' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 فروش
             </button>
+            @endcan
 
+            @can('sidebar_projects.view')
             <button @click="$store.menu.openSubMenu('projects')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='projects' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 پروژه‌ها
             </button>
+            @endcan
 
+            @can('sidebar_inventory.view')
             <button @click="$store.menu.openSubMenu('inventory')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='inventory' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 تأمین و خرید
             </button>
+            @endcan
 
+            @can('sidebar_support.view')
             <button @click="$store.menu.openSubMenu('support')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='support' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
-                خدمات پس از فروش
-            </button>
+پشتیبانی            </button>
+            @endcan
 
             {{--<button @click="$store.menu.openSubMenu('print-templates')"
                      class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
@@ -84,27 +95,35 @@
                 فرم‌ها
             </button>--}}
 
+            @can('sidebar_documents.view')
             <button @click="$store.menu.openSubMenu('documents')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='documents' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 اسناد
             </button>
+            @endcan
 
+            @can('sidebar_calendar.view')
             <button @click="$store.menu.openSubMenu('calendar')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='calendar' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 تقویم
             </button>        
+            @endcan
 
+            @can('sidebar_settings.view')
             <button @click="$store.menu.openSubMenu('settings')"
                     class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                     :class="$store.menu.activeMenu==='settings' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 تنظیمات
             </button>
+            @endcan
 
+            @can('sidebar_employee_portal.view')
             <a href="{{ route('employee.portal.index') }}" class="w-full block text-right px-4 py-2 text-gray-700 rounded transition duration-200 hover:bg-gray-50">
                 پرتال کارمند
             </a>
+            @endcan
         </nav>
     </aside>
 
@@ -132,7 +151,7 @@
                     <template x-if="$store.menu.activeMenu === 'sales'">فروش</template>
                     <template x-if="$store.menu.activeMenu === 'projects'">پروژه‌ها</template>
                     <template x-if="$store.menu.activeMenu === 'inventory'">موجودی</template>
-                    <template x-if="$store.menu.activeMenu === 'support'">خدمات پس از فروش</template>
+                    <template x-if="$store.menu.activeMenu === 'support'">  پشتیبانی </template>
                     <template x-if="$store.menu.activeMenu === 'print-templates'">قالب‌های پرینت</template>
                     <template x-if="$store.menu.activeMenu === 'forms'">فرم‌ها</template>
                     <template x-if="$store.menu.activeMenu === 'settings'">تنظیمات</template>
@@ -145,52 +164,88 @@
             </div>
 
             <nav class="p-4 space-y-2 flex-1 overflow-y-auto">
+                @can('sidebar_calendar.view')
                 <template x-if="$store.menu.activeMenu === 'calendar'">
                     <div class="space-y-2">
+                        @can('sidebar_calendar_index.view')
                         <a href="{{ route('calendar.index') }}" class="menu-item">مشاهده تقویم</a>
-                        @role('admin')
+                        @endcan
+                        @can('sidebar_calendar_holidays.view')
                             <a href="{{ route('holidays.index') }}" class="menu-item">مدیریت رویدادها</a>
-                        @endrole
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
+                @can('sidebar_sales.view')
                 <template x-if="$store.menu.activeMenu === 'sales'">
                     <div class="space-y-2">
+                        @can('sidebar_sales_opportunities.view')
                         <a href="{{ route('sales.opportunities.index') }}" class="menu-item">فرصت‌های فروش</a>
+                        @endcan
+                        @can('sidebar_sales_contacts.view')
                         <a href="{{ route('sales.contacts.index') }}" class="menu-item">مخاطبین</a>
+                        @endcan
+                        @can('sidebar_sales_organizations.view')
                         <a href="{{ route('sales.organizations.index') }}" class="menu-item">سازمان‌ها</a>
+                        @endcan
+                        @can('sidebar_sales_proformas.view')
                         <a href="{{ route('sales.proformas.index') }}" class="menu-item">پیش‌فاکتور</a>
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
                 <!-- Admin-only: Roles Permission Matrix link moved to settings -->
 
+                @can('sidebar_marketing.view')
                 <template x-if="$store.menu.activeMenu === 'marketing'">
                     <div class="space-y-2">
+                        @can('sidebar_marketing_leads.view')
                         <a href="{{ route('marketing.leads.index') }}" class="menu-item">سرنخ‌های فروش</a>
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
+                @can('sidebar_projects.view')
                 <template x-if="$store.menu.activeMenu === 'projects'">
                     <div class="space-y-2">
+                        @can('sidebar_projects_list.view')
                         <a href="/projects" class="menu-item">لیست پروژه‌ها</a>
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
+                @can('sidebar_inventory.view')
                 <template x-if="$store.menu.activeMenu === 'inventory'">
                     <div class="space-y-2">
+                        @can('sidebar_inventory_products.view')
                         <a href="{{ route('inventory.products.index') }}" class="menu-item">محصولات</a>
+                        @endcan
+                        @can('sidebar_inventory_suppliers.view')
                         <a href="{{ route('inventory.suppliers.index') }}" class="menu-item">تأمین‌کنندگان</a>
+                        @endcan
+                        @can('sidebar_inventory_purchase_orders.view')
                         <a href="{{ route('inventory.purchase-orders.index') }}" class="menu-item">سفارش‌های خرید</a>
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
+                @can('sidebar_support.view')
                 <template x-if="$store.menu.activeMenu === 'support'">
                     <div class="space-y-2">
-                        <a href="{{ route('support.after-sales-services.index') }}" class="menu-item">فرم‌های خدمات پس از فروش</a>
-                        <a href="{{ route('support.after-sales-services.create') }}" class="menu-item">ثبت فرم جدید</a>
+                        @can('sidebar_support_after_sales.view')
+                        <a href="{{ route('support.after-sales-services.index') }}" class="menu-item">فرم‌ خدمات پس از فروش</a>
+                        @endcan
+                        @can('sidebar_support_phone_calls.view')
+                        <a href="{{ route('telephony.phone-calls.index') }}" class="menu-item"> تماس‌های تلفنی</a>
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
                 <template x-if="$store.menu.activeMenu === 'print-templates'">
                     <div class="space-y-2">
@@ -204,38 +259,68 @@
                     </div>
                 </template>
 
+                @can('sidebar_settings.view')
                 <template x-if="$store.menu.activeMenu === 'settings'">
                     <div class="space-y-2">
-                    @role('admin')
+                        @can('sidebar_settings_general.view')
                         <a href="{{ route('settings.general') }}" class="menu-item">تنظیمات عمومی</a>
+                        @endcan
+                        @can('sidebar_settings_users.view')
                         <a href="{{ route('settings.users.index') }}" class="menu-item">مدیریت کاربران</a>
+                        @endcan
+                        @can('sidebar_settings_workflows.view')
                         <a href="{{ route('settings.workflows.index') }}" class="menu-item">گردش کارها</a>
+                        @endcan
+                        @can('sidebar_settings_automation.view')
                         <a href="{{ route('settings.automation.edit') }}" class="menu-item">اتوماسیون</a>
+                        @endcan
+                        @can('sidebar_settings_notifications.view')
                         <a href="{{ route('settings.notifications.index') }}" class="menu-item">تنظیمات اعلان‌ها</a>
+                        @endcan
+                        @can('sidebar_settings_roles_matrix.view')
                         <a href="{{ route('roles.matrix') }}" class="menu-item">ماتریس دسترسی نقش‌ها</a>
-                    @endrole
-                    @can('reports.view')
-                        <a href="{{ route('admin.role-permissions') }}" class="menu-item">گزارش نقش‌ها و دسترسی‌ها</a>
-                    @endcan
+                        @endcan
+                        @can('sidebar_settings_roles_report.view')
+                            @can('reports.view')
+                                <a href="{{ route('admin.role-permissions') }}" class="menu-item">گزارش نقش‌ها و دسترسی‌ها</a>
+                            @endcan
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
+                @can('sidebar_documents.view')
                 <template x-if="$store.menu.activeMenu === 'documents'">
                     <div class="space-y-2">
-                        @can('viewAny', \App\Models\Document::class)
-                            <a href="{{ route('sales.documents.index') }}" class="menu-item">همه اسناد</a>
+                        @can('sidebar_documents_all.view')
+                            @can('viewAny', \App\Models\Document::class)
+                                <a href="{{ route('sales.documents.index') }}" class="menu-item">همه اسناد</a>
+                            @endcan
                         @endcan
+                        @can('sidebar_documents_sms.view')
                         <a href="{{ route('tools.sms.create') }}" class="menu-item">ارسال پیامک</a>
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
                 <!-- Reports quick links under documents menu -->
+                @can('sidebar_documents.view')
                 <template x-if="$store.menu.activeMenu === 'documents'">
                     <div class="space-y-2">
-                        <a href="{{ route('reports.dashboard') }}" class="menu-item">داشبورد گزارش‌ها</a>
-                        <a href="{{ route('reports.index') }}" class="menu-item">همه گزارش‌ها</a>
+                        @can('sidebar_reports_dashboard.view')
+                            @can('reports.view')
+                                <a href="{{ route('reports.dashboard') }}" class="menu-item">داشبورد گزارش‌ها</a>
+                            @endcan
+                        @endcan
+                        @can('sidebar_reports_all.view')
+                            @can('reports.view')
+                                <a href="{{ route('reports.index') }}" class="menu-item">همه گزارش‌ها</a>
+                            @endcan
+                        @endcan
                     </div>
                 </template>
+                @endcan
 
                 <!-- Roles & permissions report moved to settings -->
 

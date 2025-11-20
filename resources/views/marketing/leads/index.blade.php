@@ -96,18 +96,19 @@
                 <div class="flex gap-2">
                     {{-- دکمه ایجاد سرنخ --}}
                     <a href="{{ route('marketing.leads.create') }}"
-                    class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md shadow hover:bg-blue-700">
-                        <i class="fas fa-plus ml-2"></i>
-                        ایجاد سرنخ
-                    </a>
+                        class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md shadow hover:bg-blue-700">
+                            <i class="fas fa-plus ml-1 text-sm"></i>
+                            ایجاد سرنخ
+                        </a>
+
                     <a href="{{ route('marketing.leads.favorites.index') }}"
                         class="inline-flex items-center px-4 py-2 bg-amber-500 text-white rounded-md shadow hover:bg-amber-600">
-                        <i class="fas fa-star ml-2"></i>
+                        <i class="fas fa-star ml-1 text-sm"></i>
                         علاقه‌مندی‌ها
                     </a>
                     <a href="{{ route('marketing.leads.converted') }}"
                         class="inline-flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md shadow hover:bg-emerald-600">
-                        <i class="fas fa-sync ml-2"></i>
+                        <i class="fas fa-sync ml-1 text-sm"></i>
                         سرنخ‌های تبدیل‌شده
                     </a>
                     {{-- دکمه حذف انتخاب‌شده‌ها: فقط برای ادمین --}}
@@ -126,12 +127,12 @@
                     @role('admin')
                         <a href="{{ route('sales.contacts.export.format', ['format' => 'csv']) }}"
                             class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
-                            <i class="fas fa-file-csv ml-1"></i> اکسپورت (CSV)
+                            <i class="fas fa-file-csv ml-1 text-sm"></i> اکسپورت (CSV)
                         </a>
 
                         <a href="{{ route('sales.contacts.export.format', ['format' => 'xlsx']) }}"
                             class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold">
-                            <i class="fas fa-file-excel ml-1"></i> اکسپورت (XLSX)
+                            <i class="fas fa-file-excel ml-1 text-sm"></i> اکسپورت (XLSX)
                         </a>
                     @endrole
 

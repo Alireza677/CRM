@@ -82,6 +82,50 @@ class RolePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
+        $sidebarGeneral = [
+            'sidebar_dashboard.view',
+            'sidebar_marketing.view',
+            'sidebar_sales.view',
+            'sidebar_projects.view',
+            'sidebar_inventory.view',
+            'sidebar_support.view',
+            'sidebar_documents.view',
+            'sidebar_calendar.view',
+            'sidebar_employee_portal.view',
+            'sidebar_calendar_index.view',
+            'sidebar_sales_opportunities.view',
+            'sidebar_sales_contacts.view',
+            'sidebar_sales_organizations.view',
+            'sidebar_sales_proformas.view',
+            'sidebar_marketing_leads.view',
+            'sidebar_projects_list.view',
+            'sidebar_inventory_products.view',
+            'sidebar_inventory_suppliers.view',
+            'sidebar_inventory_purchase_orders.view',
+            'sidebar_support_after_sales.view',
+            'sidebar_support_phone_calls.view',
+            'sidebar_documents_all.view',
+            'sidebar_documents_sms.view',
+            'sidebar_reports_dashboard.view',
+            'sidebar_reports_all.view',
+        ];
+
+        $sidebarAdmin = [
+            'sidebar_settings.view',
+            'sidebar_calendar_holidays.view',
+            'sidebar_settings_general.view',
+            'sidebar_settings_users.view',
+            'sidebar_settings_workflows.view',
+            'sidebar_settings_automation.view',
+            'sidebar_settings_notifications.view',
+            'sidebar_settings_roles_matrix.view',
+            'sidebar_settings_roles_report.view',
+        ];
+
+        foreach (array_merge($sidebarGeneral, $sidebarAdmin) as $perm) {
+            Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
+        }
+
         // Helper to ensure a permission exists and return its model
         $ensure = function (string $name) {
             return Permission::firstOrCreate(['name' => $name, 'guard_name' => 'web']);
@@ -164,6 +208,7 @@ class RolePermissionSeeder extends Seeder
                 $role->syncPermissions(Permission::all());
                 continue;
             }
+            $perms = array_merge($perms, $sidebarGeneral);
             $permModels = [];
             foreach ($perms as $p) {
                 $permModels[] = $ensure($p);

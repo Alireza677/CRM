@@ -62,6 +62,7 @@ use App\Http\Controllers\Admin\RoleReportController;
 use App\Http\Controllers\Admin\RolePermissionMatrixController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\EmployeePortalController;
+use App\Http\Controllers\Telephony\PhoneCallController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -389,6 +390,12 @@ Route::middleware(['auth'])->group(function () {
         'update' => 'forms.update',
         'destroy' => 'forms.destroy',
     ]);
+
+    // Telephony Phone Calls
+    Route::prefix('telephony')->name('telephony.')->group(function () {
+        Route::get('phone-calls', [PhoneCallController::class, 'index'])->name('phone-calls.index');
+        Route::get('phone-calls/{phoneCall}', [PhoneCallController::class, 'show'])->name('phone-calls.show');
+    });
 
     // Reports (auth + verified)
     Route::middleware(['auth','verified'])->group(function(){

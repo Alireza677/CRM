@@ -204,16 +204,24 @@ function submitCreateOrganization(){
 </script>
 
 <script>
-// Disable next_follow_up when stage is won
+// Disable success rate & next_follow_up when stage is closed
 (function (){
-  const stageEl   = document.getElementById('stage');
-  const shamsiEl  = document.getElementById('next_follow_up_shamsi');
-  const hiddenEl  = document.getElementById('next_follow_up');
+  const stageEl     = document.getElementById('stage');
+  const shamsiEl    = document.getElementById('next_follow_up_shamsi');
+  const hiddenEl    = document.getElementById('next_follow_up');
+  const successEl   = document.getElementById('success_rate');
+  const wasRequired = successEl ? successEl.hasAttribute('required') : false;
 
-  function isWon(val){
+  const closedStages = [
+    'won', 'lost', 'junk',
+    'برنده', // برنده
+    'بازنده', // بازنده
+    'سرکاری'  // سرکاری
+  ];
+
+  function isClosed(val){
     const v = String(val || '').trim().toLowerCase();
-    // English 'won' and Persian 'برنده' (unicode-escaped for safety)
-    return v === 'won' || v === '\u0628\u0631\u0646\u062F\u0647';
+    return closedStages.includes(v);
   }
 
   function disableFollowup(){
@@ -234,18 +242,40 @@ function submitCreateOrganization(){
     }
   }
 
-  function toggleFollowup(){
-    if (!stageEl) return;
-    if (isWon(stageEl.value)) disableFollowup(); else enableFollowup();
+  function disableSuccessRate(){
+    if (!successEl) return;
+    successEl.setAttribute('readonly','readonly');
+    successEl.classList.add('is-disabled');
+    successEl.setAttribute('aria-disabled','true');
+    if (wasRequired) successEl.removeAttribute('required');
   }
 
-  document.addEventListener('DOMContentLoaded', toggleFollowup);
-  if (stageEl) stageEl.addEventListener('change', toggleFollowup);
+  function enableSuccessRate(){
+    if (!successEl) return;
+    successEl.removeAttribute('readonly');
+    successEl.classList.remove('is-disabled');
+    successEl.removeAttribute('aria-disabled');
+    if (wasRequired) successEl.setAttribute('required','required');
+  }
+
+  function toggleFields(){
+    if (!stageEl) return;
+    if (isClosed(stageEl.value)){
+      disableFollowup();
+      disableSuccessRate();
+    } else {
+      enableFollowup();
+      enableSuccessRate();
+    }
+  }
+
+  document.addEventListener('DOMContentLoaded', toggleFields);
+  if (stageEl) stageEl.addEventListener('change', toggleFields);
 
   const formEl = stageEl ? stageEl.form : null;
   if (formEl){
     formEl.addEventListener('submit', function(){
-      if (isWon(stageEl.value)){
+      if (isClosed(stageEl.value)){
         if (shamsiEl) shamsiEl.value = '';
         if (hiddenEl) hiddenEl.value = '';
       }
@@ -253,4 +283,3 @@ function submitCreateOrganization(){
   }
 })();
 </script>
-
