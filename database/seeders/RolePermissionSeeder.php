@@ -56,6 +56,7 @@ class RolePermissionSeeder extends Seeder
             'update.own',
             'update.team',
             'update.department',
+            'update.company',
             'delete.own',
             'reassign',
             'export', // optional
@@ -79,6 +80,16 @@ class RolePermissionSeeder extends Seeder
             'reports.finance.department',
         ];
         foreach ($extra as $perm) {
+            Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
+        }
+
+        $documentCategoryPerms = [
+            'purchase_documents.view',
+            'purchase_documents.download',
+            'opportunity_documents.view',
+            'opportunity_documents.download',
+        ];
+        foreach ($documentCategoryPerms as $perm) {
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
@@ -181,12 +192,16 @@ class RolePermissionSeeder extends Seeder
                 'opportunities.view.department',
                 'proformas.view.department',
                 'documents.view.department',
+                'purchase_documents.view', 'purchase_documents.download',
+                'opportunity_documents.view', 'opportunity_documents.download',
             ],
 
             'support' => [
                 'tickets.view.department', 'tickets.create', 'tickets.update.team', 'tickets.delete.own',
                 'contacts.view.department',
                 'documents.view.department',
+                'purchase_documents.view', 'purchase_documents.download',
+                'opportunity_documents.view', 'opportunity_documents.download',
             ],
 
             // Admin area roles (if present): users/roles/settings

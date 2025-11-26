@@ -197,7 +197,7 @@ class RolePermissionMatrixController extends Controller
         $all = Permission::orderBy('name')->get()->pluck('name')->all();
 
         // Standard actions & scopes (columns)
-        $defaultActions = ['view', 'create', 'update', 'delete', 'reassign', 'export'];
+        $defaultActions = ['view', 'create', 'update', 'delete', 'reassign', 'export', 'download'];
         $scopes  = ['own', 'team', 'department', 'company'];
 
         // Determine modules from permissions

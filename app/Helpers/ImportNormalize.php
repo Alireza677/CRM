@@ -12,8 +12,8 @@ class ImportNormalize
         if ($v === '') return null;
         // Replace Arabic variants to Persian
         $v = strtr($v, [
-            "\xD9\x8A" => 'ÛŒ', // ÙŠ
-            "\xD9\x83" => 'Ú©', // Ùƒ
+            "\xD9\x8A" => 'ی', // ي → ی
+            "\xD9\x83" => 'ک', // ك → ک
         ]);
         // Replace ZWNJ and NBSP with space
         $v = str_replace(["\xE2\x80\x8C", "\xC2\xA0"], ' ', $v); // ZWNJ, NBSP
@@ -28,12 +28,12 @@ class ImportNormalize
     {
         return [
             // canonical => aliases/labels
-            'new'          => ['Ø¯Ø± Ø­Ø§Ù„ Ù¾ÛŒÚ¯ÛŒØ±ÛŒ','Ù¾ÛŒÚ¯ÛŒØ±ÛŒ Ø¬Ø§Ø±ÛŒ','followup','doing','new','Ø¯Ø±Ø­Ø§Ù„ Ù¾ÛŒÚ¯ÛŒØ±ÛŒ','Ø¬Ø¯ÛŒØ¯'],
-            'qualified'    => ['Ù¾ÛŒÚ¯ÛŒØ±ÛŒ Ø¯Ø± Ø¢ÛŒÙ†Ø¯Ù‡','Ø¢ÛŒÙ†Ø¯Ù‡','future','qualified'],
-            'proposal'     => ['Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ´ ÙØ§Ú©ØªÙˆØ±','Ø§Ø±Ø³Ø§Ù„ Ù¾ÛŒØ´â€ŒÙØ§Ú©ØªÙˆØ±','Ù¾Ø±ÙˆÙ¾ÙˆØ²Ø§Ù„','proposal','quote','Ù¾ÛŒØ´ ÙØ§Ú©ØªÙˆØ±','Ù¾ÛŒØ´â€ŒÙØ§Ú©ØªÙˆØ±'],
-            'negotiation'  => ['Ø³Ø±Ú©Ø§Ø±ÛŒ','Ù…Ø°Ø§Ú©Ø±Ù‡','negotiation'],
-            'won'          => ['Ø¨Ø±Ù†Ø¯Ù‡','won','closed-won','closed won'],
-            'lost'         => ['Ø¨Ø§Ø²Ù†Ø¯Ù‡','Ø§Ø² Ø¯Ø³Øª Ø±ÙØªÙ‡','lost','closed-lost','closed lost'],
+            'new'          => ['در حال پیگیری', 'پیگیری جاری', 'followup', 'doing', 'new', 'درحال پیگیری', 'جدید'],
+            'qualified'    => ['پیگیری در آینده', 'آینده', 'future', 'qualified'],
+            'proposal'     => ['ارسال پیش فاکتور', 'ارسال پیش‌فاکتور', 'پروپوزال', 'proposal', 'quote', 'پیش فاکتور', 'پیش‌فاکتور'],
+            'negotiation'  => ['سرکاری', 'مذاکره', 'negotiation'],
+            'won'          => ['برنده', 'won', 'closed-won', 'closed won'],
+            'lost'         => ['بازنده', 'از دست رفته', 'lost', 'closed-lost', 'closed lost'],
         ];
     }
 
@@ -45,28 +45,28 @@ class ImportNormalize
         foreach ($keys as $key) {
             switch ($key) {
                 case 'website':
-                    $map[$key] = ['ÙˆØ¨Ø³Ø§ÛŒØª','ÙˆØ¨â€ŒØ³Ø§ÛŒØª','Ø³Ø§ÛŒØª','website'];
+                    $map[$key] = ['وبسایت', 'وب‌سایت', 'سایت', 'website'];
                     break;
                 case 'phone':
-                    $map[$key] = ['ØªÙ…Ø§Ø³ ØªÙ„ÙÙ†ÛŒ','ØªÙ…Ø§Ø³','phone','call'];
+                    $map[$key] = ['تماس تلفنی', 'تماس', 'phone', 'call'];
                     break;
                 case 'referral':
-                    $map[$key] = ['Ù…Ø¹Ø±ÙÛŒ','Ø§Ø±Ø¬Ø§Ø¹','referral'];
+                    $map[$key] = ['معرفی', 'ارجاع', 'referral'];
                     break;
                 case 'event':
-                    $map[$key] = ['Ù†Ù…Ø§ÛŒØ´Ú¯Ø§Ù‡/ Ø±ÙˆÛŒØ¯Ø§Ø¯','Ù†Ù…Ø§ÛŒØ´Ú¯Ø§Ù‡/Ø±ÙˆÛŒØ¯Ø§Ø¯','Ù†Ù…Ø§ÛŒØ´Ú¯Ø§Ù‡','Ø±ÙˆÛŒØ¯Ø§Ø¯','event','expo'];
+                    $map[$key] = ['نمایشگاه/ رویداد', 'نمایشگاه/رویداد', 'نمایشگاه', 'رویداد', 'event', 'expo'];
                     break;
                 case 'representative':
-                    $map[$key] = ['Ù†Ù…Ø§ÛŒÙ†Ø¯Ù‡','Ø¹Ø§Ù…Ù„ ÙØ±ÙˆØ´','agent','reseller'];
+                    $map[$key] = ['نماینده', 'عامل فروش', 'agent', 'reseller'];
                     break;
                 case 'old_customer':
-                    $map[$key] = ['Ù…Ø´ØªØ±ÛŒ Ù‚Ø¯ÛŒÙ…ÛŒ','existing customer','repeat','existing'];
+                    $map[$key] = ['مشتری قدیمی', 'existing customer', 'repeat', 'existing'];
                     break;
                 case 'tender':
-                    $map[$key] = ['Ù…Ù†Ø§Ù‚ØµÙ‡','tender','bid','rfp'];
+                    $map[$key] = ['مناقصه', 'tender', 'bid', 'rfp'];
                     break;
                 case 'in_person_marketing':
-                    $map[$key] = ['Ø¨Ø§Ø²Ø§Ø±ÛŒØ§Ø¨ÛŒ Ø­Ø¶ÙˆØ±ÛŒ','Ø­Ø¶ÙˆØ±ÛŒ','Ø¨Ø§Ø²Ø§Ø±ÛŒØ§Ø¨ÛŒ Ù…ÛŒØ¯Ø§Ù†ÛŒ','in-person','field marketing'];
+                    $map[$key] = ['بازاریابی حضوری', 'حضوری', 'بازاریابی میدانی', 'in-person', 'field marketing'];
                     break;
                 default:
                     // fallback: accept the key itself
@@ -78,13 +78,13 @@ class ImportNormalize
         // Fallback if list is empty for any reason
         if (empty($map)) {
             $map = [
-                'website' => ['ÙˆØ¨Ø³Ø§ÛŒØª','ÙˆØ¨â€ŒØ³Ø§ÛŒØª','Ø³Ø§ÛŒØª','website'],
-                'phone' => ['ØªÙ…Ø§Ø³ ØªÙ„ÙÙ†ÛŒ','ØªÙ…Ø§Ø³','phone','call'],
-                'referral' => ['Ù…Ø¹Ø±ÙÛŒ','Ø§Ø±Ø¬Ø§Ø¹','referral'],
-                'event' => ['Ù†Ù…Ø§ÛŒØ´Ú¯Ø§Ù‡/ Ø±ÙˆÛŒØ¯Ø§Ø¯','Ù†Ù…Ø§ÛŒØ´Ú¯Ø§Ù‡','Ø±ÙˆÛŒØ¯Ø§Ø¯','event','expo'],
-                'agent' => ['Ù†Ù…Ø§ÛŒÙ†Ø¯Ù‡','Ø¹Ø§Ù…Ù„ ÙØ±ÙˆØ´','agent','reseller'],
-                'existing' => ['Ù…Ø´ØªØ±ÛŒ Ù‚Ø¯ÛŒÙ…ÛŒ','existing customer','repeat','existing'],
-                'tender' => ['Ù…Ù†Ø§Ù‚ØµÙ‡','tender','bid','rfp'],
+                'website'   => ['وبسایت', 'وب‌سایت', 'سایت', 'website'],
+                'phone'     => ['تماس تلفنی', 'تماس', 'phone', 'call'],
+                'referral'  => ['معرفی', 'ارجاع', 'referral'],
+                'event'     => ['نمایشگاه/ رویداد', 'نمایشگاه', 'رویداد', 'event', 'expo'],
+                'agent'     => ['نماینده', 'عامل فروش', 'agent', 'reseller'],
+                'existing'  => ['مشتری قدیمی', 'existing customer', 'repeat', 'existing'],
+                'tender'    => ['مناقصه', 'tender', 'bid', 'rfp'],
             ];
         }
 

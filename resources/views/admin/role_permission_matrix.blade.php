@@ -9,6 +9,7 @@
             'delete' => 'حذف',
             'reassign' => 'واگذاری مجدد',
             'export' => 'خروجی',
+            'download' => 'دانلود',
         ];
         $scopeLabels = [
             'own' => 'شخصی',

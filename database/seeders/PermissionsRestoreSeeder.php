@@ -65,6 +65,16 @@ class PermissionsRestoreSeeder extends Seeder
             Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
 
+        $documentCategoryPerms = [
+            'purchase_documents.view',
+            'purchase_documents.download',
+            'opportunity_documents.view',
+            'opportunity_documents.download',
+        ];
+        foreach ($documentCategoryPerms as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
+        }
+
         // Assign all permissions to the top manager role if present
         $managerRole = Role::where('name', 'مدیر کل')->first() ?? Role::where('name', 'admin')->first();
         if ($managerRole) {
@@ -72,4 +82,3 @@ class PermissionsRestoreSeeder extends Seeder
         }
     }
 }
-

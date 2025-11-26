@@ -19,6 +19,19 @@ class DocumentPolicy
 
     public function view(User $user, Document $model): bool
     {
+        if (!$this->passesCategoryGate($user, $model, 'view')) {
+            return false;
+        }
+
+        return $this->checkAction($user, $model, 'view');
+    }
+
+    public function download(User $user, Document $model): bool
+    {
+        if (!$this->passesCategoryGate($user, $model, 'download')) {
+            return false;
+        }
+
         return $this->checkAction($user, $model, 'view');
     }
 
@@ -58,5 +71,27 @@ class DocumentPolicy
         }
         return false;
     }
-}
 
+    protected function passesCategoryGate(User $user, Document $model, string $action): bool
+    {
+        if (method_exists($user, 'isAdmin') && $user->isAdmin()) {
+            return true;
+        }
+
+        $requirements = [];
+        if ($model->purchase_order_id) {
+            $requirements[] = 'purchase_documents.' . $action;
+        }
+        if ($model->opportunity_id) {
+            $requirements[] = 'opportunity_documents.' . $action;
+        }
+
+        foreach ($requirements as $permission) {
+            if (!$user->can($permission)) {
+                return false;
+            }
+        }
+
+        return true;
+    }
+}

@@ -1,11 +1,9 @@
-﻿            $allowedSourceKeys = array_keys(ImportNormalize::sourceMap());
-            if ($sourceKey === null || !in_array($sourceKey, $allowedSourceKeys, true)) {
-                $allowedListFa = implode('ØŒ ', $allowedSourceKeys);
-                $origText = (string)($row['source'] ?? '');
-                $errors['source'] = ["Ù…Ù†Ø¨Ø¹ Ù†Ø§Ù…Ø¹ØªØ¨Ø±: Â«{$origText}Â». Ù…Ù‚Ø§Ø¯ÛŒØ± Ù…Ø¬Ø§Ø²: {$allowedListFa}"];
-            } else {
-                // Persist canonical key
-                $sourceLabel = $sourceKey;
-            }
-        }
-
+$allowedSourceKeys = array_keys(ImportNormalize::sourceMap());
+if ($sourceKey === null || !in_array($sourceKey, $allowedSourceKeys, true)) {
+    $allowedListFa = implode('، ', $allowedSourceKeys);
+    $origText = (string)($row['source'] ?? '');
+    $errors['source'] = ["منبع نامعتبر: «{$origText}». مقادیر مجاز: {$allowedListFa}"];
+} else {
+    // Persist canonical key
+    $sourceLabel = $sourceKey;
+}

@@ -11,6 +11,8 @@ return [
     'invoices' => 'فاکتورها',
     'payments' => 'پرداخت‌ها',
     'documents' => 'اسناد',
+    'purchase_documents' => 'اسناد خرید',
+    'opportunity_documents' => 'اسناد فرصت فروش',
     'tickets' => 'تیکت‌ها',
     'workorders' => 'دستورکارها',
     'reports' => 'گزارش‌ها',

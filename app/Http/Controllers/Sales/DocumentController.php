@@ -12,6 +12,8 @@ use Illuminate\Support\Facades\Log;
 use App\Models\Opportunity;
 use App\Models\PurchaseOrder;
 use Symfony\Component\HttpFoundation\StreamedResponse;
+use Illuminate\Database\Eloquent\Builder;
+use App\Models\User;
 
 
 class DocumentController extends Controller
@@ -27,8 +29,13 @@ class DocumentController extends Controller
      */
     public function index()
     {
-        $documents = Document::visibleFor(auth()->user(), 'documents')
-            ->with(['opportunity','purchaseOrder','user'])
+        /** @var User $user */
+        $user = auth()->user();
+
+        $query = Document::visibleFor($user, 'documents')
+            ->with(['opportunity','purchaseOrder','user']);
+
+        $documents = $this->restrictDocumentsByCategory($query, $user)
             ->latest()
             ->paginate(10);
 
@@ -218,7 +225,7 @@ class DocumentController extends Controller
      */
     public function download(Document $document)
     {
-        $this->authorize('view', $document);
+        $this->authorize('download', $document);
         if (! $document->file_path || ! Storage::disk('public')->exists($document->file_path)) {
             abort(404, 'فایل یافت نشد.');
         }
@@ -330,5 +337,40 @@ class DocumentController extends Controller
             abort(403, 'شما امکان انجام این عملیات را ندارید.');
         }
     }
+
+
+    protected function restrictDocumentsByCategory(Builder $query, User $user): Builder
+    {
+        return $query->where(function (Builder $builder) use ($user) {
+            $builder->where(function (Builder $general) {
+                $general->whereNull('purchase_order_id')
+                    ->whereNull('opportunity_id');
+            });
+
+            if ($this->canViewDocumentCategory($user, 'opportunity')) {
+                $builder->orWhereNotNull('opportunity_id');
+            }
+
+            if ($this->canViewDocumentCategory($user, 'purchase')) {
+                $builder->orWhereNotNull('purchase_order_id');
+            }
+        });
+    }
+
+    protected function canViewDocumentCategory(User $user, string $category): bool
+    {
+        $map = [
+            'opportunity' => 'opportunity_documents.view',
+            'purchase' => 'purchase_documents.view',
+        ];
+
+        $permission = $map[$category] ?? null;
+        if (!$permission) {
+            return true;
+        }
+
+        return $user->can($permission);
+    }
+
 
 }

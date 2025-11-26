@@ -31,7 +31,7 @@ class AfterSalesServiceController extends Controller
 
         return view('support.after-sales-services.index', [
             'services' => $services,
-            'search' => $search->value(),
+            'search'   => $search->value(),
         ]);
     }
 
@@ -48,7 +48,7 @@ class AfterSalesServiceController extends Controller
 
         return redirect()
             ->route('support.after-sales-services.index')
-            ->with('success', 'ÙØ±Ù… Ø®Ø¯Ù…Ø§Øª Ù¾Ø³ Ø§Ø² ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø«Ø¨Øª Ø´Ø¯.');
+            ->with('success', 'فرم خدمات پس از فروش با موفقیت ثبت شد.');
     }
 
     public function show(AfterSalesService $afterSalesService): View
@@ -67,7 +67,7 @@ class AfterSalesServiceController extends Controller
 
         return redirect()
             ->route('support.after-sales-services.show', $afterSalesService)
-            ->with('success', 'ÙØ±Ù… Ø®Ø¯Ù…Ø§Øª Ù¾Ø³ Ø§Ø² ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ø±ÙˆØ²Ø±Ø³Ø§Ù†ÛŒ Ø´Ø¯.');
+            ->with('success', 'فرم خدمات پس از فروش با موفقیت بروزرسانی شد.');
     }
 
     public function destroy(AfterSalesService $afterSalesService): RedirectResponse
@@ -76,13 +76,13 @@ class AfterSalesServiceController extends Controller
 
         return redirect()
             ->route('support.after-sales-services.index')
-            ->with('success', 'ÙØ±Ù… Ø®Ø¯Ù…Ø§Øª Ù¾Ø³ Ø§Ø² ÙØ±ÙˆØ´ Ø­Ø°Ù Ø´Ø¯.');
+            ->with('success', 'فرم خدمات پس از فروش حذف شد.');
     }
 
     public function bulkDestroy(Request $request): RedirectResponse
     {
         $validated = $request->validate([
-            'ids' => ['required', 'array'],
+            'ids'   => ['required', 'array'],
             'ids.*' => ['integer', 'exists:after_sales_services,id'],
         ]);
 
@@ -90,8 +90,9 @@ class AfterSalesServiceController extends Controller
 
         return redirect()
             ->route('support.after-sales-services.index')
-            ->with('success', $deletedCount ? 'ÙØ±Ù…â€ŒÙ‡Ø§ÛŒ Ø§Ù†ØªØ®Ø§Ø¨â€ŒØ´Ø¯Ù‡ Ø­Ø°Ù Ø´Ø¯Ù†Ø¯.' : 'Ù…ÙˆØ±Ø¯ÛŒ Ø¨Ø±Ø§ÛŒ Ø­Ø°Ù ÛŒØ§ÙØª Ù†Ø´Ø¯.');
+            ->with('success', $deletedCount
+                ? 'فرم‌های انتخاب‌شده حذف شدند.'
+                : 'موردی برای حذف یافت نشد.'
+            );
     }
 }
-
-

@@ -54,11 +54,12 @@
     <x-header :breadcrumb="$breadcrumb ?? []" />
     <x-sidebar />
 
-    <div class=" ">
-        @yield('header')
-    </div>
+    <div class="mt-[60px]">
+    @yield('header')
+</div>
+
     
-    <main class=" transition-all duration-300">
+<main class="mt-[30px] transition-all duration-300">
     @yield('content')
     </main>
 </div>
@@ -202,6 +203,41 @@
 </script>
 @endif
 
+
+@if (session('contact_created'))
+    @php($contactCreated = session('contact_created'))
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            if (!window.Swal) { return; }
+            const data = @json($contactCreated);
+            const convertUrl = @json(route('sales.contacts.convert_to_lead', ['contact' => $contactCreated['contact_id']]));
+            const listUrl = @json(route('sales.contacts.index'));
+            const csrf = @json(csrf_token());
+
+            Swal.fire({
+                icon: 'success',
+                title: 'مخاطب ذخیره شد',
+                text: data.contact_name
+                    ? `مخاطب ${data.contact_name} ذخیره شد. آیا آن را به سرنخ فروش تبدیل کنیم؟`
+                    : 'مخاطب جدید با موفقیت ذخیره شد. آیا مایل به تبدیل آن به سرنخ فروش هستید؟',
+                showCancelButton: true,
+                confirmButtonText: 'تبدیل به سرنخ فروش',
+                cancelButtonText: 'بازگشت به لیست مخاطبین',
+            }).then((result) => {
+                if (result.isConfirmed) {
+                    const form = document.createElement('form');
+                    form.method = 'POST';
+                    form.action = convertUrl;
+                    form.innerHTML = '<input type="hidden" name="_token" value="' + csrf + '">';
+                    document.body.appendChild(form);
+                    form.submit();
+                } else if (result.dismiss === Swal.DismissReason.cancel) {
+                    window.location.href = listUrl;
+                }
+            });
+        });
+    </script>
+@endif
 
 @stack('scripts')
 </body>

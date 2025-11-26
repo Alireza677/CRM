@@ -1,4 +1,4 @@
-﻿<?php
+<?php
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Http\Request;
@@ -213,16 +213,26 @@ Route::middleware(['auth'])->group(function () {
             abort_unless(\Illuminate\Support\Facades\Gate::allows('viewAny', \App\Models\Document::class), 403);
 
             $user = auth()->user();
+            $canOpportunity = $user && $user->can('opportunity_documents.view');
+            $canPurchase = $user && $user->can('purchase_documents.view');
 
-            $opportunityDocs = \App\Models\Document::visibleFor($user, 'documents')
+            $opportunityQuery = \App\Models\Document::visibleFor($user, 'documents')
                 ->with(['opportunity','user'])
-                ->whereNotNull('opportunity_id')
+                ->whereNotNull('opportunity_id');
+            if (!$canOpportunity) {
+                $opportunityQuery->whereRaw('1 = 0');
+            }
+            $opportunityDocs = $opportunityQuery
                 ->latest()
                 ->paginate(20, ['*'], 'op_page');
 
-            $purchaseOrderDocs = \App\Models\Document::visibleFor($user, 'documents')
+            $purchaseOrderQuery = \App\Models\Document::visibleFor($user, 'documents')
                 ->with(['purchaseOrder','user'])
-                ->whereNotNull('purchase_order_id')
+                ->whereNotNull('purchase_order_id');
+            if (!$canPurchase) {
+                $purchaseOrderQuery->whereRaw('1 = 0');
+            }
+            $purchaseOrderDocs = $purchaseOrderQuery
                 ->latest()
                 ->paginate(20, ['*'], 'po_page');
 
@@ -256,6 +266,9 @@ Route::middleware(['auth'])->group(function () {
         // AJAX lightweight create endpoints for inline modals
         Route::post('ajax/contacts', [AjaxCreateController::class, 'contact'])->name('ajax.contacts.store');
         Route::post('ajax/organizations', [AjaxCreateController::class, 'organization'])->name('ajax.organizations.store');
+
+        Route::post('contacts/{contact}/convert-to-lead', [ContactController::class, 'convertToLead'])
+            ->name('contacts.convert_to_lead');
 
         Route::resource('contacts', ContactController::class);
 
