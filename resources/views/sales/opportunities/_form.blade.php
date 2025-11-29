@@ -6,7 +6,7 @@
     $isEdit = isset($opportunity) && $opportunity?->id;
 @endphp
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4" dir="rtl">
+<div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" dir="rtl">
     {{-- عنوان --}}
     <div>
         <label for="name" class="block font-medium text-sm text-gray-700 required">عنوان</label>
@@ -154,7 +154,7 @@
     </div>
 
     {{-- تاریخ پیگیری بعدی (نمایش شمسی + hidden میلادی) --}}
-    <div class="md:col-span-2">
+    <div class="md:col-span-2 lg:col-span-3">
         <label for="next_follow_up_shamsi" class="block font-medium text-sm text-gray-700">
             تاریخ پیگیری بعدی
         </label>
@@ -185,7 +185,7 @@
     </div>
 
     {{-- توضیحات --}}
-    <div class="md:col-span-2">
+    <div class="md:col-span-2 lg:col-span-3">
         <label for="description" class="block font-medium text-sm text-gray-700">توضیحات</label>
         <textarea id="description" name="description" rows="3"
                   class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('description', $opportunity->description ?? '') }}</textarea>

@@ -13,8 +13,14 @@
                 {{ __('پیش‌فاکتورها') }}
             </h2>
             @if (session('success'))
-                <div class="mb-4 rounded-md bg-green-50 p-3 text-green-700 text-sm">
-                    {{ session('success') }}
+                <div class="mb-4 rounded-md bg-green-50 px-3 py-2 text-green-700 text-xs flex items-start justify-between gap-3 dismissible-alert">
+                    <span>{{ session('success') }}</span>
+                    <button
+                        type="button"
+                        class="text-green-700 hover:text-green-900 leading-none text-lg px-1"
+                        aria-label="بستن اعلان"
+                        onclick="this.closest('.dismissible-alert')?.remove();"
+                    >×</button>
                 </div>
             @endif
             @if (session('error'))

@@ -40,7 +40,7 @@ class FormOptionsHelper
             'old_customer'   => 'مشتری قدیمی',
         ];
         $src['tender']  = 'مناقصه';
-        $src['contact'] = 'Contact';
+        $src['contact'] = 'مخاطبین';
         return $src;
     }
 

@@ -16,6 +16,7 @@
                         <button type="submit" class="btn btn-primary">ذخیره</button>
                     </div>
                 </form>
+                @include('marketing.leads.partials.contact-modal')
             </div>
         </div>
     </div>

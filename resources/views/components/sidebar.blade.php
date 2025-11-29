@@ -83,7 +83,15 @@
 پشتیبانی            </button>
             @endcan
 
+            @can('chat.view')
+            <button @click="$store.menu.openSubMenu('chat')"
+                    class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
+                    :class="$store.menu.activeMenu==='chat' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
+                چت داخلی
+            </button>
+            @endcan
             {{--<button @click="$store.menu.openSubMenu('print-templates')"
+
                      class="w-full text-right px-4 py-2 text-gray-700 rounded transition duration-200"
                      :class="$store.menu.activeMenu==='print-templates' ? 'bg-gray-100 text-gray-900' : 'hover:bg-gray-50'">
                 قالب‌های پرینت
@@ -173,6 +181,9 @@
                         @can('sidebar_calendar_holidays.view')
                             <a href="{{ route('holidays.index') }}" class="menu-item">مدیریت رویدادها</a>
                         @endcan
+                        @can('online_meetings.view')
+                        <a href="{{ route('sales.online-meetings.index') }}" class="menu-item">جلسات آنلاین</a>
+                        @endcan
                     </div>
                 </template>
                 @endcan
@@ -243,6 +254,14 @@
                         @can('sidebar_support_phone_calls.view')
                         <a href="{{ route('telephony.phone-calls.index') }}" class="menu-item"> تماس‌های تلفنی</a>
                         @endcan
+                    </div>
+                </template>
+                @endcan
+
+                @can('chat.view')
+                <template x-if="$store.menu.activeMenu === 'chat'">
+                    <div class="space-y-2">
+                        <a href="{{ route('chat.index') }}" class="menu-item">صفحه چت داخلی</a>
                     </div>
                 </template>
                 @endcan

@@ -14,6 +14,8 @@
         ['notes', 'یادداشت‌ها'],
     ];
 
+    $contacts = $contacts ?? collect();
+
     $lead_status_value = old('lead_status', isset($lead) ? $lead->lead_status : 'new');
 
     // تاریخ‌ها
@@ -93,7 +95,7 @@
                             @if($required) required @endif
                             @if($isNotes && $isEdit) disabled title="یادداشت اولیه قابل ویرایش نیست." @endif>{{ $value }}</textarea>
                         @if($isNotes && $isEdit)
-                            <p class="mt-1 text-xs text-gray-500">این یادداشت به عنوان یادداشت اولیه ذخیره شده و فقط قابل مشاهده است.</p>
+                            <p class="mt-1 text-xs text-gray-500">   تغییر یادداشت در زمان ویرایش سرنخ امکانپذیر نمی باشد.</p>
                         @endif
 
                     @else
@@ -107,6 +109,36 @@
                     @enderror
                 </div>
             @endforeach
+            @php $isLeadEditMode = isset($lead) && !empty($lead->id); @endphp
+            @unless($isLeadEditMode)
+                @php
+                    $selectedContactId = old('contact_id', $lead->contact_id ?? null);
+                    $selectedContactName = null;
+                    if (!empty($selectedContactId)) {
+                        $selectedContactName = optional($contacts->firstWhere('id', (int) $selectedContactId))->full_name;
+                    }
+                @endphp
+                <div class="md:col-span-2 col-span-1">
+                    <label for="lead_contact_display" class="block font-medium text-sm text-gray-700">مخاطب مرتبط</label>
+                    <div class="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+                        <input type="text" id="lead_contact_display"
+                               class="flex-1 rounded-md border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:border-blue-500 focus:ring-blue-500"
+                               placeholder="یک مخاطب را انتخاب کنید..."
+                               readonly onclick="openLeadContactModal()"
+                               value="{{ $selectedContactName }}">
+                        <input type="hidden" name="contact_id" id="lead_contact_id" value="{{ $selectedContactId }}">
+                        <button type="button"
+                                class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                                onclick="openLeadContactModal()">
+                            انتخاب
+                        </button>
+                    </div>
+                    <p class="mt-1 text-xs text-gray-500">از بین مخاطبین موجود یک گزینه را برگزینید.</p>
+                    @error('contact_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+            @endunless
         </div>
     </div>
     </details>
@@ -220,6 +252,104 @@
 
         stateEl.addEventListener('change', function(){ fillCities(this.value); });
         fillCities(stateEl.value, @json(old('city', $lead->city ?? '')));
+    })();
+    </script>
+    @endpush
+
+    @push('scripts')
+    <script>
+    (function(){
+        const modal = document.getElementById('leadContactModal');
+        if (!modal) return;
+
+        const searchInputId = 'leadContactSearchInput';
+        const tbodyId = 'leadContactTableBody';
+        const noResId = 'leadContactNoResults';
+
+        function toggleModal(open){
+            if (open){
+                modal.classList.remove('hidden');
+                modal.classList.add('flex');
+                modal.setAttribute('aria-hidden', 'false');
+                setTimeout(() => {
+                    const s = document.getElementById(searchInputId);
+                    if (s) s.focus();
+                }, 10);
+            } else {
+                modal.classList.add('hidden');
+                modal.classList.remove('flex');
+                modal.setAttribute('aria-hidden', 'true');
+            }
+        }
+
+        window.openLeadContactModal = function(){ toggleModal(true); };
+        window.closeLeadContactModal = function(){ toggleModal(false); };
+
+        window.selectLeadContact = function(id, name){
+            const idInput = document.getElementById('lead_contact_id');
+            const nameInput = document.getElementById('lead_contact_display');
+            if (idInput) idInput.value = id ?? '';
+            if (nameInput) nameInput.value = name ?? '';
+            toggleModal(false);
+        };
+
+        function normalizeDigits(str){
+            if (!str) return '';
+            return String(str)
+                .replace(/[\\u06F0-\\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0))
+                .replace(/[\\u0660-\\u0669]/g, d => String(d.charCodeAt(0) - 0x0660));
+        }
+        function stripSeparators(str){
+            return String(str)
+                .replace(/[\\u200c\\u200b\\u00a0\\s]/g,'')
+                .replace(/[\\,\\u060c]/gi,'')
+                .replace(/[\\.\\u066b\\u066c]/g,'');
+        }
+        function normalizeQuery(raw){
+            const lowered = String(raw || '').toLowerCase().trim();
+            const digitsFixed = normalizeDigits(lowered);
+            return { text: digitsFixed, numeric: stripSeparators(digitsFixed) };
+        }
+
+        function setupFilter(){
+            const input = document.getElementById(searchInputId);
+            const tbody = document.getElementById(tbodyId);
+            const noRes = document.getElementById(noResId);
+            if (!input || !tbody) return;
+
+            let timer = null;
+            input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(applyFilter, 150); });
+
+            function applyFilter(){
+                const { text, numeric } = normalizeQuery(input.value);
+                const rows = Array.from(tbody.querySelectorAll('tr'));
+
+                if (!text){
+                    rows.forEach(tr => tr.classList.remove('hidden'));
+                    if (noRes) noRes.classList.add('hidden');
+                    return;
+                }
+
+                let visible = 0;
+                const isPureNumber = /^[0-9]+$/.test(numeric);
+                rows.forEach(tr => {
+                    const name  = String(tr.getAttribute('data-name')  || '').toLowerCase();
+                    const phone = String(tr.getAttribute('data-phone') || '');
+                    const match = name.includes(text) || (isPureNumber ? phone.includes(numeric) : (numeric ? phone.includes(numeric) : false));
+                    if (match) { tr.classList.remove('hidden'); visible++; } else { tr.classList.add('hidden'); }
+                });
+
+                if (noRes) (visible === 0) ? noRes.classList.remove('hidden') : noRes.classList.add('hidden');
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', setupFilter);
+        document.addEventListener('click', function(e){
+            if (e.target === modal && !modal.classList.contains('hidden')) closeLeadContactModal();
+        });
+        document.addEventListener('keydown', function(e){
+            if (e.key === 'Escape') closeLeadContactModal();
+        });
     })();
     </script>
     @endpush

@@ -176,7 +176,11 @@ class SalesLeadController extends Controller
     {
         $users = User::all();
         $referrals = $users;
-        return view('marketing.leads.create', compact('users', 'referrals'))
+        $contacts = Contact::select('id', 'first_name', 'last_name', 'mobile')
+            ->orderBy('last_name')
+            ->orderBy('first_name')
+            ->get();
+        return view('marketing.leads.create', compact('users', 'referrals', 'contacts'))
             ->with('breadcrumb', $this->leadsBreadcrumb([
                 ['title' => 'ایجاد سرنخ'],
             ]));
@@ -195,6 +199,8 @@ class SalesLeadController extends Controller
             'mobile' => 'nullable|string|max:20',
             'phone' => 'nullable|string|max:20',
             'website' => 'nullable|url|max:255',
+            'create_contact' => 'nullable|boolean',
+            'contact_id' => 'nullable|exists:contacts,id',
             'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
 
             'lead_status' => ['nullable', 'string'],
@@ -239,6 +245,10 @@ class SalesLeadController extends Controller
         try {
             $validated = $validator->validated();
             \Log::info('🟢 Validation passed:', $validated);
+            $selectedContactId = $validated['contact_id'] ?? null;
+            $shouldCreateContact = empty($selectedContactId) && (bool) ($validated['create_contact'] ?? false);
+            $validated['contact_id'] = $selectedContactId ? (int) $selectedContactId : null;
+            unset($validated['create_contact']);
 
             // 🧩 جدا کردن یادداشت اولیه
             $noteContent = $validated['notes'] ?? null;
@@ -259,34 +269,100 @@ class SalesLeadController extends Controller
 
             \Log::info('🔵 Final data before create:', $validated);
 
-            $lead = SalesLead::create($validated);
+            $lead = DB::transaction(function () use ($validated, $noteContent, $shouldCreateContact) {
+                $lead = SalesLead::create($validated);
 
-            if ($lead && $lead->id) {
-                \Log::info('✅ Sales lead created successfully with ID: ' . $lead->id);
+                if ($shouldCreateContact && $lead) {
+                    $contact = $this->createContactFromLead($lead);
+                    if ($contact) {
+                        $lead->contact_id = $contact->id;
+                        $lead->save();
+                        \Log::info('?? Contact created from lead', [
+                            'lead_id' => $lead->id,
+                            'contact_id' => $contact->id,
+                        ]);
+                    } else {
+                        \Log::info('?? create_contact checked but contact payload was empty', ['lead_id' => $lead->id]);
+                    }
+                }
 
-                // 📝 ثبت یادداشت اولیه در جدول notes
                 if (!empty($noteContent)) {
                     $lead->notes()->create([
                         'body' => $noteContent,
                         'user_id' => auth()->id(),
                     ]);
-                    \Log::info('📓 Initial note saved for lead ID: ' . $lead->id);
+                    \Log::info('?? Initial note saved for lead ID: ' . $lead->id);
                 }
 
+                return $lead;
+            });
+
+            if ($lead && $lead->id) {
+                \Log::info('? Sales lead created successfully with ID: ' . $lead->id);
+
                 return redirect()->route('marketing.leads.index')
-                    ->with('success', 'سرنخ فروش با موفقیت ایجاد شد.');
-            } else {
-                \Log::error('🧨 Sales lead creation failed. No ID returned.');
-                return redirect()->back()
-                    ->with('error', 'خطا در ایجاد سرنخ فروش. لطفاً دوباره تلاش کنید.')
-                    ->withInput();
+                    ->with('success', '???? ???? ?? ?????? ????? ??.');
             }
+
+            \Log::error('?? Sales lead creation failed. No ID returned.');
+            return redirect()->back()
+                ->with('error', '??? ?? ????? ???? ????. ????? ?????? ???? ????.')
+                ->withInput();
         } catch (\Exception $e) {
             \Log::error('🔥 Exception caught during sales lead creation: ' . $e->getMessage());
             return redirect()->back()
                 ->with('error', 'خطا در ایجاد سرنخ فروش: ' . $e->getMessage())
                 ->withInput();
         }
+    }
+
+
+    private function createContactFromLead(SalesLead $lead): ?Contact
+    {
+        $hasAnyValue = !empty($lead->full_name)
+            || !empty($lead->company)
+            || !empty($lead->email)
+            || !empty($lead->mobile)
+            || !empty($lead->phone);
+
+        if (!$hasAnyValue) {
+            return null;
+        }
+
+        [$firstName, $lastName] = $this->splitLeadName($lead->full_name);
+
+        return Contact::create([
+            'owner_user_id' => $lead->owner_user_id ?? Auth::id(),
+            'first_name'    => $firstName,
+            'last_name'     => $lastName,
+            'email'         => $lead->email,
+            'mobile'        => $lead->mobile,
+            'phone'         => $lead->phone,
+            'company'       => $lead->company,
+            'state'         => $lead->state,
+            'city'          => $lead->city,
+            'address'       => $lead->address,
+            'website'       => $lead->website,
+            'assigned_to'   => $lead->assigned_to,
+        ]);
+    }
+
+    private function splitLeadName(?string $fullName): array
+    {
+        if (!$fullName) {
+            return [null, null];
+        }
+
+        $parts = preg_split('/\s+/', trim($fullName));
+        $lastName = array_pop($parts);
+        $firstName = trim(implode(' ', $parts));
+
+        if ($firstName === '') {
+            $firstName = $lastName;
+            $lastName = null;
+        }
+
+        return [$firstName ?: null, $lastName ?: null];
     }
 
     public function bulkDelete(Request $request)

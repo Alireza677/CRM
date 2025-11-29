@@ -9,6 +9,7 @@ use Spatie\Activitylog\LogOptions;
 use Illuminate\Database\Eloquent\Relations\BelongsToMany;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
+use App\Models\Contact;
 use App\Traits\NotifiesAssignee; // باقی می‌ماند؛ اما با گارد داخلی جلوی دوبل‌شدن را می‌گیریم
 
 use App\Models\Traits\AppliesVisibilityScope;
@@ -36,6 +37,7 @@ class SalesLead extends Model
         'lead_source',
         'lead_status',
         'assigned_to',
+        'contact_id',
         'lead_date',
         'next_follow_up_date',
         'do_not_email',
@@ -72,6 +74,7 @@ class SalesLead extends Model
         'do_not_email'         => 'boolean',
         'owner_user_id'        => 'integer',
         'assigned_to'          => 'integer',
+        'contact_id'           => 'integer',
         'team_id'              => 'integer',
         'internal_temperature' => 'decimal:2',
         'external_temperature' => 'decimal:2',
@@ -185,6 +188,11 @@ class SalesLead extends Model
     public function assignedUser()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function contact()
+    {
+        return $this->belongsTo(Contact::class);
     }
 
     public function creator()

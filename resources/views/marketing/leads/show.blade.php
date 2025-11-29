@@ -107,6 +107,15 @@
                         <i class="fas fa-sticky-note text-gray-500"></i>
                         <span>یادداشت‌ها</span>
                     </a>
+
+                    <a href="#"
+                    data-tab="contact"
+
+                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'contact']) }}"
+                       class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        <i class="fas fa-user-friends text-gray-500"></i>
+                        <span>مخاطب مرتبط</span>
+                    </a>
                 </nav>
             </div>
         </aside>

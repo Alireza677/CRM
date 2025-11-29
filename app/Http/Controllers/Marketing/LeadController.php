@@ -47,6 +47,10 @@ class LeadController extends Controller
                 $opportunities = $lead->opportunities ?? [];
                 return view('marketing.leads.tabs.related', compact('lead', 'opportunities'));
 
+            case 'contact':
+                $lead->loadMissing('contact.organization');
+                return view('marketing.leads.tabs.contact', compact('lead'));
+
             case 'notes':
                 $notes = $lead->notes()->latest()->get();
 

@@ -2,7 +2,7 @@
 
 @section('content')
     <div class="mb-4 text-sm text-gray-600">
-        {{ __('Forgot your password? No problem. Just let us know your email address and we will email you a password reset link that will allow you to choose a new one.') }}
+        {{ __('رمز عبور خود را فراموش کرده‌اید؟ مشکلی نیست. فقط کافی است آدرس ایمیل خود را وارد کنید تا یک لینک بازیابی رمز عبور برای شما ارسال کنیم و بتوانید رمز جدیدی انتخاب کنید.') }}
     </div>
 
     <!-- Session Status -->
@@ -17,7 +17,7 @@
 
         <!-- Email Address -->
         <div>
-            <label for="email">{{ __('Email') }}</label>
+            <label for="email">{{ __('ایمیل') }}</label>
             <input id="email" class="block mt-1 w-full" type="email" name="email" value="{{ old('email') }}" required autofocus >
             @error('email')
                 <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
@@ -26,7 +26,7 @@
 
         <div class="flex items-center justify-end mt-4">
             <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                {{ __('Email Password Reset Link') }}
+                {{ __('بازیابی رمز عبور') }}
             </button>
         </div>
     </form>

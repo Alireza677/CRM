@@ -75,8 +75,16 @@ class PermissionsRestoreSeeder extends Seeder
             Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
         }
 
+        $featurePerms = [
+            'chat.view',
+            'online_meetings.view',
+        ];
+        foreach ($featurePerms as $name) {
+            Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);
+        }
+
         // Assign all permissions to the top manager role if present
-        $managerRole = Role::where('name', 'مدیر کل')->first() ?? Role::where('name', 'admin')->first();
+        $managerRole = Role::where('name', 'مدیر عامل')->first() ?? Role::where('name', 'admin')->first();
         if ($managerRole) {
             $managerRole->syncPermissions(Permission::all());
         }

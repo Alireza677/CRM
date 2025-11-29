@@ -5,18 +5,14 @@
 @endif
 
 @php($contact = $contact ?? new \App\Models\Contact())
-@php
-    $selectedOrganizationId = old('organization_id', $contact->organization_id ?? '');
-    $showNewOrganization = old(
-        'create_new_org',
-        request('create_new_org', ($showNewOrganization ?? false) ? '1' : '0')
-    ) === '1';
-@endphp
+@php($selectedOrganizationId = old('organization_id', $contact->organization_id ?? ''))
+@php($showNewOrganization = old('create_new_org', request('create_new_org', '0')) === '1')
 
 <input type="hidden" name="opportunity_id" value="{{ request('opportunity_id', $contact->opportunity_id ?? '') }}">
-<input type="hidden" name="create_new_org" id="create_new_org_flag" value="{{ $showNewOrganization ? 1 : 0 }}">
+<input type="hidden" name="lead_id" value="{{ request('lead_id', '') }}">
+<input type="hidden" name="create_new_org" id="create_new_org_flag" value="{{ ($showNewOrganization ?? false) ? 1 : 0 }}">
 
-<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div>
         <label for="first_name" class="block text-sm font-medium text-gray-700">نام <span class="text-red-500">*</span></label>
         <input type="text" name="first_name" id="first_name"
@@ -48,6 +44,17 @@
     </div>
 
     <div>
+<label for="website" class="block text-sm font-medium text-gray-700">وبسایت</label>
+        <input type="url" name="website" id="website"
+               value="{{ old('website', $contact->website ?? '') }}"
+               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+               placeholder="https://example.com">
+        @error('website')
+            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div>
         <label for="phone" class="block text-sm font-medium text-gray-700">تلفن ثابت</label>
         <input type="text" name="phone" id="phone"
                value="{{ old('phone', $contact->phone ?? '') }}"
@@ -67,87 +74,86 @@
         @enderror
     </div>
 
-    <div class="md:col-span-2">
-        <label for="organization_id" class="block text-sm font-medium text-gray-700">سازمان</label>
-        <div class="flex gap-2">
-            <select name="organization_id" id="organization_id"
-                    class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                <option value="">انتخاب از فهرست سازمان‌ها</option>
-                @foreach($organizations as $org)
-                    <option value="{{ $org->id }}" {{ (string)$selectedOrganizationId === (string)$org->id ? 'selected' : '' }}>
-                        {{ $org->name }}
-                    </option>
-                @endforeach
-            </select>
-            <button type="button"
-                    id="toggle-new-org"
-                    class="mt-1 inline-flex items-center justify-center rounded-md border border-indigo-200 bg-white px-3 text-lg font-bold text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                    aria-expanded="{{ $showNewOrganization ? 'true' : 'false' }}"
-                    title="ایجاد سازمان جدید">
-                +
-            </button>
+    <div class="md:col-span-3">
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+                <label for="organization_id" class="block text-sm font-medium text-gray-700">سازمان</label>
+                <div class="flex gap-2">
+                    <select name="organization_id" id="organization_id"
+                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                        <option value="">انتخاب از فهرست سازمان‌ها</option>
+                        @foreach($organizations as $org)
+                            <option value="{{ $org->id }}" {{ (string)($selectedOrganizationId ?? '') === (string)$org->id ? 'selected' : '' }}>
+                                {{ $org->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                    <button type="button"
+                            id="toggle-new-org"
+                            class="mt-1 inline-flex items-center justify-center rounded-md border border-indigo-200 bg-white px-3 text-lg font-bold text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
+                            aria-expanded="{{ ($showNewOrganization ?? false) ? 'true' : 'false' }}"
+                            title="ایجاد سازمان جدید">
+                        +
+                    </button>
+                </div>
+                <p class="text-xs text-gray-500 mt-1">برای افزودن سازمان جدید روی دکمه + کلیک کنید.</p>
+                @error('organization_id')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+
+            <div>
+                <label for="company_input" class="block text-sm font-medium text-gray-700">نام شرکت (در صورت عدم انتخاب سازمان)</label>
+                <input type="text" name="company" id="company_input"
+                       value="{{ old('company', $contact->company ?? ($contact->organization->name ?? '')) }}"
+                       class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                       placeholder="در صورت تمایل نام شرکت را به‌صورت دستی وارد کنید.">
+                @error('company')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
-        <p class="text-xs text-gray-500 mt-1">برای افزودن سازمان جدید روی دکمه + کلیک کنید.</p>
-        @error('organization_id')
-            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-        @enderror
     </div>
 
-    <div class="md:col-span-2">
-        <label for="company_input" class="block text-sm font-medium text-gray-700">نام شرکت (در صورت عدم انتخاب سازمان)</label>
-        <input type="text" name="company" id="company_input"
-               value="{{ old('company', $contact->company ?? ($contact->organization->name ?? '')) }}"
-               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-               placeholder="در صورت تمایل نام شرکت را به‌صورت دستی وارد کنید.">
-        @error('company')
-            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+    <div class="md:col-span-3">
+        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <div>
+                <label for="stateSelect" class="block text-sm font-medium text-gray-700">استان <span class="text-red-500">*</span></label>
+                <select name="state" id="stateSelect"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+                    <option value="">استان را انتخاب کنید</option>
+                    @foreach(\App\Helpers\FormOptionsHelper::iranLocations() as $state => $cities)
+                        <option value="{{ $state }}" {{ old('state', $contact->state ?? '') === $state ? 'selected' : '' }}>
+                            {{ $state }}
+                        </option>
+                    @endforeach
+                </select>
+                @error('state')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
 
-    <div>
-        <label for="stateSelect" class="block text-sm font-medium text-gray-700">استان <span class="text-red-500">*</span></label>
-        <select name="state" id="stateSelect"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-            <option value="">استان را انتخاب کنید</option>
-            @foreach(\App\Helpers\FormOptionsHelper::iranLocations() as $state => $cities)
-                <option value="{{ $state }}" {{ old('state', $contact->state ?? '') === $state ? 'selected' : '' }}>
-                    {{ $state }}
-                </option>
-            @endforeach
-        </select>
-        @error('state')
-            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-        @enderror
-    </div>
+            <div>
+                <label for="citySelect" class="block text-sm font-medium text-gray-700">شهر</label>
+                <select name="city" id="citySelect"
+                        class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
+                        {{ old('state', $contact->state ?? '') ? '' : 'disabled' }}>
+                    <option value="">{{ old('state', $contact->state ?? '') ? 'شهر را انتخاب کنید' : 'ابتدا استان را انتخاب کنید' }}</option>
+                </select>
+                @error('city')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
 
-    <div>
-        <label for="citySelect" class="block text-sm font-medium text-gray-700">شهر</label>
-        <select name="city" id="citySelect"
-                class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                {{ old('state', $contact->state ?? '') ? '' : 'disabled' }}>
-            <option value="">{{ old('state', $contact->state ?? '') ? 'شهر را انتخاب کنید' : 'ابتدا استان را انتخاب کنید' }}</option>
-            @php
-                $state = old('state', $contact->state ?? '');
-                $city  = old('city', $contact->city ?? '');
-                $allLocations = \App\Helpers\FormOptionsHelper::iranLocations();
-                $cities = $state && isset($allLocations[$state]) ? $allLocations[$state] : [];
-            @endphp
-            @foreach($cities as $item)
-                <option value="{{ $item }}" {{ $item === $city ? 'selected' : '' }}>{{ $item }}</option>
-            @endforeach
-        </select>
-        @error('city')
-            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-        @enderror
-    </div>
-
-    <div class="md:col-span-2">
-        <label for="address" class="block text-sm font-medium text-gray-700">آدرس</label>
-        <textarea name="address" id="address" rows="3"
-                  class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('address', $contact->address ?? '') }}</textarea>
-        @error('address')
-            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-        @enderror
+            <div class="md:col-span-2">
+                <label for="address" class="block text-sm font-medium text-gray-700">آدرس</label>
+                <textarea name="address" id="address" rows="3"
+                          class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">{{ old('address', $contact->address ?? '') }}</textarea>
+                @error('address')
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+                @enderror
+            </div>
+        </div>
     </div>
 
     <div>
@@ -169,13 +175,13 @@
 </div>
 
 <div id="new-org-fields"
-     class="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-4 {{ $showNewOrganization ? '' : 'hidden' }}">
+     class="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-4 {{ ($showNewOrganization ?? false) ? '' : 'hidden' }}">
     <div class="flex items-center justify-between">
         <h3 class="text-base font-semibold text-indigo-700">ایجاد سازمان جدید</h3>
         <span class="text-xs text-gray-500">شهر، استان و تلفن از اطلاعات مخاطب استفاده می‌شوند.</span>
     </div>
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div class="md:col-span-2">
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div class="md:col-span-2 lg:col-span-3">
             <label for="new_org_name" class="block text-sm font-medium text-gray-700">نام سازمان <span class="text-red-500">*</span></label>
             <input type="text" name="new_org_name" id="new_org_name"
                    value="{{ old('new_org_name') }}"

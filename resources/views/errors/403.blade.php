@@ -1,27 +1,30 @@
 @extends('layouts.app')
 
 @section('content')
-<div class="min-h-screen flex items-center justify-center bg-gray-100">
-    <div class="text-center max-w-md bg-white rounded-[10px] shadow-lg p-6">
-        <div class="text-xl text-gray-800 mb-6">
-            شما امکان دسترسی به این بخش را ندارید
-        </div>
+<div dir="rtl" class="min-h-[60vh] flex items-center justify-center bg-gray-50">
+    <div class="max-w-xl w-full text-center p-6 bg-white rounded-[10px] shadow">
+        <h1 class="text-3xl font-bold mb-3">عدم دسترسی (403)</h1>
+        <p class="text-gray-700 mb-3">
+            شما مجوز دسترسی به این بخش از سامانه را ندارید.
+            این خطا معمولاً زمانی رخ می‌دهد که نقش کاربری شما اجازه مشاهده یا ویرایش این صفحه را نداشته باشد.
+        </p>
 
         @if(session('error'))
-          <div class="mb-6 p-3 rounded bg-red-100 text-red-800">
-              {{ session('error') }}
-          </div>
+            <p class="mb-4 p-3 rounded bg-red-100 text-red-800 text-sm">
+                {{ session('error') }}
+            </p>
         @endif
 
-        <div class="flex items-center justify-center gap-4">
-            <a href="{{ url()->previous() }}" 
-               class="px-5 py-2 rounded bg-gray-200 hover:bg-gray-300 transition">
-               بازگشت
-            </a>
-            <a href="{{ route('dashboard') }}" 
-               class="px-5 py-2 rounded bg-blue-600 text-white hover:bg-blue-700 transition">
-               داشبورد
-            </a>
+        <div class="text-right text-xs text-gray-600 bg-gray-50 border rounded-md p-3 mb-5 leading-relaxed">
+            <p class="font-semibold mb-1">لطفاً متن زیر را کپی کرده و برای پشتیبانی ارسال کنید:</p>
+            <p class="font-mono break-all">
+                [CRM Error] code=403 | url={{ request()->fullUrl() }} | user={{ auth()->id() ?? 'guest' }}
+            </p>
+        </div>
+
+        <div class="flex items-center justify-center gap-3">
+            <a href="{{ url()->previous() }}" class="px-4 py-2 bg-gray-200 rounded-md">بازگشت</a>
+            <a href="{{ route('dashboard') }}" class="px-4 py-2 bg-blue-600 text-white rounded-md">داشبورد</a>
         </div>
     </div>
 </div>

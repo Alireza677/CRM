@@ -91,6 +91,18 @@ class User extends Authenticatable
             ->withPivot('created_at');
     }
 
+    public function chatGroups()
+    {
+        return $this->belongsToMany(OnlineChatGroup::class, 'online_chat_group_user')
+            ->withPivot('role')
+            ->withTimestamps();
+    }
+
+    public function chatMessages()
+    {
+        return $this->hasMany(OnlineChatMessage::class, 'sender_id');
+    }
+
     public function isAdmin(): bool
     {
         // 1) فلگ دیتابیس

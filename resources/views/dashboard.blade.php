@@ -17,9 +17,11 @@
             <a href="{{ route('marketing.leads.index') }}" class="text-green-600 hover:text-indigo-800 font-semibold transition">
                 مشاهده
             </a>
-            <a href="{{ route('marketing.leads.create') }}" class="text-green-600 hover:text-indigo-800 font-semibold transition">
+            <button id="openLeadModal"
+                    type="button"
+                    class="text-green-600 hover:text-indigo-800 font-semibold transition">
                 + ایجاد
-            </a>
+            </button>
         </div>
     </div>
     {{-- کارت ۱: فرصت فروش --}}
@@ -120,6 +122,36 @@
 
 </div>
 
+
+<!-- Lead create choice modal -->
+<div id="leadChoiceModal" class="fixed inset-0 z-50 hidden items-center justify-center px-4">
+    <div class="absolute inset-0 bg-black/40 lead-modal-overlay"></div>
+    <div class="relative bg-white rounded-xl shadow-lg w-full max-w-md mx-auto p-6 space-y-4">
+        <div class="flex items-start justify-between gap-3">
+            <div>
+                <h3 class="text-lg font-bold text-gray-800">ایجاد سرنخ</h3>
+                <p class="text-sm text-gray-600 mt-1">انتخاب کنید برای چه نوع مخاطبی می‌خواهید سرنخ بسازید.</p>
+            </div>
+            <button type="button" class="text-gray-400 hover:text-gray-600" data-close-lead-modal aria-label="بستن">
+                &#10005;
+            </button>
+        </div>
+        <div class="flex flex-col sm:flex-row gap-2">
+            <a href="{{ route('sales.contacts.create') }}" class="w-full inline-flex items-center justify-center gap-2 rounded-lg border border-green-600 text-green-700 px-4 py-2 text-sm font-semibold hover:bg-green-50 transition">
+                سرنخ برای مخاطب جدید
+                
+            </a>
+            <a href="{{ route('marketing.leads.create') }}" class="w-full inline-flex items-center justify-center gap-2 rounded-lg bg-green-600 text-white px-4 py-2 text-sm font-semibold hover:bg-green-700 transition">
+                سرنخ برای مخاطب موجود
+            </a>
+        </div>
+        <div class="flex justify-end">
+            <button type="button" class="px-4 py-2 text-sm text-gray-600 hover:text-gray-800 transition" data-close-lead-modal>
+                انصراف
+            </button>
+        </div>
+    </div>
+</div>
 
         {{-- بخش دو ستونه: وظایف + پیگیری‌های امروز + اعلانات --}}
 <div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3 max-w-6xl mx-auto">
@@ -270,4 +302,39 @@
 
     </div>
 </div>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const modal = document.getElementById('leadChoiceModal');
+    const openBtn = document.getElementById('openLeadModal');
+
+    if (!modal || !openBtn) return;
+
+    const closeTargets = modal.querySelectorAll('[data-close-lead-modal]');
+    const overlay = modal.querySelector('.lead-modal-overlay');
+
+    const openModal = (event) => {
+        event.preventDefault();
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        document.body.classList.add('overflow-hidden');
+    };
+
+    const closeModal = (event) => {
+        if (event) event.preventDefault();
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+        document.body.classList.remove('overflow-hidden');
+    };
+
+    openBtn.addEventListener('click', openModal);
+    closeTargets.forEach((el) => el.addEventListener('click', closeModal));
+    if (overlay) overlay.addEventListener('click', closeModal);
+
+    document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+            closeModal();
+        }
+    });
+});
+</script>
 @endsection

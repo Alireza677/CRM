@@ -100,6 +100,34 @@ class NotificationController extends Controller
         return back()->with('error', 'هیچ عملیاتی انجام نشد.');
     }
 
+    /**
+     * فید آخرین اعلان‌های خوانده‌نشده برای نمایش به‌صورت Toast (JSON)
+     */
+    public function latestFeed(Request $request)
+    {
+        $user = Auth::user();
+
+        if (!$user) {
+            return response()->json(['data' => []], 401);
+        }
+
+        $notifications = $user->unreadNotifications()
+            ->orderByDesc('created_at')
+            ->limit(10)
+            ->get();
+
+        $data = $notifications->map(function (DatabaseNotification $notification) {
+            return [
+                'id'         => $notification->id,
+                'message'    => $notification->data['message'] ?? 'اعلان جدیدی دارید',
+                'created_at' => $notification->created_at?->toIso8601String(),
+                'url'        => route('notifications.read', ['notification' => $notification->id]),
+            ];
+        })->values();
+
+        return response()->json(['data' => $data]);
+    }
+
     
     private function resolveNotificationUrl(array $data): ?string
     {

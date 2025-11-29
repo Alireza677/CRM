@@ -19,6 +19,8 @@ return [
     'users' => 'کاربران',
     'roles' => 'نقش‌ها',
     'settings' => 'تنظیمات',
+    'chat' => 'چت داخلی',
+    'online_meetings' => 'جلسات آنلاین',
 
     'sidebar_dashboard' => 'سایدبار - داشبورد',
     'sidebar_marketing' => 'سایدبار - بازاریابی',

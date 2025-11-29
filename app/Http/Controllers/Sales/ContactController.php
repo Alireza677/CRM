@@ -93,6 +93,7 @@ class ContactController extends Controller
             'email'      => 'nullable|string|email|max:255|unique:contacts,email',
             'phone'      => 'nullable|string|max:20',
             'mobile'     => 'nullable|string|max:20',
+            'website'    => 'nullable|url|max:255',
             'address'    => 'nullable|string',
             'company'    => 'nullable|string|max:255',
             'city'       => 'nullable|string|max:255',
@@ -100,6 +101,7 @@ class ContactController extends Controller
             'assigned_to'=> 'nullable|exists:users,id',
             'organization_id' => 'nullable|exists:organizations,id',
             'opportunity_id'  => 'nullable|exists:opportunities,id',
+            'lead_id'         => 'nullable|exists:sales_leads,id',
             'do_not_send_email' => 'nullable|boolean',
             'is_portal_user'    => 'nullable|boolean',
             'create_new_org'    => 'nullable|boolean',
@@ -132,10 +134,15 @@ class ContactController extends Controller
         if ($request->filled('opportunity_id')) {
             Opportunity::where('id', $request->opportunity_id)
                 ->update(['contact_id' => $contact->id]);
+        }
+
+        if ($request->filled('lead_id')) {
+            SalesLead::where('id', $request->lead_id)
+                ->update(['contact_id' => $contact->id]);
 
             return redirect()
-                ->route('sales.opportunities.show', $request->opportunity_id)
-                ->with('success', 'مخاطب ایجاد شد و به فرصت انتخاب‌شده متصل گردید.');
+                ->route('marketing.leads.show', $request->lead_id)
+                ->with('success', 'مخاطب ایجاد شد و به سرنخ متصل گردید.');
         }
 
         return redirect()
@@ -186,6 +193,7 @@ class ContactController extends Controller
             'email'            => 'nullable|email|max:255|unique:contacts,email,' . $contact->id,
             'phone'            => 'nullable|string|max:20',
             'mobile'           => 'nullable|string|max:20',
+            'website'          => 'nullable|url|max:255',
             'address'          => 'nullable|string',
             'company'          => 'nullable|string|max:255',
             'city'             => 'nullable|string|max:255',

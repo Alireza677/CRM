@@ -93,6 +93,15 @@ class RolePermissionSeeder extends Seeder
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
         }
 
+        // Lightweight feature toggles
+        $featurePerms = [
+            'chat.view',
+            'online_meetings.view',
+        ];
+        foreach ($featurePerms as $perm) {
+            Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);
+        }
+
         $sidebarGeneral = [
             'sidebar_dashboard.view',
             'sidebar_marketing.view',
@@ -223,7 +232,7 @@ class RolePermissionSeeder extends Seeder
                 $role->syncPermissions(Permission::all());
                 continue;
             }
-            $perms = array_merge($perms, $sidebarGeneral);
+            $perms = array_merge($perms, $sidebarGeneral, $featurePerms);
             $permModels = [];
             foreach ($perms as $p) {
                 $permModels[] = $ensure($p);

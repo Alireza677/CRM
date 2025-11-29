@@ -26,6 +26,10 @@
         'description' => 'توضیحات',
     ];
 
+    $systemFieldLabels = [
+        'ready_for_delivery_notified_at' => '    تکمیل تاییدیه ها و آماده خرید',
+    ];
+
     $creationOrder = [
         'subject',
         'purchase_type',
@@ -217,6 +221,7 @@
                             $oldValueRaw = $oldValues[$key] ?? null;
                             $oldValue = $formatValue($oldValueRaw, $key);
                             $newValue = $formatValue($newValueRaw, $key);
+                            $label = $systemFieldLabels[$key] ?? $getLabel($key);
                         @endphp
                         @if($oldValue !== $newValue)
                             <li class="flex flex-row-reverse flex-wrap items-center gap-2">
@@ -224,7 +229,7 @@
                                 <span>به</span>
                                 <span class="bg-red-100 text-red-700 px-2 py-0.5 rounded text-xs">{{ $oldValue ?? '—' }}</span>
                                 <span>از</span>
-                                <span class="text-gray-600">{{ $getLabel($key) }}</span>
+                                <span class="text-gray-600">{{ $label }}</span>
                             </li>
                         @endif
                     @endforeach

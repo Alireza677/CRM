@@ -25,6 +25,8 @@ use App\Models\Document;
 use App\Policies\DocumentPolicy;
 use App\Models\PurchaseOrder;
 use App\Policies\PurchaseOrderPolicy;
+use App\Models\OnlineChatGroup;
+use App\Policies\OnlineChatGroupPolicy;
 
 class AuthServiceProvider extends ServiceProvider
 {
@@ -39,6 +41,7 @@ class AuthServiceProvider extends ServiceProvider
         Task::class => TaskPolicy::class,
         Report::class => ReportPolicy::class,
         PurchaseOrder::class => PurchaseOrderPolicy::class,
+        OnlineChatGroup::class => OnlineChatGroupPolicy::class,
     ];
 
     public function boot(): void

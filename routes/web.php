@@ -48,6 +48,7 @@ use App\Http\Controllers\Settings\AutomationController;
 use App\Http\Controllers\Sales\OrganizationImportController;
 use App\Http\Controllers\Sales\ProformaImportController;
 use App\Http\Controllers\Sales\ProformaApprovalController;
+use App\Http\Controllers\Sales\OnlineMeetingController;
 use App\Http\Controllers\ProjectController;
 use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskNoteController;
@@ -63,6 +64,8 @@ use App\Http\Controllers\Admin\RolePermissionMatrixController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\EmployeePortalController;
 use App\Http\Controllers\Telephony\PhoneCallController;
+use App\Http\Controllers\OnlineChatController;
+use App\Http\Controllers\Chat\ChatCallController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -135,9 +138,23 @@ Route::middleware(['auth'])->group(function () {
     // Notifications
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
+        Route::get('feed/latest', [NotificationController::class, 'latestFeed'])->name('feed.latest');
         Route::get('read/{notification}', [NotificationController::class, 'read'])->name('read');
         Route::post('mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('markAllAsRead');
         Route::post('bulk-action', [NotificationController::class, 'bulkAction'])->name('bulkAction');
+    });
+
+    // Internal chat (groups + messages)
+    Route::prefix('chat')->name('chat.')->middleware('can:chat.view')->group(function () {
+        Route::get('/', [OnlineChatController::class, 'index'])->name('index');
+        Route::post('groups', [OnlineChatController::class, 'storeGroup'])->name('groups.store');
+        Route::put('groups/{group}', [OnlineChatController::class, 'updateGroup'])->name('groups.update');
+        Route::delete('groups/{group}', [OnlineChatController::class, 'destroyGroup'])->name('groups.destroy');
+        Route::post('groups/{group}/members', [OnlineChatController::class, 'addMember'])->name('groups.members.store');
+        Route::delete('groups/{group}/members/{user}', [OnlineChatController::class, 'removeMember'])->name('groups.members.destroy');
+        Route::get('groups/{group}/messages', [OnlineChatController::class, 'messages'])->name('groups.messages');
+        Route::post('groups/{group}/messages', [OnlineChatController::class, 'sendMessage'])->name('groups.messages.store');
+        Route::post('groups/{group}/start-call', [ChatCallController::class, 'startVideoCall'])->name('groups.start-call');
     });
 
     //// Sales
@@ -248,6 +265,12 @@ Route::middleware(['auth'])->group(function () {
         Route::resource('documents', DocumentController::class)->except(['index']);
         Route::get('documents/{document}/view', [DocumentController::class, 'view'])->name('documents.view');
         Route::get('documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
+
+        // جلسات آنلاین
+        Route::resource('online-meetings', OnlineMeetingController::class)
+            ->only(['index', 'create', 'store', 'show'])
+            ->middleware('can:online_meetings.view')
+            ->names('online-meetings');
 
         // مخاطبین
         Route::get('contacts/import', [ContactImportController::class, 'showForm'])

@@ -35,7 +35,7 @@
                 </tbody>
             </table>
             <div id="contactNoResults" class="hidden p-4 text-center text-sm text-gray-500">موردی یافت نشد.</div>
-</div>
+    </div>
 </div>
 
 {{-- ایجاد مخاطب جدید --}}
