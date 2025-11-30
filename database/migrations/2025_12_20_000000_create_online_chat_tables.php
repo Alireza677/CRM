@@ -6,48 +6,38 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
-        Schema::create('online_chat_groups', function (Blueprint $table) {
-            $table->id();
-            $table->string('title');
-            $table->text('description')->nullable();
-            $table->foreignId('created_by')->constrained('users')->cascadeOnDelete();
-            $table->boolean('is_active')->default(true);
-            $table->timestamps();
-        });
+        // اگر ستون از قبل وجود دارد، هیچ تغییری نده
+        if (Schema::hasColumn('online_meetings', 'online_chat_group_id')) {
+            return;
+        }
 
-        Schema::create('online_chat_group_user', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('online_chat_group_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('user_id')->constrained()->cascadeOnDelete();
-            $table->string('role')->default('member'); // owner/admin/member
-            $table->timestamps();
+        Schema::table('online_meetings', function (Blueprint $table) {
+            // موقعیت ستون را اگر می‌خواهی مثل قبل باشد، بعد از related_id قرار بده
+            $table->unsignedBigInteger('online_chat_group_id')
+                  ->nullable()
+                  ->after('related_id');
 
-            $table->unique(['online_chat_group_id', 'user_id']);
-        });
-
-        Schema::create('online_chat_messages', function (Blueprint $table) {
-            $table->id();
-            $table->foreignId('online_chat_group_id')->constrained()->cascadeOnDelete();
-            $table->foreignId('sender_id')->constrained('users')->cascadeOnDelete();
-            $table->text('body');
-            $table->timestamps();
-
-            $table->index('created_at');
+            // اگر FK لازم داری، نگهش دار
+            $table->foreign('online_chat_group_id')
+                  ->references('id')
+                  ->on('online_chat_groups')
+                  ->nullOnDelete();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
-        Schema::dropIfExists('online_chat_messages');
-        Schema::dropIfExists('online_chat_group_user');
-        Schema::dropIfExists('online_chat_groups');
+        // اگر ستون وجود ندارد، نیازی به rollback نیست
+        if (!Schema::hasColumn('online_meetings', 'online_chat_group_id')) {
+            return;
+        }
+
+        Schema::table('online_meetings', function (Blueprint $table) {
+            // نام پیش‌فرض: online_meetings_online_chat_group_id_foreign
+            $table->dropForeign(['online_chat_group_id']);
+            $table->dropColumn('online_chat_group_id');
+        });
     }
 };

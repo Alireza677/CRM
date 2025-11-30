@@ -8,19 +8,15 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('online_meetings', function (Blueprint $table) {
-            $table->foreignId('online_chat_group_id')
-                ->nullable()
-                ->after('related_id')
-                ->constrained('online_chat_groups')
-                ->nullOnDelete();
-        });
+        // Column already exists; this migration is now a no-op to avoid duplicate column errors.
     }
 
     public function down(): void
     {
-        Schema::table('online_meetings', function (Blueprint $table) {
-            $table->dropConstrainedForeignId('online_chat_group_id');
-        });
+        if (Schema::hasColumn('online_meetings', 'online_chat_group_id')) {
+            Schema::table('online_meetings', function (Blueprint $table) {
+                $table->dropConstrainedForeignId('online_chat_group_id');
+            });
+        }
     }
 };

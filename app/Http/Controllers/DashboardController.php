@@ -11,6 +11,7 @@ use App\Models\Contact;
 use App\Models\Proforma;
 use App\Models\PurchaseOrder;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 use App\Helpers\FormOptionsHelper;
 
 class DashboardController extends Controller
@@ -24,11 +25,11 @@ class DashboardController extends Controller
     {
         $user = auth()->user();
 
-        $organizationStats   = $this->getOrganizationStats();
-        $contactStats        = $this->getContactStats();
-        $opportunityStats    = $this->getOpportunityStats();
-        $proformaStats       = $this->getProformaStats();
-        $purchaseOrderStats  = $this->getPurchaseOrderStats();
+        $organizationStats   = $this->getOrganizationStats($user);
+        $contactStats        = $this->getContactStats($user);
+        $opportunityStats    = $this->getOpportunityStats($user);
+        $proformaStats       = $this->getProformaStats($user);
+        $purchaseOrderStats  = $this->getPurchaseOrderStats($user);
         $leadStats           = $this->getLeadStats($user);
 
         // Notifications
@@ -88,17 +89,29 @@ class DashboardController extends Controller
         ));
     }
 
-    private function getOrganizationStats(): array
+    private function applyVisibility($query, $user, string $modulePrefix, ?string $fallbackAssignedColumn = null)
     {
-        $newCount = Organization::whereDate('created_at', '>=', now()->subDays(30))->count();
-        $hasContact = Organization::has('contacts')->count();
-        $noContact = Organization::doesntHave('contacts')->count();
+        if ($user && method_exists($query->getModel(), 'scopeVisibleFor')) {
+            return $query->visibleFor($user, $modulePrefix);
+        }
+        // اگر مدل اسکوپ دسترسی ندارد، کوئری را دست‌نخورده برگردان (برای مدیر کل هم قابل‌دسترس می‌ماند)
+        return $query;
+    }
+
+    private function getOrganizationStats($user): array
+    {
+        $orgBase = $this->applyVisibility(Organization::query(), $user, 'organizations');
+
+        $newCount = (clone $orgBase)->whereDate('created_at', '>=', now()->subDays(30))->count();
+        $hasContact = (clone $orgBase)->whereHas('contacts')->count();
+        $noContact = (clone $orgBase)->doesntHave('contacts')->count();
+        $visibleOpportunities = $this->applyVisibility(Opportunity::query(), $user, 'opportunities');
 
         return [
             'new'        => $newCount,
-            'pending'    => Organization::whereNull('assigned_to')->count(),
-            'converted'  => Organization::has('opportunities')->count(),
-            'total_value'=> Opportunity::whereNotNull('organization_id')->sum('amount'),
+            'pending'    => (clone $orgBase)->whereNull('assigned_to')->count(),
+            'converted'  => (clone $orgBase)->whereHas('opportunities')->count(),
+            'total_value'=> (clone $visibleOpportunities)->whereNotNull('organization_id')->sum('amount'),
             'statuses'   => [
                 ['label' => 'دارای مخاطب', 'count' => $hasContact],
                 ['label' => 'بدون مخاطب', 'count' => $noContact],
@@ -106,17 +119,20 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getContactStats(): array
+    private function getContactStats($user): array
     {
-        $newCount = Contact::whereDate('created_at', '>=', now()->subDays(30))->count();
-        $withOrg = Contact::whereNotNull('organization_id')->count();
-        $withoutOrg = Contact::whereNull('organization_id')->count();
+        $contactBase = $this->applyVisibility(Contact::query(), $user, 'contacts');
+
+        $newCount = (clone $contactBase)->whereDate('created_at', '>=', now()->subDays(30))->count();
+        $withOrg = (clone $contactBase)->whereNotNull('organization_id')->count();
+        $withoutOrg = (clone $contactBase)->whereNull('organization_id')->count();
+        $visibleOpportunities = $this->applyVisibility(Opportunity::query(), $user, 'opportunities');
 
         return [
             'new'        => $newCount,
-            'pending'    => Contact::whereNull('assigned_to')->count(),
-            'converted'  => Contact::has('opportunities')->count(),
-            'total_value'=> Opportunity::whereNotNull('contact_id')->sum('amount'),
+            'pending'    => (clone $contactBase)->whereNull('assigned_to')->count(),
+            'converted'  => (clone $contactBase)->whereHas('opportunities')->count(),
+            'total_value'=> (clone $visibleOpportunities)->whereNotNull('contact_id')->sum('amount'),
             'statuses'   => [
                 ['label' => 'متصل به سازمان', 'count' => $withOrg],
                 ['label' => 'بدون سازمان', 'count' => $withoutOrg],
@@ -124,16 +140,21 @@ class DashboardController extends Controller
         ];
     }
 
-    private function getOpportunityStats(): array
+    private function getOpportunityStats($user): array
     {
         $today = now()->toDateString();
 
-        $statusRows = Opportunity::selectRaw('stage, COUNT(*) as aggregate')
-            ->groupBy('stage')
+        $opportunityBase = $this->applyVisibility(Opportunity::query(), $user, 'opportunities');
+
+        $stageExpr = "TRIM(stage)";
+        $statusRows = (clone $opportunityBase)->selectRaw($stageExpr . ' as stage_clean, COUNT(*) as aggregate')
+            ->groupBy(DB::raw($stageExpr))
+            ->orderByDesc('aggregate')
             ->get()
             ->map(function ($row) {
+                $stageKey = $row->stage_clean ?? '';
                 return [
-                    'label' => FormOptionsHelper::getOpportunityStageLabel($row->stage),
+                    'label' => FormOptionsHelper::getOpportunityStageLabel($stageKey),
                     'count' => (int) $row->aggregate,
                 ];
             })
@@ -141,17 +162,19 @@ class DashboardController extends Controller
             ->all();
 
         return [
-            'new'        => Opportunity::whereDate('created_at', '>=', now()->subDays(30))->count(),
-            'pending'    => Opportunity::whereNotNull('next_follow_up')->whereDate('next_follow_up', '<=', $today)->count(),
-            'converted'  => Opportunity::whereIn('stage', ['won'])->count(),
-            'total_value'=> Opportunity::sum('amount'),
+            'new'        => (clone $opportunityBase)->whereDate('created_at', '>=', now()->subDays(30))->count(),
+            'pending'    => (clone $opportunityBase)->whereNotNull('next_follow_up')->whereDate('next_follow_up', '<=', $today)->count(),
+            'converted'  => (clone $opportunityBase)->whereIn('stage', ['won'])->count(),
+            'total_value'=> (clone $opportunityBase)->sum('amount'),
             'statuses'   => $statusRows,
         ];
     }
 
-    private function getProformaStats(): array
+    private function getProformaStats($user): array
     {
-        $statusRows = Proforma::select(DB::raw('COALESCE(approval_stage, proforma_stage) as stage_key'), DB::raw('COUNT(*) as aggregate'))
+        $proformaBase = $this->applyVisibility(Proforma::query(), $user, 'proformas');
+
+        $statusRows = (clone $proformaBase)->select(DB::raw('COALESCE(approval_stage, proforma_stage) as stage_key'), DB::raw('COUNT(*) as aggregate'))
             ->groupBy('stage_key')
             ->get()
             ->map(function ($row) {
@@ -167,19 +190,21 @@ class DashboardController extends Controller
         $convertedStages = ['approved', 'finalized'];
 
         return [
-            'new'         => Proforma::whereDate('created_at', '>=', now()->subDays(30))->count(),
-            'pending'     => Proforma::whereIn(DB::raw('COALESCE(approval_stage, proforma_stage)'), $pendingStages)->count(),
-            'converted'   => Proforma::whereIn(DB::raw('COALESCE(approval_stage, proforma_stage)'), $convertedStages)->count(),
-            'total_value' => Proforma::sum('total_amount'),
+            'new'         => (clone $proformaBase)->whereDate('created_at', '>=', now()->subDays(30))->count(),
+            'pending'     => (clone $proformaBase)->whereIn(DB::raw('COALESCE(approval_stage, proforma_stage)'), $pendingStages)->count(),
+            'converted'   => (clone $proformaBase)->whereIn(DB::raw('COALESCE(approval_stage, proforma_stage)'), $convertedStages)->count(),
+            'total_value' => (clone $proformaBase)->sum('total_amount'),
             'statuses'    => $statusRows,
         ];
     }
 
-    private function getPurchaseOrderStats(): array
+    private function getPurchaseOrderStats($user): array
     {
         $statusLabels = PurchaseOrder::statuses();
 
-        $statusRows = PurchaseOrder::select('status', DB::raw('COUNT(*) as aggregate'))
+        $poBase = $this->applyVisibility(PurchaseOrder::query(), $user, 'purchase_orders');
+
+        $statusRows = (clone $poBase)->select('status', DB::raw('COUNT(*) as aggregate'))
             ->groupBy('status')
             ->get()
             ->map(function ($row) use ($statusLabels) {
@@ -195,10 +220,10 @@ class DashboardController extends Controller
         $convertedStatuses = ['purchased', 'warehouse_delivered'];
 
         return [
-            'new'         => PurchaseOrder::whereDate('created_at', '>=', now()->subDays(30))->count(),
-            'pending'     => PurchaseOrder::whereIn('status', $pendingStatuses)->count(),
-            'converted'   => PurchaseOrder::whereIn('status', $convertedStatuses)->count(),
-            'total_value' => PurchaseOrder::sum('total_amount'),
+            'new'         => (clone $poBase)->whereDate('created_at', '>=', now()->subDays(30))->count(),
+            'pending'     => (clone $poBase)->whereIn('status', $pendingStatuses)->count(),
+            'converted'   => (clone $poBase)->whereIn('status', $convertedStatuses)->count(),
+            'total_value' => (clone $poBase)->sum('total_amount'),
             'statuses'    => $statusRows,
         ];
     }
@@ -207,12 +232,9 @@ class DashboardController extends Controller
     {
         $today = now()->toDateString();
 
-        $visibleLeadQuery = SalesLead::query();
-        if ($user) {
-            $visibleLeadQuery = $visibleLeadQuery->visibleFor($user, 'leads');
-        }
+        $visibleLeadQuery = $this->applyVisibility(SalesLead::query(), $user, 'leads');
 
-        $statusRows = SalesLead::select('lead_status', DB::raw('COUNT(*) as aggregate'))
+        $statusRows = (clone $visibleLeadQuery)->select('lead_status', DB::raw('COUNT(*) as aggregate'))
             ->groupBy('lead_status')
             ->get()
             ->map(function ($row) {
@@ -225,8 +247,8 @@ class DashboardController extends Controller
             ->all();
 
         return [
-            'new'         => SalesLead::whereDate('created_at', '>=', now()->subDays(30))->count(),
-            'pending'     => SalesLead::whereNotNull('next_follow_up_date')->whereDate('next_follow_up_date', '<=', $today)->count(),
+            'new'         => (clone $visibleLeadQuery)->whereDate('created_at', '>=', now()->subDays(30))->count(),
+            'pending'     => (clone $visibleLeadQuery)->whereNotNull('next_follow_up_date')->whereDate('next_follow_up_date', '<=', $today)->count(),
             'converted'   => (clone $visibleLeadQuery)->whereHas('opportunities')->count(),
             'total_value' => null,
             'statuses'    => $statusRows,

@@ -83,6 +83,13 @@ class Opportunity extends Model
     {
         return $this->belongsTo(Organization::class, 'organization_id');
     }
+    public function setStageAttribute($value): void
+    {
+        if (is_string($value)) {
+            $value = preg_replace('/\s+/u', ' ', trim($value));
+        }
+        $this->attributes['stage'] = $value;
+    }
     public function getModelLabel()
     {
         return 'فرصت';
