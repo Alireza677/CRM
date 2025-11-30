@@ -11,6 +11,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\MorphOne;
 use App\Models\Contact;
 use App\Traits\NotifiesAssignee; // باقی می‌ماند؛ اما با گارد داخلی جلوی دوبل‌شدن را می‌گیریم
+use App\Models\Opportunity;
 
 use App\Models\Traits\AppliesVisibilityScope;
 
@@ -269,6 +270,11 @@ class SalesLead extends Model
    
 
     /* ---------------- Conversion ---------------- */
+
+    public function opportunities()
+    {
+        return $this->belongsTo(Opportunity::class, 'converted_opportunity_id');
+    }
 
     public function convertedOpportunity()
     {

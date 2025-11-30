@@ -23,6 +23,38 @@
                 + ایجاد
             </button>
         </div>
+        <div class="mt-3 w-full">
+            <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-green-100 rounded-lg px-3 py-2 space-y-1 text-right">
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>جدید (۳۰ روز اخیر)</span>
+                    <span class="font-semibold text-gray-900">{{ $leadStats['new'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>در انتظار اقدام</span>
+                    <span class="font-semibold text-gray-900">{{ $leadStats['pending'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>تبدیل‌شده</span>
+                    <span class="font-semibold text-gray-900">{{ $leadStats['converted'] ?? 0 }}</span>
+                </div>
+                @if(isset($leadStats['total_value']) && $leadStats['total_value'] !== null)
+                    <div class="flex items-center justify-between text-[11px] text-gray-700">
+                        <span>جمع ارزش</span>
+                        <span class="font-semibold text-gray-900">{{ number_format($leadStats['total_value']) }}</span>
+                    </div>
+                @endif
+                @if(!empty($leadStats['statuses']))
+                    <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
+                        @foreach($leadStats['statuses'] as $status)
+                            <div class="flex items-center justify-between text-[11px] text-gray-600">
+                                <span>{{ $status['label'] }}</span>
+                                <span class="font-semibold text-gray-800">{{ $status['count'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
     {{-- کارت ۱: فرصت فروش --}}
     <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
@@ -40,6 +72,38 @@
             <a href="{{ route('sales.opportunities.create') }}" class="text-blue-600 hover:text-indigo-800 font-semibold transition">
                 + ایجاد
             </a>
+        </div>
+        <div class="mt-3 w-full">
+            <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-blue-100 rounded-lg px-3 py-2 space-y-1 text-right">
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>جدید (۳۰ روز اخیر)</span>
+                    <span class="font-semibold text-gray-900">{{ $opportunityStats['new'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>در انتظار اقدام</span>
+                    <span class="font-semibold text-gray-900">{{ $opportunityStats['pending'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>تبدیل‌شده</span>
+                    <span class="font-semibold text-gray-900">{{ $opportunityStats['converted'] ?? 0 }}</span>
+                </div>
+                @if(isset($opportunityStats['total_value']) && $opportunityStats['total_value'] !== null)
+                    <div class="flex items-center justify-between text-[11px] text-gray-700">
+                        <span>جمع ارزش</span>
+                        <span class="font-semibold text-gray-900">{{ number_format($opportunityStats['total_value']) }}</span>
+                    </div>
+                @endif
+                @if(!empty($opportunityStats['statuses']))
+                    <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
+                        @foreach($opportunityStats['statuses'] as $status)
+                            <div class="flex items-center justify-between text-[11px] text-gray-600">
+                                <span>{{ $status['label'] }}</span>
+                                <span class="font-semibold text-gray-800">{{ $status['count'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -60,6 +124,38 @@
                 + ایجاد
             </a>
         </div>
+        <div class="mt-3 w-full">
+            <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-red-100 rounded-lg px-3 py-2 space-y-1 text-right">
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>جدید (۳۰ روز اخیر)</span>
+                    <span class="font-semibold text-gray-900">{{ $proformaStats['new'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>در انتظار اقدام</span>
+                    <span class="font-semibold text-gray-900">{{ $proformaStats['pending'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>تبدیل‌شده</span>
+                    <span class="font-semibold text-gray-900">{{ $proformaStats['converted'] ?? 0 }}</span>
+                </div>
+                @if(isset($proformaStats['total_value']) && $proformaStats['total_value'] !== null)
+                    <div class="flex items-center justify-between text-[11px] text-gray-700">
+                        <span>جمع ارزش</span>
+                        <span class="font-semibold text-gray-900">{{ number_format($proformaStats['total_value']) }}</span>
+                    </div>
+                @endif
+                @if(!empty($proformaStats['statuses']))
+                    <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
+                        @foreach($proformaStats['statuses'] as $status)
+                            <div class="flex items-center justify-between text-[11px] text-gray-600">
+                                <span>{{ $status['label'] }}</span>
+                                <span class="font-semibold text-gray-800">{{ $status['count'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
     {{-- کارت ۵: سفارش‌های خرید --}}
@@ -78,6 +174,38 @@
             <a href="{{ route('inventory.purchase-orders.create') }}" class="text-orange-600 hover:text-indigo-800 font-semibold transition">
                 + ایجاد
             </a>
+        </div>
+        <div class="mt-3 w-full">
+            <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-orange-100 rounded-lg px-3 py-2 space-y-1 text-right">
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>جدید (۳۰ روز اخیر)</span>
+                    <span class="font-semibold text-gray-900">{{ $purchaseOrderStats['new'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>در انتظار اقدام</span>
+                    <span class="font-semibold text-gray-900">{{ $purchaseOrderStats['pending'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>تبدیل‌شده</span>
+                    <span class="font-semibold text-gray-900">{{ $purchaseOrderStats['converted'] ?? 0 }}</span>
+                </div>
+                @if(isset($purchaseOrderStats['total_value']) && $purchaseOrderStats['total_value'] !== null)
+                    <div class="flex items-center justify-between text-[11px] text-gray-700">
+                        <span>جمع ارزش</span>
+                        <span class="font-semibold text-gray-900">{{ number_format($purchaseOrderStats['total_value']) }}</span>
+                    </div>
+                @endif
+                @if(!empty($purchaseOrderStats['statuses']))
+                    <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
+                        @foreach($purchaseOrderStats['statuses'] as $status)
+                            <div class="flex items-center justify-between text-[11px] text-gray-600">
+                                <span>{{ $status['label'] }}</span>
+                                <span class="font-semibold text-gray-800">{{ $status['count'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
 
@@ -99,6 +227,38 @@
                 + ایجاد
             </a>
         </div>
+        <div class="mt-3 w-full">
+            <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-purple-100 rounded-lg px-3 py-2 space-y-1 text-right">
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>جدید (۳۰ روز اخیر)</span>
+                    <span class="font-semibold text-gray-900">{{ $contactStats['new'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>در انتظار اقدام</span>
+                    <span class="font-semibold text-gray-900">{{ $contactStats['pending'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>تبدیل‌شده</span>
+                    <span class="font-semibold text-gray-900">{{ $contactStats['converted'] ?? 0 }}</span>
+                </div>
+                @if(isset($contactStats['total_value']) && $contactStats['total_value'] !== null)
+                    <div class="flex items-center justify-between text-[11px] text-gray-700">
+                        <span>جمع ارزش</span>
+                        <span class="font-semibold text-gray-900">{{ number_format($contactStats['total_value']) }}</span>
+                    </div>
+                @endif
+                @if(!empty($contactStats['statuses']))
+                    <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
+                        @foreach($contactStats['statuses'] as $status)
+                            <div class="flex items-center justify-between text-[11px] text-gray-600">
+                                <span>{{ $status['label'] }}</span>
+                                <span class="font-semibold text-gray-800">{{ $status['count'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
+        </div>
     </div>
 
     {{-- کارت ۶: سازمان‌ها --}}
@@ -117,6 +277,38 @@
             <a href="{{ route('sales.organizations.create') }}" class="text-indigo-600 hover:text-indigo-800 font-semibold transition">
                 + ایجاد
             </a>
+        </div>
+        <div class="mt-3 w-full">
+            <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-indigo-100 rounded-lg px-3 py-2 space-y-1 text-right">
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>جدید (۳۰ روز اخیر)</span>
+                    <span class="font-semibold text-gray-900">{{ $organizationStats['new'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>در انتظار اقدام</span>
+                    <span class="font-semibold text-gray-900">{{ $organizationStats['pending'] ?? 0 }}</span>
+                </div>
+                <div class="flex items-center justify-between text-[11px] text-gray-700">
+                    <span>تبدیل‌شده</span>
+                    <span class="font-semibold text-gray-900">{{ $organizationStats['converted'] ?? 0 }}</span>
+                </div>
+                @if(isset($organizationStats['total_value']) && $organizationStats['total_value'] !== null)
+                    <div class="flex items-center justify-between text-[11px] text-gray-700">
+                        <span>جمع ارزش</span>
+                        <span class="font-semibold text-gray-900">{{ number_format($organizationStats['total_value']) }}</span>
+                    </div>
+                @endif
+                @if(!empty($organizationStats['statuses']))
+                    <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
+                        @foreach($organizationStats['statuses'] as $status)
+                            <div class="flex items-center justify-between text-[11px] text-gray-600">
+                                <span>{{ $status['label'] }}</span>
+                                <span class="font-semibold text-gray-800">{{ $status['count'] }}</span>
+                            </div>
+                        @endforeach
+                    </div>
+                @endif
+            </div>
         </div>
     </div>
 
