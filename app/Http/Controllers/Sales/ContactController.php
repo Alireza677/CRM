@@ -12,6 +12,8 @@ use App\Models\SalesLead;
 use App\Models\SmsList;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
+use Maatwebsite\Excel\Facades\Excel;
+use App\Imports\ContactsImport;
 
 class ContactController extends Controller
 {
@@ -23,42 +25,44 @@ class ContactController extends Controller
 
     public function index(Request $request)
     {
-        $perPage = (int) $request->input('per_page', 100);   // پیش‌فرض 100
-        $perPage = in_array($perPage, [25,50,100,200]) ? $perPage : 100;
-    
+        // پیش‌فرض تعداد سطر در هر صفحه 100
+        $perPage = (int) $request->input('per_page', 100);
+        $perPage = in_array($perPage, [25, 50, 100, 200]) ? $perPage : 100;
+
         $query = Contact::visibleFor(auth()->user(), 'contacts')
             ->select('contacts.*', 'organizations.name as organization_name', 'users.name as assigned_to_name')
             ->leftJoin('organizations', 'contacts.organization_id', '=', 'organizations.id')
             ->leftJoin('users', 'contacts.assigned_to', '=', 'users.id');
-    
-        if ($request->filled('search')) {   // filled به‌جای has
+
+        // متد filled مشابه has است، ولی مقدار خالی را در نظر نمی‌گیرد
+        if ($request->filled('search')) {
             $search = $request->search;
-            $query->where(function($q) use ($search) {
+            $query->where(function ($q) use ($search) {
                 $q->where('contacts.first_name', 'like', "%{$search}%")
-                  ->orWhere('contacts.last_name', 'like', "%{$search}%")
-                  ->orWhere('contacts.mobile', 'like', "%{$search}%");
+                    ->orWhere('contacts.last_name', 'like', "%{$search}%")
+                    ->orWhere('contacts.mobile', 'like', "%{$search}%");
             });
         }
-    
+
         if ($request->filled('assigned_to')) {
             $query->where('contacts.assigned_to', $request->assigned_to);
         }
-    
+
         if ($request->filled('organization')) {
             $query->where('contacts.organization_id', (int) $request->organization);
         } elseif ($request->filled('organization_name')) {
             $name = trim($request->input('organization_name'));
             if ($name !== '') {
-                $query->where(function($q) use ($name) {
+                $query->where(function ($q) use ($name) {
                     $q->where('organizations.name', 'like', "%{$name}%")
-                      ->orWhere('contacts.company', 'like', "%{$name}%");
+                        ->orWhere('contacts.company', 'like', "%{$name}%");
                 });
             }
         }
-    
-        $sortField = $request->get('sort', 'created_at');
+
+        $sortField     = $request->get('sort', 'created_at');
         $sortDirection = $request->get('direction', 'desc');
-    
+
         if ($sortField === 'organization_name') {
             $query->orderBy('organizations.name', $sortDirection);
         } elseif ($sortField === 'assigned_to_name') {
@@ -66,12 +70,11 @@ class ContactController extends Controller
         } else {
             $query->orderBy("contacts.{$sortField}", $sortDirection);
         }
-    
-        $contacts = $query->paginate($perPage)->withQueryString();
-    
-        $users = \App\Models\User::all(['id', 'name']);
+
+        $contacts      = $query->paginate($perPage)->withQueryString();
+        $users         = \App\Models\User::all(['id', 'name']);
         $organizations = \App\Models\Organization::all(['id', 'name']);
-        $smsLists = SmsList::query()->orderByDesc('created_at')->get(['id','name']);
+        $smsLists      = SmsList::query()->orderByDesc('created_at')->get(['id', 'name']);
 
         return view('sales.contacts.index', compact('contacts', 'users', 'organizations', 'smsLists'));
     }
@@ -79,78 +82,107 @@ class ContactController extends Controller
     public function create(Request $request)
     {
         $organizations = \App\Models\Organization::all();
-        $opportunityId = $request->get('opportunity_id'); // دریافت opportunity_id از URL
-        $users = \App\Models\User::all(); // لیست کاربران برای ارجاع به
+        // گرفتن opportunity_id از URL (در صورت وجود)
+        $opportunityId = $request->get('opportunity_id');
+        // لیست کاربران برای ارجاع مخاطب
+        $users = \App\Models\User::all();
 
         return view('sales.contacts.create', compact('organizations', 'opportunityId', 'users'));
     }
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'first_name' => 'nullable|string|max:255',
-            'last_name'  => 'nullable|string|max:255',
-            'email'      => 'nullable|string|email|max:255|unique:contacts,email',
-            'phone'      => 'nullable|string|max:20',
-            'mobile'     => 'nullable|string|max:20',
-            'website'    => 'nullable|url|max:255',
-            'address'    => 'nullable|string',
-            'company'    => 'nullable|string|max:255',
-            'city'       => 'nullable|string|max:255',
-            'state'      => 'nullable|string|max:255',
-            'assigned_to'=> 'nullable|exists:users,id',
-            'organization_id' => 'nullable|exists:organizations,id',
-            'opportunity_id'  => 'nullable|exists:opportunities,id',
-            'lead_id'         => 'nullable|exists:sales_leads,id',
-            'do_not_send_email' => 'nullable|boolean',
-            'is_portal_user'    => 'nullable|boolean',
-            'create_new_org'    => 'nullable|boolean',
-            'new_org_name'      => 'required_if:create_new_org,1|string|max:255',
-            'new_org_website'   => 'nullable|string|max:255',
-            'new_org_address'   => 'nullable|string',
-        ], [
-            'new_org_name.required_if' => 'نام سازمان جدید الزامی است.',
-        ]);
+        try {
+            $rawNewOrgName       = $request->input('new_org_name');
+            $normalizedNewOrgName = is_array($rawNewOrgName) ? Arr::first($rawNewOrgName) : $rawNewOrgName;
+            $request->merge(['new_org_name' => is_scalar($normalizedNewOrgName) ? (string) $normalizedNewOrgName : null]);
 
-        if (!$request->filled('state') && $request->filled('province')) {
-            $validated['state'] = trim($request->input('province'));
-        }
+            $validated = $request->validate([
+                'first_name'         => 'nullable|string|max:255',
+                'last_name'          => 'nullable|string|max:255',
+                'email'              => 'nullable|string|email|max:255|unique:contacts,email',
+                'phone'              => 'nullable|string|max:20',
+                'mobile'             => 'nullable|string|max:20',
+                'website'            => 'nullable|url|max:255',
+                'address'            => 'nullable|string',
+                'company'            => 'nullable|string|max:255',
+                'city'               => 'nullable|string|max:255',
+                'state'              => 'nullable|string|max:255',
+                'assigned_to'        => 'nullable|exists:users,id',
+                'organization_id'    => 'nullable|exists:organizations,id',
+                'opportunity_id'     => 'nullable|exists:opportunities,id',
+                'lead_id'            => 'nullable|exists:sales_leads,id',
+                'do_not_send_email'  => 'nullable|boolean',
+                'is_portal_user'     => 'nullable|boolean',
+                'create_new_org'     => 'nullable|boolean',
+                'new_org_name'       => 'required_if:create_new_org,1|max:255',
+                'new_org_website'    => 'nullable|string|max:255',
+                'new_org_address'    => 'nullable|string',
+            ], [
+                'new_org_name.required_if' => 'در صورت انتخاب گزینه «ایجاد سازمان جدید»، وارد کردن نام سازمان الزامی است.',
+            ]);
 
-        $data = Arr::except($validated, [
-            'create_new_org',
-            'new_org_name',
-            'new_org_website',
-            'new_org_address',
-        ]);
+            // در صورت نبودن state اما وجود province، آن را به state نگاشت می‌کنیم
+            if (!$request->filled('state') && $request->filled('province')) {
+                $validated['state'] = trim($request->input('province'));
+            }
 
-        $contact = DB::transaction(function () use ($request, $data) {
-            $payload = $this->prepareOrganizationData($request, $data);
-            $payload['do_not_send_email'] = $request->has('do_not_send_email');
-            $payload['is_portal_user']    = $request->has('is_portal_user');
+            $data = Arr::except($validated, [
+                'create_new_org',
+                'new_org_name',
+                'new_org_website',
+                'new_org_address',
+            ]);
 
-            return Contact::create($payload);
-        });
+            $user                   = auth()->user();
+            $data['assigned_to']    = $data['assigned_to'] ?? $user?->id;
+            $data['owner_user_id']  = $data['owner_user_id'] ?? $user?->id;
+            $data['team_id']        = $data['team_id'] ?? ($user?->team_id ?? null);
+            $data['department']     = $data['department'] ?? ($user?->department ?? null);
 
-        if ($request->filled('opportunity_id')) {
-            Opportunity::where('id', $request->opportunity_id)
-                ->update(['contact_id' => $contact->id]);
-        }
+            Log::info('CONTACT_STORE_DATA', $data);
 
-        if ($request->filled('lead_id')) {
-            SalesLead::where('id', $request->lead_id)
-                ->update(['contact_id' => $contact->id]);
+            $contact = DB::transaction(function () use ($request, $data) {
+                $payload                       = $this->prepareOrganizationData($request, $data);
+                $payload['do_not_send_email']  = $request->has('do_not_send_email');
+                $payload['is_portal_user']     = $request->has('is_portal_user');
+                return Contact::create($payload);
+            });
+
+            if ($request->filled('opportunity_id')) {
+                Opportunity::where('id', $request->opportunity_id)
+                    ->update(['contact_id' => $contact->id]);
+            }
+
+            if ($request->filled('lead_id')) {
+                SalesLead::where('id', $request->lead_id)
+                    ->update(['contact_id' => $contact->id]);
+
+                return redirect()
+                    ->route('marketing.leads.show', $request->lead_id)
+                    ->with('success', 'مخاطب با موفقیت ایجاد شد و به سرنخ فروش متصل گردید.');
+            }
 
             return redirect()
-                ->route('marketing.leads.show', $request->lead_id)
-                ->with('success', 'مخاطب ایجاد شد و به سرنخ متصل گردید.');
-        }
+                ->route('sales.contacts.index')
+                ->with('contact_created', [
+                    'contact_id'   => $contact->id,
+                    'contact_name' => $contact->name ?: ($contact->company ?? 'مخاطب بدون نام'),
+                ]);
+        } catch (\Throwable $e) {
+            Log::error($e->getMessage(), ['trace' => $e->getTraceAsString()]);
 
-        return redirect()
-            ->route('sales.contacts.index')
-            ->with('contact_created', [
-                'contact_id' => $contact->id,
-                'contact_name' => $contact->name ?: ($contact->company ?? 'مخاطب جدید'),
-            ]);
+            if (!app()->environment('production')) {
+                throw $e;
+            }
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors([
+                    'error' => __("\u{062E}\u{0637}\u{0627} \u{062F}\u{0631} \u{0630}\u{062E}\u{06CC}\u{0631}\u{0647} \u{0645}\u{062E}\u{0627}\u{0637}\u{0628}")
+                ]);
+        }
     }
 
     public function show(Contact $contact)
@@ -177,8 +209,10 @@ class ContactController extends Controller
     public function edit(Contact $contact)
     {
         $this->authorize('update', $contact);
+
         $organizations = \App\Models\Organization::all();
-        $users = \App\Models\User::all(); // لیست کاربران برای کشوی ارجاع به
+        // لیست کاربران برای انتخاب «ارجاع به»
+        $users = \App\Models\User::all();
 
         return view('sales.contacts.edit', compact('contact', 'organizations', 'users'));
     }
@@ -187,52 +221,74 @@ class ContactController extends Controller
     {
         $this->authorize('update', $contact);
 
-        $validated = $request->validate([
-            'first_name'       => 'nullable|string|max:255',
-            'last_name'        => 'nullable|string|max:255',
-            'email'            => 'nullable|email|max:255|unique:contacts,email,' . $contact->id,
-            'phone'            => 'nullable|string|max:20',
-            'mobile'           => 'nullable|string|max:20',
-            'website'          => 'nullable|url|max:255',
-            'address'          => 'nullable|string',
-            'company'          => 'nullable|string|max:255',
-            'city'             => 'nullable|string|max:255',
-            'state'            => 'nullable|string|max:255',
-            'organization_id'  => 'nullable|exists:organizations,id',
-            'opportunity_id'   => 'nullable|exists:opportunities,id',
-            'assigned_to'      => 'nullable|exists:users,id',
-            'do_not_send_email'=> 'nullable|boolean',
-            'is_portal_user'   => 'nullable|boolean',
-            'create_new_org'   => 'nullable|boolean',
-            'new_org_name'     => 'required_if:create_new_org,1|string|max:255',
-            'new_org_website'  => 'nullable|string|max:255',
-            'new_org_address'  => 'nullable|string',
-        ], [
-            'new_org_name.required_if' => 'نام سازمان جدید الزامی است.',
-        ]);
+        try {
+            $validated = $request->validate([
+                'first_name'         => 'nullable|string|max:255',
+                'last_name'          => 'nullable|string|max:255',
+                'email'              => 'nullable|email|max:255|unique:contacts,email,' . $contact->id,
+                'phone'              => 'nullable|string|max:20',
+                'mobile'             => 'nullable|string|max:20',
+                'website'            => 'nullable|url|max:255',
+                'address'            => 'nullable|string',
+                'company'            => 'nullable|string|max:255',
+                'city'               => 'nullable|string|max:255',
+                'state'              => 'nullable|string|max:255',
+                'organization_id'    => 'nullable|exists:organizations,id',
+                'opportunity_id'     => 'nullable|exists:opportunities,id',
+                'assigned_to'        => 'nullable|exists:users,id',
+                'do_not_send_email'  => 'nullable|boolean',
+                'is_portal_user'     => 'nullable|boolean',
+                'create_new_org'     => 'nullable|boolean',
+                'new_org_name'       => 'required_if:create_new_org,1|max:255',
+                'new_org_website'    => 'nullable|string|max:255',
+                'new_org_address'    => 'nullable|string',
+            ], [
+                'new_org_name.required_if' => 'در صورت انتخاب گزینه «ایجاد سازمان جدید»، وارد کردن نام سازمان الزامی است.',
+            ]);
 
-        if (!$request->filled('state') && $request->filled('province')) {
-            $validated['state'] = trim($request->input('province'));
+            if (!$request->filled('state') && $request->filled('province')) {
+                $validated['state'] = trim($request->input('province'));
+            }
+
+            $data = Arr::except($validated, [
+                'create_new_org',
+                'new_org_name',
+                'new_org_website',
+                'new_org_address',
+            ]);
+
+            $user                  = auth()->user();
+            $data['assigned_to']   = $data['assigned_to'] ?? ($contact->assigned_to ?? $user?->id);
+            $data['owner_user_id'] = $contact->owner_user_id ?? $user?->id;
+            $data['team_id']       = $data['team_id'] ?? ($contact->team_id ?? ($user?->team_id ?? null));
+            $data['department']    = $data['department'] ?? ($contact->department ?? ($user?->department ?? null));
+
+            Log::info('CONTACT_STORE_DATA', $data);
+
+            DB::transaction(function () use ($request, $contact, $data) {
+                $payload                       = $this->prepareOrganizationData($request, $data);
+                $payload['do_not_send_email']  = $request->has('do_not_send_email');
+                $payload['is_portal_user']     = $request->has('is_portal_user');
+                $contact->update($payload);
+            });
+
+            return redirect()
+                ->route('sales.contacts.index')
+                ->with('success', 'اطلاعات مخاطب با موفقیت به‌روزرسانی شد.');
+        } catch (\Throwable $e) {
+            Log::error($e->getMessage(), ['trace' => $e->getTraceAsString()]);
+
+            if (!app()->environment('production')) {
+                throw $e;
+            }
+
+            return redirect()
+                ->back()
+                ->withInput()
+                ->withErrors([
+                    'error' => __("\u{062E}\u{0637}\u{0627} \u{062F}\u{0631} \u{0630}\u{062E}\u{06CC}\u{0631}\u{0647} \u{0645}\u{062E}\u{0627}\u{0637}\u{0628}")
+                ]);
         }
-
-        $data = Arr::except($validated, [
-            'create_new_org',
-            'new_org_name',
-            'new_org_website',
-            'new_org_address',
-        ]);
-
-        DB::transaction(function () use ($request, $contact, $data) {
-            $payload = $this->prepareOrganizationData($request, $data);
-            $payload['do_not_send_email'] = $request->has('do_not_send_email');
-            $payload['is_portal_user']    = $request->has('is_portal_user');
-
-            $contact->update($payload);
-        });
-
-        return redirect()
-            ->route('sales.contacts.index')
-            ->with('success', 'اطلاعات مخاطب با موفقیت به‌روزرسانی شد.');
     }
 
     public function convertToLead(Request $request, Contact $contact)
@@ -249,21 +305,21 @@ class ContactController extends Controller
             }
 
             return SalesLead::create([
-                'owner_user_id' => auth()->id(),
-                'full_name' => $fullName,
-                'company' => $contact->company,
-                'email' => $contact->email,
-                'mobile' => $contact->mobile,
-                'phone' => $contact->phone,
-                'address' => $contact->address,
-                'state' => $contact->state,
-                'city' => $contact->city,
-                'lead_source' => 'contact',
-                'lead_status' => 'new',
-                'assigned_to' => $contact->assigned_to,
-                'lead_date' => now()->toDateString(),
-                'next_follow_up_date' => now()->addDays(7)->toDateString(),
-                'created_by' => auth()->id(),
+                'owner_user_id'         => auth()->id(),
+                'full_name'             => $fullName,
+                'company'               => $contact->company,
+                'email'                 => $contact->email,
+                'mobile'                => $contact->mobile,
+                'phone'                 => $contact->phone,
+                'address'               => $contact->address,
+                'state'                 => $contact->state,
+                'city'                  => $contact->city,
+                'lead_source'           => 'contact',
+                'lead_status'           => 'new',
+                'assigned_to'           => $contact->assigned_to,
+                'lead_date'             => now()->toDateString(),
+                'next_follow_up_date'   => now()->addDays(7)->toDateString(),
+                'created_by'            => auth()->id(),
             ]);
         });
 
@@ -276,21 +332,20 @@ class ContactController extends Controller
     {
         if ($request->boolean('create_new_org')) {
             $organization = Organization::create([
-                'name' => trim($request->input('new_org_name')),
+                'name'    => trim($request->input('new_org_name')),
                 'website' => $request->input('new_org_website'),
                 'address' => $request->input('new_org_address') ?: ($payload['address'] ?? null),
-                'phone' => $request->input('phone'),
-                'state' => $payload['state'] ?? null,
-                'city'  => $payload['city'] ?? null,
+                'phone'   => $request->input('phone'),
+                'state'   => $payload['state'] ?? null,
+                'city'    => $payload['city'] ?? null,
             ]);
-            $payload['organization_id'] = $organization->id;
-            $payload['company'] = $organization->name;
 
+            $payload['organization_id'] = $organization->id;
+            $payload['company']         = $organization->name;
         } elseif (!empty($payload['organization_id'])) {
             if (empty($payload['company'])) {
                 $payload['company'] = optional(Organization::find($payload['organization_id']))->name ?? $payload['company'];
             }
-
         } elseif ($request->filled('company')) {
             $organization = Organization::firstOrCreate(
                 ['name' => trim($request->input('company'))],
@@ -300,8 +355,9 @@ class ContactController extends Controller
                     'city'  => $payload['city'] ?? null,
                 ]
             );
+
             $payload['organization_id'] = $organization->id;
-            $payload['company'] = $organization->name;
+            $payload['company']         = $organization->name;
         }
 
         return $payload;
@@ -310,13 +366,19 @@ class ContactController extends Controller
     public function bulkDelete(Request $request)
     {
         Contact::whereIn('id', $request->input('selected_contacts', []))->delete();
-        return redirect()->route('sales.contacts.index')->with('success', 'مخاطبین انتخاب‌شده با موفقیت حذف شدند.');
+
+        return redirect()
+            ->route('sales.contacts.index')
+            ->with('success', 'مخاطبین انتخاب‌شده با موفقیت حذف شدند.');
     }
-    
+
     public function destroy(Contact $contact)
     {
         $contact->delete();
-        return redirect()->route('sales.contacts.index')->with('success', 'مخاطب با موفقیت حذف شد.');
+
+        return redirect()
+            ->route('sales.contacts.index')
+            ->with('success', 'مخاطب با موفقیت حذف شد.');
     }
 
     public function import(Request $request)
@@ -328,13 +390,19 @@ class ContactController extends Controller
         try {
             Excel::import(new ContactsImport, $request->file('file'));
 
-            Log::info('✔ ایمپورت مخاطبین با موفقیت انجام شد توسط کاربر: ' . auth()->user()->email);
+            Log::info(
+                'فایل ایمپورت مخاطبین با موفقیت توسط کاربر زیر ایمپورت شد: ' . auth()->user()->email
+            );
 
-            return redirect()->back()->with('success', 'ایمپورت مخاطبین با موفقیت انجام شد.');
+            return redirect()
+                ->back()
+                ->with('success', 'فایل مخاطبین با موفقیت ایمپورت شد.');
         } catch (\Exception $e) {
-            Log::error('❌ خطا در ایمپورت مخاطبین: ' . $e->getMessage());
+            Log::error('خطا در ایمپورت مخاطبین: ' . $e->getMessage());
 
-            return redirect()->back()->with('error', 'خطا در ایمپورت مخاطبین: ' . $e->getMessage());
+            return redirect()
+                ->back()
+                ->with('error', 'خطا در ایمپورت مخاطبین: ' . $e->getMessage());
         }
     }
 }
