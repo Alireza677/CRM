@@ -16,7 +16,16 @@
 
     $contacts = $contacts ?? collect();
 
-    $lead_status_value = old('lead_status', isset($lead) ? $lead->lead_status : 'new');
+    
+        $rawStatus = old(
+            'lead_status',
+            isset($lead)
+                ? ($lead->lead_status ?? $lead->status)
+                : null
+        );
+
+        $lead_status_value = \App\Models\SalesLead::normalizeStatus($rawStatus) ?? 'new';
+    
     $originalLeadStatus = strtolower((string) (($lead->lead_status ?? $lead->status ?? '') ?: ''));
 
     // تاریخ‌ها
@@ -187,11 +196,12 @@
 
                 <div>
                     <label for="lead_status" class="block font-medium text-sm text-gray-700">وضعیت سرنخ <span class="text-red-600">*</span></label>
-                    <select id="lead_status" name="lead_status" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm" required data-original-value="{{ $originalLeadStatus }}">
+                    <select id="lead_status" name="lead_status" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm">
                         @foreach(FormOptionsHelper::leadStatuses() as $key => $label)
                             <option value="{{ $key }}" @selected($lead_status_value == $key)>{{ $label }}</option>
                         @endforeach
                     </select>
+
                     @error('lead_status') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
                     @error('disqual_reason_body') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
                 </div>

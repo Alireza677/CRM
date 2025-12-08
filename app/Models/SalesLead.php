@@ -446,12 +446,13 @@ class SalesLead extends Model
 
     public static function statusOptions(): array
     {
-        $statuses = config('lead.statuses', [
-            self::STATUS_NEW                      => 'جدید',
-            self::STATUS_CONTACTED                => 'تماس گرفته شده',
-            self::STATUS_CONVERTED_TO_OPPORTUNITY => 'تبدیل شده به فرصت',
-            self::STATUS_DISCARDED                => 'سرکاری / حذف شده',
-        ]);
+        $statuses = [
+            self::STATUS_NEW       => 'جدید',
+            self::STATUS_CONTACTED => 'تماس گرفته شده',
+            self::STATUS_CONVERTED => 'تبدیل شده به فرصت',
+            self::STATUS_DISCARDED => 'سرکاری  ',
+        ];
+
 
         $aliases = [
             self::STATUS_CONVERTED => self::STATUS_CONVERTED_TO_OPPORTUNITY,
@@ -499,20 +500,38 @@ class SalesLead extends Model
     }
 
     public static function normalizeStatus(?string $status): ?string
-    {
-        $normalized = is_string($status) ? strtolower(trim($status)) : null;
-
-        if ($normalized === null || $normalized === '') {
-            return null;
-        }
-
-        $aliases = [
-            self::STATUS_CONVERTED => self::STATUS_CONVERTED_TO_OPPORTUNITY,
-            self::STATUS_JUNK      => self::STATUS_DISCARDED,
-        ];
-
-        return $aliases[$normalized] ?? $normalized;
+{
+    if (!$status || !is_string($status)) {
+        return null;
     }
+
+    $normalized = strtolower(trim($status));
+
+    // چهار وضعیت نهایی
+    $final = ['new', 'contacted', 'converted', 'discarded'];
+    if (in_array($normalized, $final, true)) {
+        return $normalized;
+    }
+
+    // مپ وضعیت‌های قدیمی → وضعیت‌های نهایی
+    $map = [
+        'to_contact'               => 'new',
+        'qualifying'               => 'contacted',
+        'contacted'                => 'contacted',
+
+        'qualified'                => 'converted',
+        'converted_to_opportunity' => 'converted',
+        'opportunity'              => 'converted',
+
+        'disqualified'             => 'discarded',
+        'lost'                     => 'discarded',
+        'junk'                     => 'discarded',
+        'removed'                  => 'discarded',
+    ];
+
+    return $map[$normalized] ?? 'new'; // پیش‌فرض جدید
+}
+
 
     public function isOpen(): bool
     {

@@ -46,28 +46,22 @@ class FormOptionsHelper
     }
 
     public static function leadStatuses(): array
-    {
-        $configured = config('lead.statuses', []);
-        $statuses = !empty($configured) ? $configured : [
-            'new'                      => 'جدید',
-            'contacted'                => 'تماس گرفته شده',
-            'converted_to_opportunity' => 'تبدیل شده به فرصت',
-            'discarded'                => 'سرکاری / حذف شده',
-        ];
+{
+    // فقط ۴ وضعیت نهایی را از config بخوان
+    $configured = config('lead.statuses', []);
 
-        $aliases = [
-            'converted' => 'converted_to_opportunity',
-            'junk'      => 'discarded',
-        ];
+    // اگر config خالی بود، این مقادیر را پیش‌فرض بگذار
+    $statuses = !empty($configured) ? $configured : [
+        'new'       => 'جدید',
+        'contacted' => 'تماس گرفته شده',
+        'converted' => 'تبدیل شده به فرصت',
+        'discarded' => 'سرکاری / حذف شده',
+    ];
 
-        foreach ($aliases as $alias => $target) {
-            if (isset($statuses[$target]) && !isset($statuses[$alias])) {
-                $statuses[$alias] = $statuses[$target];
-            }
-        }
+    // هیچ alias اضافه نکن — نمایش باید فقط همین ۴ گزینه باشد
+    return $statuses;
+}
 
-        return $statuses;
-    }
 
 
     public static function leadDisqualifyReasons(): array
