@@ -7,7 +7,7 @@ use App\Models\Opportunity;
 use App\Models\Organization;
 use App\Models\Contact;
 use App\Models\Note;
-use Illuminate\Support\Carbon;
+use App\Models\Activity as CrmActivity;
 use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -18,6 +18,7 @@ use Illuminate\Validation\Rule;
 use App\Helpers\DateHelper;
 use Spatie\Activitylog\Models\Activity;
 use App\Http\Controllers\Concerns\LeadsBreadcrumbs;
+use Illuminate\Support\Carbon;
 
 class SalesLeadController extends Controller
 {
@@ -34,7 +35,7 @@ class SalesLeadController extends Controller
         $query = SalesLead::visibleFor(auth()->user(), 'leads')->with('assignedUser');
         $query->whereNull('converted_at');
 
-        // جست‌وجوی عمومی
+        // Ø¬Ø³Øªâ€ŒÙˆØ¬ÙˆÛŒ Ø¹Ù…ÙˆÙ…ÛŒ
         if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function ($q) use ($search) {
@@ -45,13 +46,17 @@ class SalesLeadController extends Controller
             });
         }
 
-        // فیلتر بر اساس فیلدهای خاص
+        // ÙÛŒÙ„ØªØ± Ø¨Ø± Ø§Ø³Ø§Ø³ ÙÛŒÙ„Ø¯Ù‡Ø§ÛŒ Ø®Ø§Øµ
         if ($request->filled('lead_source')) {
             $query->where('lead_source', $request->lead_source);
         }
 
-        if ($request->filled('lead_status')) {
-            $query->where('lead_status', $request->lead_status);
+        $statusFilter = $request->input('status', $request->lead_status);
+        if (!empty($statusFilter)) {
+            $query->where(function ($q) use ($statusFilter) {
+                $q->where('status', $statusFilter)
+                    ->orWhere('lead_status', $statusFilter);
+            });
         }
 
         if ($request->filled('assigned_to')) {
@@ -69,7 +74,7 @@ class SalesLeadController extends Controller
             });
         }
 
-        // صفحه‌بندی
+        // ØµÙØ­Ù‡â€ŒØ¨Ù†Ø¯ÛŒ
         $perPageOptions = [20, 50, 100, 200];
         $perPage = (int) $request->input('per_page', 20);
         if (! in_array($perPage, $perPageOptions, true)) {
@@ -87,7 +92,7 @@ class SalesLeadController extends Controller
                 ->toArray();
         }
 
-        // داده‌های کمکی
+        // Ø¯Ø§Ø¯Ù‡â€ŒÙ‡Ø§ÛŒ Ú©Ù…Ú©ÛŒ
         $users = User::all();
         $leadSources = \App\Helpers\FormOptionsHelper::leadSources();
 
@@ -121,8 +126,12 @@ class SalesLeadController extends Controller
             $query->where('lead_source', $request->lead_source);
         }
 
-        if ($request->filled('lead_status')) {
-            $query->where('lead_status', $request->lead_status);
+        $statusFilter = $request->input('status', $request->lead_status);
+        if (!empty($statusFilter)) {
+            $query->where(function ($q) use ($statusFilter) {
+                $q->where('status', $statusFilter)
+                    ->orWhere('lead_status', $statusFilter);
+            });
         }
 
         if ($request->filled('assigned_to')) {
@@ -168,7 +177,7 @@ class SalesLeadController extends Controller
             'perPage',
             'perPageOptions'
         ))->with('breadcrumb', $this->leadsBreadcrumb([
-            ['title' => 'سرنخ‌های تبدیل‌شده'],
+            ['title' => 'Ø³Ø±Ù†Ø®â€ŒÙ‡Ø§ÛŒ ØªØ¨Ø¯ÛŒÙ„â€ŒØ´Ø¯Ù‡'],
         ], false));
     }
 
@@ -182,14 +191,14 @@ class SalesLeadController extends Controller
             ->get();
         return view('marketing.leads.create', compact('users', 'referrals', 'contacts'))
             ->with('breadcrumb', $this->leadsBreadcrumb([
-                ['title' => 'ایجاد سرنخ'],
+                ['title' => 'Ø§ÛŒØ¬Ø§Ø¯ Ø³Ø±Ù†Ø®'],
             ]));
     }
 
     public function store(Request $request)
     {
-        \Log::info('🪙 store() method started');
-        \Log::info('🪙 Raw request input:', $request->all());
+        \Log::info('ðŸª™ store() method started');
+        \Log::info('ðŸª™ Raw request input:', $request->all());
 
         $validator = Validator::make($request->all(), [
             'prefix' => 'nullable|string|max:10',
@@ -203,14 +212,15 @@ class SalesLeadController extends Controller
             'contact_id' => 'nullable|exists:contacts,id',
             'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
 
-            'lead_status' => ['nullable', 'string'],
+            'lead_status' => ['nullable', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
+            'disqualify_reason' => ['nullable', 'string', Rule::in(array_keys(FormOptionsHelper::leadDisqualifyReasons()))],
             'assigned_to' => 'nullable|exists:users,id',
             'lead_date' => 'nullable|string',
             'next_follow_up_date' => 'nullable|string',
 
             'referred_to' => 'nullable|exists:users,id',
             'do_not_email' => 'boolean',
-            'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
+            'customer_type' => 'nullable|string|in:Ù…Ø´ØªØ±ÛŒ Ø¬Ø¯ÛŒØ¯,Ù…Ø´ØªØ±ÛŒ Ù‚Ø¯ÛŒÙ…ÛŒ,Ù…Ø´ØªØ±ÛŒ Ø¨Ø§Ù„Ù‚ÙˆÙ‡',
             'industry' => 'nullable|string|max:255',
             'nationality' => 'nullable|string|max:255',
             'main_test_field' => 'nullable|string|max:255',
@@ -232,44 +242,43 @@ class SalesLeadController extends Controller
             'central_200_systems' => 'nullable|integer|min:0',
             'central_300_systems' => 'nullable|integer|min:0',
         ], [
-            'full_name.required' => 'نام و نام خانوادگی الزامی است.',
-            'email.email' => 'فرمت ایمیل نامعتبر است.',
-            'website.url' => 'فرمت وب‌سایت نامعتبر است.',
+            'full_name.required' => 'Ù†Ø§Ù… Ùˆ Ù†Ø§Ù… Ø®Ø§Ù†ÙˆØ§Ø¯Ú¯ÛŒ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.',
+            'email.email' => 'ÙØ±Ù…Øª Ø§ÛŒÙ…ÛŒÙ„ Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª.',
+            'website.url' => 'ÙØ±Ù…Øª ÙˆØ¨â€ŒØ³Ø§ÛŒØª Ù†Ø§Ù…Ø¹ØªØ¨Ø± Ø§Ø³Øª.',
         ]);
 
         if ($validator->fails()) {
-            \Log::warning('🔴 Validation failed:', $validator->errors()->toArray());
+            \Log::warning('ðŸ”´ Validation failed:', $validator->errors()->toArray());
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
         try {
             $validated = $validator->validated();
-            \Log::info('🟢 Validation passed:', $validated);
+            \Log::info('ðŸŸ¢ Validation passed:', $validated);
             $selectedContactId = $validated['contact_id'] ?? null;
             $shouldCreateContact = empty($selectedContactId) && (bool) ($validated['create_contact'] ?? false);
             $validated['contact_id'] = $selectedContactId ? (int) $selectedContactId : null;
             unset($validated['create_contact']);
 
-            // 🧩 جدا کردن یادداشت اولیه
-            $noteContent = $validated['notes'] ?? null;
-            unset($validated['notes']);
-
             $validated['created_by'] = Auth::id();
-            // ثبت مالکیت ایجادکننده برای محدوده‌های دسترسی
+            // Ø«Ø¨Øª Ù…Ø§Ù„Ú©ÛŒØª Ø§ÛŒØ¬Ø§Ø¯Ú©Ù†Ù†Ø¯Ù‡ Ø¨Ø±Ø§ÛŒ Ù…Ø­Ø¯ÙˆØ¯Ù‡â€ŒÙ‡Ø§ÛŒ Ø¯Ø³ØªØ±Ø³ÛŒ
             $validated['owner_user_id'] = Auth::id();
             $validated['do_not_email'] = $request->has('do_not_email');
             $validated['lead_date'] = DateHelper::normalizeDateInput($validated['lead_date'] ?? null);
 
-            if (strtolower((string)($validated['lead_status'] ?? '')) === 'lost') {
-                // اگر وضعیت «از دست رفته» بود، تاریخ پیگیری بعدی نیاز نیست
+            $leadStatusValue = SalesLead::normalizeStatus($validated['lead_status'] ?? SalesLead::STATUS_NEW);
+            $validated['status'] = $leadStatusValue;
+            $validated['lead_status'] = $leadStatusValue;
+            if ($leadStatusValue === SalesLead::STATUS_DISCARDED) {
+                // Ø¯Ø± Ø­Ø§Ù„Øª Ø³Ø±Ú©Ø§Ø±ÛŒ/Ø­Ø°Ùâ€ŒØ´Ø¯Ù‡ ØªØ§Ø±ÛŒØ® Ù¾ÛŒÚ¯ÛŒØ±ÛŒ Ø¨Ø¹Ø¯ÛŒ ØµÙØ± Ù…ÛŒâ€ŒØ´ÙˆØ¯.
                 $validated['next_follow_up_date'] = null;
             } else {
                 $validated['next_follow_up_date'] = DateHelper::normalizeDateInput($validated['next_follow_up_date'] ?? null);
             }
 
-            \Log::info('🔵 Final data before create:', $validated);
+            \Log::info('ðŸ”µ Final data before create:', $validated);
 
-            $lead = DB::transaction(function () use ($validated, $noteContent, $shouldCreateContact) {
+            $lead = DB::transaction(function () use ($validated, $shouldCreateContact) {
                 $lead = SalesLead::create($validated);
 
                 if ($shouldCreateContact && $lead) {
@@ -286,34 +295,30 @@ class SalesLeadController extends Controller
                     }
                 }
 
-                if (!empty($noteContent)) {
-                    $lead->notes()->create([
-                        'body' => $noteContent,
-                        'user_id' => auth()->id(),
-                    ]);
-                    \Log::info('?? Initial note saved for lead ID: ' . $lead->id);
-                }
-
                 return $lead;
             });
 
             if ($lead && $lead->id) {
-                \Log::info('? Sales lead created successfully with ID: ' . $lead->id);
+                \Log::info('âœ” Sales lead created successfully with ID: ' . $lead->id);
 
                 return redirect()->route('marketing.leads.index')
-                    ->with('success', '???? ???? ?? ?????? ????? ??.');
+                    ->with('success', 'Ø³Ø±Ù†Ø® ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø§ÛŒØ¬Ø§Ø¯ Ø´Ø¯.');
             }
 
-            \Log::error('?? Sales lead creation failed. No ID returned.');
+            \Log::error('âŒ Sales lead creation failed. No ID returned.');
+
             return redirect()->back()
-                ->with('error', '??? ?? ????? ???? ????. ????? ?????? ???? ????.')
+                ->with('error', 'Ø§ÛŒØ¬Ø§Ø¯ Ø³Ø±Ù†Ø® ÙØ±ÙˆØ´ Ø§Ù†Ø¬Ø§Ù… Ù†Ø´Ø¯. Ù„Ø·ÙØ§Ù‹ Ø§Ø·Ù„Ø§Ø¹Ø§Øª Ø±Ø§ Ø¨Ø±Ø±Ø³ÛŒ Ú©Ù†ÛŒØ¯ Ùˆ Ø¯ÙˆØ¨Ø§Ø±Ù‡ ØªÙ„Ø§Ø´ Ú©Ù†ÛŒØ¯.')
                 ->withInput();
-        } catch (\Exception $e) {
-            \Log::error('🔥 Exception caught during sales lead creation: ' . $e->getMessage());
-            return redirect()->back()
-                ->with('error', 'خطا در ایجاد سرنخ فروش: ' . $e->getMessage())
-                ->withInput();
-        }
+
+            } catch (\Exception $e) {
+                \Log::error('ðŸ”¥ Exception caught during sales lead creation: ' . $e->getMessage());
+
+                return redirect()->back()
+                    ->with('error', 'Ø®Ø·Ø§ Ø¯Ø± Ø§ÛŒØ¬Ø§Ø¯ Ø³Ø±Ù†Ø® ÙØ±ÙˆØ´: ' . $e->getMessage())
+                    ->withInput();
+            }
+
     }
 
 
@@ -374,43 +379,41 @@ class SalesLeadController extends Controller
         }
 
         return redirect()->route('marketing.leads.index')
-            ->with('success', 'سرنخ‌ها با موفقیت حذف شدند.');
+            ->with('success', 'Ø³Ø±Ù†Ø®â€ŒÙ‡Ø§ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯Ù†Ø¯.');
     }
 
     public function edit(SalesLead $lead)
     {
         $users = User::all();
         $referrals = $users;
-        return view('marketing.leads.edit', compact('lead', 'users', 'referrals'))
+        $hasRecentActivity = $lead->hasRecentActivity();
+        return view('marketing.leads.edit', compact('lead', 'users', 'referrals', 'hasRecentActivity'))
             ->with('breadcrumb', $this->leadsBreadcrumb([
-                ['title' => 'ویرایش سرنخ'],
+                ['title' => 'ÙˆÛŒØ±Ø§ÛŒØ´ Ø³Ø±Ù†Ø®'],
             ]));
     }
 
+
+
     public function update(Request $request, SalesLead $lead)
     {
-        \Log::info('🔵 update() reached');
-        \Log::info('🔵 Request all:', $request->all());
+        \Log::info('SalesLeadController@update reached');
+        \Log::info('SalesLeadController@update payload', $request->all());
 
-        // 🧮 تبدیل تاریخ‌های شمسی به میلادی قبل از ولیدیشن
         $leadDateConv = DateHelper::normalizeDateInput($request->lead_date ?? null);
-        $statusVal = (string)($request->lead_status ?? '');
-        if (strtolower($statusVal) === 'lost') {
-            $nextFollowUpConv = null;
-        } else {
-            $nextFollowUpConv = DateHelper::normalizeDateInput($request->next_follow_up_date ?? null);
-        }
+        $statusVal = SalesLead::normalizeStatus($request->lead_status ?? '');
+        $nextFollowUpConv = $statusVal === SalesLead::STATUS_DISCARDED
+            ? null
+            : DateHelper::normalizeDateInput($request->next_follow_up_date ?? null);
+
         $request->merge([
             'lead_date' => $leadDateConv,
             'next_follow_up_date' => $nextFollowUpConv,
         ]);
 
-        \Log::info('🧾 Converted dates:', [
-            'lead_date' => $request->lead_date,
-            'next_follow_up_date' => $request->next_follow_up_date,
-        ]);
+        $originalStatus = $lead->lead_status ?? $lead->status;
 
-        $validator = Validator::make($request->all(), [
+        $data = $request->validate([
             'prefix' => 'nullable|string|max:10',
             'full_name' => 'required|string|max:255',
             'company' => 'nullable|string|max:255',
@@ -420,12 +423,13 @@ class SalesLeadController extends Controller
             'website' => 'nullable|url|max:255',
             'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
             'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
-            'assigned_to' => 'required|exists:users,id',
+            'disqualify_reason' => ['nullable', 'string', Rule::in(array_keys(FormOptionsHelper::leadDisqualifyReasons()))],
+            'assigned_to' => 'nullable|exists:users,id',
             'referred_to' => 'nullable|exists:users,id',
             'lead_date' => 'required|date',
-            'next_follow_up_date' => 'nullable|date|after_or_equal:today|required_unless:lead_status,lost',
+            'next_follow_up_date' => 'nullable|date|after_or_equal:today|required_unless:lead_status,discarded,junk',
             'do_not_email' => 'boolean',
-            'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
+            'customer_type' => 'nullable|string|in:U.O\'O?O?UO O?O_UOO_,U.O\'O?O?UO U,O_UOU.UO,U.O\'O?O?UO O"OU,U,U^U?',
             'industry' => 'nullable|string|max:255',
             'nationality' => 'nullable|string|max:255',
             'main_test_field' => 'nullable|string|max:255',
@@ -433,12 +437,7 @@ class SalesLeadController extends Controller
             'address' => 'nullable|string|max:1000',
             'state' => 'nullable|string|max:255',
             'city' => 'nullable|string|max:255',
-
-            // 👇 در آپدیت می‌خواهیم «notes» را عملاً نادیده بگیریم؛
-            // پس در ولیدیشن هم آزاد می‌گذاریم تا خطا ندهد،
-            // ولی بعداً مقدارش را از داده‌های نهایی حذف می‌کنیم.
             'notes' => 'nullable|string',
-
             'building_usage' => 'nullable|string|max:255',
             'internal_temperature' => 'nullable|numeric',
             'external_temperature' => 'nullable|numeric',
@@ -451,35 +450,136 @@ class SalesLeadController extends Controller
             'spot_heating_systems' => 'nullable|integer|min:0',
             'central_200_systems' => 'nullable|integer|min:0',
             'central_300_systems' => 'nullable|integer|min:0',
+            'activity_override' => ['nullable','boolean'],
+            'quick_note_body' => ['nullable','string','max:5000'],
+            'disqual_reason_body' => ['nullable','string','max:5000'],
         ]);
 
-        if ($validator->fails()) {
-            return redirect()->back()->withErrors($validator)->withInput();
+        $newStatus = $data['lead_status'] ?? $originalStatus;
+        $normalizedOriginalStatus = SalesLead::normalizeStatus($originalStatus);
+        $normalizedNewStatus = SalesLead::normalizeStatus($newStatus);
+
+        $overrideRequested = (bool) $request->boolean('activity_override');
+        $quickNoteBody = trim((string) $request->input('quick_note_body', ''));
+        $statusReasonBody = trim((string) $request->input('disqual_reason_body', ''));
+        $statusChanged = $normalizedOriginalStatus !== $normalizedNewStatus;
+        $isDiscardedChange = $statusChanged && $normalizedNewStatus === SalesLead::STATUS_DISCARDED;
+
+        if ($isDiscardedChange) {
+            $request->merge(['disqual_reason_body' => $statusReasonBody]);
+            $request->validate(
+                ['disqual_reason_body' => ['required','string','max:5000']],
+                ['disqual_reason_body.required' => 'Ø¯Ù„ÛŒÙ„ ØªØºÛŒÛŒØ± ÙˆØ¶Ø¹ÛŒØª Ø¨Ù‡ Ø³Ø±Ú©Ø§Ø±ÛŒ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.']
+            );
+            if ($quickNoteBody === '') {
+                $quickNoteBody = $statusReasonBody;
+            }
+            $overrideRequested = true;
+        }
+        $canChangeStage = true;
+
+        if ($statusChanged) {
+            $canChangeStage = $isDiscardedChange ? true : $lead->canChangeStageTo($normalizedNewStatus);
+
+            if (!$canChangeStage && $overrideRequested && $quickNoteBody !== '') {
+                $lead->notes()->create([
+                    'body' => $quickNoteBody,
+                    'user_id' => auth()->id(),
+                ]);
+                $lead->markFirstActivity(now());
+                $canChangeStage = true;
+
+                \Log::info('lead_stage_guard_overridden_with_note', [
+                    'lead_id' => $lead->id,
+                    'original_status' => $normalizedOriginalStatus,
+                    'new_status' => $normalizedNewStatus,
+                    'user_id' => auth()->id(),
+                ]);
+            }
+
+            if (!$canChangeStage) {
+                \Log::info('lead_stage_guard_blocked', [
+                    'lead_id' => $lead->id,
+                    'original_status' => $normalizedOriginalStatus,
+                    'new_status' => $normalizedNewStatus,
+                ]);
+
+                return back()
+                    ->withErrors(['lead_status' => 'ØªØºÛŒÛŒØ± ÙˆØ¶Ø¹ÛŒØª Ø¨Ø¯ÙˆÙ† ÙØ¹Ø§Ù„ÛŒØª ØªÙ…Ø§Ø³/Ø¬Ù„Ø³Ù‡/ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø§Ø®ÛŒØ± Ù…Ø¬Ø§Ø² Ù†ÛŒØ³Øª.'])
+                    ->withInput();
+            }
         }
 
-        $validated = $validator->validated();
-
-        // ✅ یادداشت اولیه در آپدیت نباید تغییر کند
-        if (array_key_exists('notes', $validated)) {
-            \Log::info('🧱 Removing notes from update payload to keep initial note immutable.');
-            unset($validated['notes']);
+        if (array_key_exists('notes', $data)) {
+            \Log::info('Removing notes from update payload to keep initial note immutable.');
+            unset($data['notes']);
         }
 
-        // چک‌باکس
-        $validated['do_not_email'] = $request->has('do_not_email');
+        if ($isDiscardedChange && $statusReasonBody !== '') {
+            $lead->notes()->create([
+                'body' => $statusReasonBody,
+                'user_id' => auth()->id(),
+            ]);
 
-        $lead->update($validated);
+            try {
+                $creatorId = auth()->id() ?: $lead->assigned_to;
+                $assigneeId = $lead->assigned_to ?: $creatorId;
+                $activity = CrmActivity::create([
+                    'subject'        => 'lead_status_reason',
+                    'start_at'       => now(),
+                    'due_at'         => now(),
+                    'assigned_to_id' => $assigneeId,
+                    'related_type'   => SalesLead::class,
+                    'related_id'     => $lead->id,
+                    'status'         => 'completed',
+                    'priority'       => 'normal',
+                    'description'    => $statusReasonBody,
+                    'is_private'     => false,
+                    'created_by_id'  => $creatorId,
+                    'updated_by_id'  => $creatorId,
+                ]);
 
-        return redirect()->route('marketing.leads.index')
-            ->with('success', 'سرنخ فروش با موفقیت به‌روزرسانی شد.');
+                if (method_exists($lead, 'markFirstActivity')) {
+                    $activityTime = $activity->start_at ?? $activity->created_at ?? now();
+                    $lead->markFirstActivity($activityTime);
+                }
+            } catch (\Throwable $activityException) {
+                \Log::warning('lead_status_reason_activity_failed', [
+                    'lead_id' => $lead->id ?? null,
+                    'error' => $activityException->getMessage(),
+                ]);
+
+                if (method_exists($lead, 'markFirstActivity')) {
+                    $lead->markFirstActivity(now());
+                }
+            }
+        }
+
+        unset($data['activity_override'], $data['quick_note_body'], $data['disqual_reason_body']);
+
+        if (array_key_exists('lead_status', $data)) {
+            $data['lead_status'] = $normalizedNewStatus;
+            $data['status'] = $normalizedNewStatus;
+        }
+
+        $data['do_not_email'] = $request->has('do_not_email');
+
+        $lead->fill($data);
+        $lead->save();
+
+        return redirect()
+    ->route('marketing.leads.index')
+    ->with('success', 'ØªØºÛŒÛŒØ±Ø§Øª Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯.');
+
     }
+
 
     public function destroy(SalesLead $lead)
     {
         $lead->delete();
 
         return redirect()->route('marketing.leads.index')
-            ->with('success', 'سرنخ فروش با موفقیت حذف شد.');
+            ->with('success', 'Ø³Ø±Ù†Ø® ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯.');
     }
 
     public function show(SalesLead $lead)
@@ -488,12 +588,12 @@ class SalesLeadController extends Controller
         $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
         $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
 
-        // ✅ این خط اضافه شد تا فقط کاربرانی که نام کاربری دارند برگردند
+        // âœ… Ø§ÛŒÙ† Ø®Ø· Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯ ØªØ§ ÙÙ‚Ø· Ú©Ø§Ø±Ø¨Ø±Ø§Ù†ÛŒ Ú©Ù‡ Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø¯Ø§Ø±Ù†Ø¯ Ø¨Ø±Ú¯Ø±Ø¯Ù†Ø¯
         $allUsers = User::whereNotNull('username')->get();
 
         return view('marketing.leads.show', compact('lead', 'allUsers'))
             ->with('breadcrumb', $this->leadsBreadcrumb([
-                ['title' => 'جزئیات سرنخ'],
+                ['title' => 'Ø¬Ø²Ø¦ÛŒØ§Øª Ø³Ø±Ù†Ø®'],
             ]));
     }
 
@@ -505,7 +605,7 @@ class SalesLeadController extends Controller
     public function convertToOpportunity(Request $request, SalesLead $lead)
     {
         if (!empty($lead->converted_at)) {
-            return redirect()->back()->with('error', 'این سرنخ قبلاً به فرصت تبدیل شده است.');
+            return redirect()->back()->with('error', 'Ø§ÛŒÙ† Ø³Ø±Ù†Ø® Ù‚Ø¨Ù„Ø§Ù‹ Ø¨Ù‡ ÙØ±ØµØª ØªØ¨Ø¯ÛŒÙ„ Ø´Ø¯Ù‡ Ø§Ø³Øª.');
         }
 
         try {
@@ -553,8 +653,8 @@ class SalesLeadController extends Controller
                 }
 
                 $name = $lead->company
-                    ? ('فرصت - ' . $lead->company)
-                    : ('فرصت - ' . ($lead->full_name ?: ('سرنخ #' . $lead->id)));
+                    ? ('ÙØ±ØµØª - ' . $lead->company)
+                    : ('ÙØ±ØµØª - ' . ($lead->full_name ?: ('Ø³Ø±Ù†Ø® #' . $lead->id)));
 
                 $opportunity = Opportunity::create([
                     'name'             => $name,
@@ -564,12 +664,14 @@ class SalesLeadController extends Controller
                     'source'           => $lead->lead_source,
                     'next_follow_up'   => $lead->next_follow_up_date,
                     'description'      => $lead->notes,
-                    'stage'            => 'new',
+                    'stage'            => Opportunity::STAGE_OPEN,
                 ]);
 
                 $lead->converted_at = Carbon::now();
                 $lead->converted_opportunity_id = $opportunity->id;
                 $lead->converted_by = Auth::id();
+                $lead->status = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
+                $lead->lead_status = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
                 $lead->save();
 
                 $this->transferLeadNotesToOpportunity($lead, $opportunity);
@@ -579,10 +681,10 @@ class SalesLeadController extends Controller
 
             return redirect()
                 ->route('marketing.leads.index')
-                ->with('success', 'سرنخ با موفقیت به فرصت فروش تبدیل شد.');
+                ->with('success', 'Ø³Ø±Ù†Ø® Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ù‡ ÙØ±ØµØª ÙØ±ÙˆØ´ ØªØ¨Ø¯ÛŒÙ„ Ø´Ø¯.');
         } catch (\Throwable $e) {
             return redirect()->back()
-                ->with('error', 'خطا در تبدیل سرنخ به فرصت: ' . $e->getMessage());
+                ->with('error', 'Ø®Ø·Ø§ Ø¯Ø± ØªØ¨Ø¯ÛŒÙ„ Ø³Ø±Ù†Ø® Ø¨Ù‡ ÙØ±ØµØª: ' . $e->getMessage());
         }
     }
 
@@ -630,3 +732,4 @@ class SalesLeadController extends Controller
             });
     }
 }
+

@@ -34,6 +34,22 @@
     </div>
 
    <!-- لیست یادداشت‌ها -->
+    @if(!empty($lead->notes))
+        <div class="bg-gradient-to-b from-white to-gray-50 p-4 shadow rounded-md border border-dashed border-blue-200">
+            <div class="flex items-center justify-between mb-2 text-sm text-gray-500">
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-2 py-0.5 text-xs font-semibold text-blue-700 bg-blue-50 rounded-full">یادداشت اولیه</span>
+                    <span class="text-gray-600">ثبت‌شده همراه سرنخ</span>
+                </div>
+                <span>{{ jdate($lead->created_at, 'relative') }}</span>
+            </div>
+
+            <div class="text-sm text-gray-800 mb-2 whitespace-pre-wrap">
+                {!! nl2br(e($lead->notes)) !!}
+            </div>
+        </div>
+    @endif
+
    @foreach($lead->notes()->latest()->get() as $note)
         @php
             // استخراج usernameها از متن یادداشت

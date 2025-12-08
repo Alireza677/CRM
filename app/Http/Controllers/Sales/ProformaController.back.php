@@ -563,7 +563,6 @@ class ProformaController extends Controller
                 'customer_address' => 'nullable|string',
                 'city' => 'nullable|string|max:255',
                 'state' => 'nullable|string|max:255',
-                'postal_code' => 'nullable|string|max:255',
                 'assigned_to' => 'required|exists:users,id',
                 'opportunity_id' => 'nullable|exists:opportunities,id',
     
@@ -676,7 +675,6 @@ class ProformaController extends Controller
                 'customer_address' => $validated['customer_address'],
                 'city'             => $validated['city'],
                 'state'            => $validated['state'],
-                'postal_code'      => $validated['postal_code'],
                 'assigned_to'      => $validated['assigned_to'],
                 'opportunity_id'   => $validated['opportunity_id'] ?? null,
                 'total_amount'     => $totalAmount,

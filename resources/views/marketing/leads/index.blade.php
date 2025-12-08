@@ -58,11 +58,12 @@
                                 </select>
                             </th>
                             <th>
+                                @php $leadStatusOptions = \App\Helpers\FormOptionsHelper::leadStatuses(); @endphp
                                 <select name="lead_status" class="border rounded-md p-1 w-full text-sm">
-                                    <option value="">همه</option>
-                                    <option value="new" {{ request('lead_status') == 'new' ? 'selected' : '' }}>جدید</option>
-                                    <option value="contacted" {{ request('lead_status') == 'contacted' ? 'selected' : '' }}>تماس گرفته شده</option>
-                                    <option value="qualified" {{ request('lead_status') == 'qualified' ? 'selected' : '' }}>در حال پیگیری</option>
+                                    <option value="">{{ __('همه') }}</option>
+                                    @foreach($leadStatusOptions as $key => $label)
+                                        <option value="{{ $key }}" {{ request('lead_status') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                             </th>
                             <th>
@@ -199,13 +200,21 @@
                                 {{ \App\Helpers\FormOptionsHelper::getLeadSourceLabel($lead->lead_source) }}
                             </td>
                             <td class="px-6 py-2">
-                                <span class="px-2 inline-flex text-xs font-semibold rounded-full
-                                    @if($lead->lead_status === 'new') bg-blue-100 text-blue-800
-                                    @elseif($lead->lead_status === 'contacted') bg-yellow-100 text-yellow-800
-                                    @elseif($lead->lead_status === 'qualified') bg-green-100 text-green-800
-                                    @else bg-red-100 text-red-800
-                                    @endif">
-                                    {{ \App\Helpers\FormOptionsHelper::getLeadStatusLabel($lead->lead_status) }}
+                                @php
+                                    $leadStatusColors = [
+                                        'new' => 'bg-blue-100 text-blue-800',
+                                        'contacted' => 'bg-yellow-100 text-yellow-800',
+                                        'converted_to_opportunity' => 'bg-emerald-100 text-emerald-800',
+                                        'converted' => 'bg-emerald-100 text-emerald-800',
+                                        'discarded' => 'bg-red-100 text-red-800',
+                                        'junk' => 'bg-red-100 text-red-800',
+                                    ];
+                                    $rawStatus = $lead->status ?? $lead->lead_status;
+                                    $statusKey = \App\Models\SalesLead::normalizeStatus($rawStatus) ?? $rawStatus;
+                                    $badgeClass = $leadStatusColors[$statusKey] ?? 'bg-gray-200 text-gray-800';
+                                @endphp
+                                <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $badgeClass }}">
+                                    {{ \App\Helpers\FormOptionsHelper::getLeadStatusLabel($statusKey) }}
                                 </span>
                             </td>
                             <td class="px-6 py-2 text-sm text-gray-500">

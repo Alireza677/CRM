@@ -14,11 +14,35 @@
   $statusDefault   = old('status',   $isEdit ? $activity->status   : '');
   $priorityDefault = old('priority', $isEdit ? $activity->priority : '');
 
-  $rt = old('related_type', $isEdit ? ($activity->related_type ?? '') : '');
-  $rid = old('related_id',  $isEdit ? ($activity->related_id  ?? '') : '');
-  $relatedDisplay = '';
-  if ($rt && $rid) {
-      $relatedDisplay = ($rt === 'contact' ? '(مخاطب) ' : '(سازمان) ') . $rid;
+  $prefillRelated = $prefillRelated ?? [];
+  $relatedMap = [
+      'contact'      => \App\Models\Contact::class,
+      'organization' => \App\Models\Organization::class,
+      'sales_lead'   => \App\Models\SalesLead::class,
+      'opportunity'  => \App\Models\Opportunity::class,
+  ];
+
+  $normalizeRelatedType = function ($value) use ($relatedMap) {
+      if (empty($value)) return null;
+      if (isset($relatedMap[$value])) return $value;
+      $slug = array_search($value, $relatedMap, true);
+      return $slug === false ? null : $slug;
+  };
+
+  $rtRaw = old('related_type', $isEdit ? ($activity->related_type ?? '') : ($prefillRelated['type'] ?? ''));
+  $rt = $normalizeRelatedType($rtRaw);
+  $rid = old('related_id',  $isEdit ? ($activity->related_id  ?? '') : ($prefillRelated['id'] ?? ''));
+
+  $relatedDisplay = $prefillRelated['label'] ?? '';
+  if ($rt && $rid && $relatedDisplay === '') {
+      $labels = [
+          'contact'      => 'مخاطب',
+          'organization' => 'سازمان',
+          'sales_lead'   => 'سرنخ',
+          'opportunity'  => 'فرصت',
+      ];
+      $prefix = $labels[$rt] ?? '#';
+      $relatedDisplay = ($prefix === '#') ? "#{$rid}" : "{$prefix} #{$rid}";
   }
 @endphp
 

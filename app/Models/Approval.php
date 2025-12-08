@@ -8,10 +8,13 @@ class Approval extends Model
 {
     use HasFactory;
 
+    public const STATUS_SUPERSEDED = 'superseded';
+
     protected $fillable = [
         'approvable_type',
         'approvable_id',
         'user_id',
+        'approved_by',
         'status',
         'note',
         'approved_at',
@@ -31,5 +34,9 @@ class Approval extends Model
     {
         return $this->belongsTo(User::class, 'user_id');
     }
-}
 
+    public function approvedBy()
+    {
+        return $this->belongsTo(User::class, 'approved_by');
+    }
+}

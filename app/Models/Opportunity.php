@@ -10,6 +10,10 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\Traits\CausesActivity;
 use App\Models\Traits\AppliesVisibilityScope;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
+use App\Models\RoleAssignment;
+use App\Models\Activity as CrmActivity;
+use App\Services\ActivityGuard;
 
 class Opportunity extends Model
 {
@@ -18,10 +22,18 @@ class Opportunity extends Model
     use LogsActivity, CausesActivity;
     use AppliesVisibilityScope;
 
+    public const STAGE_OPEN = 'open';
+    public const STAGE_PROPOSAL_SENT = 'proposal_sent';
+    public const STAGE_NEGOTIATION = 'negotiation';
+    public const STAGE_WON = 'won';
+    public const STAGE_LOST = 'lost';
+    public const STAGE_DEAD = 'dead';
+
     protected static $logAttributes = ['name',
         'organization_id',
         'contact_id',
         'stage',
+        'lost_reason',
         'type',
         'source',
         'building_usage',
@@ -59,7 +71,9 @@ class Opportunity extends Model
         'owner_user_id' => 'integer',
         'assigned_to'   => 'integer',
         'team_id'       => 'integer',
-        'visibility'    => 'string'
+        'visibility'    => 'string',
+        'stage'         => 'string',
+        'lost_reason'   => 'string',
     ];
 
     public function contact()
@@ -77,6 +91,39 @@ class Opportunity extends Model
     public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function roleAssignments(): MorphMany
+    {
+        return $this->morphMany(RoleAssignment::class, 'assignable');
+    }
+
+    public function getRoleUser(string $roleType, ?string $level = null): ?User
+    {
+        $query = $this->roleAssignments()
+            ->where('role_type', $roleType)
+            ->with('user');
+
+        if ($level !== null) {
+            $query->where('level', $level);
+        } else {
+            $levelOrder = config('commission.level_order', ['A', 'B', 'C']);
+
+            if (!empty($levelOrder)) {
+                $cases = [];
+                $bindings = [];
+                foreach ($levelOrder as $index => $lvl) {
+                    $cases[] = "WHEN ? THEN {$index}";
+                    $bindings[] = $lvl;
+                }
+                $orderCase = 'CASE level ' . implode(' ', $cases) . ' ELSE ' . count($levelOrder) . ' END';
+                $query->orderByRaw($orderCase, $bindings);
+            }
+        }
+
+        $assignment = $query->first();
+
+        return $assignment?->user;
     }
 
     public function organization()
@@ -103,17 +150,116 @@ class Opportunity extends Model
         return $this->morphMany(\App\Models\Note::class, 'noteable')->latest();
     }
 
+    /**
+     * CRM activities (calls/meetings/tasks) related to this opportunity.
+     * هنگام ثبت تماس/جلسه/پیشنهاد، همین رابطه را برای ایجاد Activity استفاده کنید.
+     */
+    public function crmActivities(): MorphMany
+    {
+        return $this->morphMany(CrmActivity::class, 'related');
+    }
+
     public function lastNote()
     {
         // نیازمند timestamps در جدول notes
         return $this->morphOne(Note::class, 'noteable')->latestOfMany();
     }
 
+    /**
+     * Require at least one recent activity before allowing stage change.
+     */
+    public function canChangeStageTo(?string $newStage, int $withinDays = 30): bool
+    {
+        $current = $this->getStageValue();
+        if (!$newStage || strtolower((string) $newStage) === $current) {
+            return true;
+        }
+
+        return $this->hasRecentActivity($withinDays);
+    }
+
+    /**
+     * Checks for interaction/activity records via shared ActivityGuard (manual CRM activities/notes).
+     */
+    public function hasRecentActivity(int $withinDays = 30): bool
+    {
+        return ActivityGuard::hasRealActivities($this, $withinDays);
+    }
+
+    public function activities()
+    {
+        return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
+    }
+
+    public static function stageOptions(): array
+    {
+        return config('opportunity.stages', [
+            self::STAGE_OPEN          => 'open',
+            self::STAGE_PROPOSAL_SENT => 'proposal_sent',
+            self::STAGE_NEGOTIATION   => 'negotiation',
+            self::STAGE_WON           => 'won',
+            self::STAGE_LOST          => 'lost',
+            self::STAGE_DEAD          => 'dead',
+        ]);
+    }
+
+    public static function lostReasons(): array
+    {
+        $reasons = config('opportunity.lost_reasons', []);
+        if (!empty($reasons)) {
+            return array_combine($reasons, $reasons);
+        }
+
+        return [
+            'price'                  => 'price',
+            'decision_delay'         => 'decision_delay',
+            'competitor_capability'  => 'competitor_capability',
+            'no_budget'              => 'no_budget',
+            'requirement_changed'    => 'requirement_changed',
+            'internal_choice'        => 'internal_choice',
+            'no_trust_in_brand'      => 'no_trust_in_brand',
+        ];
+    }
+
+    public static function closedStages(): array
+    {
+        $configured = config('opportunity.closed_stages', []);
+        if (!empty($configured)) {
+            return $configured;
+        }
+
+        return [self::STAGE_WON, self::STAGE_LOST, self::STAGE_DEAD];
+    }
+
+    public function getStageValue(): ?string
+    {
+        $raw = $this->getRawOriginal('stage');
+        $raw = is_string($raw) ? strtolower(trim($raw)) : null;
+
+        return $raw ?: null;
+    }
+
+    public function isOpen(): bool
+    {
+        $stage = $this->getStageValue();
+        return in_array($stage, [
+            self::STAGE_OPEN,
+            self::STAGE_PROPOSAL_SENT,
+            self::STAGE_NEGOTIATION,
+        ], true);
+    }
+
+    public function isWon(): bool
+    {
+        return $this->getStageValue() === self::STAGE_WON;
+    }
+
+    public function isLost(): bool
+    {
+        return in_array($this->getStageValue(), [self::STAGE_LOST, self::STAGE_DEAD], true);
+    }
+
 // فعالیت‌ها (مثلاً Task یا Activity)
-public function activities()
-{
-    return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
-}
 public function getActivitylogOptions(): LogOptions
 {
     return LogOptions::defaults()
@@ -173,8 +319,8 @@ public function orders()
 protected static function booted()
 {
     static::saving(function (Opportunity $op) {
-        $wonValues = ['won', 'برنده'];
-        if (in_array($op->stage, $wonValues, true)) {
+        $stage = $op->getStageValue();
+        if (in_array($stage, self::closedStages(), true)) {
             $op->next_follow_up = null;
         }
     });

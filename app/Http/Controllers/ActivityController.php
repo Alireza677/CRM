@@ -4,9 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\Contact;
+use App\Models\Opportunity;
 use App\Models\Organization;
+use App\Models\SalesLead;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Validation\Rule;
 
 class ActivityController extends Controller
 {
@@ -44,7 +47,7 @@ class ActivityController extends Controller
         return view('activities.index', compact('activities'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
         $contacts = \DB::table('contacts')
             ->selectRaw("
@@ -66,7 +69,9 @@ class ActivityController extends Controller
 
         $users = \App\Models\User::select('id','name')->orderBy('name')->get();
 
-        return view('activities.create', compact('contacts','organizations','users'));
+        $prefillRelated = $this->extractPrefillFromRequest($request);
+
+        return view('activities.create', compact('contacts','organizations','users','prefillRelated'));
     }
 
     public function store(Request $request)
@@ -84,7 +89,7 @@ class ActivityController extends Controller
             'due_at'             => ['nullable','date'],
 
             'assigned_to_id'     => ['required','exists:users,id'],
-            'related_type'       => ['nullable','in:contact,organization'],
+            'related_type'       => ['nullable', Rule::in($this->relatedTypeRuleValues())],
             'related_id'         => ['nullable','integer'],
             'status'             => ['required','in:not_started,in_progress,completed,scheduled'],
             'priority'           => ['required','in:normal,medium,high'],
@@ -112,17 +117,10 @@ class ActivityController extends Controller
 
         $data = $validator->validate();
 
-        // نگاشت related_type به کلاس مدل
-        if (!empty($data['related_type']) && !empty($data['related_id'])) {
-            $map = [
-                'contact'      => \App\Models\Contact::class,
-                'organization' => \App\Models\Organization::class,
-            ];
-            $data['related_type'] = $map[$data['related_type']] ?? null;
-        } else {
-            $data['related_type'] = null;
-            $data['related_id']   = null;
-        }
+        [$data['related_type'], $data['related_id']] = $this->resolveRelatedPayload(
+            $data['related_type'] ?? null,
+            $data['related_id'] ?? null
+        );
 
         $activity = new Activity();
         // فیلدهای غیرتاریخی را fill کن
@@ -155,6 +153,8 @@ class ActivityController extends Controller
         $activity->updated_by_id = auth()->id();
         $activity->is_private    = (bool) $request->boolean('is_private');
         $activity->save();
+
+        $this->touchLeadOrOpportunity($activity);
 
         // Reminders (optional)
         try {
@@ -255,7 +255,7 @@ class ActivityController extends Controller
             'due_at'             => ['nullable','date'],
 
             'assigned_to_id'     => ['required','exists:users,id'],
-            'related_type'       => ['nullable','in:contact,organization'],
+            'related_type'       => ['nullable', Rule::in($this->relatedTypeRuleValues())],
             'related_id'         => ['nullable','integer'],
             'status'             => ['required','in:not_started,in_progress,completed,scheduled'],
             'priority'           => ['required','in:normal,medium,high'],
@@ -280,16 +280,10 @@ class ActivityController extends Controller
 
         $data = $validator->validate();
 
-        if (!empty($data['related_type']) && !empty($data['related_id'])) {
-            $map = [
-                'contact'      => \App\Models\Contact::class,
-                'organization' => \App\Models\Organization::class,
-            ];
-            $data['related_type'] = $map[$data['related_type']] ?? null;
-        } else {
-            $data['related_type'] = null;
-            $data['related_id']   = null;
-        }
+        [$data['related_type'], $data['related_id']] = $this->resolveRelatedPayload(
+            $data['related_type'] ?? null,
+            $data['related_id'] ?? null
+        );
 
         // فیلدهای غیرتاریخی
         $activity->fill(collect($data)->except([
@@ -339,12 +333,116 @@ class ActivityController extends Controller
         );
     }
 
+    
+    
     public function markComplete(Activity $activity)
     {
         $activity->update([
             'status' => 'completed',
         ]);
 
-        return redirect()->back()->with('success', 'وضعیت وظیفه به تکمیل شده تغییر کرد.');
+        return redirect()->back()->with('success', 'ÙØ¶Ø¹ÛØª ÙØ¸ÛÙÙ Ø¨Ù ØªÚ©ÙÛÙ Ø´Ø¯Ù ØªØºÛÛØ± Ú©Ø±Ø¯.');
+    }
+
+    /**
+     * Ø§ÛÙ ÙÚ¯Ø§Ø´Øª Ø¯Ø± create/store/edit/update Ø§Ø³ØªÙØ§Ø¯Ù ÙÛâØ´ÙØ¯ ØªØ§ Ø§Ø³ÙØ§Ú¯ ÙÙØ¹ ÙØ±ØªØ¨Ø· Ø¨Ù Ú©ÙØ§Ø³ ÙØ¯Ù ØªØ¨Ø¯ÛÙ Ø´ÙØ¯.
+     */
+    private function relatedTypeMap(): array
+    {
+        return [
+            'contact'      => Contact::class,
+            'organization' => Organization::class,
+            'sales_lead'   => SalesLead::class,
+            'opportunity'  => Opportunity::class,
+        ];
+    }
+
+    /**
+     * Ø§ÛÙ ÙØªØ¯ ÙÙÚ¯Ø§Ù validate Ø¯Ø± store/update ÙØ±Ø§Ø®ÙØ§ÙÛ ÙÛâØ´ÙØ¯ ØªØ§ Rule::in Ø§Ø² ÙÙØ§Ø¯ÛØ± ÙØ¬Ø§Ø² Ø³Ø§Ø®ØªÙ Ø´ÙØ¯.
+     */
+    private function relatedTypeRuleValues(): array
+    {
+        $map = $this->relatedTypeMap();
+        return array_values(array_unique(array_merge(array_keys($map), array_values($map))));
+    }
+
+    /**
+     * Ø§ÛÙ ÙØªØ¯ Ø¯Ø± create ØµØ¯Ø§ Ø²Ø¯Ù ÙÛâØ´ÙØ¯ ØªØ§ Ø§Ú¯Ø± ÙØ±Ù Ø§Ø² ØµÙØ­Ù Lead/Opportunity Ø¨Ø§ query string Ø¢ÙØ¯Ù Ø¨ÙØ¯Ø hidden ÙØ§ Ø¯Ø±Ø³Øª Ù¾Ø± Ø´ÙÙØ¯.
+     */
+    private function extractPrefillFromRequest(Request $request): array
+    {
+        $type = $this->normalizeRelatedTypeKey($request->get('related_type'));
+        $id   = $request->get('related_id');
+
+        [$resolvedType, $resolvedId] = $this->resolveRelatedPayload($type, $id);
+        $label = trim((string) $request->get('related_label', ''));
+
+        return [
+            'type'  => $resolvedType ? $this->normalizeRelatedTypeKey($type) : null,
+            'id'    => $resolvedId,
+            'label' => $label !== '' ? $label : null,
+        ];
+    }
+
+    /**
+     * Ø§ÛÙ ÙØªØ¯ Ø¯Ø± store/update Ø§Ø³ØªÙØ§Ø¯Ù ÙÛâØ´ÙØ¯ ØªØ§ related_type/related_id ØªØ¨Ø¯ÛÙ Ø¨Ù Ú©ÙØ§Ø³ ÙØ¹ØªØ¨Ø± Ù Ø±Ú©ÙØ±Ø¯ ÙÙØ¬ÙØ¯ Ø´ÙØ¯.
+     */
+    private function resolveRelatedPayload(?string $type, $id): array
+    {
+        if (empty($type) || empty($id)) {
+            return [null, null];
+        }
+
+        $slug = $this->normalizeRelatedTypeKey($type);
+        $map  = $this->relatedTypeMap();
+
+        if (!$slug || !isset($map[$slug])) {
+            return [null, null];
+        }
+
+        $class = $map[$slug];
+        $intId = (int) $id;
+
+        if ($intId <= 0 || !$class::where('id', $intId)->exists()) {
+            return [null, null];
+        }
+
+        return [$class, $intId];
+    }
+
+    /**
+     * Ø§ÛÙ ÙØªØ¯ Ø¯Ø± create/store/update Ø¨Ø±Ø§Û ØªØ¨Ø¯ÛÙ FQCN Ø¨Ù Ø§Ø³ÙØ§Ú¯ Ù Ø¨Ø±Ø¹Ú©Ø³ (Ø¨ÙâØµÙØ±Øª Ø§ÙÙ) Ø§Ø³ØªÙØ§Ø¯Ù ÙÛâØ´ÙØ¯.
+     */
+    private function normalizeRelatedTypeKey(?string $raw): ?string
+    {
+        if ($raw === null || $raw === '') {
+            return null;
+        }
+
+        $map = $this->relatedTypeMap();
+        if (isset($map[$raw])) {
+            return $raw;
+        }
+
+        $slug = array_search($raw, $map, true);
+        return $slug === false ? null : $slug;
+    }
+
+    /**
+     * Ø§ÛÙ ÙØªØ¯ Ø¨ÙØ§ÙØ§ØµÙÙ Ø¨Ø¹Ø¯ Ø§Ø² Ø³Ø§Ø®Øª Activity ØµØ¯Ø§ Ø²Ø¯Ù ÙÛâØ´ÙØ¯ ØªØ§ first_activity_at Ø±ÙÛ Lead (Ù Ø¯Ø± Ø¢ÛÙØ¯Ù Opportunity) Ø³Øª Ø´ÙØ¯.
+     */
+    private function touchLeadOrOpportunity(Activity $activity): void
+    {
+        if ($activity->related_type === SalesLead::class && $activity->related_id) {
+            $lead = SalesLead::find($activity->related_id);
+            if ($lead) {
+                $lead->markFirstActivity($activity->start_at ?? $activity->due_at ?? now());
+            }
+            return;
+        }
+
+        if ($activity->related_type === Opportunity::class && $activity->related_id) {
+            // در صورت اضافه شدن first_activity_at به Opportunity، اینجا مشابه Lead مقداردهی کنید.
+        }
     }
 }

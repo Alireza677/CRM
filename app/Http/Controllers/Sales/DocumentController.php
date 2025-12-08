@@ -11,6 +11,8 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 use App\Models\Opportunity;
 use App\Models\PurchaseOrder;
+use App\Models\Proforma;
+use App\Helpers\DateHelper;
 use Symfony\Component\HttpFoundation\StreamedResponse;
 use Illuminate\Database\Eloquent\Builder;
 use App\Models\User;
@@ -120,6 +122,27 @@ class DocumentController extends Controller
         }
 
         $document = Document::create($data);
+
+        if ($document->opportunity_id) {
+            $relatedProformas = Proforma::where('opportunity_id', $document->opportunity_id)->get();
+
+            foreach ($relatedProformas as $proforma) {
+                $logTime = now();
+                $actorName = auth()->user()->name ?? 'سیستم';
+                $description = $actorName . ' سند جدیدی را در تاریخ ' . DateHelper::toJalali($logTime, 'H:i Y/m/d') . ' برای این پیش‌فاکتور بارگذاری کرد.';
+
+                activity('proforma')
+                    ->performedOn($proforma)
+                    ->causedBy(auth()->user())
+                    ->event('document_uploaded')
+                    ->withProperties([
+                        'document_id' => $document->id,
+                        'document_title' => $document->title,
+                        'opportunity_id' => $document->opportunity_id,
+                    ])
+                    ->log($description);
+            }
+        }
 
         if ($document->purchase_order_id) {
             try {

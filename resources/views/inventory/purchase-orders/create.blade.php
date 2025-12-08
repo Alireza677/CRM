@@ -163,9 +163,17 @@
                   </select>
                 </td>
                 <td class="px-3 py-2">
-                  <input type="number" step="0.01" min="0" data-name="items[__INDEX__][unit_price]" class="w-28 rounded-md border-gray-300 item-price" disabled required>
+                  <div class="relative">
+                    <input type="number" step="0.01" min="0" data-name="items[__INDEX__][unit_price]" class="w-28 rounded-md border-gray-300 item-price pl-12" disabled required>
+                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+                  </div>
                 </td>
-                <td class="px-3 py-2"><span class="item-total">۰</span></td>
+                <td class="px-3 py-2">
+                  <div class="relative">
+                    <input type="text" class="w-28 rounded-md border-gray-300 bg-gray-100 item-total pl-12" value="۰" readonly>
+                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+                  </div>
+                </td>
                 <td class="px-3 py-2 text-right">
                   <button type="button" class="text-red-600 remove-row" disabled>حذف</button>
                 </td>
@@ -177,7 +185,10 @@
         <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mt-6">
           <div>
             <label class="block text-sm font-medium mb-1">جمع کل</label>
-            <input type="text" id="total_amount_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
+            <div class="relative">
+              <input type="text" id="total_amount_display" class="w-full rounded-md border-gray-300 bg-gray-100 pl-12" readonly>
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+            </div>
           </div>
         </div>
       </div>
@@ -191,26 +202,41 @@
           </div>
           <div>
             <label for="vat_percent" class="block text-sm font-medium mb-1">درصد ارزش افزوده (%)</label>
-            <input type="number" step="0.01" min="0" max="100" name="vat_percent" id="vat_percent" value="{{ old('vat_percent') }}" class="w-full rounded-md border-gray-300" disabled>
+            <div class="relative">
+              <input type="number" step="0.01" min="0" max="100" name="vat_percent" id="vat_percent" value="{{ old('vat_percent') }}" class="w-full rounded-md border-gray-300 pl-12" disabled>
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">مبلغ ارزش افزوده</label>
-            <input type="text" id="vat_amount_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
+            <div class="relative">
+              <input type="text" id="vat_amount_display" class="w-full rounded-md border-gray-300 bg-gray-100 pl-12" readonly>
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">جمع با ارزش افزوده</label>
-            <input type="text" id="grand_total_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
+            <div class="relative">
+              <input type="text" id="grand_total_display" class="w-full rounded-md border-gray-300 bg-gray-100 pl-12" readonly>
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+            </div>
           </div>
         </div>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
           <div>
             <label for="previously_paid_amount" class="block text-sm font-medium mb-1">مبلغ‌های پرداخت‌شده قبلی</label>
-            <input type="number" step="1" min="0" name="previously_paid_amount" id="previously_paid_amount" value="{{ old('previously_paid_amount', 0) }}" class="w-full rounded-md border-gray-300">
+            <div class="relative">
+              <input type="number" step="1" min="0" name="previously_paid_amount" id="previously_paid_amount" value="{{ old('previously_paid_amount', 0) }}" class="w-full rounded-md border-gray-300 pl-12">
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+            </div>
           </div>
           <div>
             <label class="block text-sm font-medium mb-1">مانده قابل پرداخت</label>
-            <input type="text" id="remaining_display" class="w-full rounded-md border-gray-300 bg-gray-100" readonly>
+            <div class="relative">
+              <input type="text" id="remaining_display" class="w-full rounded-md border-gray-300 bg-gray-100 pl-12" readonly>
+              <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+            </div>
           </div>
         </div>
       </div>
@@ -303,7 +329,14 @@
       const qty = parseFloat(tr.querySelector('.item-qty')?.value || 0);
       const price = parseFloat(tr.querySelector('.item-price')?.value || 0);
       const lt = qty * price;
-      tr.querySelector('.item-total').textContent = formatInt(lt);
+      const totalEl = tr.querySelector('.item-total');
+      if (totalEl) {
+        if ('value' in totalEl) {
+          totalEl.value = formatInt(lt);
+        } else {
+          totalEl.textContent = formatInt(lt);
+        }
+      }
       sum += lt;
     });
     totalDisplay.value = formatInt(sum);

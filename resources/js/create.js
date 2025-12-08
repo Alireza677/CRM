@@ -158,12 +158,22 @@
       initDateTimePicker('#start_at_display');
       initDateTimePicker('#due_at_display');
   
-     // نمایش انتخاب قبلی مربوط‌به
-     const rt = document.getElementById('related_type')?.value;
-     const rid = document.getElementById('related_id')?.value;
-     if (rt && rid) {
-       document.getElementById('related_display').value = (rt === 'contact' ? '(مخاطب) ' : '(سازمان) ') + rid;
-     }
+    // نمایش انتخاب قبلی مربوط‌به
+    const rt = document.getElementById('related_type')?.value;
+    const rid = document.getElementById('related_id')?.value;
+    const relatedDisplay = document.getElementById('related_display');
+    const presetLabel = relatedDisplay?.value || '';
+    if (rt && rid && relatedDisplay) {
+      const prefixes = {
+        contact: '(مخاطب) #',
+        organization: '(سازمان) #',
+        sales_lead: '(سرنخ) #',
+        opportunity: '(فرصت) #',
+      };
+      if (!presetLabel) {
+        relatedDisplay.value = (prefixes[rt] || '#') + rid;
+      }
+    }
  
      // موعد بعد از شروع
      $('#start_at_display').on('change', function () {

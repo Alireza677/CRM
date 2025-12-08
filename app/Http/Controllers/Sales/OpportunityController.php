@@ -14,6 +14,12 @@ use Morilog\Jalali\Jalalian;
 use Illuminate\Validation\Rule;
 use App\Helpers\FormOptionsHelper;
 use Illuminate\Support\Facades\DB;
+use App\Services\CommissionService;
+use Illuminate\Support\Facades\Log;
+use App\Services\ActivityGuard;
+use App\Helpers\DateHelper;
+use App\Models\Activity as CrmActivity;
+use Illuminate\Support\Str;
 
 class OpportunityController extends Controller
 {
@@ -50,7 +56,7 @@ class OpportunityController extends Controller
         }
 
         if ($request->filled('stage')) {
-            $query->where('stage', 'like', '%' . $request->stage . '%');
+            $query->where('stage', $request->stage);
         }
 
         if ($request->filled('created_at')) {
@@ -67,6 +73,7 @@ class OpportunityController extends Controller
     {
         $this->authorize('create', \App\Models\Opportunity::class);
 
+        $opportunity   = new Opportunity();
         $organizations = Organization::all();
         $contacts = Contact::all();
         $users = User::all();
@@ -75,6 +82,7 @@ class OpportunityController extends Controller
         $defaultContact = $contactId ? Contact::find($contactId) : null;
 
         return view('sales.opportunities.create', compact(
+            'opportunity',
             'organizations',
             'contacts',
             'users',
@@ -98,10 +106,18 @@ class OpportunityController extends Controller
             'assigned_to' => 'nullable|exists:users,id',
             'success_rate' => 'required|numeric|min:0|max:100',
             // Make follow-up optional when stage is "برنده" (won)
-            'next_follow_up' => 'nullable|date|required_unless:stage,برنده',
+            'next_follow_up' => 'nullable|date|required_unless:stage,won,lost,dead',
             'description' => 'nullable|string',
-            'stage' => 'nullable|string|max:255',
+            'stage' => ['nullable','string', Rule::in(array_keys(FormOptionsHelper::opportunityStages()))],
+            'lost_reason' => ['nullable','string', Rule::in(array_keys(FormOptionsHelper::opportunityLostReasons()))],
+            'activity_override' => ['nullable','boolean'],
+            'quick_note_body' => ['nullable','string','max:5000'],
         ]);
+
+        $validated['stage'] = $validated['stage'] ?? Opportunity::STAGE_OPEN;
+        if (!in_array($validated['stage'], Opportunity::closedStages(), true)) {
+            $validated['lost_reason'] = null;
+        }
 
         $opportunity = Opportunity::create($validated);
         $opportunity->notifyIfAssigneeChanged(null);
@@ -140,7 +156,7 @@ class OpportunityController extends Controller
                 ->where('opportunity_id', $opportunity->id)
                 ->orderByDesc('proforma_date');
             },
-        ]);
+        ])->loadMissing(['roleAssignments.user']);
 
         return view('sales.opportunities.show', compact('opportunity', 'breadcrumb', 'activities'));
     }
@@ -154,6 +170,7 @@ class OpportunityController extends Controller
         $organizations = Organization::orderBy('name')->get(['id', 'name', 'phone']);
         $contacts      = Contact::orderBy('last_name')->get(['id', 'first_name', 'last_name', 'mobile']);
         $users         = User::orderBy('name')->get(['id', 'name']);
+        $hasRecentActivity = $opportunity->hasRecentActivity();
 
         $nextFollowUpDate = '';
         if (!empty($opportunity->next_follow_up)) {
@@ -165,13 +182,21 @@ class OpportunityController extends Controller
         }
 
         return view('sales.opportunities.edit', compact(
-            'opportunity', 'organizations', 'contacts', 'users', 'nextFollowUpDate'
+            'opportunity', 'organizations', 'contacts', 'users', 'nextFollowUpDate', 'hasRecentActivity'
         ));
     }
 
     public function update(Request $request, Opportunity $opportunity)
     {
         $this->authorize('update', $opportunity);
+
+        // Normalize Jalali/Gregorian follow-up date before validation
+        $rawFollowUp = $request->input('next_follow_up', $request->input('next_follow_up_shamsi'));
+        if (!is_null($rawFollowUp) && trim((string) $rawFollowUp) !== '') {
+            $request->merge([
+                'next_follow_up' => DateHelper::normalizeDateInput($rawFollowUp),
+            ]);
+        }
 
         if ($request->filled('source')) {
             $request->merge([
@@ -189,19 +214,201 @@ class OpportunityController extends Controller
             'building_usage' => 'nullable|string|max:255',
             'assigned_to' => 'nullable|exists:users,id',
             'success_rate' => 'nullable|numeric|min:0|max:100',
-            'next_follow_up' => 'nullable|date',
+            'next_follow_up' => 'nullable|date|required_unless:stage,won,lost,dead',
             'description' => 'nullable|string',
-            'stage' => 'nullable|string|max:255',
+            'stage' => ['nullable','string', Rule::in(array_keys(FormOptionsHelper::opportunityStages()))],
+            'lost_reason' => ['nullable','string', Rule::in(array_keys(FormOptionsHelper::opportunityLostReasons()))],
+            'loss_reason_body' => ['nullable','string','max:5000'],
+            'loss_reasons' => ['nullable','array'],
+            'loss_reasons.*' => ['string','max:255'],
         ]);
 
+        $oldStage = $opportunity->getStageValue() ?? Opportunity::STAGE_OPEN;
+        $requestedStage = $validated['stage'] ?? $oldStage;
+        $normalizedRequestedStage = $requestedStage !== null ? strtolower((string) $requestedStage) : $oldStage;
+        $stageChanged = $normalizedRequestedStage !== $oldStage;
+        $stageChangedToLoss = $stageChanged && in_array($normalizedRequestedStage, [Opportunity::STAGE_LOST, Opportunity::STAGE_DEAD], true);
+        $selectedLossReasons = $this->sanitizeLossReasons($request->input('loss_reasons', []));
+        $lossReasonBody = $this->composeLossReasonBody(
+            $selectedLossReasons,
+            (string) $request->input('loss_reason_body', '')
+        );
+
+        if ($stageChangedToLoss) {
+    $request->merge([
+        'loss_reason_body' => $lossReasonBody,
+        'loss_reasons'     => $selectedLossReasons,
+    ]);
+
+    $request->validate(
+        [
+            'loss_reason_body' => ['required', 'string', 'max:5000'],
+            'loss_reasons'     => ['nullable', 'array'],
+            'loss_reasons.*'   => ['string', 'max:255'],
+        ],
+        [
+            'loss_reason_body.required' => 'ثبت دلیل از دست رفتن فرصت الزامی است.',
+        ]
+    );
+
+    $opportunity->notes()->create([
+        'body'    => $lossReasonBody,
+        'user_id' => auth()->id(),
+    ]);
+
+    try {
+        $creatorId  = auth()->id() ?: $opportunity->assigned_to;
+        $assigneeId = $opportunity->assigned_to ?: $creatorId;
+
+        $activity = CrmActivity::create([
+            'subject'        => 'lost_reason',
+            'start_at'       => now(),
+            'due_at'         => now(),
+            'assigned_to_id' => $assigneeId,
+            'related_type'   => Opportunity::class,
+            'related_id'     => $opportunity->id,
+            'status'         => 'completed',
+            'priority'       => 'normal',
+            'description'    => $lossReasonBody,
+            'is_private'     => false,
+            'created_by_id'  => $creatorId,
+            'updated_by_id'  => $creatorId,
+        ]);
+
+        if (method_exists($opportunity, 'markFirstActivity')) {
+            $activityTime = $activity->start_at ?? $activity->created_at ?? now();
+            $opportunity->markFirstActivity($activityTime);
+        }
+    } catch (\Throwable $activityException) {
+        Log::warning('opportunity_loss_reason_activity_failed', [
+            'opportunity_id' => $opportunity->id,
+            'error'          => $activityException->getMessage(),
+        ]);
+    }
+}
+
+
+        $realActivitiesCount = ActivityGuard::countRealActivities($opportunity);
+
+        Log::info('opportunity_stage_change_request', [
+            'context' => 'opportunity_stage_change_request',
+            'opportunity_id' => $opportunity->id ?? null,
+            'user_id' => auth()->id(),
+            'old_stage' => $oldStage,
+            'new_stage' => $normalizedRequestedStage,
+            'real_activities_count' => $realActivitiesCount,
+            'request_data' => $request->all(),
+        ]);
+
+
+        // الزام فعالیت قبل از تغییر مرحله
+        $overrideRequested = (bool) $request->boolean('activity_override');
+        $quickNoteBody = trim((string) $request->input('quick_note_body', ''));
+
+        $incomingStage = $normalizedRequestedStage ?: null;
+        $currentStage = $oldStage;
+        $previousStage = $currentStage;
+        if ($incomingStage && $incomingStage !== $currentStage) {
+            $canChangeStage = $opportunity->canChangeStageTo($incomingStage);
+        
+            if (!$canChangeStage && $overrideRequested && $quickNoteBody !== '') {
+                $opportunity->notes()->create([
+                    'body' => $quickNoteBody,
+                    'user_id' => auth()->id(),
+                ]);
+                $canChangeStage = true;
+        
+                Log::info('OVERRIDE: opportunity stage change with note', [
+                    'opportunity_id' => $opportunity->id,
+                    'from_stage' => $previousStage,
+                    'to_stage' => $incomingStage,
+                    'user_id' => auth()->id(),
+                ]);
+            }
+        
+            if (!$canChangeStage) {
+                Log::warning('BLOCKED: opportunity stage change without activity', [
+                    'opportunity_id' => $opportunity->id,
+                    'from_stage' => $previousStage,
+                    'to_stage' => $incomingStage,
+                    'real_activities_count' => $realActivitiesCount,
+                ]);
+                return redirect()
+                    ->back()
+                    ->withErrors(['stage' => 'تغییر وضعیت بدون فعالیت تماس/جلسه/یادداشت اخیر مجاز نیست.'])
+                    ->withInput();
+            }
+        
+            Log::info('ALLOWED: opportunity stage change', [
+                'opportunity_id' => $opportunity->id,
+                'from_stage' => $previousStage,
+                'to_stage' => $incomingStage,
+                'real_activities_count' => $realActivitiesCount,
+            ]);
+        }
+        
         $oldAssignedTo = $opportunity->assigned_to;
+
+        $validated['stage'] = $requestedStage ?? $oldStage ?? Opportunity::STAGE_OPEN;
+        if (!in_array($validated['stage'], Opportunity::closedStages(), true)) {
+            $validated['lost_reason'] = null;
+        }
+
+        unset($validated['activity_override'], $validated['quick_note_body'], $validated['loss_reason_body'], $validated['loss_reasons']);
 
         $opportunity->update($validated);
         $opportunity->notifyIfAssigneeChanged($oldAssignedTo);
 
+        $newStage = $opportunity->getStageValue();
+        if ($previousStage !== Opportunity::STAGE_WON && $newStage === Opportunity::STAGE_WON) {
+            app(CommissionService::class)->calculateForOpportunity($opportunity);
+        } elseif ($previousStage === Opportunity::STAGE_WON && $newStage !== Opportunity::STAGE_WON) {
+            // TODO: در صورت خروج فرصت از مرحله won منطق اصلاح/بازگشت کمیسیون اعمال شود.
+        }
+
         return redirect()
             ->route('sales.opportunities.show', $opportunity)
             ->with('success', 'تغییرات فرصت فروش با موفقیت ذخیره شد.');
+    }
+
+
+    protected function sanitizeLossReasons($reasons): array
+    {
+        if (!is_array($reasons)) {
+            return [];
+        }
+
+        $clean = [];
+        foreach ($reasons as $reason) {
+            if (!is_string($reason)) {
+                continue;
+            }
+            $value = trim($reason);
+            if ($value !== '') {
+                $clean[] = $value;
+            }
+        }
+
+        return array_values(array_unique($clean));
+    }
+
+    protected function composeLossReasonBody(array $reasons, string $body): string
+    {
+        $reasons = $this->sanitizeLossReasons($reasons);
+        $cleanBody = trim($body);
+        $reasonsLine = $reasons !== [] ? '????? ??????????: ' . implode('? ', $reasons) : '';
+
+        if ($reasonsLine !== '') {
+            if (Str::startsWith($cleanBody, $reasonsLine)) {
+                return $cleanBody;
+            }
+
+            return $cleanBody !== ''
+                ? $reasonsLine . PHP_EOL . $cleanBody
+                : $reasonsLine;
+        }
+
+        return $cleanBody;
     }
 
     public function destroy(Opportunity $opportunity)
@@ -267,6 +474,10 @@ class OpportunityController extends Controller
 
         $data = ['opportunity' => $opportunity];
 
+        if ($tab === 'summary') {
+            $opportunity->loadMissing(['roleAssignments.user']);
+        }
+
         // برای تب یادداشت‌ها، فهرست کاربران جهت منشن‌کردن نیاز است
         if ($tab === 'notes') {
             $data['allUsers'] = User::whereNotNull('username')->get();
@@ -276,6 +487,10 @@ class OpportunityController extends Controller
         if ($tab === 'updates') {
             $data['activities'] = Activity::where('subject_type', Opportunity::class)
                 ->where('subject_id', $opportunity->id)
+                ->where(function ($query) {
+                    $query->whereIn('event', ['created', 'updated', 'proforma_created'])
+                        ->orWhereNull('event');
+                })
                 ->latest()
                 ->get();
         }
@@ -298,6 +513,10 @@ class OpportunityController extends Controller
             case 'updates':
                 $activities = Activity::where('subject_type', Opportunity::class)
                     ->where('subject_id', $opportunity->id)
+                    ->where(function ($query) {
+                        $query->whereIn('event', ['created', 'updated', 'proforma_created'])
+                            ->orWhereNull('event');
+                    })
                     ->latest()
                     ->get();
                 return view('sales.opportunities.tabs.updates', compact('opportunity', 'activities'));

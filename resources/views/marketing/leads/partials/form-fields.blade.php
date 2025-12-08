@@ -17,6 +17,7 @@
     $contacts = $contacts ?? collect();
 
     $lead_status_value = old('lead_status', isset($lead) ? $lead->lead_status : 'new');
+    $originalLeadStatus = strtolower((string) (($lead->lead_status ?? $lead->status ?? '') ?: ''));
 
     // تاریخ‌ها
     $lead_date_shamsi = old('lead_date_shamsi');
@@ -186,21 +187,22 @@
 
                 <div>
                     <label for="lead_status" class="block font-medium text-sm text-gray-700">وضعیت سرنخ <span class="text-red-600">*</span></label>
-                    <select id="lead_status" name="lead_status" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm" required>
+                    <select id="lead_status" name="lead_status" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm" required data-original-value="{{ $originalLeadStatus }}">
                         @foreach(FormOptionsHelper::leadStatuses() as $key => $label)
                             <option value="{{ $key }}" @selected($lead_status_value == $key)>{{ $label }}</option>
                         @endforeach
                     </select>
                     @error('lead_status') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+                    @error('disqual_reason_body') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
                 </div>
             </div>
 
             <div>
-                <label for="assigned_to" class="block font-medium text-sm text-gray-700">ارجاع به <span class="text-red-600">*</span></label>
-                <select id="assigned_to" name="assigned_to" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm" required>
+                <label for="assigned_to" class="block font-medium text-sm text-gray-700">ارجاع به</label>
+                <select id="assigned_to" name="assigned_to" class="mt-2 block w-full rounded-md border-gray-300 shadow-sm">
                     <option value="">انتخاب کنید</option>
                     @foreach($users as $user)
-                        <option value="{{ $user->id }}" @selected(old('assigned_to', $lead->assigned_to ?? auth()->id()) == $user->id)>{{ $user->name }}</option>
+                        <option value="{{ $user->id }}" @selected(old('assigned_to', $lead->assigned_to ?? null) == $user->id)>{{ $user->name }}</option>
                     @endforeach
                 </select>
                 @error('assigned_to') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror

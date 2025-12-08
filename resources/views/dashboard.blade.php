@@ -5,7 +5,7 @@
     <div class=" mx-auto sm:px-6 lg:px-8">
 <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-2">
      {{-- کارت ۲: سرنخ --}}
-    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
+    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md" data-report-card>
         <div class="absolute -top-4 flex justify-center">
             <img src="{{ asset('images/recruitment.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
@@ -23,7 +23,11 @@
                 + ایجاد
             </button>
         </div>
-        <div class="mt-3 w-full">
+        <button type="button" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 transition" data-report-toggle aria-expanded="false">
+            <span>مشاهده گزارش</span>
+            <span class="text-[10px] transition-transform" data-report-icon>&#9662;</span>
+        </button>
+        <div class="mt-3 w-full hidden" data-report-panel>
             <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-green-100 rounded-lg px-3 py-2 space-y-1 text-right">
                 <div class="flex items-center justify-between text-[11px] text-gray-700">
                     <span>جدید (۳۰ روز اخیر)</span>
@@ -37,12 +41,7 @@
                     <span>تبدیل‌شده</span>
                     <span class="font-semibold text-gray-900">{{ $leadStats['converted'] ?? 0 }}</span>
                 </div>
-                @if(isset($leadStats['total_value']) && $leadStats['total_value'] !== null)
-                    <div class="flex items-center justify-between text-[11px] text-gray-700">
-                        <span>جمع ارزش</span>
-                        <span class="font-semibold text-gray-900">{{ number_format($leadStats['total_value']) }}</span>
-                    </div>
-                @endif
+                
                 @if(!empty($leadStats['statuses']))
                     <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
                         @foreach($leadStats['statuses'] as $status)
@@ -57,7 +56,7 @@
         </div>
     </div>
     {{-- کارت ۱: فرصت فروش --}}
-    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
+    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md" data-report-card>
         <div class="absolute -top-4 flex justify-center">
             <img src="{{ asset('images/sales-pipeline.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
@@ -73,7 +72,11 @@
                 + ایجاد
             </a>
         </div>
-        <div class="mt-3 w-full">
+        <button type="button" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 transition" data-report-toggle aria-expanded="false">
+            <span>مشاهده گزارش</span>
+            <span class="text-[10px] transition-transform" data-report-icon>&#9662;</span>
+        </button>
+        <div class="mt-3 w-full hidden" data-report-panel>
             <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-blue-100 rounded-lg px-3 py-2 space-y-1 text-right">
                 <div class="flex items-center justify-between text-[11px] text-gray-700">
                     <span>جدید (۳۰ روز اخیر)</span>
@@ -87,12 +90,7 @@
                     <span>تبدیل‌شده</span>
                     <span class="font-semibold text-gray-900">{{ $opportunityStats['converted'] ?? 0 }}</span>
                 </div>
-                @if(isset($opportunityStats['total_value']) && $opportunityStats['total_value'] !== null)
-                    <div class="flex items-center justify-between text-[11px] text-gray-700">
-                        <span>جمع ارزش</span>
-                        <span class="font-semibold text-gray-900">{{ number_format($opportunityStats['total_value']) }}</span>
-                    </div>
-                @endif
+               
                 @if(!empty($opportunityStats['statuses']))
                     <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
                         @foreach($opportunityStats['statuses'] as $status)
@@ -108,7 +106,7 @@
     </div>
 
     {{-- کارت ۴: پیش‌فاکتور --}}
-    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
+    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md" data-report-card>
         <div class="absolute -top-4 flex justify-center">
             <img src="{{ asset('images/invoice.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
@@ -124,7 +122,11 @@
                 + ایجاد
             </a>
         </div>
-        <div class="mt-3 w-full">
+        <button type="button" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 transition" data-report-toggle aria-expanded="false">
+            <span>مشاهده گزارش</span>
+            <span class="text-[10px] transition-transform" data-report-icon>&#9662;</span>
+        </button>
+        <div class="mt-3 w-full hidden" data-report-panel>
             <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-red-100 rounded-lg px-3 py-2 space-y-1 text-right">
                 <div class="flex items-center justify-between text-[11px] text-gray-700">
                     <span>جدید (۳۰ روز اخیر)</span>
@@ -138,12 +140,7 @@
                     <span>تبدیل‌شده</span>
                     <span class="font-semibold text-gray-900">{{ $proformaStats['converted'] ?? 0 }}</span>
                 </div>
-                @if(isset($proformaStats['total_value']) && $proformaStats['total_value'] !== null)
-                    <div class="flex items-center justify-between text-[11px] text-gray-700">
-                        <span>جمع ارزش</span>
-                        <span class="font-semibold text-gray-900">{{ number_format($proformaStats['total_value']) }}</span>
-                    </div>
-                @endif
+                
                 @if(!empty($proformaStats['statuses']))
                     <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
                         @foreach($proformaStats['statuses'] as $status)
@@ -159,7 +156,7 @@
     </div>
 
     {{-- کارت ۵: سفارش‌های خرید --}}
-    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
+    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md" data-report-card>
         <div class="absolute -top-4 flex justify-center">
             <img src="{{ asset('images/invoice.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
@@ -175,7 +172,11 @@
                 + ایجاد
             </a>
         </div>
-        <div class="mt-3 w-full">
+        <button type="button" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 transition" data-report-toggle aria-expanded="false">
+            <span>مشاهده گزارش</span>
+            <span class="text-[10px] transition-transform" data-report-icon>&#9662;</span>
+        </button>
+        <div class="mt-3 w-full hidden" data-report-panel>
             <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-orange-100 rounded-lg px-3 py-2 space-y-1 text-right">
                 <div class="flex items-center justify-between text-[11px] text-gray-700">
                     <span>جدید (۳۰ روز اخیر)</span>
@@ -189,12 +190,7 @@
                     <span>تبدیل‌شده</span>
                     <span class="font-semibold text-gray-900">{{ $purchaseOrderStats['converted'] ?? 0 }}</span>
                 </div>
-                @if(isset($purchaseOrderStats['total_value']) && $purchaseOrderStats['total_value'] !== null)
-                    <div class="flex items-center justify-between text-[11px] text-gray-700">
-                        <span>جمع ارزش</span>
-                        <span class="font-semibold text-gray-900">{{ number_format($purchaseOrderStats['total_value']) }}</span>
-                    </div>
-                @endif
+                
                 @if(!empty($purchaseOrderStats['statuses']))
                     <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
                         @foreach($purchaseOrderStats['statuses'] as $status)
@@ -211,7 +207,7 @@
 
     
     {{-- کارت ۳: مخاطبین --}}
-    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
+    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md" data-report-card>
         <div class="absolute -top-4 flex justify-center">
             <img src="{{ asset('images/contacts-book.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
@@ -227,7 +223,11 @@
                 + ایجاد
             </a>
         </div>
-        <div class="mt-3 w-full">
+        <button type="button" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 transition" data-report-toggle aria-expanded="false">
+            <span>مشاهده گزارش</span>
+            <span class="text-[10px] transition-transform" data-report-icon>&#9662;</span>
+        </button>
+        <div class="mt-3 w-full hidden" data-report-panel>
             <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-purple-100 rounded-lg px-3 py-2 space-y-1 text-right">
                 <div class="flex items-center justify-between text-[11px] text-gray-700">
                     <span>جدید (۳۰ روز اخیر)</span>
@@ -241,12 +241,7 @@
                     <span>تبدیل‌شده</span>
                     <span class="font-semibold text-gray-900">{{ $contactStats['converted'] ?? 0 }}</span>
                 </div>
-                @if(isset($contactStats['total_value']) && $contactStats['total_value'] !== null)
-                    <div class="flex items-center justify-between text-[11px] text-gray-700">
-                        <span>جمع ارزش</span>
-                        <span class="font-semibold text-gray-900">{{ number_format($contactStats['total_value']) }}</span>
-                    </div>
-                @endif
+                
                 @if(!empty($contactStats['statuses']))
                     <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
                         @foreach($contactStats['statuses'] as $status)
@@ -262,7 +257,7 @@
     </div>
 
     {{-- کارت ۶: سازمان‌ها --}}
-    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md">
+    <div class="relative backdrop-blur-md bg-white/70 border border-white/40 shadow-sm rounded-xl px-3 pt-3 pb-2 flex flex-col items-center text-center transition hover:shadow-md" data-report-card>
         <div class="absolute -top-4 flex justify-center">
             <img src="{{ asset('images/organization.png') }}" alt="icon" class="w-12 h-12 object-contain drop-shadow">
         </div>
@@ -278,7 +273,11 @@
                 + ایجاد
             </a>
         </div>
-        <div class="mt-3 w-full">
+        <button type="button" class="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-gray-700 hover:text-gray-900 transition" data-report-toggle aria-expanded="false">
+            <span>مشاهده گزارش</span>
+            <span class="text-[10px] transition-transform" data-report-icon>&#9662;</span>
+        </button>
+        <div class="mt-3 w-full hidden" data-report-panel>
             <div class="h-32 overflow-y-auto w-full bg-gray-50/80 border border-indigo-100 rounded-lg px-3 py-2 space-y-1 text-right">
                 <div class="flex items-center justify-between text-[11px] text-gray-700">
                     <span>جدید (۳۰ روز اخیر)</span>
@@ -292,12 +291,7 @@
                     <span>تبدیل‌شده</span>
                     <span class="font-semibold text-gray-900">{{ $organizationStats['converted'] ?? 0 }}</span>
                 </div>
-                @if(isset($organizationStats['total_value']) && $organizationStats['total_value'] !== null)
-                    <div class="flex items-center justify-between text-[11px] text-gray-700">
-                        <span>جمع ارزش</span>
-                        <span class="font-semibold text-gray-900">{{ number_format($organizationStats['total_value']) }}</span>
-                    </div>
-                @endif
+                
                 @if(!empty($organizationStats['statuses']))
                     <div class="pt-1 mt-1 border-t border-dashed border-gray-200 space-y-0.5">
                         @foreach($organizationStats['statuses'] as $status)
@@ -499,33 +493,54 @@ document.addEventListener('DOMContentLoaded', function () {
     const modal = document.getElementById('leadChoiceModal');
     const openBtn = document.getElementById('openLeadModal');
 
-    if (!modal || !openBtn) return;
+    if (modal && openBtn) {
+        const closeTargets = modal.querySelectorAll('[data-close-lead-modal]');
+        const overlay = modal.querySelector('.lead-modal-overlay');
 
-    const closeTargets = modal.querySelectorAll('[data-close-lead-modal]');
-    const overlay = modal.querySelector('.lead-modal-overlay');
+        const openModal = (event) => {
+            event.preventDefault();
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            document.body.classList.add('overflow-hidden');
+        };
 
-    const openModal = (event) => {
-        event.preventDefault();
-        modal.classList.remove('hidden');
-        modal.classList.add('flex');
-        document.body.classList.add('overflow-hidden');
-    };
+        const closeModal = (event) => {
+            if (event) event.preventDefault();
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+            document.body.classList.remove('overflow-hidden');
+        };
 
-    const closeModal = (event) => {
-        if (event) event.preventDefault();
-        modal.classList.add('hidden');
-        modal.classList.remove('flex');
-        document.body.classList.remove('overflow-hidden');
-    };
+        openBtn.addEventListener('click', openModal);
+        closeTargets.forEach((el) => el.addEventListener('click', closeModal));
+        if (overlay) overlay.addEventListener('click', closeModal);
 
-    openBtn.addEventListener('click', openModal);
-    closeTargets.forEach((el) => el.addEventListener('click', closeModal));
-    if (overlay) overlay.addEventListener('click', closeModal);
+        document.addEventListener('keydown', (event) => {
+            if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+                closeModal();
+            }
+        });
+    }
 
-    document.addEventListener('keydown', (event) => {
-        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
-            closeModal();
-        }
+    document.querySelectorAll('[data-report-card]').forEach((card) => {
+        const toggle = card.querySelector('[data-report-toggle]');
+        const panel = card.querySelector('[data-report-panel]');
+        const icon = toggle ? toggle.querySelector('[data-report-icon]') : null;
+
+        if (!toggle || !panel) return;
+
+        panel.classList.add('hidden');
+        toggle.setAttribute('aria-expanded', 'false');
+
+        toggle.addEventListener('click', () => {
+            const isHidden = panel.classList.toggle('hidden');
+            const expanded = !isHidden;
+            toggle.setAttribute('aria-expanded', expanded.toString());
+
+            if (icon) {
+                icon.classList.toggle('rotate-180', expanded);
+            }
+        });
     });
 });
 </script>

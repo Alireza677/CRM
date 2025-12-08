@@ -1,4 +1,3 @@
-
 <script>
 /* ===== Formatting helpers ===== */
 function formatPrice(value) {
@@ -6,11 +5,13 @@ function formatPrice(value) {
   if (isNaN(value)) return '';
   return value.toLocaleString('fa-IR');
 }
+
 function toLatinDigits(s) {
   return (s || '').toString()
     .replace(/[\u06F0-\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0))
     .replace(/[\u0660-\u0669]/g, d => String(d.charCodeAt(0) - 0x0660));
 }
+
 function unformatPrice(formatted) {
   let s = toLatinDigits(formatted);
   s = s.replace(/[٬, ]/g, '');
@@ -19,91 +20,101 @@ function unformatPrice(formatted) {
   return isNaN(n) ? 0 : n;
 }
 
+function parseNumeric(val) {
+  const normalized = toLatinDigits(val).replace(/[^0-9.\-]/g, '');
+  const num = parseFloat(normalized);
+  return isNaN(num) ? 0 : num;
+}
+
 /* ===== Modal controls ===== */
 function openProductModal() {
-  document.getElementById('productModal').classList.remove('hidden');
-  document.getElementById('productModal').classList.add('flex');
+  const modal = document.getElementById('productModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
 }
+
 function closeProductModal() {
-  document.getElementById('productModal').classList.remove('flex');
-  document.getElementById('productModal').classList.add('hidden');
+  const modal = document.getElementById('productModal');
+  if (!modal) return;
+  modal.classList.remove('flex');
+  modal.classList.add('hidden');
 }
 
 /* ===== Add/Remove product rows (GLOBAL discount/tax only) ===== */
 function handleProductSelection() {
   const checkboxes = document.querySelectorAll('input[name="selected_products[]"]:checked');
   const container = document.getElementById('product-rows-container');
+  if (!container) return;
 
   checkboxes.forEach(checkbox => {
     const productId = checkbox.value;
-    const name = checkbox.getAttribute('data-name');
-    const price = checkbox.getAttribute('data-price');
+    const name = checkbox.getAttribute('data-name') || '';
+    const price = checkbox.getAttribute('data-price') || '0';
     const quantityInput = document.querySelector(`input[name="product_quantities[${productId}]"]`);
-    const quantity = quantityInput ? parseFloat(quantityInput.value) : 1;
+    const quantity = quantityInput ? parseFloat(quantityInput.value) || 1 : 1;
 
+    // اگر ردیف این محصول قبلاً اضافه شده، تکرارش نکن
     if (document.getElementById('product-row-' + productId)) return;
 
     const row = document.createElement('div');
-    row.className = "border p-4 rounded bg-gray-50";
+    row.className = 'border p-4 rounded bg-gray-50';
     row.id = 'product-row-' + productId;
 
     row.innerHTML = `
-  <div class="space-y-3">
-    <!-- کنترل دقیق‌تر با 12 ستون -->
-    <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
-      <input type="hidden" name="products[${productId}][id]" value="${productId}">
-      
-      <!-- نام محصول -->
-      <div class="md:col-span-4">
-        <label class="form-label">نام محصول</label>
-        <input type="text" class="form-control h-9" value="${name}" readonly>
-        <input type="hidden" name="products[${productId}][name]" value="${name}">
-      </div>
-      
-      <!-- قیمت واحد -->
-      <div class="md:col-span-2">
-        <label class="form-label">قیمت واحد</label>
-        <input type="text" name="products[${productId}][price]" value="${price}" class="form-control h-9 price-field" required>
-      </div>
-      
-      <!-- تعداد (کوچک‌تر) -->
-      <div class="md:col-span-1">
-        <label class="form-label">تعداد</label>
-        <input type="number" name="products[${productId}][quantity]" class="form-control h-9 qty-field w-20 text-center" value="${quantity}" min="0" step="1">
-      </div>
-      
-      <!-- واحد (کوچک‌تر) -->
-      <div class="md:col-span-2">
-        <label class="form-label">واحد</label>
-        <select name="products[${productId}][unit]" class="form-control h-9 w-28">
-          <option value="device">دستگاه</option>
-          <option value="piece">عدد</option>
-          <option value="meter">متر</option>
-        </select>
-      </div>
-      
-      <!-- مبلغ ردیف (بزرگ‌تر) + حذف -->
-      <div class="md:col-span-3 flex items-end justify-between">
-        <div class="text-sm md:text-base text-gray-700 leading-6">
-          مبلغ ردیف:
-          <span class="line-total font-semibold" data-item-total="0">۰</span>
-          <span>ریال</span>
-        </div>
-        <button type="button" onclick="removeProductRow('${productId}')" class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
-          حذف
-        </button>
-      </div>
-    </div>
-  </div>
-`;
+      <div class="space-y-3">
+        <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+          <input type="hidden" name="products[${productId}][id]" value="${productId}">
 
+          <div class="md:col-span-4">
+            <label class="form-label">نام محصول</label>
+            <input type="text" class="form-control h-9" value="${name}" readonly>
+            <input type="hidden" name="products[${productId}][name]" value="${name}">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="form-label">قیمت واحد (ریال)</label>
+            <input type="text" name="products[${productId}][price]" value="${price}" class="form-control h-9 price-field" required>
+          </div>
+
+          <div class="md:col-span-1">
+            <label class="form-label">تعداد</label>
+            <input type="number" name="products[${productId}][quantity]" class="form-control h-9 qty-field w-20 text-center" value="${quantity}" min="0" step="1">
+          </div>
+
+          <div class="md:col-span-2">
+            <label class="form-label">واحد</label>
+            <select name="products[${productId}][unit]" class="form-control h-9 w-28 unit-field">
+              <option value="device">دستگاه</option>
+              <option value="piece">عدد</option>
+              <option value="meter">متر</option>
+            </select>
+          </div>
+
+          <div class="md:col-span-3 flex items-end justify-between">
+            <div class="text-sm md:text-base text-gray-700 leading-6">
+              جمع خط:
+              <span class="line-total font-semibold" data-item-total="0">۰</span>
+              <span>ریال</span>
+            </div>
+            <button type="button"
+                    onclick="removeProductRow('${productId}')"
+                    class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
+              حذف
+            </button>
+          </div>
+        </div>
+      </div>
+    `;
 
     container.appendChild(row);
 
     // Normalize & format initial price
     const priceInput = row.querySelector(`input[name="products[${productId}][price]"]`);
-    const intPrice = unformatPrice(price);
-    priceInput.value = formatPrice(intPrice);
+    if (priceInput) {
+      const intPrice = unformatPrice(price);
+      priceInput.value = formatPrice(intPrice);
+    }
 
     // Recalc on inputs
     row.querySelectorAll('input, select').forEach(el => {
@@ -122,17 +133,13 @@ function removeProductRow(productId) {
   calculateInvoiceTotal();
 }
 
-/* ===== Global totals (no per-item discount/tax) ===== */
+/* ===== Global totals (NO per-item discount/tax) ===== */
 function calculateInvoiceTotal() {
   let itemsSubtotal = 0;
 
   document.querySelectorAll('#product-rows-container > div[id^="product-row-"]').forEach(row => {
-    const idMatch = row.id.match(/product-row-(\d+)/);
-    if (!idMatch) return;
-    const id = idMatch[1];
-
-    const price = unformatPrice(row.querySelector(`[name="products[${id}][price]"]`)?.value || '0');
-    const quantity = parseFloat(toLatinDigits(row.querySelector(`[name="products[${id}][quantity]"]`)?.value || '0')) || 0;
+    const price = Math.max(unformatPrice(row.querySelector('.price-field')?.value || '0'), 0);
+    const quantity = Math.max(parseFloat(toLatinDigits(row.querySelector('.qty-field')?.value || '0')) || 0, 0);
 
     const lineTotal = Math.max(Math.floor(price * quantity), 0);
     itemsSubtotal += lineTotal;
@@ -144,11 +151,11 @@ function calculateInvoiceTotal() {
     }
   });
 
-  // Read global discount/tax controls
+  // Read global discount/tax controls (بخش پایینی فرم)
   const dt = (document.querySelector('[name="global_discount_type"]')?.value || '').trim();
-  const dv = unformatPrice(document.querySelector('[name="global_discount_value"]')?.value || '0');
+  const dv = parseNumeric(document.querySelector('[name="global_discount_value"]')?.value || '0');
   const tt = (document.querySelector('[name="global_tax_type"]')?.value || '').trim();
-  const tv = unformatPrice(document.querySelector('[name="global_tax_value"]')?.value || '0');
+  const tv = parseNumeric(document.querySelector('[name="global_tax_value"]')?.value || '0');
 
   // Compute global discount
   let discountAmount = 0;
@@ -164,7 +171,7 @@ function calculateInvoiceTotal() {
 
   const total = Math.max(taxBase + taxAmount, 0);
 
-  // Update summary UI (make sure these elements exist in Blade)
+  // Update summary UI
   const elSubtotal = document.getElementById('items-subtotal');
   const elGDisc    = document.getElementById('global-discount-amount');
   const elGTax     = document.getElementById('global-tax-amount');
@@ -179,12 +186,13 @@ function calculateInvoiceTotal() {
   const totalInput = document.getElementById('total_amount_input');
   if (totalInput) totalInput.value = total;
 
-  // Optional hidden fields if you want to post them (uncomment if present in form)
+  // اگر خواستی می‌توانی مقادیر دیگر را هم در input مخفی بفرستی:
   // setHiddenVal('items_subtotal_input', itemsSubtotal);
   // setHiddenVal('global_discount_amount_input', discountAmount);
   // setHiddenVal('global_tax_amount_input', taxAmount);
 }
-function setHiddenVal(id, val){
+
+function setHiddenVal(id, val) {
   const el = document.getElementById(id);
   if (el) el.value = val;
 }
@@ -197,8 +205,8 @@ document.addEventListener('input', function(e) {
     e.target.value = formatPrice(val);
     calculateInvoiceTotal();
   }
+
   if (e.target.classList.contains('qty-field')) {
-    // force integers for qty if needed
     const raw = toLatinDigits(e.target.value);
     const n = Math.max(parseInt(raw || '0', 10) || 0, 0);
     e.target.value = n;
@@ -218,4 +226,3 @@ document.addEventListener('input', function(e) {
 // Initial calc after DOM ready
 window.addEventListener('DOMContentLoaded', calculateInvoiceTotal);
 </script>
-

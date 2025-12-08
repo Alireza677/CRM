@@ -64,23 +64,20 @@
         @enderror
     </div>
 
-    {{-- مرحله پیش‌فاکتور --}}
+    {{-- مرحله پیش‌فاکتور (کنترل سیستمی) --}}
+    @php
+        $currentStage = old('proforma_stage', $isEdit ? ($proforma->proforma_stage ?? 'draft') : 'draft');
+        $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$currentStage] ?? $currentStage;
+    @endphp
     <div>
-        <label for="proforma_stage" class="block mb-1 font-medium text-gray-700">
-            مرحله پیش‌فاکتور <span class="text-red-600">*</span>
+        <label class="block mb-1 font-medium text-gray-700">
+            مرحله پیش‌فاکتور
         </label>
-        <select id="proforma_stage" name="proforma_stage" required class="form-control">
-            <option value="">انتخاب کنید</option>
-            @foreach (\App\Helpers\FormOptionsHelper::proformaStages() as $value => $label)
-                <option value="{{ $value }}"
-                    {{ old('proforma_stage', $isEdit ? $proforma->proforma_stage : '') === $value ? 'selected' : '' }}>
-                    {{ $label }}
-                </option>
-            @endforeach
-        </select>
-        @error('proforma_stage')
-            <div class="text-red-600 text-sm mt-1">{{ $message }}</div>
-        @enderror
+        <div class="mt-2 px-3 py-2 rounded border border-dashed border-gray-300 bg-gray-50 text-gray-700 text-sm flex items-center justify-between">
+            <span>{{ $stageLabel }}</span>
+            <span class="text-xs text-gray-500">سیستمی</span>
+        </div>
+        <input type="hidden" name="proforma_stage" id="proforma_stage" value="{{ $currentStage }}">
     </div>
 </div>
 
@@ -212,7 +209,9 @@
 
 <div class="form-group">
     <label class="form-label">نوع آدرس</label>
-    @php($addrType = old('address_type', $isEdit ? ($proforma->address_type ?? 'invoice') : 'invoice'))
+    @php
+        $addrType = old('address_type', $isEdit ? ($proforma->address_type ?? 'invoice') : 'invoice');
+    @endphp
     <div class="form-check">
         <input class="form-check-input" type="radio" name="address_type" id="invoice_address" value="invoice" {{ $addrType === 'invoice' ? 'checked' : '' }}>
         <label class="form-check-label" for="invoice_address">آدرس تحویل صورت‌حساب</label>
@@ -226,7 +225,78 @@
 {{-- اطلاعات محصولات --}}
 <div class="bg-white p-6 rounded-lg shadow-sm mt-6">
     <h3 class="text-lg font-semibold mb-4">اطلاعات محصولات</h3>
-    <div id="product-rows-container" class="space-y-6"></div>
+    <div id="product-rows-container" class="space-y-6">
+        @if($isEdit && $proforma->items)
+            @foreach($proforma->items as $item)
+                @php
+                    $rowId          = $item->id;
+                    $name           = $item->product->name ?? $item->name ?? '';
+                    $qtyValue       = old("items.$rowId.quantity", $item->quantity ?? 0);
+                    $unitPriceRaw   = old("items.$rowId.unit_price", $item->unit_price ?? 0);
+                    $unitPriceNum   = is_numeric($unitPriceRaw) ? (float)$unitPriceRaw : (float)str_replace([','], '', (string)$unitPriceRaw);
+                    $lineTotal      = (float) $unitPriceNum * (float) $qtyValue;
+                @endphp
+                <div class="border p-4 rounded bg-gray-50" id="product-row-{{ $rowId }}">
+                    <div class="space-y-3">
+                        <div class="grid grid-cols-1 md:grid-cols-12 gap-2 items-end">
+                            <input type="hidden" name="items[{{ $rowId }}][product_id]" value="{{ $item->product_id }}">
+
+                            <div class="md:col-span-4">
+                                <label class="form-label">نام محصول</label>
+                                <input type="text" class="form-control h-9" value="{{ $name }}" readonly>
+                                <input type="hidden" name="items[{{ $rowId }}][name]" value="{{ $name }}">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="form-label">قیمت واحد</label>
+                                <input type="text"
+                                       name="items[{{ $rowId }}][unit_price]"
+                                       value="{{ is_numeric($unitPriceRaw) ? number_format((float) $unitPriceRaw) : $unitPriceRaw }}"
+                                       class="form-control h-9 price-field"
+                                       required>
+                            </div>
+
+                            <div class="md:col-span-1">
+                                <label class="form-label">تعداد</label>
+                                <input type="number"
+                                       name="items[{{ $rowId }}][quantity]"
+                                       class="form-control h-9 qty-field w-20 text-center"
+                                       value="{{ $qtyValue }}"
+                                       min="0"
+                                       step="1">
+                            </div>
+
+                            <div class="md:col-span-2">
+                                <label class="form-label">واحد</label>
+                                <select name="items[{{ $rowId }}][unit]" class="form-control h-9 w-28 unit-field">
+                                    @php
+                                        $unitOld = old("items.$rowId.unit", $item->unit_of_use ?? 'device');
+                                    @endphp
+                                    <option value="device" {{ $unitOld === 'device' ? 'selected' : '' }}>دستگاه</option>
+                                    <option value="piece"  {{ $unitOld === 'piece'  ? 'selected' : '' }}>متر</option>
+                                    <option value="meter"  {{ $unitOld === 'meter'  ? 'selected' : '' }}>عدد</option>
+                                </select>
+                            </div>
+
+                            <div class="md:col-span-3 flex items-end justify-between">
+                                <div class="text-sm md:text-base text-gray-700 leading-6">
+                                    مبلغ ردیف:
+                                    <span class="line-total font-semibold" data-item-total="{{ (int) $lineTotal }}">{{ number_format((int) $lineTotal) }}</span>
+                                    <span>ریال</span>
+                                </div>
+                                <button type="button"
+                                        onclick="removeProductRow('{{ $rowId }}')"
+                                        class="bg-red-500 text-white px-3 py-1 rounded hover:bg-red-600 text-sm">
+                                    حذف
+                                </button>
+                            </div>
+                        </div>
+
+                    </div>
+                </div>
+            @endforeach
+        @endif
+    </div>
     <div class="flex justify-start mt-4">
         <button type="button" onclick="openProductModal()" class="btn btn-secondary">انتخاب محصول</button>
     </div>
@@ -235,22 +305,30 @@
 {{-- مودال انتخاب محصول --}}
 @include('sales.proformas.partials.product-modal')
 
+@php
+    $globalDiscType  = old('global_discount_type', $isEdit ? ($proforma->global_discount_type ?? '') : '');
+    $globalDiscValue = old('global_discount_value', $isEdit ? ($proforma->global_discount_value ?? 0) : 0);
+    $globalTaxType   = old('global_tax_type', $isEdit ? ($proforma->global_tax_type ?? '') : '');
+    $globalTaxValue  = old('global_tax_value', $isEdit ? ($proforma->global_tax_value ?? 0) : 0);
+@endphp
+
 <div class="grid grid-cols-1 md:grid-cols-2 gap-6 mt-6 bg-white p-6 rounded-xl shadow-md border border-gray-200">
   <!-- نوع تخفیف -->
   <div>
     <label class="block text-sm font-medium text-gray-700 mb-2">نوع تخفیف</label>
     <select id="discountType" name="global_discount_type"
       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
-      <option value="">بدون تخفیف</option>
-      <option value="percentage">درصدی</option>
-      <option value="fixed">عدد ثابت</option>
+      <option value="" {{ $globalDiscType === '' ? 'selected' : '' }}>بدون تخفیف</option>
+      <option value="percentage" {{ $globalDiscType === 'percentage' ? 'selected' : '' }}>درصدی</option>
+      <option value="fixed" {{ $globalDiscType === 'fixed' ? 'selected' : '' }}>عدد ثابت</option>
     </select>
   </div>
 
   <!-- مقدار تخفیف -->
   <div id="discountValueWrapper">
     <label class="block text-sm font-medium text-gray-700 mb-2">مقدار تخفیف</label>
-    <input type="number" name="global_discount_value" min="0" value="0"
+    <input type="number" name="global_discount_value" min="0"
+      value="{{ $globalDiscValue }}"
       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-blue-500 focus:ring focus:ring-blue-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
   </div>
 
@@ -259,16 +337,17 @@
     <label class="block text-sm font-medium text-gray-700 mb-2">نوع مالیات</label>
     <select id="taxType" name="global_tax_type"
       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
-      <option value="">بدون مالیات</option>
-      <option value="percentage">درصدی</option>
-      <option value="fixed">عدد ثابت</option>
+      <option value="" {{ $globalTaxType === '' ? 'selected' : '' }}>بدون مالیات</option>
+      <option value="percentage" {{ $globalTaxType === 'percentage' ? 'selected' : '' }}>درصدی</option>
+      <option value="fixed" {{ $globalTaxType === 'fixed' ? 'selected' : '' }}>عدد ثابت</option>
     </select>
   </div>
 
   <!-- مقدار مالیات -->
   <div id="taxValueWrapper">
     <label class="block text-sm font-medium text-gray-700 mb-2">مقدار مالیات</label>
-    <input type="number" name="global_tax_value" min="0" value="0"
+    <input type="number" name="global_tax_value" min="0"
+      value="{{ $globalTaxValue }}"
       class="w-full rounded-lg border-gray-300 shadow-sm focus:border-green-500 focus:ring focus:ring-green-200 focus:ring-opacity-50 px-3 py-2 text-gray-700">
   </div>
 </div>
@@ -330,7 +409,9 @@
         </thead>
         <tbody id="contactTableBody">
           @foreach($contacts as $c)
-            @php($full = trim(($c->full_name ?? '') !== '' ? $c->full_name : trim(($c->first_name ?? '').' '.($c->last_name ?? ''))))
+            @php
+                $full = trim(($c->full_name ?? '') !== '' ? $c->full_name : trim(($c->first_name ?? '').' '.($c->last_name ?? '')));
+            @endphp
             <tr class="cursor-pointer hover:bg-gray-50"
                 data-id="{{ $c->id }}"
                 data-name="{{ $full }}"

@@ -24,7 +24,12 @@
                     @include('sales.proformas.partials.form', ['proforma' => null])
 
                     <div class="flex items-center justify-end mt-6">
+                        <input type="hidden" name="submit_mode" id="submit_mode" value="draft">
                         <input type="hidden" name="total_amount" id="total_amount_input" value="0">
+                        @php($returnTo = old('return_to', request('return_to')))
+                        @if ($returnTo)
+                            <input type="hidden" name="return_to" value="{{ $returnTo }}">
+                        @endif
                         <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary ml-4">انصراف</a>
                         <button type="button" id="save-btn" class="btn btn-primary">ذخیره پیش‌فاکتور</button>
                     </div>
@@ -33,6 +38,8 @@
                         <input type="hidden" name="opportunity_id" value="{{ request('opportunity_id') }}">
                     @endif
                 </form>
+
+                @include('sales.proformas.partials.submit-mode-modal')
 
             </div>
         </div>
@@ -45,21 +52,37 @@
     document.addEventListener("DOMContentLoaded", function () {
         const saveBtn = document.getElementById("save-btn");
         const form = document.getElementById("proforma-form");
-        const stageField = document.getElementById("proforma_stage");
+        const submitModeInput = document.getElementById("submit_mode");
+        const modalEl = document.getElementById("submitModeModal");
+        const submitModeModal = modalEl ? new bootstrap.Modal(modalEl) : null;
 
-        saveBtn.addEventListener("click", function () {
-            if (stageField.value === 'send_for_approval') {
-                const modal = new bootstrap.Modal(document.getElementById('automationConfirmModal'));
-                modal.show();
-            } else {
-                calculateInvoiceTotal();
-                form.submit();
+        function submitWithMode(mode) {
+            if (!form || !submitModeInput) return;
+            submitModeInput.value = mode;
+            calculateInvoiceTotal();
+            form.submit();
+        }
+
+        form?.addEventListener('submit', function () {
+            if (submitModeInput && !submitModeInput.value) {
+                submitModeInput.value = 'draft';
             }
         });
 
-        document.getElementById("confirm-save")?.addEventListener("click", function () {
-            calculateInvoiceTotal();
-            form.submit();
+        saveBtn?.addEventListener("click", function () {
+            if (submitModeModal) {
+                submitModeModal.show();
+            } else {
+                submitWithMode('draft');
+            }
+        });
+
+        document.getElementById('submit-as-draft')?.addEventListener('click', function () {
+            submitWithMode('draft');
+        });
+
+        document.getElementById('submit-send-for-approval')?.addEventListener('click', function () {
+            submitWithMode('send_for_approval');
         });
     });
 </script>

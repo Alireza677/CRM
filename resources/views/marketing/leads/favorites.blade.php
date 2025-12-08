@@ -61,13 +61,21 @@
                                     {{ \App\Helpers\FormOptionsHelper::getLeadSourceLabel($lead->lead_source) }}
                                 </td>
                                 <td class="px-4 py-2">
-                                    <span class="px-2 inline-flex text-xs font-semibold rounded-full
-                                        @if($lead->lead_status === 'new') bg-blue-100 text-blue-800
-                                        @elseif($lead->lead_status === 'contacted') bg-yellow-100 text-yellow-800
-                                        @elseif($lead->lead_status === 'qualified') bg-green-100 text-green-800
-                                        @else bg-gray-100 text-gray-600
-                                        @endif">
-                                        {{ \App\Helpers\FormOptionsHelper::getLeadStatusLabel($lead->lead_status) }}
+                                    @php
+                                        $leadStatusColors = [
+                                            'new'       => 'bg-blue-100 text-blue-800',
+                                            'contacted' => 'bg-amber-100 text-amber-800',
+                                            'converted_to_opportunity' => 'bg-green-100 text-green-800',
+                                            'converted' => 'bg-green-100 text-green-800',
+                                            'discarded' => 'bg-red-100 text-red-800',
+                                            'junk'      => 'bg-red-100 text-red-800',
+                                        ];
+                                        $rawStatus = $lead->status ?? $lead->lead_status;
+                                        $statusKey = \App\Models\SalesLead::normalizeStatus($rawStatus) ?? $rawStatus;
+                                        $badgeClass = $leadStatusColors[$statusKey] ?? 'bg-gray-100 text-gray-600';
+                                    @endphp
+                                    <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $badgeClass }}">
+                                        {{ \App\Helpers\FormOptionsHelper::getLeadStatusLabel($statusKey) }}
                                     </span>
                                 </td>
                                 <td class="px-4 py-2 text-gray-500">

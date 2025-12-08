@@ -212,12 +212,7 @@ function submitCreateOrganization(){
   const successEl   = document.getElementById('success_rate');
   const wasRequired = successEl ? successEl.hasAttribute('required') : false;
 
-  const closedStages = [
-    'won', 'lost', 'junk',
-    'برنده', // برنده
-    'بازنده', // بازنده
-    'سرکاری'  // سرکاری
-  ];
+  const closedStages = @json(\App\Models\Opportunity::closedStages());
 
   function isClosed(val){
     const v = String(val || '').trim().toLowerCase();

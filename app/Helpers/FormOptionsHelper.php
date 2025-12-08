@@ -9,7 +9,14 @@ class FormOptionsHelper
     {
         $statuses = self::leadStatuses();
         $status = strtolower(trim((string)$status));
-        return $statuses[$status] ?? (string)$status;
+        $aliasMap = [
+            'converted' => 'converted_to_opportunity',
+            'junk'      => 'discarded',
+        ];
+
+        $lookupKey = $aliasMap[$status] ?? $status;
+
+        return $statuses[$lookupKey] ?? $statuses[$status] ?? (string)$status;
     }
 
     public static function getLeadSourceLabel($source): string
@@ -21,11 +28,44 @@ class FormOptionsHelper
 
     public static function leadStatuses(): array
     {
+        $configured = config('lead.statuses', []);
+        $statuses = !empty($configured) ? $configured : [
+            'new'                      => 'جدید',
+            'contacted'                => 'تماس گرفته شده',
+            'converted_to_opportunity' => 'تبدیل شده به فرصت',
+            'discarded'                => 'سرکاری / حذف شده',
+        ];
+
+        $aliases = [
+            'converted' => 'converted_to_opportunity',
+            'junk'      => 'discarded',
+        ];
+
+        foreach ($aliases as $alias => $target) {
+            if (isset($statuses[$target]) && !isset($statuses[$alias])) {
+                $statuses[$alias] = $statuses[$target];
+            }
+        }
+
+        return $statuses;
+    }
+
+
+    public static function leadDisqualifyReasons(): array
+    {
+        $configured = config('lead.disqualify_reasons', []);
+        if (!empty($configured)) {
+            return array_combine($configured, $configured);
+        }
+
         return [
-            'new'        => 'جدید',
-            'contacted'  => 'تماس گرفته شده',
-            'qualified'  => 'واجد شرایط',
-            'lost'       => 'سرکاری',
+            'no_need'             => 'no_need',
+            'no_budget'           => 'no_budget',
+            'not_decision_maker'  => 'not_decision_maker',
+            'competitor_price'    => 'competitor_price',
+            'wrong_or_duplicate'  => 'wrong_or_duplicate',
+            'out_of_scope'        => 'out_of_scope',
+            'unrealistic_timing'  => 'unrealistic_timing',
         ];
     }
 
@@ -82,23 +122,46 @@ class FormOptionsHelper
     }
 
     public static function opportunityStages(): array
-    {
-        return [
-            'new'           => 'جدید',
-            'qualification' => 'ارزیابی صلاحیت',
-            'qualified'     => 'واجد شرایط',
-            'proposal'      => 'پیشنهاد/پیش‌فاکتور',
-            'negotiation'   => 'مذاکره',
-            'won'           => 'برنده',
-            'lost'          => 'از دست رفته',
-        ];
+{
+    $configured = config('opportunity.stages', []);
+    if (!empty($configured)) {
+        return $configured;
     }
+
+    return [
+        'open'          => 'ایجاد شده',
+        'proposal_sent' => 'پیشنهاد ارسال شده',
+        'negotiation'   => 'در حال مذاکره',
+        'won'           => 'برنده ',
+        'lost'          => 'از دست رفته',
+        
+    ];
+}
+
 
     public static function getOpportunityStageLabel($stage): string
     {
         $stages = self::opportunityStages();
         $key = strtolower(trim((string)$stage));
         return $stages[$key] ?? (string)$stage;
+    }
+
+    public static function opportunityLostReasons(): array
+    {
+        $configured = config('opportunity.lost_reasons', []);
+        if (!empty($configured)) {
+            return array_combine($configured, $configured);
+        }
+
+        return [
+            'price'                  => 'price',
+            'decision_delay'         => 'decision_delay',
+            'competitor_capability'  => 'competitor_capability',
+            'no_budget'              => 'no_budget',
+            'requirement_changed'    => 'requirement_changed',
+            'internal_choice'        => 'internal_choice',
+            'no_trust_in_brand'      => 'no_trust_in_brand',
+        ];
     }
 
     // ---------------- Iran locations (subset) ----------------

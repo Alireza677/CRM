@@ -66,9 +66,9 @@
     </div>
 
     <div class="invoice-a4">
-        <div class="invoice-header">
-            <div class="title flex-column">پیش نویس پیش فاکتور فروش </div>
-            <img src="public\images\admin-ajax.png" alt="akhgartabesh">
+    <div class="invoice-header">
+        <div class="title flex-column">پیش نویس پیش فاکتور فروش </div>
+            <img src="{{ asset('images/admin-ajax.png') }}" alt="akhgartabesh">
             <div class="meta">
                 <div><span>شماره:</span> {{ $proforma->proforma_number ?: ('PF-' . $proforma->id) }}</div>
                 <div><span>تاریخ:</span> {{ $dateFa }}</div>
@@ -148,19 +148,19 @@
                 </tbody>
                 <tfoot>
                 <tr>
-                    <td colspan="6" class="text-left">جمع کل</td>
+                    <td colspan="6" class="text-right">جمع کل</td>
                     <td class="text-center">{{ number_format($subtotal, 0) }}</td>
                 </tr>
                 <tr>
-                    <td colspan="6" class="text-left">تخفیف</td>
+                    <td colspan="6" class="text-right">تخفیف</td>
                     <td class="text-center text-red-600">{{ number_format($discount, 0) }}</td>
                 </tr>
                 <tr>
-                    <td colspan="6" class="text-left">مالیات و عوارض</td>
+                    <td colspan="6" class="text-right">مالیات و عوارض</td>
                     <td class="text-center text-green-700">{{ number_format($tax, 0) }}</td>
                 </tr>
                 <tr>
-                    <td colspan="6" class="text-left font-bold">مبلغ کل پس از تخفیف و اضافات</td>
+                    <td colspan="6" class="text-right font-bold">مبلغ کل پس از تخفیف و اضافات</td>
                     <td class="text-center font-bold">{{ number_format($grand, 0) }}</td>
                 </tr>
                 </tfoot>
@@ -188,10 +188,11 @@
 </div>
 
 <style>
-    .invoice-a4 { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; color: #111; padding: 12mm; border: 1px solid #111; }
-    .invoice-header { display: flex; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
+    .invoice-a4 { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; color: #111; padding: 12mm; border: 1px solid #111; direction: rtl; text-align: right; }
+    .invoice-header { display: flex; flex-direction: row-reverse; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
     .invoice-header .title { font-size: 20px; font-weight: 700; text-align: center; flex: 1; }
-    .invoice-header .meta { width: 220px; border: 1px solid #111; padding: 6px 8px; line-height: 1.8; }
+    .invoice-header img { max-height: 60px; max-width: 120px; object-fit: contain; }
+    .invoice-header .meta { width: 220px; border: 1px solid #111; padding: 6px 8px; line-height: 1.8; text-align: right; }
     .invoice-header .meta span { color: #555; margin-left: 6px; }
 
     .section { border: 1px solid #111; margin-bottom: 10px; }
@@ -201,7 +202,7 @@
     .grid-2 span { color: #444; margin-left: 4px; }
 
     .items-table { width: 100%; border-collapse: collapse; }
-    .items-table th, .items-table td { border: 1px solid #111; padding: 6px; font-size: 12px; }
+    .items-table th, .items-table td { border: 1px solid #111; padding: 6px; font-size: 12px; text-align: right; }
     .items-table thead th { background: #f0f0f0; }
     .items-table tfoot td { background: #fafafa; font-weight: 600; }
     .text-center { text-align: center; }
@@ -221,6 +222,7 @@
         body { background: #fff; }
         .no-print, header, aside, nav, .x-header, .x-sidebar, .btn { display: none !important; }
         .invoice-a4 { border: none; padding: 0; }
+        .invoice-header img { max-height: 60px; max-width: 120px; object-fit: contain; }
         @page { size: A4; margin: 10mm; }
     }
 </style>

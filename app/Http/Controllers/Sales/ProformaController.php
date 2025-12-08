@@ -7,6 +7,7 @@ use App\Models\Proforma;
 use App\Models\Organization;
 use App\Models\Contact;
 use App\Models\Opportunity;
+use App\Models\Activity as CrmActivity;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\AutomationRule;
@@ -14,13 +15,17 @@ use App\Models\AutomationRuleApprover;
 use App\Models\AutomationCondition;
 use App\Notifications\FormApprovalNotification;
 use App\Models\Approval;
+use App\Models\Note;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Morilog\Jalali\Jalalian;
 use App\Helpers\NotificationHelper;
+use App\Helpers\DateHelper;
+use Spatie\Activitylog\Models\Activity;
 use Exception;
 
 class ProformaController extends Controller
@@ -136,7 +141,7 @@ class ProformaController extends Controller
     public function store(Request $request)
     {
         \Log::info('Creating Proforma (global discount/tax)', [
-            'stage' => $request->proforma_stage,
+            'submit_mode' => $request->input('submit_mode'),
             'data'  => $request->all(),
         ]);
 
@@ -239,7 +244,7 @@ class ProformaController extends Controller
                 'subject'           => 'required|string|max:255',
                 'proforma_date'     => 'nullable|string',
                 'contact_name'      => 'nullable|string|max:255',
-                'proforma_stage'    => ['required', Rule::in(array_keys(config('proforma.stages')))],
+                'submit_mode'       => ['required', Rule::in(['draft','send_for_approval'])],
                 'organization_name' => 'nullable|string|max:255',
                 'address_type'      => 'required|in:invoice,product',
                 'customer_address'  => 'nullable|string',
@@ -267,6 +272,8 @@ class ProformaController extends Controller
                 'global_tax_value'     => 'nullable|numeric|min:0',
             ]);
             \Log::debug('✅ Passed validation (store)', $validated);
+            $submitMode = $validated['submit_mode'];
+            $targetStage = $submitMode === 'send_for_approval' ? 'send_for_approval' : 'draft';
 
             // -------------------- 3) تاریخ ورودی → میلادی (پشتیبانی هر دو فرمت) --------------------
             // سناریوها:
@@ -319,7 +326,8 @@ class ProformaController extends Controller
                 'subject'           => $validated['subject'],
                 'proforma_date'     => $miladiDate,
                 'contact_name'      => $validated['contact_name']      ?? null,
-                'proforma_stage'    => $validated['proforma_stage'],
+                'proforma_stage'    => $targetStage,
+                'approval_stage'    => $targetStage,
                 'organization_name' => $validated['organization_name'] ?? null,
                 'address_type'      => $validated['address_type'],
                 'customer_address'  => $validated['customer_address']  ?? null,
@@ -438,13 +446,80 @@ class ProformaController extends Controller
                 }
             }
 
+            // Log a CRM activity on the linked opportunity so stage-change guard sees a recent action.
+            if (!empty($proforma->opportunity_id)) {
+                try {
+                    $opportunity = Opportunity::find($proforma->opportunity_id);
+                    if ($opportunity) {
+                        $creatorId  = auth()->id() ?: $proforma->assigned_to ?: $opportunity->assigned_to;
+                        $assigneeId = $opportunity->assigned_to ?: $proforma->assigned_to ?: $creatorId;
+
+                        $activity = CrmActivity::create([
+                            'subject'        => 'proforma_created',
+                            'start_at'       => now(),
+                            'due_at'         => now(),
+                            'assigned_to_id' => $assigneeId ?: $creatorId,
+                            'related_type'   => Opportunity::class,
+                            'related_id'     => $opportunity->id,
+                            'status'         => 'completed',
+                            'priority'       => 'normal',
+                            'description'    => 'Automatically logged after proforma issuance.',
+                            'is_private'     => false,
+                            'created_by_id'  => $creatorId ?: $assigneeId,
+                            'updated_by_id'  => $creatorId ?: $assigneeId,
+                        ]);
+
+                        if (method_exists($opportunity, 'markFirstActivity')) {
+                            $activityTime = $activity->start_at ?? $activity->created_at ?? now();
+                            $opportunity->markFirstActivity($activityTime);
+                        }
+
+                        // Spatie activity log for opportunity updates tab
+                        $properties = [
+                            'proforma_id'     => $proforma->id,
+                            'proforma_number' => $proforma->proforma_number ?? $proforma->number ?? null,
+                        ];
+
+                        activity()
+                            ->performedOn($opportunity)
+                            ->causedBy(auth()->user())
+                            ->event('proforma_created')
+                            ->withProperties(array_filter($properties, fn($value) => $value !== null))
+                            ->log('پیش‌فاکتور برای این فرصت ثبت شد');
+                    }
+                } catch (\Throwable $activityException) {
+                    \Log::warning('proforma_activity_auto_create_failed', [
+                        'proforma_id'    => $proforma->id,
+                        'opportunity_id' => $proforma->opportunity_id,
+                        'error'          => $activityException->getMessage(),
+                    ]);
+                }
+            }
+
             DB::commit();
+
+            $createdAt = now();
+            $creatorName = auth()->user()->name ?? 'سیستم';
+            $createdDescription = $creatorName . ' این پیش‌فاکتور را در تاریخ ' . DateHelper::toJalali($createdAt, 'H:i Y/m/d') . ' ایجاد کرد.';
+
+            activity('proforma')
+                ->performedOn($proforma)
+                ->causedBy(auth()->user())
+                ->event('created')
+                ->withProperties(['message' => $createdDescription])
+                ->log($createdDescription);
 
             // اجرای هر Rule دیگری که به state پایدار نیاز دارد
             $proforma->refresh();
             $this->runAutomationRulesIfNeeded($proforma);
 
-            return redirect()->route('sales.proformas.index')->with('success', 'پیش‌فاکتور با موفقیت ایجاد شد.');
+            $successMessage = 'پیش‌فاکتور با موفقیت ایجاد شد.';
+
+            if ($request->filled('return_to') && $this->isInternalUrl($request->input('return_to'), $request)) {
+                return redirect($request->input('return_to'))->with('success', $successMessage);
+            }
+
+            return redirect()->route('sales.proformas.index')->with('success', $successMessage);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('❌ Error Creating Proforma:', ['exception' => $e->getMessage()]);
@@ -456,58 +531,143 @@ class ProformaController extends Controller
 
 
 
+
     public function show(Proforma $proforma)
     {
         $proforma->load([
             'organization', 'contact', 'opportunity', 'assignedTo',
             'items',
-            'approvals.approver',   // برای سیستم قدیمیِ approvals
+            'approvals.approver',   // O"OñOUO O3UOO3O¦U. U,O_UOU.UOU? approvals
+            'opportunity.documents',
+            'notes.user',
         ]);
-    
-        // 1) اگر در جدول approvals رکوردی با وضعیت «pending» برای کاربر حاضر وجود دارد، همان را استفاده کن
+
+        // 1) OU_Oñ O_Oñ OªO_U^U, approvals OñUcU^OñO_UO O"O U^OO1UOO¦ A®pendingA¯ O"OñOUO UcOOñO"Oñ O-OOOñ U^OªU^O_ O_OOñO_OO UØU.OU+ OñO OO3O¦U?OO_UØ UcU+
         $approval = $proforma->approvals()
             ->where('user_id', auth()->id())
             ->where('status', 'pending')
             ->first();
-    
+
         $pendingApproval = $proforma->approvals
             ->where('status', 'pending')
             ->first();
-    
+
         $pendingApproverName = $pendingApproval?->approver?->name;
-    
-        // 2) در غیر این صورت، از قوانین اتوماسیون محاسبه کن که نوبت چه کسی است
+        $pending             = $pendingApproval;
+
+        $stageKey   = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
+        $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? 'U+OU.O"rOæ';
+
+        try {
+            $shamsiDate = ($proforma->proforma_date instanceof \Carbon\Carbon)
+                ? Jalalian::fromCarbon($proforma->proforma_date)->format('Y/m/d')
+                : 'U+OU.O"rOæ';
+        } catch (\Throwable $e) {
+            $shamsiDate = 'U+OU.O"rOæ';
+        }
+
+        // 2) O_Oñ O¨UOOñ OUOU+ OæU^OñO¦OO OOý U,U^OU+UOU+ OO¦U^U.OO3UOU^U+ U.O-OO3O"UØ UcU+ UcUØ U+U^O"O¦ U+UØ UcO3UO OO3O¦
         if (empty($pendingApproverName)) {
             $stage = $proforma->approval_stage ?? $proforma->proforma_stage;
-    
+
             if ($stage === 'send_for_approval') {
                 $rule = AutomationRule::with(['approvers.user'])
                     ->where('proforma_stage', 'send_for_approval')
                     ->first();
-    
+
                 if ($rule) {
                     $pendingApproverId = null;
-    
+
                     if (empty($proforma->first_approved_by)) {
-                        // هنوز مرحله اول تأیید انجام نشده
+                        // UØU+U^Oý U.OñO-U,UØ OU^U, O¨OœUOUOO_ OU+OªOU. U+O'O_UØ
                         $pendingApproverId = optional($rule->approvers->firstWhere('priority', 1))->user_id;
                     } elseif (empty($proforma->approved_by)) {
-                        // مرحله اول تأیید شده اما نهایی نشده
+                        // U.OñO-U,UØ OU^U, O¨OœUOUOO_ O'O_UØ OU.O U+UØOUOUO U+O'O_UØ
                         $pendingApproverId =
                             optional($rule->approvers->firstWhere('priority', 2))->user_id
                             ?? $rule->emergency_approver_id;
                     }
-    
+
                     $pendingApproverName = $pendingApproverId
                         ? optional(User::find($pendingApproverId))->name
                         : null;
                 }
             }
         }
-    
-        return view('sales.proformas.show', compact('proforma', 'approval', 'pendingApproverName'));
+
+        $approvalViewData = $this->buildProformaApprovalViewData($proforma);
+        if (!empty($pendingApproverName) && empty($approvalViewData['pendingApproverName'] ?? null)) {
+            $approvalViewData['pendingApproverName'] = $pendingApproverName;
+        }
+
+        $updates = Activity::with('causer')
+            ->where('subject_type', Proforma::class)
+            ->where('subject_id', $proforma->id)
+            ->latest()
+            ->get();
+
+        $documents = optional($proforma->opportunity)->documents ?? collect();
+        $allUsers  = User::whereNotNull('username')->get();
+
+        return view(
+            'sales.proformas.show',
+            array_merge(
+                compact('proforma', 'approval', 'pendingApproverName', 'pending', 'stageKey', 'stageLabel', 'shamsiDate', 'updates', 'documents', 'allUsers'),
+                $approvalViewData
+            )
+        );
+
     }
-    
+
+    public function storeNote(Request $request, Proforma $proforma)
+    {
+        $validated = $request->validate([
+            'content'  => ['required', 'string', 'max:2000'],
+            'mentions' => ['nullable'],
+        ]);
+
+        $note = $proforma->notes()->create([
+            'body'    => $validated['content'],
+            'user_id' => $request->user()->id,
+        ]);
+
+        $formTitle = trim((string) ($proforma->getNotificationTitle() ?? $proforma->subject ?? ''));
+        if ($formTitle === '') {
+            $formTitle = $proforma->id ? ('پیش‌فاکتور #' . $proforma->id) : 'پیش‌فاکتور';
+        }
+
+        $usernames = $this->extractMentions($validated['mentions'] ?? null, $note->body);
+
+        if (!empty($usernames)) {
+            $mentionedUsers = User::whereIn('username', $usernames)->get();
+            foreach ($mentionedUsers as $user) {
+                try {
+                    $router = app(\App\Services\Notifications\NotificationRouter::class);
+                    $context = [
+                        'note_body'            => $note->body,
+                        'mentioned_user'       => $user,
+                        'mentioned_user_name'  => $user->name,
+                        'context_label'        => 'پیش‌فاکتور',
+                        'form_title'           => $formTitle,
+                        'actor'                => auth()->user(),
+                        'url'                  => route('sales.proformas.show', $proforma->id) . '#note-' . $note->id,
+                    ];
+                    $router->route('notes', 'note.mentioned', $context, [$user]);
+                } catch (\Throwable $e) {
+                    // ignore notification failures for mentions
+                }
+            }
+        }
+
+        $url = route('sales.proformas.show', $proforma->id) . '#note-' . $note->id;
+
+        if ($request->ajax()) {
+            return response()->json(['success' => true, 'url' => $url, 'note_id' => $note->id]);
+        }
+
+        return redirect($url)->with('success', 'یادداشت جدید با موفقیت ثبت شد.');
+    }
+
     public function preview(Proforma $proforma)
     {
         $proforma->load(['organization','contact','items.product']);
@@ -520,14 +680,14 @@ class ProformaController extends Controller
         if (! $proforma->canEdit()) {
             return redirect()
                 ->route('sales.proformas.show', $proforma)
-                ->with('alert_error', 'فقط در وضعیت «پیش‌نویس» قابل ویرایش است.');
+                ->with('alert_error', 'This proforma is locked (finalized/converted) and cannot be edited.');
         }
     
         // 2) احراز مجوز (ادمین/کاربر ارجاع‌گرفته و ...)
         $this->authorize('update', $proforma);
     
         // 3) لود داده‌های لازم برای فرم
-        $proforma->load('items');
+        $proforma->load(['items.product']);
         $users          = User::select('id','name')->get();
         $organizations  = Organization::select('id','name')->get();
         $contacts       = Contact::select('id','first_name','last_name')->get();
@@ -548,30 +708,33 @@ class ProformaController extends Controller
         $this->authorize('update', $proforma);
     
         if (! $proforma->canEdit()) {
-            return back()->with('error', 'فقط در وضعیت «پیش‌نویس» قابل ویرایش است.');
+            return back()->with('error', 'This proforma is locked (finalized/converted) and cannot be edited.');
         }
+
+        $this->normalizeProductPayload($request);
     
+        $wasInApprovalFlow = $proforma->hasStartedApprovalFlow();
+
         try {
             $validated = $request->validate([
                 'subject' => 'required|string|max:255',
                 'proforma_date' => 'nullable|string',
                 'contact_name' => 'nullable|string|max:255',
-                'inventory_manager' => 'nullable|string|max:255',
-                'proforma_stage' => ['required', Rule::in(array_keys(config('proforma.stages')))],
+                'submit_mode' => ['required', Rule::in(['draft','send_for_approval'])],
+                'edit_reason' => 'required|string|max:2000',
                 'organization_name' => 'nullable|string|max:255',
                 'address_type' => 'required|in:invoice,product',
                 'customer_address' => 'nullable|string',
                 'city' => 'nullable|string|max:255',
                 'state' => 'nullable|string|max:255',
-                'postal_code' => 'nullable|string|max:255',
                 'assigned_to' => 'required|exists:users,id',
                 'opportunity_id' => 'nullable|exists:opportunities,id',
     
                 // محصولات الزامی نیستند
                 'products' => 'nullable|array',
                 'products.*.name' => 'nullable|string|max:255',
-                'products.*.quantity' => 'nullable|numeric|min:0.01',
-                'products.*.price' => 'nullable|numeric|min:0',
+                'products.*.quantity' => 'required|integer|min:1',
+                'products.*.price' => 'required|numeric|min:0',
                 'products.*.unit' => 'nullable|string|max:50',
                 'products.*.discount_type' => 'nullable|in:percentage,fixed',
                 'products.*.discount_value' => 'nullable|numeric|min:0',
@@ -579,6 +742,8 @@ class ProformaController extends Controller
                 'products.*.tax_value' => 'nullable|numeric|min:0',
             ]);
             Log::debug('✅ اعتبارسنجی به‌روزرسانی با موفقیت انجام شد:', $validated);
+            $submitMode = $validated['submit_mode'];
+            $targetStage = $submitMode === 'send_for_approval' ? 'send_for_approval' : 'draft';
     
             // تبدیل تاریخ ورودی در ویرایش → میلادی (پشتیبانی هر دو فرمت + حفظ مقدار قبلی اگر ورودی خالی باشد)
             $miladiDate = $proforma->proforma_date; // پیش‌فرض: مقدار قبلی را نگه دار
@@ -619,6 +784,13 @@ class ProformaController extends Controller
             }
     
             DB::beginTransaction();
+            $editReason = trim((string) ($validated['edit_reason'] ?? ''));
+            $noteCreatedAt = now();
+            $reasonBody = "دلیل ویرایش توسط " . (auth()->user()->name ?? 'کاربر') . ' در ' . DateHelper::toJalali($noteCreatedAt, 'H:i Y/m/d') . ":\n" . $editReason;
+            $proforma->notes()->create([
+                'body'    => $reasonBody,
+                'user_id' => $request->user()->id,
+            ]);
     
             $totalAmount   = 0;
             $proformaItems = [];
@@ -663,43 +835,64 @@ class ProformaController extends Controller
             }
     
             $oldAssignedTo = $proforma->assigned_to;
-            $oldStage      = $proforma->proforma_stage;
-    
+
             $proforma->update([
                 'subject'          => $validated['subject'],
                 'proforma_date'    => $miladiDate,
                 'contact_name'     => $validated['contact_name'],
-                'inventory_manager'=> $validated['inventory_manager'],
-                'proforma_stage'   => $validated['proforma_stage'],
+                'proforma_stage'   => $targetStage,
+                'approval_stage'   => $targetStage,
                 'organization_name'=> $validated['organization_name'],
                 'address_type'     => $validated['address_type'],
                 'customer_address' => $validated['customer_address'],
                 'city'             => $validated['city'],
                 'state'            => $validated['state'],
-                'postal_code'      => $validated['postal_code'],
                 'assigned_to'      => $validated['assigned_to'],
                 'opportunity_id'   => $validated['opportunity_id'] ?? null,
                 'total_amount'     => $totalAmount,
             ]);
-            Log::info('✅ پروفرما به‌روزرسانی شد:', ['id' => $proforma->id]);
-    
+            Log::info('Proforma updated:', ['id' => $proforma->id]);
+
             $proforma->items()->delete();
             if (!empty($proformaItems)) {
                 $proforma->items()->createMany($proformaItems);
             }
-    
+
             $proforma->notifyIfAssigneeChanged($oldAssignedTo);
-    
-            // اعلان تأیید در صورت تغییر به مرحله مربوطه
-            if ($validated['proforma_stage'] === 'send_for_approval' && $oldStage !== 'send_for_approval') {
+
+            if ($targetStage === 'send_for_approval' || $wasInApprovalFlow) {
+                $resetTimestamp = now();
+
+                $proforma->fill([
+                    'first_approved_by' => null,
+                    'first_approved_at' => null,
+                    'approved_by'       => null,
+                ])->save();
+
+                $proforma->approvals()
+                    ->get()
+                    ->each(function ($approval) use ($resetTimestamp) {
+                        $note = trim(($approval->note ? $approval->note . ' | ' : '') . 'Reset after edit on ' . $resetTimestamp->toDateTimeString());
+                        $approval->fill([
+                            'status'      => \App\Models\Approval::STATUS_SUPERSEDED,
+                            'approved_at' => $approval->approved_at ?? $resetTimestamp,
+                            'note'        => $note,
+                        ])->save();
+                    });
+
+                $proforma->approvals()->where('status', 'pending')->delete();
+            }
+
+            // Fire legacy notifications whenever we send for approval
+            if ($targetStage === 'send_for_approval') {
                 $condition = \App\Models\AutomationCondition::where('model_type', 'Proforma')
                     ->where('field', 'proforma_stage')
                     ->where('operator', '=')
                     ->where('value', 'send_for_approval')
                     ->first();
-    
+
                 if ($condition) {
-                    Log::info('🔐 شرط اتوماسیون برای send_for_approval برقرار شد');
+                    Log::info('Automation condition matched for send_for_approval');
                     $sender = auth()->user();
                     if ($condition->approver1_id) {
                         $approver1 = \App\Models\User::find($condition->approver1_id);
@@ -715,9 +908,35 @@ class ProformaController extends Controller
                     }
                 }
             }
-    
+
+            $shouldTriggerAutomation = ($targetStage === 'send_for_approval');
+
             DB::commit();
-            return redirect()->route('sales.proformas.show', $proforma)->with('success', 'پیش‌فاکتور با موفقیت به‌روزرسانی شد.');
+
+            $updatedAt = now();
+            $updaterName = auth()->user()->name ?? 'سیستم';
+            $updatedDescription = $updaterName . ' این پیش‌فاکتور را در تاریخ ' . DateHelper::toJalali($updatedAt, 'H:i Y/m/d') . ' ویرایش کرد.';
+
+            activity('proforma')
+                ->performedOn($proforma)
+                ->causedBy(auth()->user())
+                ->event('updated')
+                ->withProperties(['message' => $updatedDescription])
+                ->log($updatedDescription);
+
+            if ($shouldTriggerAutomation) {
+                $proforma->refresh();
+                $this->runAutomationRulesIfNeeded($proforma);
+            }
+
+            $successMessage = 'Proforma updated successfully.';
+            if ($targetStage === 'send_for_approval') {
+                $successMessage = $wasInApprovalFlow
+                    ? 'پیش فاکتور به‌روزرسانی و گردش کار تأیید، مجدداً راه‌اندازی شد.'
+                    : 'پیش فاکتور اصلاح و برای تأیید ارسال شد.';
+            }
+
+            return redirect()->route('sales.proformas.show', $proforma)->with('success', $successMessage);
         } catch (\Exception $e) {
             DB::rollBack();
             Log::error('❌ خطا در به‌روزرسانی پروفرما:', ['exception' => $e->getMessage()]);
@@ -768,6 +987,170 @@ class ProformaController extends Controller
         }
     }
     
+    /**
+     * Prepare approval/approval-history data for the proforma tabs using only Proforma approvals.
+     */
+    private function buildProformaApprovalViewData(Proforma $proforma): array
+    {
+        $formatDate = static function ($date) {
+            return $date ? \App\Helpers\DateHelper::toJalali($date, 'H:i Y/m/d') : '—';
+        };
+
+        $approvals = $proforma->relationLoaded('approvals')
+            ? $proforma->approvals->loadMissing('approver', 'approvedBy')
+            : $proforma->approvals()->with(['approver', 'approvedBy'])->get();
+
+        $approvals = $approvals->sortBy(function ($approval) {
+            return sprintf('%02d-%010d', (int)($approval->step ?? 99), (int)($approval->id ?? 0));
+        });
+
+        $buildStep = static function (int $step) use ($approvals, $formatDate) {
+            $byStep   = $approvals->where('step', $step);
+            $approved = $byStep->firstWhere('status', 'approved');
+            $rejected = $byStep->firstWhere('status', 'rejected');
+            $pending  = $byStep->firstWhere('status', 'pending');
+
+            $statusClass = 'bg-amber-50 text-amber-800';
+            $statusLabel = 'در انتظار تأیید';
+            $dateDisplay = '—';
+            $approvedAt  = null;
+            $actor       = $approved ?? $rejected ?? $pending;
+            $mainName    = optional($actor?->approver)->name;
+            $subName     = null;
+            $mainApproved = false;
+            $subApproved  = false;
+
+            if ($actor) {
+                if ($actor->approved_by && (int) $actor->approved_by !== (int) $actor->user_id) {
+                    $subName = optional($actor->approvedBy)->name;
+                }
+
+                if ($actor->status === 'approved') {
+                    if (empty($actor->approved_by) || (int) $actor->approved_by === (int) $actor->user_id) {
+                        $mainApproved = true;
+                    } elseif (!empty($actor->approved_by) && (int) $actor->approved_by !== (int) $actor->user_id) {
+                        $subApproved = true;
+                    }
+                }
+            }
+
+           if ($rejected) {
+                $statusClass = 'bg-red-50 text-red-800';
+                $statusLabel = 'رد شده';
+                $approvedAt  = $rejected->approved_at ?? $rejected->created_at;
+            } elseif ($approved) {
+                $statusClass = 'bg-green-50 text-green-800';
+                $statusLabel = 'تأیید شده';
+                $approvedAt  = $approved->approved_at ?? $approved->created_at;
+            }
+
+
+            if ($approvedAt) {
+                $dateDisplay = $formatDate($approvedAt);
+            }
+
+            return [
+                'status_class'      => $statusClass,
+                'status_label'      => $statusLabel,
+                'date_display'      => $dateDisplay,
+                'main_cell_class'   => $mainApproved ? 'bg-green-100' : ($rejected ? 'bg-red-100 text-red-800' : ''),
+                'sub_cell_class'    => $subApproved ? 'bg-green-100' : '',
+                'main_name' => $mainName ?: '—',
+                'sub_name'  => $subName ?: '—',
+                'main_approved'     => $mainApproved,
+                'sub_approved'      => $subApproved,
+                'approved_at'       => $approvedAt,
+                'approved_at_fa'    => $approvedAt ? $formatDate($approvedAt) : null,
+                'pending_approver'  => optional($pending?->approver)->name,
+            ];
+        };;
+
+        $step1 = $buildStep(1);
+        $step2 = $buildStep(2);
+        $step3 = $buildStep(3);
+
+        $lastApprovedAt = collect([$step3['approved_at'], $step2['approved_at'], $step1['approved_at']])
+            ->filter()
+            ->sortDesc()
+            ->first();
+
+        $durationText = null;
+        try {
+            if ($proforma->created_at && $lastApprovedAt) {
+                $minutes = $proforma->created_at->diffInMinutes($lastApprovedAt);
+                $days    = intdiv($minutes, 60 * 24);
+                $hours   = intdiv($minutes % (60 * 24), 60);
+                $mins    = $minutes % 60;
+
+                $parts = [];
+                if ($days) {
+                    $parts[] = $days . ' روز';
+                }
+                if ($hours) {
+                    $parts[] = $hours . ' ساعت';
+                }
+                if ($mins && $days === 0) {
+                    $parts[] = $mins . ' دقیقه';
+                }
+
+                $durationText = $parts ? implode(' و ', $parts) : null;
+            }
+        } catch (\Throwable $e) {
+            $durationText = null;
+        }
+
+        $currentUserId       = (int) auth()->id();
+        $activePending       = $approvals->where('status', 'pending')->first();
+        $emergencyApproverId = (int) optional($proforma->automationRule()->select('id', 'emergency_approver_id')->first())->emergency_approver_id;
+        $showDecisionButtons = $activePending
+            && (
+                (int) $activePending->user_id === $currentUserId
+                || ($emergencyApproverId && $emergencyApproverId === $currentUserId)
+            );
+        $createdAtFa         = $formatDate($proforma->created_at);
+        $pendingApproverName = $activePending?->approver?->name
+            ?? $step1['pending_approver']
+            ?? $step2['pending_approver']
+            ?? $step3['pending_approver']
+            ?? null;
+
+        return [
+            'createdAtFa'                      => $createdAtFa,
+            'durationText'                     => $durationText,
+            'firstApprovedAtFa'                => $step1['approved_at_fa'],
+            'secondApprovedAtFa'               => $step2['approved_at_fa'],
+            'a1StatusClass'                    => $step1['status_class'],
+            'a1StatusLabel'                    => $step1['status_label'],
+            'a1DateDisplay'                    => $step1['date_display'],
+            'firstApproverName'                => $step1['main_name'],
+            'firstApproverSubstituteName'      => $step1['sub_name'],
+            'firstApproverMainApproved'        => $step1['main_approved'],
+            'firstApproverSubstituteApproved'  => $step1['sub_approved'],
+            'firstMainCellClass'               => $step1['main_cell_class'],
+            'firstSubCellClass'                => $step1['sub_cell_class'],
+            'a2StatusClass'                    => $step2['status_class'],
+            'a2StatusLabel'                    => $step2['status_label'],
+            'a2DateDisplay'                    => $step2['date_display'],
+            'secondApproverName'               => $step2['main_name'],
+            'secondApproverSubstituteName'     => $step2['sub_name'],
+            'secondApproverMainApproved'       => $step2['main_approved'],
+            'secondApproverSubstituteApproved' => $step2['sub_approved'],
+            'secondMainCellClass'              => $step2['main_cell_class'],
+            'secondSubCellClass'               => $step2['sub_cell_class'],
+            'a3StatusClass'                    => $step3['status_class'],
+            'a3StatusLabel'                    => $step3['status_label'],
+            'a3DateDisplay'                    => $step3['date_display'],
+            'accountingApproverName'           => $step3['main_name'],
+            'accountingApproverSubstituteName' => $step3['sub_name'],
+            'accountingApproverMainApproved'   => $step3['main_approved'],
+            'accountingApproverSubstituteApproved' => $step3['sub_approved'],
+            'accountingMainCellClass'          => $step3['main_cell_class'],
+            'accountingSubCellClass'           => $step3['sub_cell_class'],
+            'showDecisionButtons'              => $showDecisionButtons,
+            'pendingApproverName'              => $pendingApproverName,
+        ];
+    }
+
     private function runAutomationRulesIfNeeded(\App\Models\Proforma $proforma): void
     {
         try {
@@ -906,18 +1289,41 @@ class ProformaController extends Controller
     
                 $approvals = $proforma->approvals()
                     ->with('approver')
-                    ->orderBy('created_at')
+                    ->orderBy('step')
+                    ->orderBy('id')
                     ->lockForUpdate()
                     ->get();
-    
+
                 // رکوردِ مرحله‌ی در انتظار
-                $pending = $approvals->firstWhere('status', 'pending');
+                $pending = $approvals
+                    ->where('status', 'pending')
+                    ->sortBy(function ($approval) {
+                        return sprintf('%02d-%010d', (int)($approval->step ?? 99), (int)($approval->id ?? 0));
+                    })
+                    ->first();
                 if (! $pending) {
                     throw new \RuntimeException('هیچ مرحله‌ی در انتظاری برای تأیید وجود ندارد.');
                 }
     
+                $latestForUserThisStep = $approvals
+                    ->filter(function ($approval) use ($userId, $pending) {
+                        return (int) $approval->user_id === (int) $userId
+                            && (int) ($approval->step ?? 0) === (int) ($pending->step ?? 0)
+                            && $approval->status !== Approval::STATUS_SUPERSEDED;
+                    })
+                    ->sortByDesc('id')
+                    ->first();
+
+                if ($latestForUserThisStep && $latestForUserThisStep->status !== 'pending') {
+                    throw new \RuntimeException('شما قبلاً این پیش‌فاکتور را تأیید کرده‌اید.');
+                }
+
                 // حالت 1: خودِ تأییدکننده‌ی اصلی
-                $current = $approvals->firstWhere('user_id', $userId);
+                $current = $approvals->first(function ($approval) use ($userId, $pending) {
+                    return $approval->status === 'pending'
+                        && (int) $approval->user_id === (int) $userId
+                        && (int) ($approval->step ?? 0) === (int) ($pending->step ?? 0);
+                });
     
                 // حالت 2: اگر اصلی نبود، بررسی تأییدکننده اضطراری روی همان pending
                 $asEmergency = false;
@@ -929,17 +1335,53 @@ class ProformaController extends Controller
                     }
                 }
     
+                $currentApproval = $current ?? null;
+                \Log::info('🔍 Proforma Approval Debug', [
+                    'auth_user_id' => auth()->id(),
+                    'auth_user_name' => auth()->user()->name ?? null,
+                    'current_step' => $proforma->current_step ?? null,
+                    'proforma_stage' => $proforma->proforma_stage ?? null,
+                    'currentApproval_record' => $currentApproval ?? null,
+                ]);
+
                 if (! $current) {
                     throw new \RuntimeException('شما مجاز به تأیید این پیش‌فاکتور نیستید.');
                 }
-                if ($current->status !== 'pending') {
-                    throw new \RuntimeException('شما قبلاً این پیش‌فاکتور را تأیید کرده‌اید.');
-                }
     
                 // رعایت ترتیب مراحل: اگر پیش از این رکورد، آیتمی هنوز approved نشده، خطا بده
-                $idx     = $approvals->search(fn ($a) => (int) $a->id === (int) $current->id);
-                $blocker = $approvals->take($idx)->first(fn ($a) => $a->status !== 'approved');
+                $idx           = $approvals->search(fn ($a) => (int) $a->id === (int) $current->id);
+                $currentStep   = (int) ($current->step ?? 0);
+                $previousSteps = $approvals
+                    ->take($idx)
+                    ->filter(fn ($a) => (int) ($a->step ?? 0) < $currentStep);
+
+                $blocker = $previousSteps->first(function ($approval) {
+                    return in_array($approval->status, ['pending', 'rejected'], true);
+                });
                 if ($blocker) {
+                    \Log::warning('🚫 Proforma Approval Blocker Debug', [
+                        'proforma_id'    => $proforma->id,
+                        'auth_user_id'   => $userId,
+                        'auth_user_name' => auth()->user()->name ?? null,
+                        'approvals'      => $approvals->map(function ($approval) {
+                            return [
+                                'id'            => $approval->id,
+                                'user_id'       => $approval->user_id,
+                                'step'          => $approval->step,
+                                'status'        => $approval->status,
+                                'approved_at'   => $approval->approved_at,
+                                'approver_name' => optional($approval->approver)->name,
+                            ];
+                        })->values()->toArray(),
+                        'blocker'        => [
+                            'id'            => $blocker->id,
+                            'user_id'       => $blocker->user_id,
+                            'step'          => $blocker->step,
+                            'status'        => $blocker->status,
+                            'approved_at'   => $blocker->approved_at,
+                            'approver_name' => optional($blocker->approver)->name,
+                        ],
+                    ]);
                     $who = optional($blocker->approver)->name ?: ('کاربر #' . $blocker->user_id);
                     throw new \RuntimeException("پیش‌فاکتور در انتظار تأیید {$who} است.");
                 }
@@ -948,6 +1390,7 @@ class ProformaController extends Controller
                 $current->update([
                     'status'      => 'approved',
                     'approved_at' => now(),
+                    'approved_by' => $userId,
                 ]);
     
                 $step = (int) ($current->step ?? 1);
@@ -1103,7 +1546,137 @@ class ProformaController extends Controller
             return back()->with('error', $e->getMessage());
         }
     }
-    
+
+    private function extractMentions($rawMentions, string $body): array
+    {
+        $list = [];
+
+        if (is_array($rawMentions)) {
+            foreach ($rawMentions as $item) {
+                if (is_string($item)) {
+                    $parts = array_map('trim', explode(',', $item));
+                    $list = array_merge($list, $parts);
+                }
+            }
+        } elseif (is_string($rawMentions) && $rawMentions !== '') {
+            $list = array_map('trim', explode(',', $rawMentions));
+        }
+
+        if (preg_match_all('/@([^\\s@]+)/u', $body, $matches)) {
+            $list = array_merge($list, $matches[1] ?? []);
+        }
+
+        $list = array_filter(array_unique(array_map(function ($value) {
+            $value = trim((string) $value);
+            return Str::startsWith($value, '@') ? ltrim($value, '@') : $value;
+        }, $list)));
+
+        return array_values($list);
+    }
+
+    protected function normalizeProductPayload(Request $request): void
+    {
+        $merged = [];
+
+        $rawProducts = $request->input('products', []);
+        if (is_array($rawProducts)) {
+            foreach ($rawProducts as $key => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $merged[$key] = $this->normalizeSingleProductRow($row);
+            }
+        }
+
+        $rawItems = $request->input('items', []);
+        if (is_array($rawItems)) {
+            foreach ($rawItems as $key => $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                // Items originate from edit form; map into unified payload (overwriting same key if needed)
+                $merged[$key] = $this->normalizeSingleProductRow($row);
+            }
+        }
+
+        if ($merged !== []) {
+            $request->merge(['products' => $merged]);
+        }
+    }
+
+    protected function normalizeSingleProductRow(array $row): array
+    {
+        $toAsciiDigits = static function ($value): string {
+            $map = [
+                '۰' => '0','۱' => '1','۲' => '2','۳' => '3','۴' => '4',
+                '۵' => '5','۶' => '6','۷' => '7','۸' => '8','۹' => '9',
+                '٠' => '0','١' => '1','٢' => '2','٣' => '3','٤' => '4',
+                '٥' => '5','٦' => '6','٧' => '7','٨' => '8','٩' => '9',
+            ];
+            return strtr((string) $value, $map);
+        };
+
+        $sanitizeNumber = static function ($value) use ($toAsciiDigits) {
+            if ($value === null) {
+                return null;
+            }
+            $ascii = $toAsciiDigits($value);
+            $clean = preg_replace('/[^\d\-]/', '', $ascii);
+            return ($clean === '' || $clean === null) ? null : $clean;
+        };
+
+        $priceSource = $row['price'] ?? ($row['unit_price'] ?? null);
+        $quantitySource = $row['quantity'] ?? ($row['qty'] ?? null);
+        $discountValueSource = array_key_exists('discount_value', $row) ? $row['discount_value'] : 0;
+        $taxValueSource = array_key_exists('tax_value', $row) ? $row['tax_value'] : 0;
+
+        return [
+            'product_id'     => $row['product_id'] ?? ($row['id'] ?? null),
+            'name'           => $row['name'] ?? null,
+            'unit'           => $row['unit'] ?? ($row['unit_of_use'] ?? null),
+            'quantity'       => $sanitizeNumber($quantitySource),
+            'price'          => $sanitizeNumber($priceSource),
+            'discount_type'  => $row['discount_type'] ?? null,
+            'discount_value' => $sanitizeNumber($discountValueSource) ?? 0,
+            'tax_type'       => $row['tax_type'] ?? null,
+            'tax_value'      => $sanitizeNumber($taxValueSource) ?? 0,
+        ];
+    }
+
+    protected function isInternalUrl(?string $url, Request $request): bool
+    {
+        if (!is_string($url)) {
+            return false;
+        }
+
+        $candidate = trim($url);
+        if ($candidate === '' || Str::startsWith($candidate, ['//', 'javascript:'])) {
+            return false;
+        }
+
+        $host = parse_url($candidate, PHP_URL_HOST);
+        $scheme = parse_url($candidate, PHP_URL_SCHEME);
+
+        if ($scheme && !in_array(strtolower($scheme), ['http', 'https'], true)) {
+            return false;
+        }
+
+        if ($host && strcasecmp($host, $request->getHost()) !== 0) {
+            return false;
+        }
+
+        $port = parse_url($candidate, PHP_URL_PORT);
+        if ($port && (int) $port !== (int) $request->getPort()) {
+            return false;
+        }
+
+        if (! $host) {
+            return Str::startsWith($candidate, '/');
+        }
+
+        return true;
+    }
+
     public function bulkDestroy(Request $request)
     {
         $data = $request->validate([

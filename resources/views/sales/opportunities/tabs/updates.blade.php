@@ -22,6 +22,7 @@
             @php
                 $eventType = $activity->event ?? $activity->description ?? null;
                 $isCreated = $eventType === 'created';
+                $isProformaCreated = $eventType === 'proforma_created';
                 $copiedFromLead = ($activity->properties['copied_from'] ?? null) === 'lead';
             @endphp
 
@@ -84,6 +85,28 @@
                         @endif
                     @endforeach
                 </ul>
+            @elseif($isProformaCreated)
+                @php
+                    $proformaId = $activity->properties['proforma_id'] ?? null;
+                    $proformaNumber = $activity->properties['proforma_number'] ?? null;
+                    $proformaLabel = $proformaNumber
+                        ? "پیش‌فاکتور شماره {$proformaNumber}"
+                        : 'پیش‌فاکتور';
+                @endphp
+
+                <div class="text-sm mb-1 font-semibold text-blue-700">
+                    @if($proformaId)
+                        <a href="{{ route('sales.proformas.show', $proformaId) }}" class="hover:underline">
+                            {{ $proformaLabel }}
+                        </a>
+                    @else
+                        {{ $proformaLabel }}
+                    @endif
+                    <span class="text-gray-700 font-normal">برای این فرصت ثبت شد.</span>
+                </div>
+                @if($proformaNumber)
+                    <div class="text-xs text-gray-500">شماره مرجع: {{ $proformaNumber }}</div>
+                @endif
             @else
                 <div class="text-sm mb-2">
                     <span class="font-semibold text-blue-700">{{ $activity->causer->name ?? 'سیستم' }}</span>

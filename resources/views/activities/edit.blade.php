@@ -10,7 +10,7 @@
     @csrf
     @method('PUT')
 
-    @include('activities._form', ['activity' => $activity, 'users' => $users])
+    @include('activities._form', ['activity' => $activity, 'users' => $users, 'prefillRelated' => []])
 
     {{-- دکمه‌ها --}}
     <div class="pt-2 flex gap-2">
@@ -25,4 +25,3 @@
 @endsection
 
 @vite(['resources/js/create.js'])
-

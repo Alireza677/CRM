@@ -101,33 +101,66 @@
     {{-- مرحله فروش --}}
     <div>
         <label for="stage" class="block font-medium text-sm text-gray-700 required">مرحله فروش</label>
-        @php $stage = old('stage', $opportunity->stage ?? ''); @endphp
-        <select name="stage" id="stage" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        @php
+            $stage = old('stage', $opportunity->getRawOriginal('stage') ?? '');
+            $stageOptions = \App\Helpers\FormOptionsHelper::opportunityStages();
+            $originalStageValue = strtolower((string) ($opportunity->getRawOriginal('stage') ?? ''));
+        @endphp
+        <select name="stage" id="stage" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" data-original-value="{{ $originalStageValue }}">
             <option value="">انتخاب کنید...</option>
-            @foreach(['در حال پیگیری','پیگیری در آینده','برنده','بازنده','سرکاری','ارسال پیش‌فاکتور'] as $opt)
-                <option value="{{ $opt }}" {{ $stage === $opt ? 'selected' : '' }}>{{ $opt }}</option>
+            @foreach($stageOptions as $key => $label)
+                <option value="{{ $key }}" {{ $stage === $key ? 'selected' : '' }}>{{ $label }}</option>
             @endforeach
         </select>
         @error('stage') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+        @error('loss_reason_body') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
 
-    {{-- منبع فرصت فروش --}}
-    <div>
-        <label for="source" class="block font-medium text-sm text-gray-700 required">منبع فرصت فروش</label>
-        @php
-            $sourceKey = old('source', isset($opportunity) ? ($opportunity->getRawOriginal('source') ?? '') : '');
-            $sources  = \App\Helpers\FormOptionsHelper::opportunitySources();
-        @endphp
-        <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-            <option value="">انتخاب کنید</option>
-            @foreach($sources as $key => $label)
-                <option value="{{ $key }}" {{ (string)$sourceKey === (string)$key ? 'selected' : '' }}>{{ $label }}</option>
-            @endforeach
-        </select>
-        @error('source')
-            <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
-        @enderror
-    </div>
+   {{-- منبع فرصت فروش --}}
+<div>
+    <label for="source" class="block font-medium text-sm text-gray-700 required">منبع فرصت فروش</label>
+    @php
+        $sources = \App\Helpers\FormOptionsHelper::opportunitySources();
+
+        // اولویت با مقدار قدیمی فرم (در صورت خطای ولیدیشن)
+        $selectedSource = old('source');
+
+        // اگر old وجود نداشت، از مقدار ذخیره‌شده در مدل استفاده کن
+        if (!$selectedSource && isset($opportunity)) {
+            $stored = $opportunity->source ?? null;
+
+            if ($stored !== null) {
+                if (array_key_exists($stored, $sources)) {
+                    // اگر مقدار ذخیره‌شده خودش key بود
+                    $selectedSource = $stored;
+                } else {
+                    // اگر مقدار ذخیره‌شده برابر label است، key متناظر را پیدا کن
+                    $foundKey = collect($sources)->search(function ($label) use ($stored) {
+                        return (string) $label === (string) $stored;
+                    });
+
+                    if ($foundKey !== false) {
+                        $selectedSource = $foundKey;
+                    }
+                }
+            }
+        }
+    @endphp
+
+    <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        <option value="">انتخاب کنید</option>
+        @foreach($sources as $key => $label)
+            <option value="{{ $key }}" {{ (string) $selectedSource === (string) $key ? 'selected' : '' }}>
+                {{ $label }}
+            </option>
+        @endforeach
+    </select>
+
+    @error('source')
+        <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
+    @enderror
+</div>
+
 
     {{-- ارجاع به --}}
     <div>
@@ -176,7 +209,7 @@
             type="hidden"
             name="next_follow_up"
             id="next_follow_up"
-            value="{{ old('next_follow_up', $opportunity->next_follow_up ?? '') }}"
+            value="{{ old('next_follow_up', optional($opportunity->next_follow_up ?? null)->format('Y-m-d')) }}"
         >
 
         @error('next_follow_up')

@@ -4,18 +4,15 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Note extends Model
 {
     protected $fillable = ['body','user_id','noteable_type','noteable_id'];
 
-    public function notable()
+    public function noteable(): MorphTo
     {
-        return $this->morphTo(null, 'noteable_type', 'noteable_id');
-    }
-    public function noteable()
-    {
-        return $this->morphTo();
+        return $this->morphTo(__FUNCTION__);
     }
     public function author()
     {

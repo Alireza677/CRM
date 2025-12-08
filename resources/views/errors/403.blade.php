@@ -15,12 +15,7 @@
             </p>
         @endif
 
-        <div class="text-right text-xs text-gray-600 bg-gray-50 border rounded-md p-3 mb-5 leading-relaxed">
-            <p class="font-semibold mb-1">لطفاً متن زیر را کپی کرده و برای پشتیبانی ارسال کنید:</p>
-            <p class="font-mono break-all">
-                [CRM Error] code=403 | url={{ request()->fullUrl() }} | user={{ auth()->id() ?? 'guest' }}
-            </p>
-        </div>
+        
 
         <div class="flex items-center justify-center gap-3">
             <a href="{{ url()->previous() }}" class="px-4 py-2 bg-gray-200 rounded-md">بازگشت</a>

@@ -7,13 +7,12 @@
 
     // رنگ هر مرحله (پس‌زمینه ملایم + رنگ متن)
     $stageColors = [
-        'جدید'            => 'bg-blue-100 text-blue-700',
-        'در حال پیگیری'   => 'bg-yellow-100 text-yellow-700',
-        'پیگیری در آینده' => 'bg-orange-100 text-orange-700',
-        'برنده'           => 'bg-green-100 text-green-700',   // ✅ سبز
-        'بازنده'          => 'bg-gray-100 text-gray-700',
-        'سرکاری'          => 'bg-red-100 text-red-700',
-        'ارسال پیش فاکتور'=> 'bg-purple-100 text-purple-700',
+        'open'           => 'bg-blue-100 text-blue-700',
+        'proposal_sent'  => 'bg-indigo-100 text-indigo-700',
+        'negotiation'    => 'bg-amber-100 text-amber-700',
+        'won'            => 'bg-green-100 text-green-700',
+        'lost'           => 'bg-red-100 text-red-700',
+        'dead'           => 'bg-gray-200 text-gray-800',
     ];
 @endphp
 
@@ -94,14 +93,12 @@
                                     class="w-full px-2 py-1 border rounded text-sm" placeholder="نام مخاطب">
                             </th>
                             <th class="px-2 py-1">
+                                @php $stageOptions = \App\Helpers\FormOptionsHelper::opportunityStages(); @endphp
                                 <select name="stage" class="w-full px-2 py-1 border rounded text-sm">
-                                    <option value="">همه</option>
-                                    <option value="در حال پیگیری" {{ request('stage') == 'در حال پیگیری' ? 'selected' : '' }}>در حال پیگیری</option>
-                                    <option value="پیگیری در آینده" {{ request('stage') == 'پیگیری در آینده' ? 'selected' : '' }}>پیگیری در آینده</option>
-                                    <option value="برنده" {{ request('stage') == 'برنده' ? 'selected' : '' }}>برنده</option>
-                                    <option value="بازنده" {{ request('stage') == 'بازنده' ? 'selected' : '' }}>بازنده</option>
-                                    <option value="سرکاری" {{ request('stage') == 'سرکاری' ? 'selected' : '' }}>سرکاری</option>
-                                    <option value="ارسال پیش فاکتور" {{ request('stage') == 'ارسال پیش فاکتور' ? 'selected' : '' }}>ارسال پیش فاکتور</option>
+                                    <option value="">{{ __('همه') }}</option>
+                                    @foreach($stageOptions as $key => $label)
+                                        <option value="{{ $key }}" {{ request('stage') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                    @endforeach
                                 </select>
                             </th>
                             <th class="px-2 py-1">
@@ -150,11 +147,11 @@
                             {{-- ⭐ مرحله فروش به صورت بادج رنگی --}}
                             <td class="px-6 py-4 whitespace-nowrap">
                                 @php
-                                    $stage = $opportunity->stage ?? '—';
-                                    $badgeClass = $stageColors[$stage] ?? 'bg-gray-100 text-gray-700';
+                                    $stageKey = $opportunity->getStageValue() ?? '—';
+                                    $badgeClass = $stageColors[$stageKey] ?? 'bg-gray-100 text-gray-700';
                                 @endphp
                                 <span class="px-2 py-1 text-xs font-medium rounded-full {{ $badgeClass }}">
-                                    {{ $stage }}
+                                    {{ \App\Helpers\FormOptionsHelper::getOpportunityStageLabel($stageKey) }}
                                 </span>
                             </td>
 

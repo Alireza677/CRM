@@ -91,10 +91,15 @@
         </form>
 
         <button type="button"
-                class="px-4 py-2 rounded text-white bg-red-600 hover:bg-red-700 shadow"
-                onclick="document.getElementById('rejectModal')?.classList.remove('hidden'); document.getElementById('rejectModal')?.classList.add('flex');">
+                    class="px-4 py-2 rounded text-white bg-red-600 hover:bg-red-700 shadow"
+                    onclick="document.getElementById('rejectModal')?.classList.remove('hidden'); document.getElementById('rejectModal')?.classList.add('flex');">
             رد این پیش‌فاکتور
         </button>
+    </div>
+@elseif(!empty($pendingApproverName))
+    <div class="text-sm text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2 inline-flex items-center gap-2">
+        <i class="fas fa-hourglass-half"></i>
+        <span>در انتظار تأیید {{ $pendingApproverName }} است.</span>
     </div>
 @elseif(($proforma->approval_stage ?? $proforma->proforma_stage) === 'approved')
     <div class="text-sm text-green-700 bg-green-50 border border-green-200 rounded-lg px-3 py-2 inline-flex items-center gap-2">
@@ -102,43 +107,6 @@
         <span>فرآیند تأیید این پیش‌فاکتور به طور کامل انجام شده است.</span>
     </div>
 @endif
-
-{{-- دکمه‌های پایینی --}}
-<div class="mt-4 flex justify-end gap-3">
-    <a href="{{ route('sales.proformas.index') }}"
-       class="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white border border-gray-200 shadow-sm hover:bg-gray-50 text-gray-700 text-sm">
-        ← بازگشت به لیست پیش‌فاکتورها
-    </a>
-
-    @can('approve', $proforma)
-        <form action="{{ route('sales.proformas.approve', $proforma) }}"
-              method="POST"
-              onsubmit="return confirm('آیا از تأیید این پیش‌فاکتور اطمینان دارید؟');">
-            @csrf
-            <button type="submit"
-                    class="inline-flex items-center px-3 py-1.5 rounded-lg bg-green-600 text-white shadow hover:bg-green-700">
-                ✔ تأیید پیش‌فاکتور
-            </button>
-
-            @if(optional($proforma->automationRule)->emergency_approver_id === auth()->id())
-                <div class="text-xs text-yellow-700 mt-2">
-                    توجه: شما به عنوان تأییدکننده اضطراری این پیش‌فاکتور در نظر گرفته شده‌اید، بنابراین با تأیید شما فرآیند تأیید نهایی می‌شود.
-                </div>
-            @endif
-        </form>
-
-        <form action="{{ route('sales.proformas.reject', $proforma) }}"
-              method="POST"
-              onsubmit="return confirm('آیا از رد کردن این پیش‌فاکتور اطمینان دارید؟ در صورت رد، روند تأیید متوقف می‌شود و دلیل رد ثبت خواهد شد.');"
-              class="ml-2">
-            @csrf
-            <button type="submit"
-                    class="inline-flex items-center px-3 py-1.5 rounded-lg bg-red-600 text-white shadow hover:bg-red-700">
-                ✖ رد پیش‌فاکتور
-            </button>
-        </form>
-    @endcan
-</div>
 
 {{-- مودال رد پیش‌فاکتور --}}
 <div id="rejectModal" class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40">

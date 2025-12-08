@@ -22,31 +22,29 @@ class Proforma extends Model
         'subject',
         'proforma_date',
         'contact_name',
-        'inventory_manager',
-        'proforma_stage',       // اگر از این فیلد برای وضعیت استفاده می‌کنی
-        'approval_stage',       // وضعیت تأیید: draft | sent_for_approval | approved | rejected
+        'proforma_stage',       // Ø§Ú¯Ø± Ø§Ø² Ø§ÛŒÙ† ÙÛŒÙ„Ø¯ Ø¨Ø±Ø§ÛŒ ÙˆØ¶Ø¹ÛŒØª Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒ
+        'approval_stage',       // ÙˆØ¶Ø¹ÛŒØª ØªØ£ÛŒÛŒØ¯: draft | sent_for_approval | approved | rejected
         'approval_mode',        // standard | override
         'organization_name',
         'sales_opportunity',
         'assigned_to',
         'city',
         'state',
-        'postal_code',
         'customer_address',
         'address_type',
-        'items_subtotal',       // جمع جزء آیتم‌ها
+        'items_subtotal',       // Ø¬Ù…Ø¹ Ø¬Ø²Ø¡ Ø¢ÛŒØªÙ…â€ŒÙ‡Ø§
         'global_discount_type', // percentage | fixed
         'global_discount_value',
         'global_discount_amount',
         'global_tax_type',      // percentage | fixed
         'global_tax_value',
         'global_tax_amount',
-        'total_amount',         // جمع کل نهایی
+        'total_amount',         // Ø¬Ù…Ø¹ Ú©Ù„ Ù†Ù‡Ø§ÛŒÛŒ
         'organization_id',
         'contact_id',
         'opportunity_id',
         'is_favorite',
-        'stage_id',             // اگر سیستم stage جداگانه داری
+        'stage_id',             // Ø§Ú¯Ø± Ø³ÛŒØ³ØªÙ… stage Ø¬Ø¯Ø§Ú¯Ø§Ù†Ù‡ Ø¯Ø§Ø±ÛŒ
         'automation_rule_id',
         'first_approved_by',
         'first_approved_at',
@@ -86,7 +84,7 @@ class Proforma extends Model
 
     /*
     |--------------------------------------------------------------------------
-    | روابط اصلی
+    | Ø±ÙˆØ§Ø¨Ø· Ø§ØµÙ„ÛŒ
     |--------------------------------------------------------------------------
     */
 
@@ -116,9 +114,24 @@ class Proforma extends Model
         return $this->hasMany(ProformaItem::class);
     }
 
+    public function notes()
+    {
+        return $this->morphMany(\App\Models\Note::class, 'noteable')->latest();
+    }
+
+    public function lastNote()
+    {
+        return $this->morphOne(\App\Models\Note::class, 'noteable')->latestOfMany();
+    }
+
+    public function activities()
+    {
+        return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
+    }
+
     /**
-     * قانون اتوماسیون مرتبط با این پیش‌فاکتور
-     * (کلید پیش‌فرض: automation_rule_id)
+     * Ù‚Ø§Ù†ÙˆÙ† Ø§ØªÙˆÙ…Ø§Ø³ÛŒÙˆÙ† Ù…Ø±ØªØ¨Ø· Ø¨Ø§ Ø§ÛŒÙ† Ù¾ÛŒØ´â€ŒÙØ§Ú©ØªÙˆØ±
+     * (Ú©Ù„ÛŒØ¯ Ù¾ÛŒØ´â€ŒÙØ±Ø¶: automation_rule_id)
      */
     public function automationRule()
     {
@@ -129,7 +142,7 @@ class Proforma extends Model
         return $this->belongsTo(User::class, 'first_approved_by');
     }
     /**
-     * کاربری که تأیید نهایی را انجام داده
+     * Ú©Ø§Ø±Ø¨Ø±ÛŒ Ú©Ù‡ ØªØ£ÛŒÛŒØ¯ Ù†Ù‡Ø§ÛŒÛŒ Ø±Ø§ Ø§Ù†Ø¬Ø§Ù… Ø¯Ø§Ø¯Ù‡
      */
     public function approvedBy()
     {
@@ -137,8 +150,8 @@ class Proforma extends Model
     }
 
     /**
-     * اگر از سیستم قبلیِ approvals (polymorphic) استفاده می‌کنی، بماند
-     * در غیر این صورت می‌تونی حذفش کنی.
+     * Ø§Ú¯Ø± Ø§Ø² Ø³ÛŒØ³ØªÙ… Ù‚Ø¨Ù„ÛŒÙ approvals (polymorphic) Ø§Ø³ØªÙØ§Ø¯Ù‡ Ù…ÛŒâ€ŒÚ©Ù†ÛŒØŒ Ø¨Ù…Ø§Ù†Ø¯
+     * Ø¯Ø± ØºÛŒØ± Ø§ÛŒÙ† ØµÙˆØ±Øª Ù…ÛŒâ€ŒØªÙˆÙ†ÛŒ Ø­Ø°ÙØ´ Ú©Ù†ÛŒ.
      */
     public function approvals()
     {
@@ -146,37 +159,37 @@ class Proforma extends Model
     }
 
     /**
-     * رکورد مرحله‌ای که هنوز pending است (نفر بعدی که باید تایید کند)
+     * Ø±Ú©ÙˆØ±Ø¯ Ù…Ø±Ø­Ù„Ù‡â€ŒØ§ÛŒ Ú©Ù‡ Ù‡Ù†ÙˆØ² pending Ø§Ø³Øª (Ù†ÙØ± Ø¨Ø¹Ø¯ÛŒ Ú©Ù‡ Ø¨Ø§ÛŒØ¯ ØªØ§ÛŒÛŒØ¯ Ú©Ù†Ø¯)
      */
     public function pendingApproval()
     {
         return $this->approvals()
             ->with('approver')
             ->where('status', 'pending')
-            ->orderBy('step') // اولویت مرحله
-            ->orderBy('id')   // در صورت برابر بودن step
+            ->orderBy('step') // Ø§ÙˆÙ„ÙˆÛŒØª Ù…Ø±Ø­Ù„Ù‡
+            ->orderBy('id')   // Ø¯Ø± ØµÙˆØ±Øª Ø¨Ø±Ø§Ø¨Ø± Ø¨ÙˆØ¯Ù† step
             ->first();
     }
 
     /*
     |--------------------------------------------------------------------------
-    | برچسب و عنوان نوتیفیکیشن‌ها (برای Trait)
+    | Ø¨Ø±Ú†Ø³Ø¨ Ùˆ Ø¹Ù†ÙˆØ§Ù† Ù†ÙˆØªÛŒÙÛŒÚ©ÛŒØ´Ù†â€ŒÙ‡Ø§ (Ø¨Ø±Ø§ÛŒ Trait)
     |--------------------------------------------------------------------------
     */
 
     public function getModelLabel()
     {
-        return 'پیش‌فاکتور';
+        return 'Ù¾ÛŒØ´â€ŒÙØ§Ú©ØªÙˆØ±';
     }
 
     public function getNotificationTitle()
     {
-        return $this->subject ?? 'بدون عنوان';
+        return $this->subject ?? 'Ø¨Ø¯ÙˆÙ† Ø¹Ù†ÙˆØ§Ù†';
     }
 
     /*
     |--------------------------------------------------------------------------
-    | رویدادهای مدل
+    | Ø±ÙˆÛŒØ¯Ø§Ø¯Ù‡Ø§ÛŒ Ù…Ø¯Ù„
     |--------------------------------------------------------------------------
     */
 
@@ -185,7 +198,7 @@ class Proforma extends Model
         parent::boot();
 
         static::creating(function ($proforma) {
-            // ایجاد شماره پیش‌فاکتور اگر قبلاً تنظیم نشده
+            // Ø§ÛŒØ¬Ø§Ø¯ Ø´Ù…Ø§Ø±Ù‡ Ù¾ÛŒØ´â€ŒÙØ§Ú©ØªÙˆØ± Ø§Ú¯Ø± Ù‚Ø¨Ù„Ø§Ù‹ ØªÙ†Ø¸ÛŒÙ… Ù†Ø´Ø¯Ù‡
             if (empty($proforma->proforma_number)) {
                 $latestId = self::max('id') + 1;
                 $proforma->proforma_number = 'QU' . str_pad($latestId, 5, '0', STR_PAD_LEFT);
@@ -209,18 +222,18 @@ class Proforma extends Model
             return;
         }
 
-        // ارقام فارسی/عربی → انگلیسی
+        // Ø§Ø±Ù‚Ø§Ù… ÙØ§Ø±Ø³ÛŒ/Ø¹Ø±Ø¨ÛŒ â†’ Ø§Ù†Ú¯Ù„ÛŒØ³ÛŒ
         $value = strtr((string) $value, [
-            '۰' => '0','۱' => '1','۲' => '2','۳' => '3','۴' => '4',
-            '۵' => '5','۶' => '6','۷' => '7','۸' => '8','۹' => '9',
-            '٠' => '0','١' => '1','٢' => '2','٣' => '3','٤' => '4',
-            '٥' => '5','٦' => '6','٧' => '7','٨' => '8','٩' => '9',
+            'Û°' => '0','Û±' => '1','Û²' => '2','Û³' => '3','Û´' => '4',
+            'Ûµ' => '5','Û¶' => '6','Û·' => '7','Û¸' => '8','Û¹' => '9',
+            'Ù ' => '0','Ù¡' => '1','Ù¢' => '2','Ù£' => '3','Ù¤' => '4',
+            'Ù¥' => '5','Ù¦' => '6','Ù§' => '7','Ù¨' => '8','Ù©' => '9',
         ]);
 
-        // حذف جداکننده هزارگان و کاراکترهای غیرعددی (به‌جز نقطه و منفی)
+        // Ø­Ø°Ù Ø¬Ø¯Ø§Ú©Ù†Ù†Ø¯Ù‡ Ù‡Ø²Ø§Ø±Ú¯Ø§Ù† Ùˆ Ú©Ø§Ø±Ø§Ú©ØªØ±Ù‡Ø§ÛŒ ØºÛŒØ±Ø¹Ø¯Ø¯ÛŒ (Ø¨Ù‡â€ŒØ¬Ø² Ù†Ù‚Ø·Ù‡ Ùˆ Ù…Ù†ÙÛŒ)
         $value = preg_replace('/[^\d\.\-]/', '', str_replace(',', '', trim($value)));
 
-        // اگر اعشار نداری و ستون decimal است، .00 اضافه شود
+        // Ø§Ú¯Ø± Ø§Ø¹Ø´Ø§Ø± Ù†Ø¯Ø§Ø±ÛŒ Ùˆ Ø³ØªÙˆÙ† decimal Ø§Ø³ØªØŒ .00 Ø§Ø¶Ø§ÙÙ‡ Ø´ÙˆØ¯
         if ($value !== '' && strpos($value, '.') === false) {
             $value .= '.00';
         }
@@ -239,17 +252,44 @@ class Proforma extends Model
         return strtolower((string)($this->approval_stage ?? $this->proforma_stage ?? ''));
     }
 
+    /**
+     * Determine whether this proforma has already entered the approval workflow.
+     */
+    public function hasStartedApprovalFlow(): bool
+    {
+        $stage = $this->stage();
+        $approvalStages = ['send_for_approval', 'awaiting_second_approval', 'approved', 'rejected'];
+
+        if (in_array($stage, $approvalStages, true)) {
+            return true;
+        }
+
+        try {
+            return $this->approvals()->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /**
+     * Stages that are treated as final/locked for editing.
+     */
+    protected function lockedStages(): array
+    {
+        return ['finalized', 'converted', 'invoiced', 'issued_invoice'];
+    }
+
     public function canEdit(): bool
     {
-        // فقط در پیش‌نویس
-        return $this->stage() === 'draft';
+        $stage = $this->stage();
+        return ! in_array($stage, $this->lockedStages(), true);
     }
 
     public function isLockedForEditing(): bool
     {
-        // قفل برای تمام مراحل به جز پیش‌نویس
         return ! $this->canEdit();
     }
 
    
 }
+

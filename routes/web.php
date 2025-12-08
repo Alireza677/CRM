@@ -308,6 +308,7 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('proformas/bulk-delete', [ProformaController::class, 'bulkDestroy'])->name('proformas.bulk-destroy');
         Route::resource('proformas', ProformaController::class);
         Route::get('proformas/{proforma}/preview', [ProformaController::class, 'preview'])->name('proformas.preview');
+        Route::post('proformas/{proforma}/notes', [ProformaController::class, 'storeNote'])->name('proformas.notes.store');
         Route::post('proformas/{proforma}/items', [ProformaController::class, 'storeItems'])->name('proformas.items.store');
         Route::post('proformas/{proforma}/send-for-approval', [ProformaController::class, 'sendForApproval'])->name('proformas.sendForApproval');
 

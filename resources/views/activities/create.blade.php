@@ -9,7 +9,7 @@
   <form method="POST" action="{{ route('activities.store') }}" class="space-y-4">
     @csrf
 
-    @include('activities._form', ['activity' => null, 'users' => $users])
+    @include('activities._form', ['activity' => null, 'users' => $users, 'prefillRelated' => $prefillRelated ?? []])
 
     {{-- دکمه‌ها --}}
     <div class="pt-2 flex gap-2">

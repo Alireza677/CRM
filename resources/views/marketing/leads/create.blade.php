@@ -100,7 +100,7 @@ $(function () {
 
   function toggleFollowupForLead() {
     const val = (statusEl && statusEl.value ? statusEl.value : '').toLowerCase();
-    const isJunk = val === 'lost'; // 'سرکاری'
+    const isJunk = val === 'junk'; // ????? ?????? ???? ?? ?????? ???? ?????
     if (isJunk) {
       if (dateTextEl) {
         dateTextEl.setAttribute('disabled', 'disabled');

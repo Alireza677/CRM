@@ -4,7 +4,8 @@
         <a href="{{ route('sales.proformas.create', [
         'opportunity_id' => $opportunity->id,
         'contact_id' => $opportunity->contact_id,
-        'organization_id' => $opportunity->organization_id
+        'organization_id' => $opportunity->organization_id,
+        'return_to' => route('sales.opportunities.show', $opportunity),
     ]) }}"
    class="inline-flex items-center px-3 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
     ایجاد پیش‌فاکتور
