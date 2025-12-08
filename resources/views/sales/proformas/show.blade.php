@@ -194,7 +194,7 @@
                 </div>
             </div>
 
-                <div id="po-tab-content" class="bg-white rounded-lg shadow p-4 relative">
+                <div id="po-tab-content" class="bg-white rounded-lg shadow  relative">
                     {{-- تب اطلاعات پایه --}}
                     <div id="tab-info" class="tab-pane space-y-4">
                         @include('sales.proformas.tabs.info')

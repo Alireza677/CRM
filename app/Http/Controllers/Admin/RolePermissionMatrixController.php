@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Helpers\FormOptionsHelper;
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Collection;
@@ -42,7 +43,7 @@ class RolePermissionMatrixController extends Controller
                 if ($def['type'] === 'scoped') {
                     // Choose the highest scope present among granted
                     $sel = null;
-                    foreach (array_reverse($scopes) as $scope) { // company -> department -> team -> own
+                    foreach (array_reverse($scopes) as $scope) { // highest precedence is the last item in the scopes list
                         $p = $module . '.' . $action . '.' . $scope;
                         if (in_array($p, $granted, true)) {
                             $sel = $scope;
@@ -198,7 +199,8 @@ class RolePermissionMatrixController extends Controller
 
         // Standard actions & scopes (columns)
         $defaultActions = ['view', 'create', 'update', 'delete', 'reassign', 'export', 'download'];
-        $scopes  = ['own', 'team', 'department', 'company'];
+        $scopes  = FormOptionsHelper::permissionScopes();
+        $scopedColumns = ['view', 'create', 'update', 'delete'];
 
         // Determine modules from permissions
         $modules = collect($all)
@@ -229,6 +231,10 @@ class RolePermissionMatrixController extends Controller
             foreach ($actions as $action) {
                 $hasPlain = in_array("$module.$action", $all, true);
                 $availScopes = array_values(array_filter($scopes, fn($s) => in_array("$module.$action.$s", $all, true)));
+                if (!empty($availScopes) && in_array($action, $scopedColumns, true)) {
+                    // Ensure core columns share the full scope list (keep any existing extras)
+                    $availScopes = array_values(array_unique(array_merge($scopes, $availScopes)));
+                }
 
                 if (!empty($availScopes)) {
                     $definitions[$module][$action] = [

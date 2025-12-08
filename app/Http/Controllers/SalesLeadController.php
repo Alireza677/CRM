@@ -574,28 +574,29 @@ class SalesLeadController extends Controller
     }
 
 
-    public function destroy(SalesLead $lead)
-    {
-        $lead->delete();
+   public function destroy(SalesLead $lead)
+{
+    $lead->delete();
 
-        return redirect()->route('marketing.leads.index')
-            ->with('success', 'Ø³Ø±Ù†Ø® ÙØ±ÙˆØ´ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯.');
-    }
+    return redirect()->route('marketing.leads.index')
+        ->with('success', 'سرنخ فروش با موفقیت حذف شد.');
+}
 
-    public function show(SalesLead $lead)
-    {
-        $lead->load(['lastNote', 'assignedTo']);
-        $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
-        $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
+public function show(SalesLead $lead)
+{
+    $lead->load(['lastNote', 'assignedTo']);
+    $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
+    $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
 
-        // âœ… Ø§ÛŒÙ† Ø®Ø· Ø§Ø¶Ø§ÙÙ‡ Ø´Ø¯ ØªØ§ ÙÙ‚Ø· Ú©Ø§Ø±Ø¨Ø±Ø§Ù†ÛŒ Ú©Ù‡ Ù†Ø§Ù… Ú©Ø§Ø±Ø¨Ø±ÛŒ Ø¯Ø§Ø±Ù†Ø¯ Ø¨Ø±Ú¯Ø±Ø¯Ù†Ø¯
-        $allUsers = User::whereNotNull('username')->get();
+    // ✓ این خط اضافه شد تا فقط کاربرانی که نام کاربری دارند برگردند
+    $allUsers = User::whereNotNull('username')->get();
 
-        return view('marketing.leads.show', compact('lead', 'allUsers'))
-            ->with('breadcrumb', $this->leadsBreadcrumb([
-                ['title' => 'Ø¬Ø²Ø¦ÛŒØ§Øª Ø³Ø±Ù†Ø®'],
-            ]));
-    }
+    return view('marketing.leads.show', compact('lead', 'allUsers'))
+        ->with('breadcrumb', $this->leadsBreadcrumb([
+            ['title' => 'جزئیات سرنخ'],
+        ]));
+}
+
 
     public function loadTab(SalesLead $lead, $tab)
     {
@@ -603,90 +604,90 @@ class SalesLeadController extends Controller
     }
 
     public function convertToOpportunity(Request $request, SalesLead $lead)
-    {
-        if (!empty($lead->converted_at)) {
-            return redirect()->back()->with('error', 'Ø§ÛŒÙ† Ø³Ø±Ù†Ø® Ù‚Ø¨Ù„Ø§Ù‹ Ø¨Ù‡ ÙØ±ØµØª ØªØ¨Ø¯ÛŒÙ„ Ø´Ø¯Ù‡ Ø§Ø³Øª.');
-        }
-
-        try {
-            DB::transaction(function () use ($lead) {
-                $organization = null;
-                if (!empty($lead->company)) {
-                    $organization = Organization::firstOrCreate(
-                        ['name' => $lead->company],
-                        [
-                            'phone' => $lead->phone ?? $lead->mobile,
-                            'city' => $lead->city,
-                            'state' => $lead->state,
-                            'address' => $lead->address,
-                        ]
-                    );
-                }
-
-                $firstName = null;
-                $lastName = null;
-                if (!empty($lead->full_name)) {
-                    $parts = preg_split('/\s+/', trim($lead->full_name));
-                    $lastName = array_pop($parts);
-                    $firstName = trim(implode(' ', $parts));
-                    if ($firstName === '') {
-                        $firstName = $lastName;
-                        $lastName = '';
-                    }
-                }
-
-                $contact = null;
-                if (!empty($firstName) || !empty($lastName)) {
-                    $contact = Contact::create([
-                        'first_name' => $firstName,
-                        'last_name'  => $lastName,
-                        'email'      => $lead->email,
-                        'mobile'     => $lead->mobile,
-                        'phone'      => $lead->phone,
-                        'company'    => $lead->company,
-                        'city'       => $lead->city,
-                        'state'      => $lead->state,
-                        'address'    => $lead->address,
-                        'organization_id' => $organization?->id,
-                        'assigned_to' => $lead->assigned_to,
-                    ]);
-                }
-
-                $name = $lead->company
-                    ? ('ÙØ±ØµØª - ' . $lead->company)
-                    : ('ÙØ±ØµØª - ' . ($lead->full_name ?: ('Ø³Ø±Ù†Ø® #' . $lead->id)));
-
-                $opportunity = Opportunity::create([
-                    'name'             => $name,
-                    'organization_id'  => $organization?->id,
-                    'contact_id'       => $contact?->id,
-                    'assigned_to'      => $lead->assigned_to,
-                    'source'           => $lead->lead_source,
-                    'next_follow_up'   => $lead->next_follow_up_date,
-                    'description'      => $lead->notes,
-                    'stage'            => Opportunity::STAGE_OPEN,
-                ]);
-
-                $lead->converted_at = Carbon::now();
-                $lead->converted_opportunity_id = $opportunity->id;
-                $lead->converted_by = Auth::id();
-                $lead->status = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
-                $lead->lead_status = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
-                $lead->save();
-
-                $this->transferLeadNotesToOpportunity($lead, $opportunity);
-                $this->transferLeadActivitiesToOpportunity($lead, $opportunity);
-
-            });
-
-            return redirect()
-                ->route('marketing.leads.index')
-                ->with('success', 'Ø³Ø±Ù†Ø® Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø¨Ù‡ ÙØ±ØµØª ÙØ±ÙˆØ´ ØªØ¨Ø¯ÛŒÙ„ Ø´Ø¯.');
-        } catch (\Throwable $e) {
-            return redirect()->back()
-                ->with('error', 'Ø®Ø·Ø§ Ø¯Ø± ØªØ¨Ø¯ÛŒÙ„ Ø³Ø±Ù†Ø® Ø¨Ù‡ ÙØ±ØµØª: ' . $e->getMessage());
-        }
+{
+    if (!empty($lead->converted_at)) {
+        return redirect()->back()->with('error', 'این سرنخ قبلاً به فرصت تبدیل شده است.');
     }
+
+    try {
+        DB::transaction(function () use ($lead) {
+            $organization = null;
+            if (!empty($lead->company)) {
+                $organization = Organization::firstOrCreate(
+                    ['name' => $lead->company],
+                    [
+                        'phone'   => $lead->phone ?? $lead->mobile,
+                        'city'    => $lead->city,
+                        'state'   => $lead->state,
+                        'address' => $lead->address,
+                    ]
+                );
+            }
+
+            $firstName = null;
+            $lastName  = null;
+            if (!empty($lead->full_name)) {
+                $parts     = preg_split('/\s+/', trim($lead->full_name));
+                $lastName  = array_pop($parts);
+                $firstName = trim(implode(' ', $parts));
+                if ($firstName === '') {
+                    $firstName = $lastName;
+                    $lastName  = '';
+                }
+            }
+
+            $contact = null;
+            if (!empty($firstName) || !empty($lastName)) {
+                $contact = Contact::create([
+                    'first_name'      => $firstName,
+                    'last_name'       => $lastName,
+                    'email'           => $lead->email,
+                    'mobile'          => $lead->mobile,
+                    'phone'           => $lead->phone,
+                    'company'         => $lead->company,
+                    'city'            => $lead->city,
+                    'state'           => $lead->state,
+                    'address'         => $lead->address,
+                    'organization_id' => $organization?->id,
+                    'assigned_to'     => $lead->assigned_to,
+                ]);
+            }
+
+            $name = $lead->company
+                ? ('فرصت - ' . $lead->company)
+                : ('فرصت - ' . ($lead->full_name ?: ('سرنخ #' . $lead->id)));
+
+            $opportunity = Opportunity::create([
+                'name'            => $name,
+                'organization_id' => $organization?->id,
+                'contact_id'      => $contact?->id,
+                'assigned_to'     => $lead->assigned_to,
+                'source'          => $lead->lead_source,
+                'next_follow_up'  => $lead->next_follow_up_date,
+                'description'     => $lead->notes,
+                'stage'           => Opportunity::STAGE_OPEN,
+            ]);
+
+            $lead->converted_at             = Carbon::now();
+            $lead->converted_opportunity_id = $opportunity->id;
+            $lead->converted_by             = Auth::id();
+            $lead->status                   = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
+            $lead->lead_status              = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
+            $lead->save();
+
+            $this->transferLeadNotesToOpportunity($lead, $opportunity);
+            $this->transferLeadActivitiesToOpportunity($lead, $opportunity);
+        });
+
+        return redirect()
+            ->route('marketing.leads.index')
+            ->with('success', 'سرنخ با موفقیت به فرصت فروش تبدیل شد.');
+    } catch (\Throwable $e) {
+        return redirect()->back()
+            ->with('error', 'خطا در تبدیل سرنخ به فرصت: ' . $e->getMessage());
+    }
+}
+
 
     private function transferLeadNotesToOpportunity(SalesLead $lead, Opportunity $opportunity): void
     {

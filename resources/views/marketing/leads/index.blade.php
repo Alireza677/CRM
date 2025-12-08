@@ -209,7 +209,7 @@
                                         'discarded' => 'bg-red-100 text-red-800',
                                         'junk' => 'bg-red-100 text-red-800',
                                     ];
-                                    $rawStatus = $lead->status ?? $lead->lead_status;
+                                     $rawStatus = !empty($lead->lead_status) ? $lead->lead_status : $lead->status;
                                     $statusKey = \App\Models\SalesLead::normalizeStatus($rawStatus) ?? $rawStatus;
                                     $badgeClass = $leadStatusColors[$statusKey] ?? 'bg-gray-200 text-gray-800';
                                 @endphp

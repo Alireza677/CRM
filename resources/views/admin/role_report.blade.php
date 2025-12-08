@@ -3,12 +3,7 @@
 @section('content')
     @php
         $breadcrumb = [ ['title' => 'گزارش نقش‌ها و دسترسی‌ها'] ];
-        $scopeBadges = [
-            'own' => 'خود',
-            'team' => 'تیم',
-            'department' => 'دپارتمان',
-            'company' => 'شرکت',
-        ];
+        $scopeBadges = \App\Helpers\FormOptionsHelper::permissionScopeLabels();
 
         $actionLabels = [
             'view' => 'مشاهده',

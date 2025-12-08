@@ -48,7 +48,7 @@
     </div>
 @endif
 
-<div class="relative lg:pr-80">
+<div class="relative lg:pr-40">
     <div class="grid grid-cols-1 lg:grid-cols-12 gap-4">
         <div class="lg:col-span-8 space-y-4">
             {{-- سه باکس اطلاعات اصلی --}}

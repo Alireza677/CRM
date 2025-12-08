@@ -4,6 +4,25 @@ namespace App\Helpers;
 
 class FormOptionsHelper
 {
+    // ---------------- Permission scopes (role matrix & reports) ----------------
+    public static function permissionScopes(): array
+    {
+        // Keep existing scope keys and add new aliases without removing old ones
+        return ['own', 'personal', 'team', 'department', 'organizational', 'company'];
+    }
+
+    public static function permissionScopeLabels(): array
+    {
+        return [
+            'own'             => 'شخصی',
+            'personal'        => 'شخصی',
+            'team'            => 'تیمی',
+            'department'      => 'دپارتمان',
+            'organizational'  => 'سازمانی',
+            'company'         => 'سازمانی',
+        ];
+    }
+
     // ---------------- Lead: Status & Source ----------------
     public static function getLeadStatusLabel($status): string
     {

@@ -11,12 +11,7 @@
             'export' => 'خروجی',
             'download' => 'دانلود',
         ];
-        $scopeLabels = [
-            'own' => 'شخصی',
-            'team' => 'تیمی',
-            'department' => 'دپارتمان',
-            'company' => 'سازمانی',
-        ];
+        $scopeLabels = \App\Helpers\FormOptionsHelper::permissionScopeLabels();
         // Helpers to localize role and module labels with fallback
         $roleLabel = function ($name) {
             $key = 'roles.' . $name;
@@ -215,7 +210,7 @@
             form.submit();
         }
         function permissionMatrix() {
-            const labelMap = { own: 'شخصی', team: 'تیمی', department: 'دپارتمان', company: 'سازمانی' };
+            const labelMap = @json($scopeLabels);
             return {
                 dirty: false,
                 query: '',
