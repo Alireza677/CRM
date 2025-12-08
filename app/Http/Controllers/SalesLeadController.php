@@ -370,208 +370,215 @@ class SalesLeadController extends Controller
         return [$firstName ?: null, $lastName ?: null];
     }
 
-    public function bulkDelete(Request $request)
-    {
-        $leadIds = $request->input('selected_leads', []);
+public function bulkDelete(Request $request)
+{
+    $leadIds = $request->input('selected_leads', []);
 
-        if (!empty($leadIds)) {
-            SalesLead::whereIn('id', $leadIds)->delete();
-        }
-
-        return redirect()->route('marketing.leads.index')
-            ->with('success', 'Ø³Ø±Ù†Ø®â€ŒÙ‡Ø§ Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø­Ø°Ù Ø´Ø¯Ù†Ø¯.');
+    if (!empty($leadIds)) {
+        SalesLead::whereIn('id', $leadIds)->delete();
     }
 
-    public function edit(SalesLead $lead)
-    {
-        $users = User::all();
-        $referrals = $users;
-        $hasRecentActivity = $lead->hasRecentActivity();
-        return view('marketing.leads.edit', compact('lead', 'users', 'referrals', 'hasRecentActivity'))
-            ->with('breadcrumb', $this->leadsBreadcrumb([
-                ['title' => 'ÙˆÛŒØ±Ø§ÛŒØ´ Ø³Ø±Ù†Ø®'],
-            ]));
+    return redirect()
+        ->route('marketing.leads.index')
+        ->with('success', 'سرنخ‌ها با موفقیت حذف شدند.');
+}
+
+
+  public function edit(SalesLead $lead)
+{
+    $users = User::all();
+    $referrals = $users;
+    $hasRecentActivity = $lead->hasRecentActivity();
+
+    return view('marketing.leads.edit', compact('lead', 'users', 'referrals', 'hasRecentActivity'))
+        ->with('breadcrumb', $this->leadsBreadcrumb([
+            ['title' => 'ویرایش سرنخ'],
+        ]));
+}
+
+
+
+
+  public function update(Request $request, SalesLead $lead)
+{
+    \Log::info('SalesLeadController@update reached');
+    \Log::info('SalesLeadController@update payload', $request->all());
+
+    $leadDateConv = DateHelper::normalizeDateInput($request->lead_date ?? null);
+    $statusVal = SalesLead::normalizeStatus($request->lead_status ?? '');
+    $nextFollowUpConv = $statusVal === SalesLead::STATUS_DISCARDED
+        ? null
+        : DateHelper::normalizeDateInput($request->next_follow_up_date ?? null);
+
+    $request->merge([
+        'lead_date' => $leadDateConv,
+        'next_follow_up_date' => $nextFollowUpConv,
+    ]);
+
+    $originalStatus = $lead->lead_status ?? $lead->status;
+
+    $data = $request->validate([
+        'prefix' => 'nullable|string|max:10',
+        'full_name' => 'required|string|max:255',
+        'company' => 'nullable|string|max:255',
+        'email' => 'nullable|email|max:255',
+        'mobile' => 'nullable|string|max:20',
+        'phone' => 'nullable|string|max:20',
+        'website' => 'nullable|url|max:255',
+        'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
+        'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
+        'disqualify_reason' => ['nullable', 'string', Rule::in(array_keys(FormOptionsHelper::leadDisqualifyReasons()))],
+        'assigned_to' => 'nullable|exists:users,id',
+        'referred_to' => 'nullable|exists:users,id',
+        'lead_date' => 'required|date',
+        'next_follow_up_date' => 'nullable|date|after_or_equal:today|required_unless:lead_status,discarded,junk',
+        'do_not_email' => 'boolean',
+        // این خط اگر واقعاً گزینه‌های فارسی خاصی دارد، بعداً می‌تونی خودت مقدار in: را اصلاح کنی
+        'customer_type' => 'nullable|string|in:U.O\'O?O?UO O?O_UOO_,U.O\'O?O?UO U,O_UOU.UO,U.O\'O?O?UO O"OU,U,U^U?',
+        'industry' => 'nullable|string|max:255',
+        'nationality' => 'nullable|string|max:255',
+        'main_test_field' => 'nullable|string|max:255',
+        'dependent_test_field' => 'nullable|string|max:255',
+        'address' => 'nullable|string|max:1000',
+        'state' => 'nullable|string|max:255',
+        'city' => 'nullable|string|max:255',
+        'notes' => 'nullable|string',
+        'building_usage' => 'nullable|string|max:255',
+        'internal_temperature' => 'nullable|numeric',
+        'external_temperature' => 'nullable|numeric',
+        'building_length' => 'nullable|numeric|min:0',
+        'building_width' => 'nullable|numeric|min:0',
+        'eave_height' => 'nullable|numeric|min:0',
+        'ridge_height' => 'nullable|numeric|min:0',
+        'wall_material' => 'nullable|string|max:255',
+        'insulation_status' => 'nullable|string|in:good,medium,weak',
+        'spot_heating_systems' => 'nullable|integer|min:0',
+        'central_200_systems' => 'nullable|integer|min:0',
+        'central_300_systems' => 'nullable|integer|min:0',
+        'activity_override' => ['nullable','boolean'],
+        'quick_note_body' => ['nullable','string','max:5000'],
+        'disqual_reason_body' => ['nullable','string','max:5000'],
+    ]);
+
+    $newStatus = $data['lead_status'] ?? $originalStatus;
+    $normalizedOriginalStatus = SalesLead::normalizeStatus($originalStatus);
+    $normalizedNewStatus = SalesLead::normalizeStatus($newStatus);
+
+    $overrideRequested = (bool) $request->boolean('activity_override');
+    $quickNoteBody = trim((string) $request->input('quick_note_body', ''));
+    $statusReasonBody = trim((string) $request->input('disqual_reason_body', ''));
+    $statusChanged = $normalizedOriginalStatus !== $normalizedNewStatus;
+    $isDiscardedChange = $statusChanged && $normalizedNewStatus === SalesLead::STATUS_DISCARDED;
+
+    if ($isDiscardedChange) {
+        $request->merge(['disqual_reason_body' => $statusReasonBody]);
+        $request->validate(
+            ['disqual_reason_body' => ['required','string','max:5000']],
+            ['disqual_reason_body.required' => 'ذکر دلیل تغییر وضعیت به سرکاری الزامی است.']
+        );
+        if ($quickNoteBody === '') {
+            $quickNoteBody = $statusReasonBody;
+        }
+        $overrideRequested = true;
     }
+    $canChangeStage = true;
 
+    if ($statusChanged) {
+        $canChangeStage = $isDiscardedChange ? true : $lead->canChangeStageTo($normalizedNewStatus);
 
-
-    public function update(Request $request, SalesLead $lead)
-    {
-        \Log::info('SalesLeadController@update reached');
-        \Log::info('SalesLeadController@update payload', $request->all());
-
-        $leadDateConv = DateHelper::normalizeDateInput($request->lead_date ?? null);
-        $statusVal = SalesLead::normalizeStatus($request->lead_status ?? '');
-        $nextFollowUpConv = $statusVal === SalesLead::STATUS_DISCARDED
-            ? null
-            : DateHelper::normalizeDateInput($request->next_follow_up_date ?? null);
-
-        $request->merge([
-            'lead_date' => $leadDateConv,
-            'next_follow_up_date' => $nextFollowUpConv,
-        ]);
-
-        $originalStatus = $lead->lead_status ?? $lead->status;
-
-        $data = $request->validate([
-            'prefix' => 'nullable|string|max:10',
-            'full_name' => 'required|string|max:255',
-            'company' => 'nullable|string|max:255',
-            'email' => 'nullable|email|max:255',
-            'mobile' => 'nullable|string|max:20',
-            'phone' => 'nullable|string|max:20',
-            'website' => 'nullable|url|max:255',
-            'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
-            'lead_status' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
-            'disqualify_reason' => ['nullable', 'string', Rule::in(array_keys(FormOptionsHelper::leadDisqualifyReasons()))],
-            'assigned_to' => 'nullable|exists:users,id',
-            'referred_to' => 'nullable|exists:users,id',
-            'lead_date' => 'required|date',
-            'next_follow_up_date' => 'nullable|date|after_or_equal:today|required_unless:lead_status,discarded,junk',
-            'do_not_email' => 'boolean',
-            'customer_type' => 'nullable|string|in:U.O\'O?O?UO O?O_UOO_,U.O\'O?O?UO U,O_UOU.UO,U.O\'O?O?UO O"OU,U,U^U?',
-            'industry' => 'nullable|string|max:255',
-            'nationality' => 'nullable|string|max:255',
-            'main_test_field' => 'nullable|string|max:255',
-            'dependent_test_field' => 'nullable|string|max:255',
-            'address' => 'nullable|string|max:1000',
-            'state' => 'nullable|string|max:255',
-            'city' => 'nullable|string|max:255',
-            'notes' => 'nullable|string',
-            'building_usage' => 'nullable|string|max:255',
-            'internal_temperature' => 'nullable|numeric',
-            'external_temperature' => 'nullable|numeric',
-            'building_length' => 'nullable|numeric|min:0',
-            'building_width' => 'nullable|numeric|min:0',
-            'eave_height' => 'nullable|numeric|min:0',
-            'ridge_height' => 'nullable|numeric|min:0',
-            'wall_material' => 'nullable|string|max:255',
-            'insulation_status' => 'nullable|string|in:good,medium,weak',
-            'spot_heating_systems' => 'nullable|integer|min:0',
-            'central_200_systems' => 'nullable|integer|min:0',
-            'central_300_systems' => 'nullable|integer|min:0',
-            'activity_override' => ['nullable','boolean'],
-            'quick_note_body' => ['nullable','string','max:5000'],
-            'disqual_reason_body' => ['nullable','string','max:5000'],
-        ]);
-
-        $newStatus = $data['lead_status'] ?? $originalStatus;
-        $normalizedOriginalStatus = SalesLead::normalizeStatus($originalStatus);
-        $normalizedNewStatus = SalesLead::normalizeStatus($newStatus);
-
-        $overrideRequested = (bool) $request->boolean('activity_override');
-        $quickNoteBody = trim((string) $request->input('quick_note_body', ''));
-        $statusReasonBody = trim((string) $request->input('disqual_reason_body', ''));
-        $statusChanged = $normalizedOriginalStatus !== $normalizedNewStatus;
-        $isDiscardedChange = $statusChanged && $normalizedNewStatus === SalesLead::STATUS_DISCARDED;
-
-        if ($isDiscardedChange) {
-            $request->merge(['disqual_reason_body' => $statusReasonBody]);
-            $request->validate(
-                ['disqual_reason_body' => ['required','string','max:5000']],
-                ['disqual_reason_body.required' => 'Ø¯Ù„ÛŒÙ„ ØªØºÛŒÛŒØ± ÙˆØ¶Ø¹ÛŒØª Ø¨Ù‡ Ø³Ø±Ú©Ø§Ø±ÛŒ Ø§Ù„Ø²Ø§Ù…ÛŒ Ø§Ø³Øª.']
-            );
-            if ($quickNoteBody === '') {
-                $quickNoteBody = $statusReasonBody;
-            }
-            $overrideRequested = true;
-        }
-        $canChangeStage = true;
-
-        if ($statusChanged) {
-            $canChangeStage = $isDiscardedChange ? true : $lead->canChangeStageTo($normalizedNewStatus);
-
-            if (!$canChangeStage && $overrideRequested && $quickNoteBody !== '') {
-                $lead->notes()->create([
-                    'body' => $quickNoteBody,
-                    'user_id' => auth()->id(),
-                ]);
-                $lead->markFirstActivity(now());
-                $canChangeStage = true;
-
-                \Log::info('lead_stage_guard_overridden_with_note', [
-                    'lead_id' => $lead->id,
-                    'original_status' => $normalizedOriginalStatus,
-                    'new_status' => $normalizedNewStatus,
-                    'user_id' => auth()->id(),
-                ]);
-            }
-
-            if (!$canChangeStage) {
-                \Log::info('lead_stage_guard_blocked', [
-                    'lead_id' => $lead->id,
-                    'original_status' => $normalizedOriginalStatus,
-                    'new_status' => $normalizedNewStatus,
-                ]);
-
-                return back()
-                    ->withErrors(['lead_status' => 'ØªØºÛŒÛŒØ± ÙˆØ¶Ø¹ÛŒØª Ø¨Ø¯ÙˆÙ† ÙØ¹Ø§Ù„ÛŒØª ØªÙ…Ø§Ø³/Ø¬Ù„Ø³Ù‡/ÛŒØ§Ø¯Ø¯Ø§Ø´Øª Ø§Ø®ÛŒØ± Ù…Ø¬Ø§Ø² Ù†ÛŒØ³Øª.'])
-                    ->withInput();
-            }
-        }
-
-        if (array_key_exists('notes', $data)) {
-            \Log::info('Removing notes from update payload to keep initial note immutable.');
-            unset($data['notes']);
-        }
-
-        if ($isDiscardedChange && $statusReasonBody !== '') {
+        if (!$canChangeStage && $overrideRequested && $quickNoteBody !== '') {
             $lead->notes()->create([
-                'body' => $statusReasonBody,
+                'body' => $quickNoteBody,
                 'user_id' => auth()->id(),
             ]);
+            $lead->markFirstActivity(now());
+            $canChangeStage = true;
 
-            try {
-                $creatorId = auth()->id() ?: $lead->assigned_to;
-                $assigneeId = $lead->assigned_to ?: $creatorId;
-                $activity = CrmActivity::create([
-                    'subject'        => 'lead_status_reason',
-                    'start_at'       => now(),
-                    'due_at'         => now(),
-                    'assigned_to_id' => $assigneeId,
-                    'related_type'   => SalesLead::class,
-                    'related_id'     => $lead->id,
-                    'status'         => 'completed',
-                    'priority'       => 'normal',
-                    'description'    => $statusReasonBody,
-                    'is_private'     => false,
-                    'created_by_id'  => $creatorId,
-                    'updated_by_id'  => $creatorId,
-                ]);
+            \Log::info('lead_stage_guard_overridden_with_note', [
+                'lead_id' => $lead->id,
+                'original_status' => $normalizedOriginalStatus,
+                'new_status' => $normalizedNewStatus,
+                'user_id' => auth()->id(),
+            ]);
+        }
 
-                if (method_exists($lead, 'markFirstActivity')) {
-                    $activityTime = $activity->start_at ?? $activity->created_at ?? now();
-                    $lead->markFirstActivity($activityTime);
-                }
-            } catch (\Throwable $activityException) {
-                \Log::warning('lead_status_reason_activity_failed', [
-                    'lead_id' => $lead->id ?? null,
-                    'error' => $activityException->getMessage(),
-                ]);
+        if (!$canChangeStage) {
+            \Log::info('lead_stage_guard_blocked', [
+                'lead_id' => $lead->id,
+                'original_status' => $normalizedOriginalStatus,
+                'new_status' => $normalizedNewStatus,
+            ]);
 
-                if (method_exists($lead, 'markFirstActivity')) {
-                    $lead->markFirstActivity(now());
-                }
+            return back()
+                ->withErrors([
+                    'lead_status' => 'تغییر وضعیت بدون فعالیت تماس، جلسه یا یادداشت اخیر مجاز نیست.'
+                ])
+                ->withInput();
+        }
+    }
+
+    if (array_key_exists('notes', $data)) {
+        \Log::info('Removing notes from update payload to keep initial note immutable.');
+        unset($data['notes']);
+    }
+
+    if ($isDiscardedChange && $statusReasonBody !== '') {
+        $lead->notes()->create([
+            'body' => $statusReasonBody,
+            'user_id' => auth()->id(),
+        ]);
+
+        try {
+            $creatorId = auth()->id() ?: $lead->assigned_to;
+            $assigneeId = $lead->assigned_to ?: $creatorId;
+            $activity = CrmActivity::create([
+                'subject'        => 'lead_status_reason',
+                'start_at'       => now(),
+                'due_at'         => now(),
+                'assigned_to_id' => $assigneeId,
+                'related_type'   => SalesLead::class,
+                'related_id'     => $lead->id,
+                'status'         => 'completed',
+                'priority'       => 'normal',
+                'description'    => $statusReasonBody,
+                'is_private'     => false,
+                'created_by_id'  => $creatorId,
+                'updated_by_id'  => $creatorId,
+            ]);
+
+            if (method_exists($lead, 'markFirstActivity')) {
+                $activityTime = $activity->start_at ?? $activity->created_at ?? now();
+                $lead->markFirstActivity($activityTime);
+            }
+        } catch (\Throwable $activityException) {
+            \Log::warning('lead_status_reason_activity_failed', [
+                'lead_id' => $lead->id ?? null,
+                'error' => $activityException->getMessage(),
+            ]);
+
+            if (method_exists($lead, 'markFirstActivity')) {
+                $lead->markFirstActivity(now());
             }
         }
-
-        unset($data['activity_override'], $data['quick_note_body'], $data['disqual_reason_body']);
-
-        if (array_key_exists('lead_status', $data)) {
-            $data['lead_status'] = $normalizedNewStatus;
-            $data['status'] = $normalizedNewStatus;
-        }
-
-        $data['do_not_email'] = $request->has('do_not_email');
-
-        $lead->fill($data);
-        $lead->save();
-
-        return redirect()
-    ->route('marketing.leads.index')
-    ->with('success', 'ØªØºÛŒÛŒØ±Ø§Øª Ø¨Ø§ Ù…ÙˆÙÙ‚ÛŒØª Ø°Ø®ÛŒØ±Ù‡ Ø´Ø¯.');
-
     }
+
+    unset($data['activity_override'], $data['quick_note_body'], $data['disqual_reason_body']);
+
+    if (array_key_exists('lead_status', $data)) {
+        $data['lead_status'] = $normalizedNewStatus;
+        $data['status'] = $normalizedNewStatus;
+    }
+
+    $data['do_not_email'] = $request->has('do_not_email');
+
+    $lead->fill($data);
+    $lead->save();
+
+    return redirect()
+        ->route('marketing.leads.index')
+        ->with('success', 'تغییرات با موفقیت ذخیره شد.');
+}
+
 
 
    public function destroy(SalesLead $lead)
