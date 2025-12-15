@@ -1,11 +1,23 @@
 @extends('layouts.app')
 
+@php
+    $showReengagedBadge = (bool) ($lead->is_reengaged ?? false);
+    $isWebsiteSource = $lead->lead_source === 'website';
+@endphp
+
 @section('content')
 
 <div class="bg-gray-100">
 {{-- هدر و دکمه‌های موبایل (یک‌پارچه) --}}
 <div class="flex items-center justify-between px-4 py-3 md:hidden">
-  <h1 class="text-lg font-bold text-gray-800 truncate">سرنخ فروش: {{ $lead->full_name }}</h1>
+  <h1 class="text-lg font-bold text-gray-800 truncate flex items-center gap-2">
+    <span>سرنخ فروش: {{ $lead->full_name }}</span>
+    @if($showReengagedBadge)
+        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {{ $isWebsiteSource ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700' }}">
+            بازگشتی از وب‌سایت
+        </span>
+    @endif
+  </h1>
   <div class="flex items-center gap-2">
     {{-- ویرایش --}}
     <a href="{{ route('marketing.leads.edit', $lead) }}"
@@ -124,7 +136,14 @@
 <main class="flex-1 px-4 md:px-8 pb-8 mr-0 md:mr-64">
         {{-- هدر دسکتاپ --}}
             <div class="hidden md:flex justify-between items-center mb-6 mt-8">
-                <h1 class="text-2xl font-bold text-gray-800">سرنخ فروش: {{ $lead->full_name }}</h1>
+                <h1 class="text-2xl font-bold text-gray-800 flex items-center gap-3">
+                    <span>سرنخ فروش: {{ $lead->full_name }}</span>
+                    @if($showReengagedBadge)
+                        <span class="inline-flex items-center px-2 py-0.5 rounded-full text-sm font-medium {{ $isWebsiteSource ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700' }}">
+                            بازگشتی از وب‌سایت
+                        </span>
+                    @endif
+                </h1>
                 <div class="flex space-x-4 rtl:space-x-reverse">
                     <a href="{{ route('marketing.leads.edit', $lead) }}"
                        class="text-blue-600 hover:text-blue-800" title="ویرایش">

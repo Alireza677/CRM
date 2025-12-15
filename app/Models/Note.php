@@ -10,6 +10,19 @@ class Note extends Model
 {
     protected $fillable = ['body','user_id','noteable_type','noteable_id'];
 
+     protected static function booted()
+    {
+        static::created(function (Note $note) {
+            $model = $note->noteable;
+
+            if (!$model) return;
+
+            if (method_exists($model, 'markFirstActivity')) {
+                $model->markFirstActivity(now(), 'note');
+            }
+        });
+    }
+
     public function noteable(): MorphTo
     {
         return $this->morphTo(__FUNCTION__);

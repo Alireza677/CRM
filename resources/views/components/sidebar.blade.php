@@ -292,6 +292,7 @@
                         @endcan
                         @can('sidebar_settings_automation.view')
                         <a href="{{ route('settings.automation.edit') }}" class="menu-item">اتوماسیون</a>
+                        <a href="{{ route('settings.automation.leads.roundrobin.index') }}" class="menu-item">Round-Robin سرنخ‌ها</a>
                         @endcan
                         @can('sidebar_settings_notifications.view')
                         <a href="{{ route('settings.notifications.index') }}" class="menu-item">تنظیمات اعلان‌ها</a>

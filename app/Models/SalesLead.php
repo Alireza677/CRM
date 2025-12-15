@@ -89,6 +89,8 @@ class SalesLead extends Model
         'team_id',
         'department',
         'visibility',
+        'is_reengaged',
+        'reengaged_at',
     ];
 
     protected $casts = [
@@ -114,6 +116,8 @@ class SalesLead extends Model
         'central_200_systems'  => 'integer',
         'central_300_systems'  => 'integer',
         'visibility'           => 'string',
+        'is_reengaged'         => 'boolean',
+        'reengaged_at'         => 'datetime',
     ];
 
     protected $attributes = [
@@ -128,13 +132,61 @@ class SalesLead extends Model
      */
 
     protected static function booted(): void
-    {
-        static::creating(function (SalesLead $lead) {
-            if (!empty($lead->assigned_to)) {
-                $lead->assigned_at = $lead->assigned_at ?? Carbon::now();
-                $lead->pool_status = $lead->pool_status ?: self::POOL_ASSIGNED;
+{
+    static::creating(function (SalesLead $lead) {
+        \Log::info('[Lead creating] BEFORE', [
+            'assigned_to' => $lead->assigned_to,
+            'pool_status' => $lead->pool_status,
+            'assigned_at' => $lead->assigned_at,
+            'dirty' => $lead->getDirty(),
+        ]);
+
+        if (!empty($lead->assigned_to)) {
+            $lead->assigned_at = $lead->assigned_at ?? \Illuminate\Support\Carbon::now();
+
+            if (empty($lead->pool_status) || $lead->pool_status === self::POOL_IN_POOL) {
+                $lead->pool_status = self::POOL_ASSIGNED;
             }
-        });
+        } else {
+            if (empty($lead->pool_status)) {
+                $lead->pool_status = self::POOL_IN_POOL;
+            }
+        }
+
+        \Log::info('[Lead creating] AFTER', [
+            'pool_status' => $lead->pool_status,
+            'dirty' => $lead->getDirty(),
+        ]);
+    });
+
+    static::saving(function (SalesLead $lead) {
+        \Log::info('[Lead saving]', [
+            'exists' => $lead->exists,
+            'assigned_to' => $lead->assigned_to,
+            'pool_status' => $lead->pool_status,
+            'dirty' => $lead->getDirty(),
+        ]);
+    });
+
+    static::created(function (SalesLead $lead) {
+        \Log::info('[Lead created]', [
+            'id' => $lead->id,
+            'pool_status' => $lead->pool_status,
+            'assigned_to' => $lead->assigned_to,
+        ]);
+    });
+
+    static::saved(function (SalesLead $lead) {
+        \Log::info('[Lead saved]', [
+            'id' => $lead->id,
+            'pool_status' => $lead->pool_status,
+            'assigned_to' => $lead->assigned_to,
+            'wasChanged(pool_status)' => $lead->wasChanged('pool_status'),
+            'changes' => $lead->getChanges(),
+        ]);
+    });
+
+
 
         static::updating(function (SalesLead $lead) {
             if ($lead->isDirty('assigned_to')) {

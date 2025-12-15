@@ -140,12 +140,21 @@
                     </tr>
                 </thead>
                 <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse($leads as $lead)
+@forelse($leads as $lead)
                         <tr class="hover:bg-gray-50 transition">
                             <td class="px-4 py-2">
+                                @php
+                                    $showReengagedBadge = (bool) $lead->is_reengaged;
+                                    $isWebsiteSource = $lead->lead_source === 'website';
+                                @endphp
                                 <a href="{{ route('marketing.leads.show', $lead) }}" class="text-blue-700 hover:underline">
                                     {{ $lead->full_name ?? '---' }}
                                 </a>
+                                @if($showReengagedBadge)
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {{ $isWebsiteSource ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700' }}">
+                                        بازگشتی از وب‌سایت
+                                    </span>
+                                @endif
                                 <span class="ml-2 px-2 py-0.5 text-[10px] rounded-full bg-green-100 text-green-800 align-middle">تبدیل شده</span>
                             </td>
                             <td class="px-4 py-2 text-gray-500">

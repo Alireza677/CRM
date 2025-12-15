@@ -201,6 +201,8 @@
                             <option value="{{ $key }}" @selected($lead_status_value == $key)>{{ $label }}</option>
                         @endforeach
                     </select>
+                    <input type="hidden" id="original_lead_status" value="{{ $originalLeadStatus }}">
+                    <input type="hidden" name="disqual_reason_body" id="disqual_reason_body" value="{{ old('disqual_reason_body', $lead->disqual_reason_body ?? '') }}">
 
                     @error('lead_status') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
                     @error('disqual_reason_body') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
@@ -237,273 +239,136 @@
             </div>
         </div>
     </div>
+    {{-- Discard Reason Modal --}}
+<div id="discardReasonModal"
+     class="hidden fixed inset-0 z-50 items-center justify-center bg-black/40">
+    <div class="w-full max-w-lg rounded-2xl bg-white shadow-xl p-6">
+        <div class="flex items-center justify-between mb-4">
+            <h3 class="text-lg font-semibold text-gray-900">دلیل از دست رفتن سرنخ</h3>
+            <button type="button" id="discardModalCloseBtn"
+                    class="text-gray-500 hover:text-gray-700">✕</button>
+        </div>
 
-    @push('scripts')
-    <script>
-    (function(){
-        const locations = @json(\App\Helpers\FormOptionsHelper::iranLocations());
-        const stateEl = document.getElementById('stateSelect');
-        const cityEl  = document.getElementById('citySelect');
-
-        function fillCities(st, preset = '') {
-            cityEl.innerHTML = '';
-            if (!st || !locations[st]) {
-                cityEl.disabled = true;
-                cityEl.insertAdjacentHTML('beforeend','<option value="">ابتدا استان را انتخاب کنید</option>');
-                return;
-            }
-            cityEl.disabled = false;
-            cityEl.insertAdjacentHTML('beforeend','<option value="">انتخاب شهر</option>');
-            locations[st].forEach(function(c){
-                const opt = document.createElement('option');
-                opt.value = c; opt.textContent = c;
-                if (preset && preset === c) opt.selected = true;
-                cityEl.appendChild(opt);
-            });
-        }
-
-        stateEl.addEventListener('change', function(){ fillCities(this.value); });
-        fillCities(stateEl.value, @json(old('city', $lead->city ?? '')));
-    })();
-    </script>
-    @endpush
-
-    @push('scripts')
-    <script>
-    (function(){
-        const modal = document.getElementById('leadContactModal');
-        if (!modal) return;
-
-        const searchInputId = 'leadContactSearchInput';
-        const tbodyId = 'leadContactTableBody';
-        const noResId = 'leadContactNoResults';
-
-        function toggleModal(open){
-            if (open){
-                modal.classList.remove('hidden');
-                modal.classList.add('flex');
-                modal.setAttribute('aria-hidden', 'false');
-                setTimeout(() => {
-                    const s = document.getElementById(searchInputId);
-                    if (s) s.focus();
-                }, 10);
-            } else {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-                modal.setAttribute('aria-hidden', 'true');
-            }
-        }
-
-        window.openLeadContactModal = function(){ toggleModal(true); };
-        window.closeLeadContactModal = function(){ toggleModal(false); };
-
-        window.selectLeadContact = function(id, name){
-            const idInput = document.getElementById('lead_contact_id');
-            const nameInput = document.getElementById('lead_contact_display');
-            if (idInput) idInput.value = id ?? '';
-            if (nameInput) nameInput.value = name ?? '';
-            toggleModal(false);
-        };
-
-        function normalizeDigits(str){
-            if (!str) return '';
-            return String(str)
-                .replace(/[\\u06F0-\\u06F9]/g, d => String(d.charCodeAt(0) - 0x06F0))
-                .replace(/[\\u0660-\\u0669]/g, d => String(d.charCodeAt(0) - 0x0660));
-        }
-        function stripSeparators(str){
-            return String(str)
-                .replace(/[\\u200c\\u200b\\u00a0\\s]/g,'')
-                .replace(/[\\,\\u060c]/gi,'')
-                .replace(/[\\.\\u066b\\u066c]/g,'');
-        }
-        function normalizeQuery(raw){
-            const lowered = String(raw || '').toLowerCase().trim();
-            const digitsFixed = normalizeDigits(lowered);
-            return { text: digitsFixed, numeric: stripSeparators(digitsFixed) };
-        }
-
-        function setupFilter(){
-            const input = document.getElementById(searchInputId);
-            const tbody = document.getElementById(tbodyId);
-            const noRes = document.getElementById(noResId);
-            if (!input || !tbody) return;
-
-            let timer = null;
-            input.addEventListener('input', () => { clearTimeout(timer); timer = setTimeout(applyFilter, 150); });
-
-            function applyFilter(){
-                const { text, numeric } = normalizeQuery(input.value);
-                const rows = Array.from(tbody.querySelectorAll('tr'));
-
-                if (!text){
-                    rows.forEach(tr => tr.classList.remove('hidden'));
-                    if (noRes) noRes.classList.add('hidden');
-                    return;
-                }
-
-                let visible = 0;
-                const isPureNumber = /^[0-9]+$/.test(numeric);
-                rows.forEach(tr => {
-                    const name  = String(tr.getAttribute('data-name')  || '').toLowerCase();
-                    const phone = String(tr.getAttribute('data-phone') || '');
-                    const match = name.includes(text) || (isPureNumber ? phone.includes(numeric) : (numeric ? phone.includes(numeric) : false));
-                    if (match) { tr.classList.remove('hidden'); visible++; } else { tr.classList.add('hidden'); }
-                });
-
-                if (noRes) (visible === 0) ? noRes.classList.remove('hidden') : noRes.classList.add('hidden');
-            }
-        }
-
-        document.addEventListener('DOMContentLoaded', setupFilter);
-        document.addEventListener('click', function(e){
-            if (e.target === modal && !modal.classList.contains('hidden')) closeLeadContactModal();
-        });
-        document.addEventListener('keydown', function(e){
-            if (e.key === 'Escape') closeLeadContactModal();
-        });
-    })();
-    </script>
-    @endpush
-
-    {{-- بخش اطلاعات ساختمان --}}
-    @php
-        $buildingSectionFields = [
-            'building_usage',
-            'internal_temperature',
-            'external_temperature',
-            'building_length',
-            'building_width',
-            'eave_height',
-            'ridge_height',
-            'wall_material',
-            'insulation_status',
-            'spot_heating_systems',
-            'central_200_systems',
-            'central_300_systems',
-        ];
-
-        $shouldOpenBuildingSection = false;
-        foreach ($buildingSectionFields as $fieldName) {
-            $fieldValue = old($fieldName, $lead->$fieldName ?? null);
-            if (!empty($fieldValue) || $errors->has($fieldName)) {
-                $shouldOpenBuildingSection = true;
-                break;
-            }
-        }
-    @endphp
-    <details class="bg-gray-100 border border-gray-200 rounded-2xl shadow-sm" @if($shouldOpenBuildingSection) open @endif>
-        <summary class="flex items-start justify-between p-6 cursor-pointer select-none">
+        <div class="space-y-4">
             <div>
-                <h2 class="text-lg font-semibold text-gray-900"> اطلاعات ساختمان</h2>
-                <p class="text-sm text-gray-500 mt-1">برای نمایش فیلد ها کلیک کنید</p>
-            </div>
-            <span class="text-xs text-gray-500">اطلاعات تکمیلی برای پیشنهاد دقیق‌تر</span>
-        </summary>
-
-        <div class="border-t border-gray-200 p-6 space-y-6">
-            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <div>
-                    <label for="building_usage" class="block font-medium text-sm text-gray-700">کاربری ساختمان</label>
-                    <input type="text" name="building_usage" id="building_usage"
-                           value="{{ old('building_usage', $lead->building_usage ?? '') }}"
-                           class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="مثلاً صنعتی، اداری، ورزشی">
-                @error('building_usage') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+                <label class="block text-sm font-medium text-gray-700 mb-2">علت</label>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    @foreach(FormOptionsHelper::leadDisqualifyReasons() as $key => $label)
+                        <label class="flex items-center gap-2 text-sm text-gray-700">
+                            <input type="checkbox" name="disqual_reasons[]" value="{{ $label }}"
+                                   class="rounded border-gray-300">
+                            <span>{{ $label }}</span>
+                        </label>
+                    @endforeach
+                </div>
             </div>
 
             <div>
-                <label for="internal_temperature" class="block font-medium text-sm text-gray-700">دمای موردنیاز داخل</label>
-                <input type="text" name="internal_temperature" id="internal_temperature"
-                       value="{{ old('internal_temperature', $lead->internal_temperature ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="به سانتی‌گراد">
-                @error('internal_temperature') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="external_temperature" class="block font-medium text-sm text-gray-700">دمای خارج ساختمان</label>
-                <input type="text" name="external_temperature" id="external_temperature"
-                       value="{{ old('external_temperature', $lead->external_temperature ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="به سانتی‌گراد">
-                @error('external_temperature') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="building_length" class="block font-medium text-sm text-gray-700">طول ساختمان</label>
-                <input type="text" name="building_length" id="building_length"
-                       value="{{ old('building_length', $lead->building_length ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="به متر">
-                @error('building_length') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="building_width" class="block font-medium text-sm text-gray-700">عرض ساختمان</label>
-                <input type="text" name="building_width" id="building_width"
-                       value="{{ old('building_width', $lead->building_width ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="به متر">
-                @error('building_width') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="eave_height" class="block font-medium text-sm text-gray-700">ارتفاع کناره</label>
-                <input type="text" name="eave_height" id="eave_height"
-                       value="{{ old('eave_height', $lead->eave_height ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="به متر">
-                @error('eave_height') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="ridge_height" class="block font-medium text-sm text-gray-700">ارتفاع تاج سقف</label>
-                <input type="text" name="ridge_height" id="ridge_height"
-                       value="{{ old('ridge_height', $lead->ridge_height ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="به متر">
-                @error('ridge_height') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="wall_material" class="block font-medium text-sm text-gray-700">جنس دیوار</label>
-                <input type="text" name="wall_material" id="wall_material"
-                       value="{{ old('wall_material', $lead->wall_material ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="مثلاً ساندویچ‌پنل، آجر">
-                @error('wall_material') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="insulation_status" class="block font-medium text-sm text-gray-700">وضعیت عایق</label>
-                <select name="insulation_status" id="insulation_status"
-                        class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                    <option value="">انتخاب وضعیت</option>
-                    <option value="good" @selected(old('insulation_status', $lead->insulation_status ?? '') === 'good')>خوب</option>
-                    <option value="medium" @selected(old('insulation_status', $lead->insulation_status ?? '') === 'medium')>متوسط</option>
-                    <option value="weak" @selected(old('insulation_status', $lead->insulation_status ?? '') === 'weak')>ضعیف</option>
-                </select>
-                @error('insulation_status') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="spot_heating_systems" class="block font-medium text-sm text-gray-700">تعداد سامانه موضعی45kw پیشنهادی</label>
-                <input type="number" min="0" step="1" name="spot_heating_systems" id="spot_heating_systems"
-                       value="{{ old('spot_heating_systems', $lead->spot_heating_systems ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                @error('spot_heating_systems') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="central_200_systems" class="block font-medium text-sm text-gray-700">تعداد سامانه مرکزی ۲۰۰ پیشنهادی</label>
-                <input type="number" min="0" step="1" name="central_200_systems" id="central_200_systems"
-                       value="{{ old('central_200_systems', $lead->central_200_systems ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                @error('central_200_systems') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-            </div>
-
-            <div>
-                <label for="central_300_systems" class="block font-medium text-sm text-gray-700">تعداد سامانه مرکزی ۳۰۰ پیشنهادی</label>
-                <input type="number" min="0" step="1" name="central_300_systems" id="central_300_systems"
-                       value="{{ old('central_300_systems', $lead->central_300_systems ?? '') }}"
-                       class="mt-2 block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500">
-                @error('central_300_systems') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+                <label for="discard_reason_text" class="block text-sm font-medium text-gray-700 mb-2">
+                    توضیحات <span class="text-red-600">*</span>
+                </label>
+                <textarea id="discard_reason_text" rows="3"
+                          class="w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                          placeholder="لطفاً توضیح کوتاه بنویسید..."></textarea>
             </div>
         </div>
-    </div>
 
-  
+        <div class="mt-6 flex justify-end gap-2">
+            <button type="button" id="discardModalCancelBtn"
+                    class="px-4 py-2 rounded-md bg-gray-100 text-gray-700 hover:bg-gray-200">
+                انصراف
+            </button>
+            <button type="button" id="discardModalConfirmBtn"
+                    class="px-4 py-2 rounded-md bg-red-600 text-white hover:bg-red-700">
+                تایید و ذخیره
+            </button>
+        </div>
+    </div>
 </div>
+
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function(){
+    let form = document.getElementById('leadForm');
+    const statusSelect = document.getElementById('lead_status');
+    const originalStatusInput = document.getElementById('original_lead_status');
+    const modal = document.getElementById('discardReasonModal');
+    const textarea = document.getElementById('discard_reason_text');
+    const confirmBtn = document.getElementById('discardModalConfirmBtn');
+    const cancelBtn = document.getElementById('discardModalCancelBtn');
+    const closeBtn = document.getElementById('discardModalCloseBtn');
+    let submittingAfterReason = false;
+
+    if (!form && statusSelect) form = statusSelect.closest('form');
+    if (!form || !statusSelect || !modal) return;
+
+    let disqualInput = form.querySelector('input[name="disqual_reason_body"]');
+    if (!disqualInput) {
+        disqualInput = document.createElement('input');
+        disqualInput.type = 'hidden';
+        disqualInput.name = 'disqual_reason_body';
+        disqualInput.id = 'disqual_reason_body';
+        form.appendChild(disqualInput);
+    }
+
+    function openModal(){
+        modal.classList.remove('hidden');
+        modal.classList.add('flex');
+        setTimeout(() => { if (textarea) textarea.focus(); }, 20);
+    }
+
+    function closeModal(){
+        modal.classList.add('hidden');
+        modal.classList.remove('flex');
+    }
+
+    function shouldAskReason(){
+        const currentStatus = (statusSelect.value || '').toLowerCase().trim();
+        const originalStatus = (originalStatusInput ? originalStatusInput.value : '').toLowerCase().trim();
+        const disqualAlready = disqualInput ? disqualInput.value.trim() : '';
+        return currentStatus === 'discarded' && originalStatus !== 'discarded' && !disqualAlready;
+    }
+
+    form.addEventListener('submit', function(e){
+        if (submittingAfterReason) return;
+        if (!shouldAskReason()) return;
+        e.preventDefault();
+        openModal();
+    });
+
+    function collectAndSubmit(){
+        const explanation = textarea ? textarea.value.trim() : '';
+        const reasonChecks = modal.querySelectorAll('input[name="disqual_reasons[]"]:checked');
+        const reasons = Array.from(reasonChecks).map(cb => cb.value).filter(Boolean);
+
+        if (!explanation){
+            alert('Please explain why this lead was discarded.');
+            if (textarea) textarea.focus();
+            return;
+        }
+
+        const combined = reasons.length ? reasons.join(', ') + ' - ' + explanation : explanation;
+        if (disqualInput) disqualInput.value = combined;
+        console.log('discard reason set', combined);
+
+        submittingAfterReason = true;
+        closeModal();
+        if (form.requestSubmit) form.requestSubmit();
+        else form.submit();
+    }
+
+    if (confirmBtn) confirmBtn.addEventListener('click', collectAndSubmit);
+    if (cancelBtn) cancelBtn.addEventListener('click', closeModal);
+    if (closeBtn) closeBtn.addEventListener('click', closeModal);
+
+    document.addEventListener('click', function(e){
+        if (e.target === modal) closeModal();
+    });
+
+    document.addEventListener('keydown', function(e){
+        if (e.key === 'Escape' && !modal.classList.contains('hidden')) closeModal();
+    });
+});
+</script>
+@endpush

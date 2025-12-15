@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Http\Controllers\SalesLeadController;
 use Illuminate\Http\Request;
 use App\Models\SalesLead;
 use Illuminate\Support\Facades\Log;
@@ -44,6 +45,50 @@ class LeadController extends Controller
             $validated['lead_date'] = now()->toDateString();
             $validated['created_by'] = 1;
 
+            /** @var SalesLeadController $helper */
+            $helper = app(SalesLeadController::class);
+            $normalizedMobile = $helper->normalizeMobile($validated['mobile'] ?? null);
+            if ($normalizedMobile) {
+                $validated['mobile'] = $normalizedMobile;
+                $existingLead = $helper->findLeadByNormalizedMobile($normalizedMobile);
+                if ($existingLead) {
+                    $existingStatus = SalesLead::normalizeStatus($existingLead->lead_status ?? $existingLead->status);
+
+                    if ($existingStatus === SalesLead::STATUS_DISCARDED) {
+                        $reactivatedLead = $helper->reactivateDiscardedLead($existingLead, $validated, false);
+
+                        return response()->json([
+                            'status'  => 'reengaged',
+                            'lead_id' => $reactivatedLead->id,
+                            'message' => 'این سرنخ قبلاً حذف شده بود و حالا دوباره فعال شد.',
+                        ]);
+                    }
+
+                    $updatePayload = $validated;
+                    unset(
+                        $updatePayload['lead_status'],
+                        $updatePayload['created_by'],
+                        $updatePayload['lead_date'],
+                        $updatePayload['assigned_to']
+                    );
+
+                    if (!empty($existingLead->lead_source)) {
+                        $updatePayload['lead_source'] = $existingLead->lead_source;
+                    }
+
+                    $existingLead->fill($updatePayload);
+                    $existingLead->is_reengaged = true;
+                    $existingLead->reengaged_at = now();
+                    $existingLead->save();
+
+                    return response()->json([
+                        'status'  => 'duplicate_reengaged',
+                        'lead_id' => $existingLead->id,
+                        'message' => 'این سرنخ قبلاً وجود داشت و به‌روزرسانی شد.',
+                    ]);
+                }
+            }
+
             $lead = SalesLead::create($validated);
 
             Log::info('✅ سرنخ ذخیره شد', ['lead_id' => $lead->id]);
@@ -67,3 +112,4 @@ class LeadController extends Controller
         }
     }
 }
+

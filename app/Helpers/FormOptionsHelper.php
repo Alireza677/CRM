@@ -64,23 +64,33 @@ class FormOptionsHelper
 
 
 
-    public static function leadDisqualifyReasons(): array
-    {
-        $configured = config('lead.disqualify_reasons', []);
-        if (!empty($configured)) {
-            return array_combine($configured, $configured);
-        }
+public static function leadDisqualifyReasons(): array
+{
+    $configured = config('lead.disqualify_reasons', []);
 
-        return [
-            'no_need'             => 'no_need',
-            'no_budget'           => 'no_budget',
-            'not_decision_maker'  => 'not_decision_maker',
-            'competitor_price'    => 'competitor_price',
-            'wrong_or_duplicate'  => 'wrong_or_duplicate',
-            'out_of_scope'        => 'out_of_scope',
-            'unrealistic_timing'  => 'unrealistic_timing',
-        ];
+    // اگر از config آمده (کلیدها)
+    if (!empty($configured)) {
+        return collect($configured)->mapWithKeys(function ($key) {
+            return [$key => __('lead.disqualify_reasons.' . $key)];
+        })->toArray();
     }
+
+    // حالت پیش‌فرض
+    $defaults = [
+        'no_need',
+        'no_budget',
+        'not_decision_maker',
+        'competitor_price',
+        'wrong_or_duplicate',
+        'out_of_scope',
+        'unrealistic_timing',
+    ];
+
+    return collect($defaults)->mapWithKeys(function ($key) {
+        return [$key => __('lead.disqualify_reasons.' . $key)];
+    })->toArray();
+}
+
 
     public static function leadSources(): array
     {

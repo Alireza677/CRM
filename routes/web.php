@@ -45,6 +45,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\OpportunityNoteController;
 use App\Http\Controllers\Settings\AutomationController;
+use App\Http\Controllers\Settings\Automation\LeadRoundRobinController;
 use App\Http\Controllers\Sales\OrganizationImportController;
 use App\Http\Controllers\Sales\ProformaImportController;
 use App\Http\Controllers\Sales\ProformaApprovalController;
@@ -203,6 +204,8 @@ Route::middleware(['auth'])->group(function () {
         Route::get('leads/export/{format}', [LeadExportController::class, 'export'])
             ->whereIn('format', ['csv', 'xlsx'])
             ->name('leads.export.format');
+        Route::get('leads/junk', [SalesLeadController::class, 'junk'])
+            ->name('leads.junk');
 
         // سرنخ‌ها (موجود)
         Route::get('leads/create', [SalesLeadController::class, 'create'])
@@ -461,6 +464,16 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/automation', [AutomationController::class, 'edit'])->name('automation.edit');
             Route::post('/automation/update', [AutomationController::class, 'update'])->name('automation.update');
             Route::delete('/automation/delete-all', [AutomationController::class, 'destroyAll'])->name('automation.destroyAll');
+            Route::get('/automation/leads/round-robin', [LeadRoundRobinController::class, 'index'])
+                ->name('automation.leads.roundrobin.index');
+            Route::post('/automation/leads/round-robin', [LeadRoundRobinController::class, 'store'])
+                ->name('automation.leads.roundrobin.store');
+            Route::post('/automation/leads/round-robin/settings', [LeadRoundRobinController::class, 'updateSettings'])
+                ->name('automation.leads.roundrobin.settings');
+            Route::patch('/automation/leads/round-robin/{row}', [LeadRoundRobinController::class, 'toggle'])
+                ->name('automation.leads.roundrobin.toggle');
+            Route::delete('/automation/leads/round-robin/{row}', [LeadRoundRobinController::class, 'destroy'])
+                ->name('automation.leads.roundrobin.destroy');
 
             // Notification Settings Matrix
             Route::get('/notifications', [NotificationRuleController::class, 'index'])->name('notifications.index');

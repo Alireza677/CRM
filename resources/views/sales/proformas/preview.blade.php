@@ -186,9 +186,20 @@
         </div>
     </div>
 </div>
-
 <style>
-    .invoice-a4 { width: 210mm; min-height: 297mm; margin: 0 auto; background: #fff; color: #111; padding: 12mm; border: 1px solid #111; direction: rtl; text-align: right; }
+    .invoice-a4 {
+        width: 210mm;
+        min-height: 297mm;
+        margin: 0 auto;
+        background: #fff;
+        color: #111;
+        padding: 12mm;
+        border: 1px solid #111;
+        direction: rtl;
+        text-align: right;
+        box-sizing: border-box;
+    }
+
     .invoice-header { display: flex; flex-direction: row-reverse; align-items: flex-start; justify-content: space-between; border-bottom: 2px solid #111; padding-bottom: 8px; margin-bottom: 10px; }
     .invoice-header .title { font-size: 20px; font-weight: 700; text-align: center; flex: 1; }
     .invoice-header img { max-height: 60px; max-width: 120px; object-fit: contain; }
@@ -219,11 +230,45 @@
     .btn-secondary:hover { background-color: #4b5563; }
 
     @media print {
-        body { background: #fff; }
-        .no-print, header, aside, nav, .x-header, .x-sidebar, .btn { display: none !important; }
-        .invoice-a4 { border: none; padding: 0; }
-        .invoice-header img { max-height: 60px; max-width: 120px; object-fit: contain; }
-        @page { size: A4; margin: 10mm; }
+        /* نوار بالا و بقیه اجزای قالب را در پرینت مخفی کن */
+        .no-print,
+        header,
+        aside,
+        nav,
+        .x-header,
+        .x-sidebar,
+        .btn {
+            display: none !important;
+        }
+
+        /* کانتینر اصلی لاراول (Tailwind) را خنثی کن تا padding باعث خروج از صفحه نشود */
+        .container {
+            max-width: 100% !important;
+            width: 100% !important;
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* تنظیم مخصوص صفحه چاپ */
+        @page {
+            size: A4 portrait;
+            margin: 10mm;
+        }
+
+        body {
+            background: #fff !important;
+        }
+
+        /* عرض محتوا را با ناحیه قابل چاپ هماهنگ کن (۱۹۰mm = ۲۱۰ - ۲×۱۰ margin) */
+        .invoice-a4 {
+            width: 190mm !important;
+            min-height: auto;
+            margin: 0 auto;
+            border: none;
+            padding: 0;
+            box-sizing: border-box;
+        }
     }
 </style>
+
 @endsection

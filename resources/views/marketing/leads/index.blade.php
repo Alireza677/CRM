@@ -2,6 +2,12 @@
 
 @php
     $favoriteLeadIds = $favoriteLeadIds ?? [];
+    $leadListingRoute = $leadListingRoute ?? 'marketing.leads.index';
+    $isJunkListing = $isJunkListing ?? request()->routeIs('sales.leads.junk');
+    $leadPoolRules = $leadPoolRules ?? [];
+    $leadPoolFirstActivity = $leadPoolRules['first_activity_deadline_label'] ?? '24 ساعت';
+    $leadPoolMaxReassignments = $leadPoolRules['max_reassignments'] ?? 3;
+    $leadPoolFinalDecisionDays = $leadPoolRules['final_decision_days'] ?? 14;
 @endphp
 
 @section('content')
@@ -19,10 +25,25 @@
 
 <div class="py-12">
     <div class="px-4">
-        <h2 class="text-2xl font-semibold text-gray-800 mb-6">سرنخ‌های فروش</h2>
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-semibold text-gray-800">سرنخ‌های فروش</h2>
+            <div class="relative group">
+                <button
+                    type="button"
+                    id="lead-rules-trigger"
+                    class="w-9 h-9 inline-flex items-center justify-center rounded-full bg-white border border-gray-200 shadow-sm text-blue-600 hover:bg-blue-50 hover:text-blue-700 transition focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500"
+                    aria-label="قوانین سرنخ‌ها"
+                >
+                    <i class="fas fa-exclamation-circle text-lg"></i>
+                </button>
+                <div class="absolute right-0 mt-2 w-44 px-3 py-2 bg-gray-800 text-white text-xs rounded-md shadow-lg opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 transition pointer-events-none">
+                    قوانین استخر سرنخ‌ها
+                </div>
+            </div>
+        </div>
 
         <!-- فرم جستجو -->
-        <form method="GET" action="{{ route('marketing.leads.index') }}" class="mb-6">
+        <form method="GET" action="{{ route($leadListingRoute) }}" class="mb-6">
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
@@ -79,7 +100,7 @@
                             <th class="text-center">
                                 <div class="flex gap-2 justify-center">
                                     <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">جستجو</button>
-                                    <a href="{{ route('marketing.leads.index') }}" class="bg-gray-300 px-3 py-1 rounded text-sm">پاکسازی</a>
+                                    <a href="{{ route($leadListingRoute) }}" class="bg-gray-300 px-3 py-1 rounded text-sm">پاکسازی</a>
                                 </div>
                             </th>
                         </tr>
@@ -102,6 +123,11 @@
                     class="inline-flex items-center px-4 py-2 bg-amber-500 text-white rounded-md shadow hover:bg-amber-600">
                     <i class="fas fa-star ml-1 text-sm"></i>
                     علاقه‌مندی‌ها
+                </a>
+                <a href="{{ route('sales.leads.junk') }}"
+                    class="inline-flex items-center px-4 py-2 rounded-md shadow {{ $isJunkListing ? 'bg-red-600 text-white hover:bg-red-700' : 'bg-red-100 text-red-700 hover:bg-red-200' }}">
+                    <i class="fas fa-ban ml-1 text-sm"></i>
+                    سرکاری‌ها
                 </a>
                 <a href="{{ route('marketing.leads.converted') }}"
                     class="inline-flex items-center px-4 py-2 bg-emerald-500 text-white rounded-md shadow hover:bg-emerald-600">
@@ -134,7 +160,7 @@
                 @endrole
 
             </div>
-            <form method="GET" action="{{ route('marketing.leads.index') }}" class="flex items-center gap-2 text-sm">
+            <form method="GET" action="{{ route($leadListingRoute) }}" class="flex items-center gap-2 text-sm">
                 <label for="per-page-select" class="text-gray-700 whitespace-nowrap">تعداد نمایش:</label>
                 <select id="per-page-select"
                         name="per_page"
@@ -179,15 +205,24 @@
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse($leads as $lead)
+@forelse($leads as $lead)
                         <tr class="hover:bg-gray-50 transition">
                             <td class="px-2 py-2 text-center">
                                 <input type="checkbox" name="selected_leads[]" value="{{ $lead->id }}" class="form-checkbox row-checkbox">
                             </td>
                             <td class="px-6 py-2 text-sm">
+                                @php
+                                    $showReengagedBadge = (bool) $lead->is_reengaged;
+                                    $isWebsiteSource = $lead->lead_source === 'website';
+                                @endphp
                                 <a href="{{ route('marketing.leads.show', $lead) }}" class="text-blue-700 hover:underline">
                                     {{ $lead->full_name }}
                                 </a>
+                                @if($showReengagedBadge)
+                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {{ $isWebsiteSource ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700' }}">
+                                        بازگشتی از وب‌سایت
+                                    </span>
+                                @endif
                                 @if(!empty($lead->converted_at))
                                     <span class="ml-2 px-2 py-0.5 text-[10px] rounded-full bg-green-100 text-green-800 align-middle">تبدیل شده</span>
                                 @endif
@@ -290,12 +325,43 @@
     @csrf
 </form>
 
+<!-- Lead rules modal -->
+<div id="lead-rules-modal" class="fixed inset-0 z-40 hidden items-center justify-center px-4">
+    <div id="lead-rules-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-lead-rules-close></div>
+    <div class="relative bg-white rounded-lg shadow-xl border border-gray-200 max-w-2xl w-full mx-auto p-6">
+        <div class="flex items-start justify-between mb-4">
+            <div>
+                <p class="text-sm text-gray-500 mb-1">راهنمای استخر سرنخ‌ها</p>
+                <h3 class="text-lg font-semibold text-gray-800">قوانین سرنخ‌ها</h3>
+            </div>
+            <button type="button" class="text-gray-500 hover:text-gray-700 transition" aria-label="بستن" data-lead-rules-close>
+                <span class="text-xl leading-none">&times;</span>
+            </button>
+        </div>
+        <div class="space-y-3 text-sm text-gray-700 leading-6">
+            <ul class="list-disc list-inside space-y-2 pr-2">
+                <li>Round-robin assignment: سرنخ جدید نوبتی بین مسئول‌ها تقسیم می‌شود.</li>
+                <li>مهلت اولین فعالیت: کاربر تا {{ $leadPoolFirstActivity }} فرصت دارد فعالیت معتبر ثبت کند؛ در غیر این صورت ارجاع به نفر بعد.</li>
+                <li>فعالیت معتبر: ثبت تماس/پیگیری، ثبت یادداشت، یا هر Activity ثبت‌شده.</li>
+                <li>سقف ارجاع: تا {{ $leadPoolMaxReassignments }} بار قابل جابه‌جایی است.</li>
+                <li>تعیین تکلیف نهایی: نهایتاً تا {{ $leadPoolFinalDecisionDays }} روز باید یا تبدیل به فرصت شود یا برود به «سرکاری‌ها».</li>
+                <li>سرنخ‌های دستی هم مشمول همین قوانین هستند.</li>
+                <li>اعلان‌ها: با هر تغییر مسئول، به مسئول جدید نوتیفیکیشن ارسال می‌شود.</li>
+            </ul>
+        </div>
+    </div>
+</div>
+
 <script>
 document.addEventListener('DOMContentLoaded', function () {
     const bulkBtn   = document.getElementById('bulk-delete-btn');
     const countBadge= document.getElementById('selected-count-badge');
     const selectAll = document.getElementById('select-all');
     const rowBoxes  = () => Array.from(document.querySelectorAll('.row-checkbox'));
+    const rulesTrigger = document.getElementById('lead-rules-trigger');
+    const rulesModal = document.getElementById('lead-rules-modal');
+    const rulesBackdrop = document.getElementById('lead-rules-backdrop');
+    const rulesCloseButtons = document.querySelectorAll('[data-lead-rules-close]');
 
     function refreshBulkState() {
         const boxes = rowBoxes();
@@ -320,9 +386,43 @@ document.addEventListener('DOMContentLoaded', function () {
     // هر ردیف
     rowBoxes().forEach(cb => cb.addEventListener('change', refreshBulkState));
 
+    // Lead rules modal interactions
+    const openRulesModal = () => {
+        if (!rulesModal) return;
+        rulesModal.classList.remove('hidden');
+        rulesModal.classList.add('flex');
+    };
+
+    const closeRulesModal = () => {
+        if (!rulesModal) return;
+        rulesModal.classList.add('hidden');
+        rulesModal.classList.remove('flex');
+    };
+
+    if (rulesTrigger && rulesModal) {
+        rulesTrigger.addEventListener('click', function (event) {
+            event.preventDefault();
+            openRulesModal();
+        });
+    }
+
+    rulesCloseButtons.forEach(btn => btn.addEventListener('click', closeRulesModal));
+
+    if (rulesBackdrop) {
+        rulesBackdrop.addEventListener('click', closeRulesModal);
+    }
+
+    document.addEventListener('keydown', function (event) {
+        if (event.key === 'Escape' && rulesModal && !rulesModal.classList.contains('hidden')) {
+            closeRulesModal();
+        }
+    });
+
     // بار اول
     refreshBulkState();
 });
 </script>
+
+
 
 @endsection

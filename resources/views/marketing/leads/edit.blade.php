@@ -5,7 +5,7 @@
         <h2 class="font-semibold text-xl text-gray-800 leading-tight mb-6">ویرایش سرنخ</h2>
         <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
             <div class="p-6 text-gray-900">
-                <form action="{{ route('marketing.leads.update', $lead) }}" method="POST" class="space-y-6" id="leadEditForm">
+<form action="{{ route('marketing.leads.update', $lead) }}" method="POST" class="space-y-6" id="leadForm">
                     @csrf
                     @method('PUT')
                     <div class="grid grid-cols-1  gap-6">
