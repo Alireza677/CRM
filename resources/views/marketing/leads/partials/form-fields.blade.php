@@ -343,7 +343,7 @@ document.addEventListener('DOMContentLoaded', function(){
         const reasons = Array.from(reasonChecks).map(cb => cb.value).filter(Boolean);
 
         if (!explanation){
-            alert('Please explain why this lead was discarded.');
+            alert('لطفا توضیح دهید که چرا این سرنخ رد شده است.');
             if (textarea) textarea.focus();
             return;
         }

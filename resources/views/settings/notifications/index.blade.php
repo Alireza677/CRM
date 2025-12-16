@@ -30,6 +30,31 @@
                         </div>
                     </div>
 
+                    <div class="mb-6 border rounded-lg bg-blue-50/60 p-4">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="text-base font-semibold text-gray-800">ایمیل‌ها</div>
+                                <div class="text-sm text-gray-600">رویداد: دریافت ایمیل جدید • کانال: اعلان (سیستم)</div>
+                            </div>
+                            <form method="POST" action="{{ route('settings.notifications.email-preference') }}" class="flex items-center gap-3">
+                                @csrf
+                                <input type="hidden" name="email_notifications_enabled" value="0">
+                                <label class="inline-flex items-center cursor-pointer gap-2">
+                                    <input
+                                        type="checkbox"
+                                        name="email_notifications_enabled"
+                                        value="1"
+                                        class="h-5 w-5 rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                        {{ $emailNotificationEnabled ? 'checked' : '' }}
+                                    >
+                                    <span class="text-sm text-gray-800">فعال</span>
+                                </label>
+                                <button type="submit" class="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">ذخیره</button>
+                            </form>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-600">وقتی ایمیل تازه‌ای در صندوق شما ذخیره شود، در صورت فعال بودن این سوییچ یک اعلان داخلی در زنگ بالای صفحه ساخته می‌شود.</p>
+                    </div>
+
                     @if($purchaseOrderSection)
                         <div class="mb-8 border rounded-lg overflow-hidden" x-data="{ showCreate: false, sectionOpen: true }" @po-rules-cancel.window="showCreate=false">
                             <div class="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer" @click="sectionOpen = !sectionOpen; if(!sectionOpen){ showCreate = false }">

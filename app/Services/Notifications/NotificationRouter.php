@@ -79,6 +79,7 @@ class NotificationRouter
             $rule->module,
             $rule->event,
             [
+                'title'   => $rule->subject_template ?? '',
                 'subject' => $rule->subject_template ?? '',
                 'body'    => $rule->body_template ?? '',
                 'sms'     => $rule->sms_template ?? '',
@@ -115,13 +116,16 @@ class NotificationRouter
         ]);
 
         foreach ($recipients as $user) {
+            $title = (string) ($rendered['title'] ?? $rendered['subject'] ?? $rendered['body'] ?? '');
+            $body  = (string) ($rendered['body'] ?? '');
+
             if (in_array('database', $channels, true)) {
                 try {
                     $user->notify(new \App\Notifications\CustomRoutedNotification(
                         $rule->module,
                         $rule->event,
-                        $rendered['subject'] ?? '',
-                        $rendered['body'] ?? '',
+                        $title,
+                        $body,
                         $extra['url'] ?? null,
                     ));
                 } catch (\Throwable $e) {
@@ -138,8 +142,8 @@ class NotificationRouter
                 try {
                     Mail::to($user->email)
                         ->queue(new \App\Mail\RoutedNotificationMail(
-                            $rendered['subject'] ?? '',
-                            $rendered['body'] ?? '',
+                            $rendered['subject'] ?? $title,
+                            $body,
                             $extra['url'] ?? null
                         ));
                 } catch (\Throwable $e) {
@@ -237,13 +241,14 @@ class NotificationRouter
                 if (in_array('database', $channels, true)) {
                     try {
                         $tpl = NotificationTemplateResolver::resolve($module, $event, 'database', $context);
-                        $body = (string) ($tpl['body'] ?? '');
-                        if ($body !== '') {
+                        $title = (string) ($tpl['title'] ?? $tpl['subject'] ?? '');
+                        $body  = (string) ($tpl['body'] ?? '');
+                        if ($body !== '' || $title !== '') {
                             $user->notify(new \App\Notifications\CustomRoutedNotification(
                                 $module,
                                 $event,
-                                (string) ($tpl['subject'] ?? ''),
-                                $body,
+                                $title !== '' ? $title : ((string) ($tpl['subject'] ?? '')),
+                                $body !== '' ? $body : ((string) ($tpl['subject'] ?? '')),
                                 $url
                             ));
                         }
@@ -260,7 +265,7 @@ class NotificationRouter
                 if (in_array('email', $channels, true) && $user->email) {
                     try {
                         $tpl = NotificationTemplateResolver::resolve($module, $event, 'email', $context);
-                        $subj = (string) ($tpl['subject'] ?? '');
+                        $subj = (string) ($tpl['subject'] ?? $tpl['title'] ?? '');
                         $body = (string) ($tpl['body'] ?? '');
                         if ($subj !== '' || $body !== '') {
                             Mail::to($user->email)->queue(new \App\Mail\RoutedNotificationMail($subj, $body, $url));

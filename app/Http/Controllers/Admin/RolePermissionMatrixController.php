@@ -230,11 +230,8 @@ class RolePermissionMatrixController extends Controller
         foreach ($modules as $module) {
             foreach ($actions as $action) {
                 $hasPlain = in_array("$module.$action", $all, true);
+                // Only expose scopes that actually exist in permissions table
                 $availScopes = array_values(array_filter($scopes, fn($s) => in_array("$module.$action.$s", $all, true)));
-                if (!empty($availScopes) && in_array($action, $scopedColumns, true)) {
-                    // Ensure core columns share the full scope list (keep any existing extras)
-                    $availScopes = array_values(array_unique(array_merge($scopes, $availScopes)));
-                }
 
                 if (!empty($availScopes)) {
                     $definitions[$module][$action] = [

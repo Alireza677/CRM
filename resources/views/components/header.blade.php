@@ -178,8 +178,11 @@
 
                                 @forelse($latestUnread as $notification)
                                     <div class="px-4 py-2 text-sm text-gray-800 hover:bg-gray-50 border-b">
-                                        <a href="{{ route('notifications.index') }}">
-                                            {{ $notification->data['message'] ?? 'اعلان جدیدی دارید' }}
+                                        <a href="{{ route('notifications.read', ['notification' => $notification->id]) }}" class="block">
+                                            <div class="font-medium">{{ $notification->data['title'] ?? $notification->data['message'] ?? 'اعلان جدیدی دارید' }}</div>
+                                            @if(!empty($notification->data['body']))
+                                                <div class="text-xs text-gray-600 mt-0.5 overflow-hidden text-ellipsis whitespace-nowrap">{{ $notification->data['body'] }}</div>
+                                            @endif
                                         </a>
                                         <div class="text-xs text-gray-500 mt-1">
                                             {{ $notification->created_at->diffForHumans() }}

@@ -119,7 +119,7 @@ class NotificationController extends Controller
         $data = $notifications->map(function (DatabaseNotification $notification) {
             return [
                 'id'         => $notification->id,
-                'message'    => $notification->data['message'] ?? 'اعلان جدیدی دارید',
+                'message'    => $notification->data['title'] ?? $notification->data['message'] ?? 'اعلان جدیدی دارید',
                 'created_at' => $notification->created_at?->toIso8601String(),
                 'url'        => route('notifications.read', ['notification' => $notification->id]),
             ];

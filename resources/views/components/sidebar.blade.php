@@ -163,6 +163,7 @@
                     <template x-if="$store.menu.activeMenu === 'print-templates'">قالب‌های پرینت</template>
                     <template x-if="$store.menu.activeMenu === 'forms'">فرم‌ها</template>
                     <template x-if="$store.menu.activeMenu === 'settings'">تنظیمات</template>
+                    <template x-if="$store.menu.activeMenu === 'chat'">ارتباطات و پیام‌رسانی</template>
                 </h2>
                 <button @click="$store.menu.subMenuOpen = false" class="text-gray-500 hover:text-gray-700">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -262,6 +263,7 @@
                         @can('sidebar_support_phone_calls.view')
                         <a href="{{ route('telephony.phone-calls.index') }}" class="menu-item"> تماس‌های تلفنی</a>
                         @endcan
+                        <a href="{{ route('mail.index') }}" class="menu-item">ایمیل‌</a>
                     </div>
                 </template>
                 @endcan

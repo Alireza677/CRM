@@ -3,6 +3,8 @@
 namespace App\Console;
 
 use App\Jobs\CheckLeadSlaJob;
+use App\Jobs\SyncMailboxJob;
+use App\Models\Mailbox;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
 
@@ -14,6 +16,21 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule): void
     {
         $schedule->job(new CheckLeadSlaJob())->everyFifteenMinutes();
+
+        $schedule->call(function () {
+            Mailbox::query()
+                ->where('is_active', true)
+                ->orderBy('id')
+                ->chunkById(50, function ($mailboxes) {
+                    foreach ($mailboxes as $mailbox) {
+                        if (config('queue.default') === 'sync') {
+                            SyncMailboxJob::dispatchSync($mailbox->id);
+                        } else {
+                            SyncMailboxJob::dispatch($mailbox->id);
+                        }
+                    }
+                });
+        })->everyFiveMinutes()->name('mail-sync');
     }
 
     /**

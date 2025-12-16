@@ -3,6 +3,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\Traits\AppliesVisibilityScope;
+use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class Document extends Model
 {
@@ -19,20 +21,45 @@ class Document extends Model
         'team_id',
         'department',
         'visibility',
+        'is_voided',
+        'voided_at',
+        'voided_by',
+    ];
+
+    protected $casts = [
+        'is_voided' => 'boolean',
+        'voided_at' => 'datetime',
     ];
     
 
-    public function opportunity()
+    public function opportunity(): BelongsTo
     {
         return $this->belongsTo(Opportunity::class);
     }
-    public function user()
+    public function user(): BelongsTo
     {
         return $this->belongsTo(\App\Models\User::class);
     }
 
-    public function purchaseOrder()
+    public function purchaseOrder(): BelongsTo
     {
         return $this->belongsTo(PurchaseOrder::class);
+    }
+
+    public function voidedBy(): BelongsTo
+    {
+        return $this->belongsTo(\App\Models\User::class, 'voided_by');
+    }
+
+    public function scopeVoided(Builder $query): Builder
+    {
+        return $query->where('is_voided', true);
+    }
+
+    public function scopeActive(Builder $query): Builder
+    {
+        return $query->where(function (Builder $builder) {
+            $builder->where('is_voided', false)->orWhereNull('is_voided');
+        });
     }
 }

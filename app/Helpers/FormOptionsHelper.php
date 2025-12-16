@@ -7,21 +7,19 @@ class FormOptionsHelper
     // ---------------- Permission scopes (role matrix & reports) ----------------
     public static function permissionScopes(): array
     {
-        // Keep existing scope keys and add new aliases without removing old ones
-        return ['own', 'personal', 'team', 'department', 'organizational', 'company'];
+        // Supported scopes that are backed by existing permissions/policies
+        return ['own', 'team', 'department', 'company'];
     }
 
-    public static function permissionScopeLabels(): array
-    {
-        return [
-            'own'             => 'شخصی',
-            'personal'        => 'شخصی',
-            'team'            => 'تیمی',
-            'department'      => 'دپارتمان',
-            'organizational'  => 'سازمانی',
-            'company'         => 'سازمانی',
-        ];
-    }
+  public static function permissionScopeLabels(): array
+{
+    return [
+        'own'        => 'شخصی',
+        'team'       => 'تیمی',
+        'department' => 'دپارتمان',
+        'company'    => 'سازمانی',
+    ];
+}
 
     // ---------------- Lead: Status & Source ----------------
     public static function getLeadStatusLabel($status): string

@@ -67,6 +67,8 @@ use App\Http\Controllers\EmployeePortalController;
 use App\Http\Controllers\Telephony\PhoneCallController;
 use App\Http\Controllers\OnlineChatController;
 use App\Http\Controllers\Chat\ChatCallController;
+use App\Http\Controllers\MailController;
+use App\Http\Controllers\MailboxSettingsController;
 
 Route::get('/', function () {
     return view('welcome');
@@ -113,6 +115,15 @@ Route::middleware(['auth'])->group(function () {
 
     // Dashboard
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
+
+    // Mail module: inbox
+    Route::get('/mail', [MailController::class, 'index'])->name('mail.index');
+    Route::get('/mail/compose', [MailController::class, 'compose'])->name('mail.compose');
+    Route::post('/mail/send', [MailController::class, 'send'])->name('mail.send');
+    Route::post('/mail/bulk', [MailController::class, 'bulk'])->name('mail.bulk');
+    Route::get('/mail/attachments/{attachment}', [MailController::class, 'downloadAttachment'])->name('mail.attachments.download');
+    Route::get('/mail/thread/{thread_key}', [MailController::class, 'thread'])->name('mail.thread');
+    Route::get('/mail/{message}', [MailController::class, 'show'])->name('mail.show')->whereNumber('message');
 
     // Marketing & Leads
     Route::get('/marketing', [MarketingController::class, 'index'])->name('marketing');
@@ -235,6 +246,7 @@ Route::middleware(['auth'])->group(function () {
             $user = auth()->user();
             $canOpportunity = $user && $user->can('opportunity_documents.view');
             $canPurchase = $user && $user->can('purchase_documents.view');
+            $statusFilter = request()->get('status', 'all');
 
             $opportunityQuery = \App\Models\Document::visibleFor($user, 'documents')
                 ->with(['opportunity','user'])
@@ -242,9 +254,15 @@ Route::middleware(['auth'])->group(function () {
             if (!$canOpportunity) {
                 $opportunityQuery->whereRaw('1 = 0');
             }
+            if ($statusFilter === 'active') {
+                $opportunityQuery->active();
+            } elseif ($statusFilter === 'voided') {
+                $opportunityQuery->voided();
+            }
             $opportunityDocs = $opportunityQuery
                 ->latest()
-                ->paginate(20, ['*'], 'op_page');
+                ->paginate(20, ['*'], 'op_page')
+                ->withQueryString();
 
             $purchaseOrderQuery = \App\Models\Document::visibleFor($user, 'documents')
                 ->with(['purchaseOrder','user'])
@@ -252,17 +270,26 @@ Route::middleware(['auth'])->group(function () {
             if (!$canPurchase) {
                 $purchaseOrderQuery->whereRaw('1 = 0');
             }
+            if ($statusFilter === 'active') {
+                $purchaseOrderQuery->active();
+            } elseif ($statusFilter === 'voided') {
+                $purchaseOrderQuery->voided();
+            }
             $purchaseOrderDocs = $purchaseOrderQuery
                 ->latest()
-                ->paginate(20, ['*'], 'po_page');
+                ->paginate(20, ['*'], 'po_page')
+                ->withQueryString();
 
             $breadcrumb = [
                 ['title' => 'داشبورد', 'url' => route('dashboard')],
                 ['title' => 'اسناد'],
             ];
 
-            return view('sales.documents.index_split', compact('opportunityDocs','purchaseOrderDocs','breadcrumb'));
+            return view('sales.documents.index_split', compact('opportunityDocs','purchaseOrderDocs','breadcrumb','statusFilter'));
         })->name('documents.index');
+
+        Route::patch('documents/{document}/toggle-void', [DocumentController::class, 'toggleVoid'])
+            ->name('documents.toggle-void');
 
         // Use custom index (two-column split); exclude index from resource
         Route::resource('documents', DocumentController::class)->except(['index']);
@@ -412,6 +439,10 @@ Route::middleware(['auth'])->group(function () {
         ->middleware('auth')
         ->name('approvals.action');
 
+    // User mailbox settings
+    Route::get('/settings/mailbox', [MailboxSettingsController::class, 'edit'])->name('settings.mailbox.edit');
+    Route::post('/settings/mailbox', [MailboxSettingsController::class, 'update'])->name('settings.mailbox.update');
+
     Route::post('settings/users/reassign', [UserController::class, 'reassign'])->name('settings.users.reassign');
 
     // Customers
@@ -478,6 +509,7 @@ Route::middleware(['auth'])->group(function () {
             // Notification Settings Matrix
             Route::get('/notifications', [NotificationRuleController::class, 'index'])->name('notifications.index');
             Route::post('/notifications/preview', [NotificationRuleController::class, 'preview'])->name('notifications.preview');
+            Route::post('/notifications/email-preference', [NotificationRuleController::class, 'updateEmailPreference'])->name('notifications.email-preference');
             Route::post('/notifications', [NotificationRuleController::class, 'store'])->name('notifications.store');
             Route::put('/notifications/{notificationRule}', [NotificationRuleController::class, 'update'])->name('notifications.update');
             Route::patch('/notifications/{notificationRule}', [NotificationRuleController::class, 'update']);

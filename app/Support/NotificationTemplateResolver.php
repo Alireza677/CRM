@@ -18,6 +18,7 @@ class NotificationTemplateResolver
     public static function resolve(string $module, string $event, string $channel, array $context = []): array
     {
         $subject = null;
+        $title   = null;
         $body    = null;
 
         // Cache template rows briefly to reduce DB chatter
@@ -50,11 +51,12 @@ class NotificationTemplateResolver
                 }
             );
             if ($rule) {
+                $title = $rule->subject_template ?: null;
                 if ($channel === 'email') {
                     $subject = $rule->subject_template ?: null;
                     $body    = $rule->body_template ?: null;
                 } elseif ($channel === 'database') {
-                    $body = $rule->body_template ?: null;
+                    $body  = $rule->body_template ?: null;
                 } elseif ($channel === 'sms') {
                     $body = $rule->sms_template ?: null;
                 }
@@ -64,6 +66,7 @@ class NotificationTemplateResolver
         if ($subject === null && $body === null) {
             $cfg = config('notification_events.modules', []);
             $eventDef = $cfg[$module]['events'][$event] ?? [];
+            $title = $eventDef['default_title'] ?? $title;
             if ($channel === 'email') {
                 $subject = $eventDef['default_subject'] ?? null;
                 $body    = $eventDef['default_body'] ?? null;
@@ -74,7 +77,14 @@ class NotificationTemplateResolver
             }
         }
 
+        if ($subject === null && $title !== null) {
+            $subject = $title;
+        }
+
         $templates = [];
+        if ($title !== null) {
+            $templates['title'] = $title;
+        }
         if ($subject !== null) {
             $templates['subject'] = $subject;
         }
@@ -90,6 +100,7 @@ class NotificationTemplateResolver
         );
 
         return [
+            'title'   => $templates ? ($rendered['title'] ?? null) : null,
             'subject' => $templates ? ($rendered['subject'] ?? null) : null,
             'body'    => $templates ? ($rendered['body'] ?? null) : null,
         ];

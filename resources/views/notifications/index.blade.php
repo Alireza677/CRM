@@ -55,7 +55,7 @@
                                 {{-- لینک یک‌کلیکی: رفتن به کنترلر read (خواندن + ریدایرکت) --}}
                                 <a href="{{ route('notifications.read', ['notification' => $notification->id]) }}"
                                 class="hover:underline">
-                                    {{ $notification->data['message'] ?? 'اعلان جدیدی دارید' }}
+                                    {{ $notification->data['title'] ?? $notification->data['message'] ?? 'اعلان جدیدی دارید' }}
                                 </a>
                             </td>
 

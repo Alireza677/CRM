@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Settings;
 
 use App\Http\Controllers\Controller;
+use App\Models\UserNotificationSetting;
 use App\Models\NotificationRule;
 use App\Models\NotificationTemplate;
 use App\Models\PurchaseOrder; // برای دسترسی به لیست وضعیت‌های سفارش خرید
@@ -168,13 +169,51 @@ class NotificationRuleController extends Controller
 
         $purchaseOrderSection = $dynamicSections['purchase_orders.status.changed'] ?? null;
 
+        $emailNotificationEnabled = true;
+        if (Auth::id()) {
+                $emailNotificationEnabled = UserNotificationSetting::getBool(
+                    Auth::id(),
+                    UserNotificationSetting::EMAIL_RECEIVED_KEY,
+                    true
+                );
+            }
+
         return view('settings.notifications.index', [
             'matrix' => $matrix,
             'channelOptions' => $channelOptions,
             'poStatuses' => $poStatuses,
             'dynamicSections' => $dynamicSections,
             'purchaseOrderSection' => $purchaseOrderSection,
+            'emailNotificationEnabled' => $emailNotificationEnabled,
         ]);
+    }
+
+    public function updateEmailPreference(Request $request)
+    {
+        $user = Auth::user();
+        abort_unless($user, 403);
+
+        $data = $request->validate([
+            'email_notifications_enabled' => ['required', 'boolean'],
+        ]);
+
+        UserNotificationSetting::setBool(
+            $user->id,
+            UserNotificationSetting::EMAIL_RECEIVED_KEY,
+            (bool) $data['email_notifications_enabled']
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'status' => 'ok',
+                'key' => UserNotificationSetting::EMAIL_RECEIVED_KEY,
+                'enabled' => (bool) $data['email_notifications_enabled'],
+            ]);
+        }
+
+        return redirect()
+            ->route('settings.notifications.index')
+            ->with('status', 'تنظیم اعلان ایمیل بروزرسانی شد.');
     }
 
     public function store(Request $request)
@@ -1002,6 +1041,13 @@ class NotificationRuleController extends Controller
         } elseif ($module === 'reports') {
             $context['report_title'] = 'گزارش نمونه سیستم';
             $context['form_title']   = $context['report_title'];
+        } elseif ($module === 'emails') {
+            $context['email_subject'] = 'موضوع نمونه ایمیل';
+            $context['from_name']     = 'فرستنده نمونه';
+            $context['from_email']    = 'sender@example.com';
+            $context['received_at']   = now()->format('Y-m-d H:i');
+            $context['form_title']    = $context['email_subject'];
+            $context['url']           = route('mail.index');
         }
 
         if (empty($context['form_title'])) {

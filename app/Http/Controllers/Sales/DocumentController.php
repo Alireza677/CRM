@@ -128,8 +128,10 @@ class DocumentController extends Controller
 
             foreach ($relatedProformas as $proforma) {
                 $logTime = now();
+                $actorName = auth()->user()->name ?? 'O3UOO3O?U.';
                 $actorName = auth()->user()->name ?? 'سیستم';
-                $description = $actorName . ' سند جدیدی را در تاریخ ' . DateHelper::toJalali($logTime, 'H:i Y/m/d') . ' برای این پیش‌فاکتور بارگذاری کرد.';
+                $description = "{$actorName} یک سند جدید برای فرصت مرتبط آپلود کرد در تاریخ "
+                    . DateHelper::toJalali($logTime, 'H:i Y/m/d');
 
                 activity('proforma')
                     ->performedOn($proforma)
@@ -168,27 +170,12 @@ class DocumentController extends Controller
             }
         }
 
-        // اگر از صفحه یک فرصت آمده‌ایم، برگرد همانجا (UX بهتر)
-        if ($document->opportunity_id) {
-            return redirect()
-                ->route('sales.opportunities.show', $document->opportunity_id)
-                ->with('success', 'سند برای این فرصت ثبت شد.');
-        }
-
-        if ($document->purchase_order_id) {
-            return redirect()
-                ->route('inventory.purchase-orders.show', $document->purchase_order_id)
-                ->with('success', 'سند برای این سفارش خرید ثبت شد.');
-        }
-
         return redirect()
             ->route('sales.documents.index')
-            ->with('success', 'سند با موفقیت ذخیره شد.');
+            ->with('success', 'سند با موفقیت ثبت شد.');
     }
 
-    /**
-     * مشاهده (stream) در مرورگر — جایگزین asset('storage/...') برای جلوگیری از 500
-     */
+    
     public function view(Document $document)
     {
         $this->authorize('view', $document);
@@ -328,6 +315,34 @@ class DocumentController extends Controller
         return redirect()
             ->route('sales.documents.index')
             ->with('success', 'سند حذف شد.');
+    }
+
+    public function toggleVoid(Request $request, Document $document)
+    {
+        $this->authorizeManageDocument($document);
+
+        $voiding = !($document->is_voided ?? false);
+
+        $document->fill([
+            'is_voided' => $voiding,
+            'voided_at' => $voiding ? now() : null,
+            'voided_by' => $voiding ? $request->user()->id : null,
+        ])->save();
+
+        $message = $voiding ? 'سند با موفقیت باطل شد.' : 'ابطال سند لغو شد.';
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'id' => $document->id,
+                'is_voided' => $document->is_voided,
+                'voided_at' => $document->voided_at,
+                'voided_by' => $document->voided_by,
+                'badge' => $document->is_voided ? 'باطل شده' : null,
+                'message' => $message,
+            ]);
+        }
+
+        return back()->with('success', $message);
     }
 
     /**

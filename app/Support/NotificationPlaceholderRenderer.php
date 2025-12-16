@@ -10,8 +10,8 @@ class NotificationPlaceholderRenderer
     /**
      * Render the provided templates using a safe placeholder map.
      *
-     * @param  array{subject?:?string, body?:?string, sms?:?string}  $templates
-     * @return array{subject?:string, body?:string, sms?:string}
+     * @param  array{title?:?string, subject?:?string, body?:?string, sms?:?string}  $templates
+     * @return array{title?:string, subject?:string, body?:string, sms?:string}
      */
     public static function render(
         ?string $module,
@@ -25,7 +25,7 @@ class NotificationPlaceholderRenderer
 
         $result = [];
         $fields = [];
-        foreach (['subject', 'body', 'sms'] as $key) {
+        foreach (['title', 'subject', 'body', 'sms'] as $key) {
             if (array_key_exists($key, $templates)) {
                 $fields[$key] = (string) ($templates[$key] ?? '');
             }
@@ -147,6 +147,17 @@ class NotificationPlaceholderRenderer
             $act = $context['activity'] ?? null;
             $map['{activity_subject}'] = (string) ($act->subject ?? ('#'.($act->id ?? '')));
             $map['{due_at}'] = (string) ($act->due_at_jalali ?? $act->start_at_jalali ?? '');
+        }
+
+        if ($module === 'emails' && $event === 'received') {
+            $map['{email_subject}'] = (string) ($context['email_subject'] ?? $context['subject'] ?? '');
+            $map['{from_name}'] = (string) ($context['from_name'] ?? '');
+            $map['{from_email}'] = (string) ($context['from_email'] ?? '');
+            $map['{received_at}'] = (string) ($context['received_at'] ?? '');
+
+            if (empty($map['{form_title}'])) {
+                $map['{form_title}'] = $map['{email_subject}'] ?: (string) ($context['form_title'] ?? '');
+            }
         }
 
         return $map;

@@ -103,6 +103,16 @@ class User extends Authenticatable
         return $this->hasMany(OnlineChatMessage::class, 'sender_id');
     }
 
+    public function mailbox()
+    {
+        return $this->hasOne(Mailbox::class);
+    }
+
+    public function notificationSettings()
+    {
+        return $this->hasMany(UserNotificationSetting::class);
+    }
+
     public function isAdmin(): bool
     {
         // 1) فلگ دیتابیس

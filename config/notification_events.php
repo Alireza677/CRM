@@ -120,5 +120,24 @@ return [
                 ],
             ],
         ],
+
+        'emails' => [
+            'label' => 'ایمیل‌ها',
+            'events' => [
+                'received' => [
+                    'label' => 'دریافت ایمیل جدید',
+                    'default_title' => 'ایمیل جدید دارید',
+                    'default_channels' => ['database'],
+                    'placeholders' => ['{email_subject}', '{from_name}', '{from_email}', '{received_at}'],
+                    'default_subject' => 'ایمیل جدید دارید: {email_subject}',
+                    'default_body' => "ایمیل جدید از {from_name} ({from_email}) با موضوع {email_subject}\nزمان دریافت: {received_at}\n{url}",
+                    'supports' => [
+                        'channel_templates' => true,
+                        'conditions' => false,
+                        'multiple_rules' => false,
+                    ],
+                ],
+            ],
+        ],
     ],
 ];
