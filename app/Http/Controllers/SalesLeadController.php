@@ -41,12 +41,13 @@ class SalesLeadController extends Controller
             ->whereNull('converted_at');
 
         $query->where(function (Builder $builder) {
-            $builder->whereNull('lead_status')
-                ->whereNotIn('lead_status', [
-                SalesLead::STATUS_DISCARDED,
-                'lost',
-            ]);
-        });
+    $builder
+        ->whereNull('lead_status')
+        ->orWhereNotIn('lead_status', [
+            SalesLead::STATUS_DISCARDED,
+            'lost',
+        ]);
+});
 
 
         $this->applyLeadFilters($request, $query);
