@@ -14,24 +14,18 @@ class Kernel extends ConsoleKernel
      * این متد را کران‌جاب سیستمی (php artisan schedule:run) فراخوانی می‌کند تا جاب‌های زمان‌بندی‌شده ثبت شوند.
      */
     protected function schedule(Schedule $schedule): void
-    {
-        $schedule->job(new CheckLeadSlaJob())->everyFifteenMinutes();
+{
+    $schedule->job(new CheckLeadSlaJob())
+        ->everyFifteenMinutes()
+        ->withoutOverlapping();
 
-        $schedule->call(function () {
-            Mailbox::query()
-                ->where('is_active', true)
-                ->orderBy('id')
-                ->chunkById(50, function ($mailboxes) {
-                    foreach ($mailboxes as $mailbox) {
-                        if (config('queue.default') === 'sync') {
-                            SyncMailboxJob::dispatchSync($mailbox->id);
-                        } else {
-                            SyncMailboxJob::dispatch($mailbox->id);
-                        }
-                    }
-                });
-        })->everyFiveMinutes()->name('mail-sync');
-    }
+    $schedule->command('mail:sync')
+        ->everyFiveMinutes()       // یا everyMinute() اگر خواستی سریع‌تر
+        ->withoutOverlapping()
+        ->runInBackground()
+        ->name('mail-sync');
+}
+
 
     /**
      * این متد هنگام بوت artisan فراخوانی می‌شود تا دستورات کنسول پروژه بارگذاری شوند.
