@@ -4,7 +4,10 @@ return [
     'statuses' => [
         'new'                      => 'جدید',
         'contacted'                => 'تماس گرفته شده',
-        'converted' => 'تبدیل شده به فرصت',
+        'qualified'                => 'واجد شرایط',
+        'lost'                     => 'از دست رفته',
+        'converted'                => 'تبدیل شده به فرصت',
+        'converted_to_opportunity' => 'تبدیل شده به فرصت',
         'discarded'                => 'سرکاری',
     ],
 
