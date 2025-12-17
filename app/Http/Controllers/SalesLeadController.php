@@ -42,8 +42,12 @@ class SalesLeadController extends Controller
 
         $query->where(function (Builder $builder) {
             $builder->whereNull('lead_status')
-                ->orWhere('lead_status', '!=', SalesLead::STATUS_DISCARDED);
+                ->whereNotIn('lead_status', [
+                SalesLead::STATUS_DISCARDED,
+                'lost',
+            ]);
         });
+
 
         $this->applyLeadFilters($request, $query);
 
@@ -55,26 +59,31 @@ class SalesLeadController extends Controller
         ]))->with('breadcrumb', $this->leadsBreadcrumb([], false));
     }
 
-    public function junk(Request $request)
-    {
-        $query = SalesLead::visibleFor(auth()->user(), 'leads')
-            ->with('assignedUser')
-            ->whereNull('converted_at')
-            ->where(function (Builder $builder) {
-                $builder->where('lead_status', SalesLead::STATUS_DISCARDED);
-            });
+   public function junk(Request $request)
+{
+    $query = SalesLead::visibleFor(auth()->user(), 'leads')
+        ->with('assignedUser')
+        ->whereNull('converted_at')
+        ->where(function (Builder $builder) {
+            $builder->whereIn('lead_status', [
+                SalesLead::STATUS_DISCARDED,
+                'lost', // اگر ثابت STATUS_LOST ندارید
+            ]);
+        });
 
-        $this->applyLeadFilters($request, $query, false);
+    // در لیست سرکاری‌ها فیلتر وضعیت غیرفعال می‌ماند
+    $this->applyLeadFilters($request, $query, false);
 
-        $listingData = $this->prepareLeadListingData($request, $query);
+    $listingData = $this->prepareLeadListingData($request, $query);
 
-        return view('marketing.leads.index', array_merge($listingData, [
-            'leadListingRoute' => 'sales.leads.junk',
-            'isJunkListing' => true,
-        ]))->with('breadcrumb', $this->leadsBreadcrumb([
-            ['title' => 'سرکاری‌ها'],
-        ], false));
-    }
+    return view('marketing.leads.index', array_merge($listingData, [
+        'leadListingRoute' => 'sales.leads.junk',
+        'isJunkListing' => true,
+    ]))->with('breadcrumb', $this->leadsBreadcrumb([
+        ['title' => 'سرکاری‌ها'],
+    ], false));
+}
+
 
     protected function applyLeadFilters(Request $request, Builder $query, bool $allowStatusFilter = true): void
     {
