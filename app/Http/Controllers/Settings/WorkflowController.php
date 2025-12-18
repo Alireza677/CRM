@@ -24,6 +24,7 @@ class WorkflowController extends Controller
             'manager_approval' => 'تایید مدیر کل',
             'accounting_approval' => 'تایید حسابداری / پرداخت',
             'purchased' => 'خرید انجام شده',
+            'paid' => 'پرداخت‌شده',
         ];
 
         return view('settings.workflows.index', compact('users', 'poSettings', 'poStages'));

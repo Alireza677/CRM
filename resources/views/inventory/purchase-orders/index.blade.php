@@ -1,10 +1,10 @@
 @extends('layouts.app')
 
 @section('content')
-  <div class="py-12">
+  <div>
     <div class=" mx-auto sm:px-6 lg:px-8">
       <div class="flex justify-between items-center mb-6">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight">سفارش‌های خرید</h2>
+        <h2 class="font-semibold text-xl text-gray-800 leading-tight"> ثبت سفارش‌های خرید، تأمین موجودی و هزینه‌های جاری</h2>
         <a href="{{ route('inventory.purchase-orders.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">سفارش خرید جدید</a>
       </div>
 
@@ -86,6 +86,7 @@
                           'purchasing' => 'bg-indigo-100 text-indigo-800',
                           'purchased' => 'bg-green-100 text-green-800',
                           'warehouse_delivered' => 'bg-green-100 text-green-800',
+                          'paid' => 'bg-green-100 text-green-800',
                           'rejected' => 'bg-red-100 text-red-800',
                         ];
                         $currentStatus = $order->status;

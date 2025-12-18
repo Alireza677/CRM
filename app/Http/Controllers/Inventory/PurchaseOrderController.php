@@ -469,7 +469,7 @@ class PurchaseOrderController extends Controller
     public function updateStatus(Request $request, PurchaseOrder $purchaseOrder)
     {
         $data = $request->validate([
-            'status' => ['required', 'in:created,supervisor_approval,manager_approval,accounting_approval,purchased,rejected,purchasing,warehouse_delivered'],
+            'status' => ['required', 'in:created,supervisor_approval,manager_approval,accounting_approval,purchased,rejected,purchasing,warehouse_delivered,paid'],
         ]);
         $newStatus = $data['status'];
         $currentStatus = (string) $purchaseOrder->status;
@@ -481,6 +481,7 @@ class PurchaseOrderController extends Controller
             'purchased' => 4,
             'purchasing' => 5,
             'warehouse_delivered' => 6,
+            'paid' => 7,
             'rejected' => 99,
         ];
         if (($order[$newStatus] ?? -1) < ($order[$currentStatus] ?? -1)) {
@@ -759,9 +760,14 @@ class PurchaseOrderController extends Controller
         if ((int) auth()->id() !== (int) $purchaseOrder->requested_by) {
             return back()->with('error', 'فقط ایجادکننده سفارش می‌تواند تحویل به انباردار را ثبت کند.');
         }
-        $purchaseOrder->status = 'warehouse_delivered';
+        $purchaseOrder->status = ($purchaseOrder->usage_type === 'operational_expense')
+            ? 'paid'
+            : 'warehouse_delivered';
         $purchaseOrder->save();
-        return back()->with('success', 'وضعیت به «تحویل انبار» تغییر یافت.');
+        $message = $purchaseOrder->status === 'paid'
+            ? 'وضعیت به «پرداخت‌شده» تغییر یافت.'
+            : 'وضعیت به «تحویل انبار» تغییر یافت.';
+        return back()->with('success', $message);
     }
 
     private function deletePurchaseOrderWithRelations(PurchaseOrder $purchaseOrder): void

@@ -15,6 +15,7 @@
             'inventory' => 'تکمیل موجودی انبار',
             'project'   => 'تکمیل پروژه',
             'both'      => 'هر دو',
+            'operational_expense' => 'هزینه جاری',
         ];
         $usageLabel = $usageMap[$purchaseOrder->usage_type ?? ''] ?? '—';
 
@@ -26,6 +27,7 @@
             'purchased'            => ['خرید انجام شده', 'bg-green-100 text-green-800'],
             'purchasing'           => ['در حال خرید', 'bg-indigo-100 text-indigo-800'],
             'warehouse_delivered'  => ['تحویل انبار', 'bg-green-100 text-green-800'],
+            'paid'                 => ['پرداخت‌شده', 'bg-green-100 text-green-800'],
             'rejected'             => ['رد شده', 'bg-red-100 text-red-800'],
         ];
         [$statusText, $statusBadge] = $statusMap[$purchaseOrder->status] ?? ['نامشخص','bg-gray-100 text-gray-800'];
@@ -428,7 +430,9 @@
     @elseif($purchaseOrder->status === 'purchasing' && $isCreator)
         <form method="POST" action="{{ route('inventory.purchase-orders.deliverToWarehouse', $purchaseOrder) }}">
             @csrf
-            <button type="submit" class="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700">تحویل به انباردار</button>
+            <button type="submit" class="px-4 py-2 rounded text-white bg-indigo-600 hover:bg-indigo-700">
+                {{ ($purchaseOrder->usage_type ?? null) === 'operational_expense' ? 'پرداخت شده' : 'تحویل به انباردار' }}
+            </button>
         </form>
         <p class="text-xs text-gray-500 mt-2">پس از تحویل اقلام به انبار، این دکمه را بزنید تا وضعیت به «تحویل انبار» تغییر کند.</p>
     @else

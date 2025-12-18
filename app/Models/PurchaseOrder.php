@@ -121,6 +121,7 @@ class PurchaseOrder extends Model
             'purchasing'          => 'در حال خرید',
             'purchased'           => 'خرید انجام شده',
             'warehouse_delivered' => 'تحویل انبار',
+            'paid'                => 'پرداخت‌شده',
             'rejected'            => 'رد شده',
         ];
     }
