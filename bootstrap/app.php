@@ -4,7 +4,10 @@ use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Contracts\Console\Kernel as ConsoleKernelContract;
+use App\Console\Kernel as AppConsoleKernel;
 use App\Jobs\SyncPendingSmsStatuses;
+use App\Jobs\SendLeadRotationWarningsJob;
 
 return Application::configure(basePath: dirname(__DIR__))
     ->withRouting(
@@ -12,26 +15,33 @@ return Application::configure(basePath: dirname(__DIR__))
         commands: __DIR__.'/../routes/console.php',
         health: '/up',
     )
+    ->withSingletons([
+        ConsoleKernelContract::class => AppConsoleKernel::class,
+    ])
     ->withMiddleware(function (Middleware $middleware) {
         //
     })
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })
-        ->withSchedule(function (Schedule $schedule) {
+    ->withSchedule(function (Schedule $schedule) {
         $schedule->command('reports:run-schedules')->everyFifteenMinutes();
 
         // Sync SMS delivery status periodically for pending messages
         $schedule->job(new SyncPendingSmsStatuses())->everyTenMinutes();
 
-        // ✅ Lead SLA check (اگر می‌خواهی فعال باشد)
+        // ƒo. Lead SLA check (OU_Oñ U.UOƒ?OOrU^OUØUO U?O1OU, O"OO'O_)
         $schedule->job(new \App\Jobs\CheckLeadSlaJob())
             ->everyFifteenMinutes()
             ->withoutOverlapping();
 
-        // ✅ Mail sync (Gmail-style background sync)
+        $schedule->job(new SendLeadRotationWarningsJob())
+            ->everyFiveMinutes()
+            ->withoutOverlapping();
+
+        // ƒo. Mail sync (Gmail-style background sync)
         $schedule->command('mail:sync')
-            ->everyFiveMinutes()      // اگر خواستی سریع‌تر: everyMinute()
+            ->everyFiveMinutes()      // OU_Oñ OrU^OO3O¦UO O3OñUOO1ƒ?OO¦Oñ: everyMinute()
             ->withoutOverlapping()
             ->runInBackground()
             ->name('mail-sync');

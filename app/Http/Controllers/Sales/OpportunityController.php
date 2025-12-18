@@ -488,7 +488,7 @@ class OpportunityController extends Controller
             $data['activities'] = Activity::where('subject_type', Opportunity::class)
                 ->where('subject_id', $opportunity->id)
                 ->where(function ($query) {
-                    $query->whereIn('event', ['created', 'updated', 'proforma_created'])
+                    $query->whereIn('event', ['created', 'updated', 'proforma_created', 'document_voided', 'document_unvoided'])
                         ->orWhereNull('event');
                 })
                 ->latest()
@@ -514,7 +514,7 @@ class OpportunityController extends Controller
                 $activities = Activity::where('subject_type', Opportunity::class)
                     ->where('subject_id', $opportunity->id)
                     ->where(function ($query) {
-                        $query->whereIn('event', ['created', 'updated', 'proforma_created'])
+                        $query->whereIn('event', ['created', 'updated', 'proforma_created', 'document_voided', 'document_unvoided'])
                             ->orWhereNull('event');
                     })
                     ->latest()

@@ -27,6 +27,9 @@ class LeadRoundRobinController extends Controller
                 'sla_duration_value' => 24,
                 'sla_duration_unit' => 'hours',
                 'max_reassign_count' => 2,
+                'enable_rotation_warning' => false,
+                'rotation_warning_time' => 6,
+                'rotation_warning_unit' => 'hours',
             ]);
         }
 
@@ -58,15 +61,28 @@ class LeadRoundRobinController extends Controller
             'sla_duration_value' => ['required', 'integer', 'min:1', 'max:100000'],
             'sla_duration_unit'  => ['required', 'in:minutes,hours'],
             'max_reassign_count' => ['required', 'integer', 'min:0', 'max:1000'],
+            'enable_rotation_warning' => ['nullable', 'boolean'],
+            'rotation_warning_time' => ['required', 'integer', 'min:1', 'max:100000'],
+            'rotation_warning_unit' => ['required', 'in:hours,days'],
         ]);
 
         $settings = LeadRoundRobinSetting::query()->firstOrCreate([], [
             'sla_duration_value' => 24,
             'sla_duration_unit'  => 'hours',
             'max_reassign_count' => 2,
+            'enable_rotation_warning' => false,
+            'rotation_warning_time' => 6,
+            'rotation_warning_unit' => 'hours',
         ]);
 
-        $settings->fill($data)->save();
+        $settings->fill([
+            'sla_duration_value' => $data['sla_duration_value'],
+            'sla_duration_unit' => $data['sla_duration_unit'],
+            'max_reassign_count' => $data['max_reassign_count'],
+            'enable_rotation_warning' => (bool) ($data['enable_rotation_warning'] ?? false),
+            'rotation_warning_time' => $data['rotation_warning_time'],
+            'rotation_warning_unit' => $data['rotation_warning_unit'],
+        ])->save();
 
         return back()->with('success', __('Settings updated.'));
     }

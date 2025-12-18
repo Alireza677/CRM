@@ -251,19 +251,22 @@ class SalesLeadController extends Controller
 
     }
 
-    public function create()
-    {
-        $users = User::all();
-        $referrals = $users;
-        $contacts = Contact::select('id', 'first_name', 'last_name', 'mobile')
-            ->orderBy('last_name')
-            ->orderBy('first_name')
-            ->get();
-        return view('marketing.leads.create', compact('users', 'referrals', 'contacts'))
-            ->with('breadcrumb', $this->leadsBreadcrumb([
-                ['title' => 'Ø§ÛŒØ¬Ø§Ø¯ Ø³Ø±Ù†Ø®'],
-            ]));
-    }
+   public function create()
+{
+    $users = User::all();
+    $referrals = $users;
+
+    $contacts = Contact::select('id', 'first_name', 'last_name', 'mobile')
+        ->orderBy('last_name')
+        ->orderBy('first_name')
+        ->get();
+
+    return view('marketing.leads.create', compact('users', 'referrals', 'contacts'))
+        ->with('breadcrumb', $this->leadsBreadcrumb([
+            ['title' => 'ایجاد سرنخ'],
+        ]));
+}
+
 
     public function store(Request $request)
 {

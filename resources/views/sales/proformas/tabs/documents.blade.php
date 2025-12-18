@@ -17,6 +17,18 @@
                     $isImage = in_array($ext, ['jpg','jpeg','png','gif','webp']);
                     $viewUrl = route('sales.documents.view', $doc);
                     $registeredAt = $doc->created_at;
+
+                    $isAdmin = auth()->check() && (
+                        (method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('admin'))
+                        || (auth()->user()->is_admin ?? false)
+                    );
+                    $isOwner = auth()->check() && (int) ($doc->user_id ?? 0) === (int) auth()->id();
+                    $canManage = $isAdmin || $isOwner;
+                    $isVoided = (bool) ($doc->is_voided ?? false);
+
+                    $confirmVoidMsg = $isVoided
+                        ? 'ابطال این سند لغو شود؟'
+                        : 'آیا مطمئن هستید این سند باطل شود؟ سند حذف نخواهد شد.';
                 @endphp
                 <div class="p-3 border rounded-md flex items-center gap-3 justify-between">
                     <div class="flex items-center gap-3">
@@ -30,7 +42,12 @@
                             </div>
                         @endif
                         <div>
-                            <div class="text-sm font-medium text-gray-800">{{ $doc->title }}</div>
+                            <div class="text-sm font-medium text-gray-800 flex items-center gap-2">
+                                <span>{{ $doc->title }}</span>
+                                @if($isVoided)
+                                    <span class="text-[11px] px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-200">باطل شده</span>
+                                @endif
+                            </div>
                             <div class="text-xs text-gray-500">{{ $ext ?: 'file' }}</div>
                             @if($registeredAt)
                                 <div class="text-xs text-gray-500 mt-1">ثبت: {{ jdate($registeredAt)->format('Y/m/d') }}</div>
@@ -40,6 +57,21 @@
                     <div class="flex items-center gap-2">
                         <a href="{{ $viewUrl }}" target="_blank" class="text-blue-600 text-sm hover:underline">مشاهده</a>
                         <a href="{{ route('sales.documents.download', $doc) }}" class="text-gray-700 text-sm hover:underline">دانلود</a>
+                        @if($canManage)
+                            <form action="{{ route('sales.documents.toggle-void', $doc) }}"
+                                  method="POST"
+                                  class="inline"
+                                  onsubmit="return confirm(@js($confirmVoidMsg));">
+                                @csrf
+                                @method('PATCH')
+
+                                <button type="submit"
+                                        class="{{ $isVoided ? 'text-amber-600 hover:text-amber-700' : 'text-gray-600 hover:text-gray-800' }}"
+                                        title="{{ $isVoided ? 'رفع ابطال' : 'باطل کردن' }}">
+                                    <i class="fas {{ $isVoided ? 'fa-undo-alt' : 'fa-ban' }}"></i>
+                                </button>
+                            </form>
+                        @endif
                     </div>
                 </div>
             @endforeach

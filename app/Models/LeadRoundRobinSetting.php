@@ -13,5 +13,8 @@ class LeadRoundRobinSetting extends Model
         'sla_duration_value',
         'sla_duration_unit',
         'max_reassign_count',
+        'enable_rotation_warning',
+        'rotation_warning_time',
+        'rotation_warning_unit',
     ];
 }

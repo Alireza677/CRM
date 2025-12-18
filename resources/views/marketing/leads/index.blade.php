@@ -23,7 +23,7 @@
     </div>
 @endif
 
-<div class="py-12">
+<div>
     <div class="px-4">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-semibold text-gray-800">سرنخ‌های فروش</h2>

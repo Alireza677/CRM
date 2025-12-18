@@ -44,14 +44,31 @@ class CheckLeadSlaJob implements ShouldQueue
             ->whereNotNull('assigned_to')
             ->whereNotNull('assigned_at')
             ->whereNull('first_activity_at')
-            ->where('assigned_at', '<=', $threshold)
+            ->where(function ($q) use ($now, $threshold) {
+                $q->whereNotNull('rotation_due_at')
+                    ->where('rotation_due_at', '<=', $now)
+                    ->orWhere(function ($q2) use ($threshold) {
+                        $q2->whereNull('rotation_due_at')
+                            ->where('assigned_at', '<=', $threshold);
+                    });
+            })
             ->orderBy('id')
-            ->chunkById(200, function ($leads) use ($router, $managers, $threshold) {
+            ->chunkById(200, function ($leads) use ($router, $managers, $slaValue, $slaUnit, $now) {
                 foreach ($leads as $lead) {
-                    DB::transaction(function () use ($lead, $router, $managers, $threshold) {
+                    DB::transaction(function () use ($lead, $router, $managers, $slaValue, $slaUnit, $now) {
                         /** @var SalesLead|null $lockedLead */
                         $lockedLead = SalesLead::query()->lockForUpdate()->find($lead->id);
                         if (!$lockedLead) {
+                            return;
+                        }
+
+                        if (empty($lockedLead->rotation_due_at) && $lockedLead->assigned_at) {
+                            $lockedLead->rotation_due_at = $this->calculateRotationDueAt($lockedLead->assigned_at, $slaValue, $slaUnit);
+                            $lockedLead->rotation_warning_sent_at = null;
+                            $lockedLead->save();
+                        }
+
+                        if ($lockedLead->rotation_due_at && $lockedLead->rotation_due_at->gt($now)) {
                             return;
                         }
 
@@ -61,7 +78,7 @@ class CheckLeadSlaJob implements ShouldQueue
                             || empty($lockedLead->assigned_to)
                             || $lockedLead->first_activity_at !== null
                             || $lockedLead->assigned_at === null
-                            || $lockedLead->assigned_at->gt($threshold)
+                            || ($lockedLead->rotation_due_at && $lockedLead->rotation_due_at->gt($now))
                         ) {
                             return;
                         }
@@ -100,6 +117,8 @@ class CheckLeadSlaJob implements ShouldQueue
                                 'assigned_at' => $now,
                                 'pool_status' => SalesLead::POOL_ASSIGNED,
                                 'auto_reassign_count' => ($lockedLead->auto_reassign_count ?? 0) + 1,
+                                'rotation_due_at' => $this->calculateRotationDueAt($now, $slaValue, $slaUnit),
+                                'rotation_warning_sent_at' => null,
                             ])->save();
 
                             $nextAssignee->forceFill([
@@ -123,6 +142,19 @@ class CheckLeadSlaJob implements ShouldQueue
                     });
                 }
             });
+    }
+
+    protected function calculateRotationDueAt(?Carbon $start, int $value, string $unit): ?Carbon
+    {
+        if (!$start) {
+            return null;
+        }
+
+        $base = Carbon::parse($start);
+
+        return $unit === 'minutes'
+            ? $base->copy()->addMinutes($value)
+            : $base->copy()->addHours($value);
     }
 
     protected function managerRecipients(): array

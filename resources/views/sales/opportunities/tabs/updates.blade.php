@@ -23,6 +23,7 @@
                 $eventType = $activity->event ?? $activity->description ?? null;
                 $isCreated = $eventType === 'created';
                 $isProformaCreated = $eventType === 'proforma_created';
+                $isDocumentVoid = in_array($eventType, ['document_voided', 'document_unvoided'], true);
                 $copiedFromLead = ($activity->properties['copied_from'] ?? null) === 'lead';
             @endphp
 
@@ -107,6 +108,18 @@
                 @if($proformaNumber)
                     <div class="text-xs text-gray-500">شماره مرجع: {{ $proformaNumber }}</div>
                 @endif
+            @elseif($isDocumentVoid)
+                @php
+                    $documentTitle = $activity->properties['document_title'] ?? null;
+                    $documentId = $activity->properties['document_id'] ?? null;
+                    $docLabel = $documentTitle ?: ($documentId ? ('سند #' . $documentId) : 'سند');
+                    $actorName = $activity->causer->name ?? 'سیستم';
+                    $actionText = $eventType === 'document_voided' ? 'باطل شد' : 'از ابطال خارج شد';
+                    $at = DateHelper::toJalali($activity->created_at, 'H:i Y/m/d');
+                @endphp
+                <div class="text-sm mb-1 font-semibold text-amber-700">
+                    {{ $activity->description ?? ($docLabel . ' توسط ' . $actorName . ' در ' . $at . ' ' . $actionText . '.') }}
+                </div>
             @else
                 <div class="text-sm mb-2">
                     <span class="font-semibold text-blue-700">{{ $activity->causer->name ?? 'سیستم' }}</span>

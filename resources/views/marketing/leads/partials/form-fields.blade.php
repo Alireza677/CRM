@@ -371,4 +371,40 @@ document.addEventListener('DOMContentLoaded', function(){
     });
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const locations = @json(\App\Helpers\FormOptionsHelper::iranLocations());
+    const stateEl = document.getElementById('stateSelect');
+    const cityEl  = document.getElementById('citySelect');
+
+    function fillCities(state, selectedCity = '') {
+        cityEl.innerHTML = '';
+
+        const opt0 = document.createElement('option');
+        opt0.value = '';
+        opt0.textContent = 'یک شهر را انتخاب کنید';
+        cityEl.appendChild(opt0);
+
+        if (!state || !locations[state]) return;
+
+        locations[state].forEach(function (city) {
+            const opt = document.createElement('option');
+            opt.value = city;
+            opt.textContent = city;
+            if (selectedCity && selectedCity === city) opt.selected = true;
+            cityEl.appendChild(opt);
+        });
+    }
+
+    const oldState = @json(old('state', $lead->state ?? ''));
+    const oldCity  = @json(old('city',  $lead->city  ?? ''));
+
+    fillCities(oldState, oldCity);
+
+    stateEl.addEventListener('change', function () {
+        fillCities(this.value, '');
+    });
+});
+</script>
+
 @endpush

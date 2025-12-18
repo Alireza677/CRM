@@ -13,6 +13,7 @@ use Illuminate\Support\Carbon;
 use App\Models\Activity as CrmActivity;
 use App\Models\RoleAssignment;
 use App\Models\Contact;
+use App\Models\LeadRoundRobinSetting;
 use App\Models\Note;
 use App\Traits\NotifiesAssignee; // باقی می‌ماند؛ اما با گارد داخلی جلوی دوبل‌شدن را می‌گیریم
 use App\Models\Opportunity;
@@ -91,6 +92,8 @@ class SalesLead extends Model
         'visibility',
         'is_reengaged',
         'reengaged_at',
+        'rotation_due_at',
+        'rotation_warning_sent_at',
     ];
 
     protected $casts = [
@@ -118,6 +121,8 @@ class SalesLead extends Model
         'visibility'           => 'string',
         'is_reengaged'         => 'boolean',
         'reengaged_at'         => 'datetime',
+        'rotation_due_at'      => 'datetime',
+        'rotation_warning_sent_at' => 'datetime',
     ];
 
     protected $attributes = [
@@ -147,6 +152,10 @@ class SalesLead extends Model
             if (empty($lead->pool_status) || $lead->pool_status === self::POOL_IN_POOL) {
                 $lead->pool_status = self::POOL_ASSIGNED;
             }
+
+            if (empty($lead->rotation_due_at)) {
+                $lead->rotation_due_at = self::computeRotationDueAtFrom($lead->assigned_at);
+            }
         } else {
             if (empty($lead->pool_status)) {
                 $lead->pool_status = self::POOL_IN_POOL;
@@ -166,6 +175,14 @@ class SalesLead extends Model
             'pool_status' => $lead->pool_status,
             'dirty' => $lead->getDirty(),
         ]);
+
+        if ($lead->assigned_to && empty($lead->rotation_due_at)) {
+            $lead->rotation_due_at = self::computeRotationDueAtFrom($lead->assigned_at ?? Carbon::now());
+        }
+
+        if ($lead->isDirty('rotation_due_at')) {
+            $lead->rotation_warning_sent_at = null;
+        }
     });
 
     static::created(function (SalesLead $lead) {
@@ -193,9 +210,13 @@ class SalesLead extends Model
                 if (!empty($lead->assigned_to)) {
                     $lead->assigned_at = $lead->assigned_at ?? Carbon::now();
                     $lead->pool_status = self::POOL_ASSIGNED;
+                    $lead->rotation_due_at = self::computeRotationDueAtFrom($lead->assigned_at);
+                    $lead->rotation_warning_sent_at = null;
                 } else {
                     $lead->assigned_at = null;
                     $lead->pool_status = self::POOL_IN_POOL;
+                    $lead->rotation_due_at = null;
+                    $lead->rotation_warning_sent_at = null;
                 }
             }
         });
@@ -258,6 +279,25 @@ class SalesLead extends Model
 
         // گارد برای جلوگیری از ارسال دوباره در همین چرخه
         $lead->_assignment_notified = true;
+    }
+
+    /**
+     * Calculates the rotation due timestamp based on current round-robin settings.
+     */
+    protected static function computeRotationDueAtFrom(?Carbon $start): ?Carbon
+    {
+        $settings = LeadRoundRobinSetting::query()->first();
+        if (!$settings) {
+            return null;
+        }
+
+        $value = (int) ($settings->sla_duration_value ?? 24);
+        $unit  = $settings->sla_duration_unit ?? 'hours';
+        $base  = $start ? Carbon::parse($start) : Carbon::now();
+
+        return $unit === 'minutes'
+            ? $base->copy()->addMinutes($value)
+            : $base->copy()->addHours($value);
     }
 
     /* ---------------- Relations (users) ---------------- */
@@ -606,4 +646,3 @@ class SalesLead extends Model
     }
 
 }
-

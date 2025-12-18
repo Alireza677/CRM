@@ -329,6 +329,38 @@ class DocumentController extends Controller
             'voided_by' => $voiding ? $request->user()->id : null,
         ])->save();
 
+        if ($document->opportunity_id) {
+            $opportunity = $document->opportunity ?? Opportunity::find($document->opportunity_id);
+            if ($opportunity) {
+                $logTime = now();
+                $actor = $request->user();
+                $documentLabel = $document->title ?: ('#' . $document->id);
+                $actionText = $voiding ? 'باطل شد' : 'از ابطال خارج شد';
+                $jalaliDate = DateHelper::toJalali($logTime, 'Y/m/d');
+                $jalaliTime = DateHelper::toJalali($logTime, 'H:i');
+
+                $proforma = $opportunity->proformas()->orderByDesc('proforma_date')->orderByDesc('id')->first();
+                $proformaNumber = $proforma?->proforma_number ?? $proforma?->id ?? null;
+                $proformaLabel = $proformaNumber ? ("پیش‌فاکتور {$proformaNumber}") : "سند {$documentLabel}";
+
+                $description = "{$proformaLabel} توسط " .
+                    ($actor?->name ?? 'سیستم') .
+                    " در تاریخ {$jalaliDate} ساعت {$jalaliTime} {$actionText}.";
+
+                activity('opportunity')
+                    ->performedOn($opportunity)
+                    ->causedBy($actor)
+                    ->event($voiding ? 'document_voided' : 'document_unvoided')
+                    ->withProperties([
+                        'document_id' => $document->id,
+                        'document_title' => $document->title,
+                        'proforma_number' => $proformaNumber,
+                        'voided' => $voiding,
+                    ])
+                    ->log($description);
+            }
+        }
+
         $message = $voiding ? 'سند با موفقیت باطل شد.' : 'ابطال سند لغو شد.';
 
         if ($request->wantsJson()) {

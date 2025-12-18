@@ -43,6 +43,24 @@
                             <input type="number" min="0" name="max_reassign_count" id="max_reassign_count" class="w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm" value="{{ old('max_reassign_count', $settings->max_reassign_count) }}" required>
                         </div>
                     </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div class="flex items-center space-x-3 space-x-reverse">
+                            <input type="hidden" name="enable_rotation_warning" value="0">
+                            <input type="checkbox" name="enable_rotation_warning" id="enable_rotation_warning" value="1" class="h-4 w-4 text-indigo-600 border-gray-300 rounded" @checked(old('enable_rotation_warning', $settings->enable_rotation_warning))>
+                            <label for="enable_rotation_warning" class="text-sm font-medium text-gray-700">ارسال اخطار قبل از جابه‌جایی</label>
+                        </div>
+                        <div>
+                            <label for="rotation_warning_time" class="block text-sm font-medium text-gray-700 mb-1">زمان اخطار پیش از جابه‌جایی</label>
+                            <input type="number" min="1" name="rotation_warning_time" id="rotation_warning_time" class="w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm" value="{{ old('rotation_warning_time', $settings->rotation_warning_time) }}" required>
+                        </div>
+                        <div>
+                            <label for="rotation_warning_unit" class="block text-sm font-medium text-gray-700 mb-1">واحد اخطار</label>
+                            <select name="rotation_warning_unit" id="rotation_warning_unit" class="w-full rounded-md border-gray-300 focus:border-indigo-500 focus:ring-indigo-500 text-sm">
+                                <option value="hours" @selected(old('rotation_warning_unit', $settings->rotation_warning_unit) === 'hours')>ساعت</option>
+                                <option value="days" @selected(old('rotation_warning_unit', $settings->rotation_warning_unit) === 'days')>روز</option>
+                            </select>
+                        </div>
+                    </div>
                     <div>
                         <button type="submit" class="inline-flex items-center px-4 py-2 bg-indigo-600 text-white text-sm font-medium rounded-md shadow-sm hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-2">
                             ذخیره تنظیمات
