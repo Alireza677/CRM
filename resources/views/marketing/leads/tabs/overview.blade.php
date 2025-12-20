@@ -90,8 +90,8 @@
                 <div class="text-sm text-gray-700">
                     زمان باقی‌مانده تا تخصیص مجدد:
                 </div>
-                <div id="rotation-timer" class="px-3 py-2 rounded-lg bg-amber-600 text-white text-sm font-mono font-semibold"
-                     data-due="{{ $rotationDueAt->toIso8601String() }}">
+                <div id="reassign-countdown" class="px-3 py-2 rounded-lg bg-amber-600 text-white text-sm font-mono font-semibold"
+                     data-remaining="{{ $rotationRemainingSeconds ?? 0 }}">
                     —
                 </div>
             </div>

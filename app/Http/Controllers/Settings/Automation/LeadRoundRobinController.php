@@ -5,8 +5,10 @@ namespace App\Http\Controllers\Settings\Automation;
 use App\Http\Controllers\Controller;
 use App\Models\LeadRoundRobinSetting;
 use App\Models\LeadRoundRobinUser;
+use App\Models\SalesLead;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 
 class LeadRoundRobinController extends Controller
 {
@@ -83,6 +85,38 @@ class LeadRoundRobinController extends Controller
             'rotation_warning_time' => $data['rotation_warning_time'],
             'rotation_warning_unit' => $data['rotation_warning_unit'],
         ])->save();
+
+        $slaValue = (int) $data['sla_duration_value'];
+        $slaUnit = $data['sla_duration_unit'];
+
+        SalesLead::query()
+            ->whereNotNull('rotation_due_at')
+            ->whereNull('converted_at')
+            ->where(function ($query) {
+                $query->whereNull('lead_status')
+                    ->orWhereNotIn('lead_status', [
+                        SalesLead::STATUS_DISCARDED,
+                        'lost',
+                    ]);
+            })
+            ->orderBy('id')
+            ->chunkById(200, function ($leads) use ($slaValue, $slaUnit) {
+                foreach ($leads as $lead) {
+                    if (!$lead->assigned_at) {
+                        continue;
+                    }
+
+                    $base = Carbon::parse($lead->assigned_at);
+                    $newDueAt = $slaUnit === 'minutes'
+                        ? $base->copy()->addMinutes($slaValue)
+                        : $base->copy()->addHours($slaValue);
+
+                    $lead->forceFill([
+                        'rotation_due_at' => $newDueAt,
+                        'rotation_warning_sent_at' => null,
+                    ])->save();
+                }
+            });
 
         return back()->with('success', __('Settings updated.'));
     }

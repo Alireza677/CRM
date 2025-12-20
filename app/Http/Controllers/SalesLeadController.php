@@ -973,10 +973,12 @@ public function show(SalesLead $lead)
     $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
     $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
 
+    $rotationRemainingSeconds = $this->rotationRemainingSeconds($lead);
+
     // ✓ این خط اضافه شد تا فقط کاربرانی که نام کاربری دارند برگردند
     $allUsers = User::whereNotNull('username')->get();
 
-    return view('marketing.leads.show', compact('lead', 'allUsers'))
+    return view('marketing.leads.show', compact('lead', 'allUsers', 'rotationRemainingSeconds'))
         ->with('breadcrumb', $this->leadsBreadcrumb([
             ['title' => 'جزئیات سرنخ'],
         ]));
@@ -990,6 +992,10 @@ public function show(SalesLead $lead)
 
         $data = ['lead' => $lead];
 
+        if ($tab === 'overview') {
+            $data['rotationRemainingSeconds'] = $this->rotationRemainingSeconds($lead);
+        }
+
         if ($tab === 'notes') {
             $data['notes'] = $lead->notes()->latest()->get();
             $data['allUsers'] = User::query()
@@ -1000,6 +1006,16 @@ public function show(SalesLead $lead)
         }
 
         return view($view, $data);
+    }
+
+    private function rotationRemainingSeconds(SalesLead $lead): int
+    {
+        $rotationDueAt = $lead->rotation_due_at;
+        if (!$rotationDueAt) {
+            return 0;
+        }
+
+        return max(0, Carbon::now()->diffInSeconds($rotationDueAt, false));
     }
 
     public function convertToOpportunity(Request $request, SalesLead $lead)

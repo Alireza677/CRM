@@ -112,6 +112,29 @@ class MailController extends Controller
         $mailbox = $request->user()?->mailbox;
         abort_unless($mailbox, 403);
 
+        $folderKey = strtolower($request->string('folder')->toString() ?: 'inbox');
+
+        $inboxFolder = $mailbox?->folders()->firstOrCreate(['imap_path' => 'INBOX'], ['name' => 'INBOX']);
+        $sentFolder  = $mailbox?->folders()->firstOrCreate(['imap_path' => 'Sent'], ['name' => 'Sent']);
+
+        $folderCounts = [
+            'inbox'   => 0,
+            'sent'    => 0,
+            'archive' => 0,
+            'trash'   => 0,
+        ];
+
+        if ($mailbox) {
+            $folderCounts['inbox'] = MailMessage::query()->where('mailbox_id', $mailbox->id)
+                ->where('folder_id', $inboxFolder?->id)->where('is_archived', false)->where('is_deleted', false)->count();
+            $folderCounts['sent'] = MailMessage::query()->where('mailbox_id', $mailbox->id)
+                ->where('folder_id', $sentFolder?->id)->where('is_deleted', false)->count();
+            $folderCounts['archive'] = MailMessage::query()->where('mailbox_id', $mailbox->id)
+                ->where('is_archived', true)->where('is_deleted', false)->count();
+            $folderCounts['trash'] = MailMessage::query()->where('mailbox_id', $mailbox->id)
+                ->where('is_deleted', true)->count();
+        }
+
         $messages = MailMessage::query()
             ->where('mailbox_id', $mailbox->id)
             ->where('thread_key', $threadKey)
@@ -139,6 +162,8 @@ class MailController extends Controller
             'mailbox'  => $mailbox,
             'threadKey'=> $threadKey,
             'messages' => $messages,
+            'folderCounts'   => $folderCounts,
+            'selectedFolder' => $folderKey,
         ]);
     }
 

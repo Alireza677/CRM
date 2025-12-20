@@ -184,47 +184,58 @@ document.addEventListener("DOMContentLoaded", function () {
     const activeClasses = ['bg-blue-100', 'text-blue-800', 'font-semibold'];
     const inactiveClasses = ['text-gray-700', 'hover:bg-gray-100'];
 
-    function initRotationTimer(scope = document) {
-    const el = scope.querySelector('#rotation-timer');
+    function initReassignTimer(scope = document) {
+    const el = scope.querySelector('#reassign-countdown');
     if (!el) return;
 
-    const dueStr = el.dataset.due;
-    const due = dueStr ? new Date(dueStr) : null;
-    if (!due || isNaN(due.getTime())) {
-        el.textContent = '—';
+    const remainingAttr = el.dataset.remaining;
+    const deadlineStr = el.dataset.deadline;
+    const deadline = deadlineStr ? new Date(deadlineStr) : null;
+    const hasDeadline = deadline && !isNaN(deadline.getTime());
+    let remainingSeconds = remainingAttr !== undefined ? parseInt(remainingAttr, 10) : NaN;
+
+    if (!hasDeadline && (Number.isNaN(remainingSeconds) || remainingSeconds < 0)) {
+        el.textContent = '--';
         return;
     }
 
-    // جلوگیری از چند interval
-    if (el._rotationInterval) {
-        clearInterval(el._rotationInterval);
-        el._rotationInterval = null;
+    // ??????? ?? ???? ??? interval
+    if (el._reassignInterval) {
+        clearInterval(el._reassignInterval);
+        el._reassignInterval = null;
     }
 
-    const formatRemaining = (ms) => {
-        if (ms <= 0) return '00:00:00';
-        const totalSeconds = Math.floor(ms / 1000);
-        const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
-        const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
-        const s = String(totalSeconds % 60).padStart(2, '0');
+    const formatRemaining = (seconds) => {
+        if (seconds <= 0) return '00:00:00';
+        const h = String(Math.floor(seconds / 3600)).padStart(2, '0');
+        const m = String(Math.floor((seconds % 3600) / 60)).padStart(2, '0');
+        const s = String(seconds % 60).padStart(2, '0');
         return `${h}:${m}:${s}`;
     };
 
     const tick = () => {
-        const remaining = due - new Date();
-        el.textContent = formatRemaining(remaining);
+        const currentRemaining = hasDeadline
+            ? Math.max(0, Math.floor((deadline - new Date()) / 1000))
+            : Math.max(0, remainingSeconds);
 
-        if (remaining <= 0) {
+        el.textContent = formatRemaining(currentRemaining);
+
+        if (!hasDeadline) {
+            remainingSeconds = currentRemaining - 1;
+        }
+
+        if (currentRemaining <= 0) {
             el.classList.remove('bg-amber-600');
             el.classList.add('bg-red-600');
-            clearInterval(el._rotationInterval);
-            el._rotationInterval = null;
+            clearInterval(el._reassignInterval);
+            el._reassignInterval = null;
         }
     };
 
-    tick(); // اجرا قبل از interval مشکلی ندارد
-    el._rotationInterval = setInterval(tick, 1000);
+    tick(); // ????? ????? ?? ??? ?? interval ???? ????? ????
+    el._reassignInterval = setInterval(tick, 1000);
 }
+
 
 
     function setActiveTab(el) {
@@ -238,7 +249,7 @@ document.addEventListener("DOMContentLoaded", function () {
         el.classList.remove('text-gray-700');
     }
 
-    function loadTab(url, clickedEl = null) { console.log('[LeadTabs] fetching', url); contentArea.innerHTML = '<div class="text-gray-400 p-4 flex items-center gap-2">' + '<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24">' + '<circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="4" opacity=".25"></circle>' + '<path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" fill="none"></path>' + '</svg>' + 'در حال بارگذاری...' + '</div>'; fetch(url) .then(async (res) => { if (!res.ok) { const body = await res.text(); console.error('[LeadTabs] not ok', res.status, res.statusText, body); throw new Error('http_' + res.status); } return res.text(); }) .then(html => { contentArea.innerHTML = html; initRotationTimer(contentArea); if (clickedEl && window.matchMedia('(max-width: 767px)').matches) { closeSidebar(); } }) .catch((err) => { console.error('[LeadTabs] failed', err); contentArea.innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری اطلاعات.</div>'; }); }
+    function loadTab(url, clickedEl = null) { console.log('[LeadTabs] fetching', url); contentArea.innerHTML = '<div class="text-gray-400 p-4 flex items-center gap-2">' + '<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24">' + '<circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="4" opacity=".25"></circle>' + '<path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" fill="none"></path>' + '</svg>' + 'در حال بارگذاری...' + '</div>'; fetch(url) .then(async (res) => { if (!res.ok) { const body = await res.text(); console.error('[LeadTabs] not ok', res.status, res.statusText, body); throw new Error('http_' + res.status); } return res.text(); }) .then(html => { contentArea.innerHTML = html; initReassignTimer(contentArea); if (clickedEl && window.matchMedia('(max-width: 767px)').matches) { closeSidebar(); } }) .catch((err) => { console.error('[LeadTabs] failed', err); contentArea.innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری اطلاعات.</div>'; }); }
 
 
     links.forEach(link => {
