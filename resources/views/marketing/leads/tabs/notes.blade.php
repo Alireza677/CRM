@@ -91,7 +91,7 @@
     <div class="bg-white p-6 rounded shadow w-96 max-h-[80vh] overflow-y-auto">
         <h3 class="text-lg font-semibold mb-4">انتخاب کاربران</h3>
         <div class="space-y-2">
-            @foreach($allUsers as $user)
+            @foreach(($allUsers ?? []) as $user)
                 @if($user->username)
                 <label class="flex items-center space-x-2">
                     <input type="checkbox" class="mention-checkbox" value="{{ $user->username }}" data-name="{{ $user->name }}">

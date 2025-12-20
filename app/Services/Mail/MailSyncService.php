@@ -4,11 +4,13 @@ namespace App\Services\Mail;
 
 use App\Models\MailMessage;
 use App\Models\MailFolder;
+use App\Models\MailAttachment;
 use App\Models\Mailbox;
 use App\Models\UserNotificationSetting;
 use App\Services\Notifications\NotificationRouter;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Support\Arr;
 use Webklex\PHPIMAP\Address;
@@ -77,6 +79,7 @@ class MailSyncService
             $imapUid = $message->getUid();
             $maxUid = max($maxUid, (int) $imapUid);
 
+            $traceId = (string) Str::uuid();
             $data = $this->mapMessage($mailbox, $folder, $message);
 
             $existing = null;
@@ -101,6 +104,18 @@ class MailSyncService
                     $data
                 );
                 $wasCreated = (bool) $mailMessage->wasRecentlyCreated;
+            }
+
+            try {
+                $this->syncAttachments($mailbox, $mailMessage, $message, $traceId);
+            } catch (\Throwable $e) {
+                Log::channel('mail')->warning('mail.sync.attachments_failed', [
+                    'trace_id'   => $traceId,
+                    'mailbox_id' => $mailbox->id,
+                    'message_id' => $mailMessage?->id,
+                    'imap_uid'   => $imapUid,
+                    'error'      => $e->getMessage(),
+                ]);
             }
 
             if ($mailMessage && $wasCreated) {
@@ -440,6 +455,165 @@ class MailSyncService
             'text' => $textContent !== '' ? $textContent : null,
             'html' => $htmlContent !== '' ? $htmlContent : null,
         ];
+    }
+
+    protected function syncAttachments(Mailbox $mailbox, MailMessage $localMessage, Message $remoteMessage, string $traceId): void
+    {
+        // Avoid duplicating if already synced
+        if ($localMessage->attachments()->count() > 0) {
+            return;
+        }
+
+        try {
+            $attachments = collect($remoteMessage->getAttachments(true) ?? []);
+        } catch (\Throwable $e) {
+            Log::channel('mail')->warning('mail.sync.attachments_read_failed', [
+                'trace_id'   => $traceId,
+                'mailbox_id' => $mailbox->id,
+                'message_id' => $localMessage->id,
+                'imap_uid'   => $localMessage->imap_uid,
+                'error'      => $e->getMessage(),
+            ]);
+
+            return;
+        }
+        $disk = Storage::disk('private');
+
+        $saved = [];
+        $skipped = 0;
+        $partCount = $this->countMessageParts($remoteMessage);
+
+        $basePath = "mail/{$mailbox->id}/inbox/{$localMessage->id}/attachments";
+
+        foreach ($attachments as $index => $att) {
+            $disposition = strtolower((string) ($att->disposition ?? ($att->getDisposition() ?? '')));
+            $mime = strtolower((string) ($att->mime ?? ($att->getMimeType() ?? 'application/octet-stream')));
+            $nameRaw = $att->name ?? ($att->getName() ?? null);
+            $filename = $this->normalizeAttachmentFilename($this->decodeMimeHeader($nameRaw), $mime, $index + 1);
+            $contentId = $att->getContentId() ?? null;
+            $hasFileName = !empty($filename);
+            $isInline = $disposition === 'inline' || !empty($contentId);
+            $isImageWithoutName = str_starts_with($mime, 'image/') && empty($nameRaw);
+
+            if (!$hasFileName && !$isImageWithoutName) {
+                $skipped++;
+                continue;
+            }
+
+            $content = (string) ($att->getContent() ?? '');
+            if ($content === '') {
+                $skipped++;
+                continue;
+            }
+
+            $finalName = $this->ensureUniqueFilename($disk, $basePath, $filename ?: 'attachment-'.$index);
+            $relativePath = $basePath.'/'.$finalName;
+
+            $disk->put($relativePath, $content);
+
+            MailAttachment::create([
+                'mail_message_id' => $localMessage->id,
+                'filename'        => $finalName,
+                'mime'            => $mime ?: null,
+                'size'            => strlen($content) ?: null,
+                'storage_path'    => $relativePath,
+                'content_id'      => $contentId ? trim($contentId, '<>') : null,
+                'is_inline'       => $isInline,
+            ]);
+
+            $saved[] = $relativePath;
+        }
+
+        $reason = null;
+        if (count($saved) === 0) {
+            $reason = $attachments->isEmpty() ? 'no_attachment_parts' : 'ignored_missing_filename_or_empty';
+        }
+
+        Log::channel('mail')->info('mail.sync.attachments', [
+            'trace_id'            => $traceId,
+            'mailbox_id'          => $mailbox->id,
+            'message_id'          => $localMessage->id,
+            'imap_uid'            => $localMessage->imap_uid,
+            'parts_count'         => $partCount,
+            'attachment_parts'    => $attachments->count(),
+            'attachments_saved'   => count($saved),
+            'skipped'             => $skipped,
+            'reason_if_none'      => $reason,
+        ]);
+    }
+
+    protected function countMessageParts(Message $message): int
+    {
+        if (method_exists($message, 'getParts')) {
+            $parts = $message->getParts();
+            if (is_array($parts)) {
+                return count($parts);
+            }
+            if ($parts instanceof \Countable) {
+                return $parts->count();
+            }
+        }
+
+        if (method_exists($message, 'getBodies')) {
+            $bodies = $message->getBodies();
+            if (is_array($bodies)) {
+                return count($bodies);
+            }
+            if ($bodies instanceof \Countable) {
+                return $bodies->count();
+            }
+        }
+
+        return 0;
+    }
+
+    protected function normalizeAttachmentFilename(?string $filename, ?string $mime, int $index): string
+    {
+        $name = trim((string) ($filename ?: ''));
+        $extension = pathinfo($name, PATHINFO_EXTENSION);
+        $base = pathinfo($name, PATHINFO_FILENAME);
+
+        if ($base === '') {
+            $base = 'attachment-'.$index;
+        }
+
+        if ($extension === '') {
+            $extension = $this->extensionFromMime($mime) ?: 'bin';
+        }
+
+        $safeBase = Str::slug($base, '-');
+        if ($safeBase === '') {
+            $safeBase = 'attachment-'.$index;
+        }
+
+        return $safeBase.'.'.$extension;
+    }
+
+    protected function ensureUniqueFilename($disk, string $basePath, string $filename): string
+    {
+        $candidate = $filename;
+        $counter = 1;
+        while ($disk->exists($basePath.'/'.$candidate)) {
+            $parts = pathinfo($filename);
+            $name = $parts['filename'] ?? 'attachment';
+            $ext = isset($parts['extension']) ? '.'.$parts['extension'] : '';
+            $candidate = $name.'-'.$counter.$ext;
+            $counter++;
+        }
+
+        return $candidate;
+    }
+
+    protected function extensionFromMime(?string $mime): ?string
+    {
+        $map = [
+            'image/jpeg' => 'jpg',
+            'image/png'  => 'png',
+            'image/gif'  => 'gif',
+            'application/pdf' => 'pdf',
+        ];
+
+        return $map[strtolower((string) $mime)] ?? null;
     }
 
     protected function normalizePart($part): array

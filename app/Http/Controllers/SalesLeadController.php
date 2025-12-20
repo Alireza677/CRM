@@ -985,7 +985,21 @@ public function show(SalesLead $lead)
 
     public function loadTab(SalesLead $lead, $tab)
     {
-        return view("marketing.leads.tabs.{$tab}", compact('lead'));
+        $view = "marketing.leads.tabs.{$tab}";
+        abort_unless(view()->exists($view), 404);
+
+        $data = ['lead' => $lead];
+
+        if ($tab === 'notes') {
+            $data['notes'] = $lead->notes()->latest()->get();
+            $data['allUsers'] = User::query()
+                ->select(['id', 'name', 'username'])
+                ->whereNotNull('username')
+                ->orderBy('name')
+                ->get();
+        }
+
+        return view($view, $data);
     }
 
     public function convertToOpportunity(Request $request, SalesLead $lead)

@@ -121,6 +121,8 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/mail/compose', [MailController::class, 'compose'])->name('mail.compose');
     Route::post('/mail/send', [MailController::class, 'send'])->name('mail.send');
     Route::post('/mail/bulk', [MailController::class, 'bulk'])->name('mail.bulk');
+    Route::get('/mail/messages/{message}/attachments/{attachment}/preview', [MailController::class, 'previewAttachment'])
+        ->name('mail.attachments.preview');
     Route::get('/mail/attachments/{attachment}', [MailController::class, 'downloadAttachment'])->name('mail.attachments.download');
     Route::get('/mail/thread/{thread_key}', [MailController::class, 'thread'])->name('mail.thread');
     Route::get('/mail/{message}', [MailController::class, 'show'])->name('mail.show')->whereNumber('message');

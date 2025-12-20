@@ -12,6 +12,7 @@ use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Redirect;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
+use Symfony\Component\HttpFoundation\StreamedResponse;
 
 class MailController extends Controller
 {
@@ -299,6 +300,36 @@ class MailController extends Controller
         abort_unless($mailbox && $attachment->message && $attachment->message->mailbox_id === $mailbox->id, 403);
 
         return Storage::disk('private')->download($attachment->storage_path, $attachment->filename);
+    }
+
+    public function previewAttachment(Request $request, MailMessage $message, MailAttachment $attachment): StreamedResponse
+    {
+        $mailbox = $request->user()?->mailbox;
+        abort_unless(
+            $mailbox
+            && $message->id === $attachment->mail_message_id
+            && $message->mailbox_id === $mailbox->id,
+            403
+        );
+
+        $disk = Storage::disk('private');
+        abort_unless($disk->exists($attachment->storage_path), 404, 'Attachment not found.');
+
+        $stream = $disk->readStream($attachment->storage_path);
+        abort_unless($stream, 500, 'Unable to read attachment.');
+
+        $mime = $attachment->mime ?: 'application/octet-stream';
+        $filename = $attachment->filename ?: basename($attachment->storage_path);
+
+        return response()->stream(function () use ($stream) {
+            fpassthru($stream);
+            if (is_resource($stream)) {
+                fclose($stream);
+            }
+        }, 200, [
+            'Content-Type'        => $mime,
+            'Content-Disposition' => 'inline; filename="'.$filename.'"',
+        ]);
     }
 
     protected function parseRecipients(?string $value): array
