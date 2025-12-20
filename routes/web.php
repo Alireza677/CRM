@@ -143,7 +143,9 @@ Route::middleware(['auth'])->group(function () {
 
     // سایر عملیات مربوط به تب‌ها و یادداشت‌ها
     Route::prefix('marketing/leads')->group(function () {
-        Route::get('{lead}/tab/{tab}', [LeadController::class, 'loadTab'])->name('marketing.leads.tab');
+        Route::get('{lead}/tab/{tab}', [SalesLeadController::class, 'loadTab'])
+            ->where('tab', 'overview|info|updates|notes|contact')
+            ->name('marketing.leads.tab');
         Route::post('{lead}/notes', [LeadNoteController::class, 'store'])->name('marketing.leads.notes.store');
     });
 

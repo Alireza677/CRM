@@ -6,6 +6,7 @@ use App\Models\MailAttachment;
 use App\Models\MailMessage;
 use App\Models\Mailbox;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Symfony\Component\Mailer\Exception\TransportExceptionInterface;
 use Symfony\Component\Mailer\Mailer;
@@ -15,6 +16,8 @@ use Symfony\Component\Mime\Email;
 
 class MailSendService
 {
+    protected string $attachmentDisk = 'private';
+
     private function addr(string $email, $name = null): Address
     {
         $email = trim($email);
@@ -44,7 +47,16 @@ class MailSendService
             return null;
         }
 
-        $email = $this->buildEmail($mailbox, $payload, $uploadedAttachments);
+        try {
+            $email = $this->buildEmail($mailbox, $payload, $uploadedAttachments);
+        } catch (\Throwable $e) {
+            Log::channel('mail')->error('mail.send.build_failed', $context + [
+                'stage'     => 'build_email',
+                'error'     => $e->getMessage(),
+                'exception' => $this->exceptionContext($e),
+            ]);
+            return null;
+        }
 
         try {
             Log::channel('mail')->info('mail.send.before_send', $context + ['stage' => 'before_send']);
@@ -140,13 +152,45 @@ class MailSendService
             $email->text($bodyText ?? '');
         }
 
+        $disk = Storage::disk($this->attachmentDisk);
+        $shouldAttachData = $this->shouldAttachAsData();
+
         foreach ($uploadedAttachments as $attachment) {
-            $path = $attachment['absolute_path'] ?? $attachment['storage_path'];
-            $email->attachFromPath(
-                $path,
-                $attachment['filename'],
-                $attachment['mime'] ?? null
-            );
+            $relativePath = $attachment['storage_path'] ?? null;
+            $filename = $attachment['filename'] ?? ($relativePath ? basename($relativePath) : 'attachment');
+            $mime = $attachment['mime'] ?? null;
+
+            if (empty($relativePath)) {
+                Log::channel('mail')->error('mail.send.attachment_missing_path', [
+                    'disk' => $this->attachmentDisk,
+                    'attachment' => $attachment,
+                ]);
+                throw new \RuntimeException('Attachment path is missing.');
+            }
+
+            if (!$disk->exists($relativePath)) {
+                Log::channel('mail')->error('mail.send.attachment_not_found', [
+                    'disk' => $this->attachmentDisk,
+                    'relative_path' => $relativePath,
+                ]);
+                throw new \RuntimeException("Attachment not found on disk {$this->attachmentDisk}: {$relativePath}");
+            }
+
+            $fullPath = $disk->path($relativePath);
+
+            if ($shouldAttachData) {
+                $email->attach(
+                    $disk->get($relativePath),
+                    $filename,
+                    $mime
+                );
+            } else {
+                $email->attachFromPath(
+                    $fullPath,
+                    $filename,
+                    $mime
+                );
+            }
         }
 
         $messageId = $payload['message_id'] ?? null;
@@ -417,6 +461,17 @@ class MailSendService
             ->unique()
             ->values()
             ->all();
+    }
+
+    protected function shouldAttachAsData(): bool
+    {
+        if (!app()->runningInConsole()) {
+            return false;
+        }
+
+        $argv = implode(' ', $_SERVER['argv'] ?? []);
+
+        return str_contains($argv, 'queue:work') || str_contains($argv, 'queue:listen');
     }
 
     protected function buildThreadKey(?string $messageId, ?string $inReplyTo, array $references, ?string $subject, ?array $from, array $to): string

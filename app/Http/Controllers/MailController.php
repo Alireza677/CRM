@@ -185,13 +185,12 @@ class MailController extends Controller
             if (!$file->isValid()) {
                 continue;
             }
-            $storedPath = $file->store('private/mail/'.$request->user()->id.'/attachments', 'local');
+            $storedPath = $file->store('mail/'.$request->user()->id.'/attachments', 'private');
             $attachments[] = [
                 'filename'      => $file->getClientOriginalName(),
                 'mime'          => $file->getClientMimeType(),
                 'size'          => $file->getSize(),
                 'storage_path'  => $storedPath,
-                'absolute_path' => storage_path('app/'.$storedPath),
             ];
         }
 
@@ -299,7 +298,7 @@ class MailController extends Controller
         $mailbox = $request->user()?->mailbox;
         abort_unless($mailbox && $attachment->message && $attachment->message->mailbox_id === $mailbox->id, 403);
 
-        return Storage::disk('local')->download($attachment->storage_path, $attachment->filename);
+        return Storage::disk('private')->download($attachment->storage_path, $attachment->filename);
     }
 
     protected function parseRecipients(?string $value): array

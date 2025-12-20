@@ -83,7 +83,7 @@
                     {{-- فقط تب خلاصه پیش‌فرض انتخاب باشد --}}
                     <a href="#"
                     data-tab="overview"       
-                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'overview']) }}"
+                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'overview'], false) }}"
                        class="load-tab flex items-center justify-between px-3 py-2 rounded bg-blue-100 text-blue-800 font-semibold">
                         <span class="flex items-center space-x-2 rtl:space-x-reverse">
                             <i class="fas fa-th-large"></i>
@@ -94,7 +94,7 @@
                     <a href="#"
                     data-tab="info"
 
-                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'info']) }}"
+                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'info'], false) }}"
                        class="load-tab flex items-center justify-between px-3 py-2 rounded text-gray-700 hover:bg-gray-100">
                         <span class="flex items-center space-x-2 rtl:space-x-reverse">
                             <i class="fas fa-info-circle"></i>
@@ -105,7 +105,7 @@
                     <a href="#"
                     data-tab="updates"
 
-                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'updates']) }}"
+                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'updates'], false) }}"
                        class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-sync-alt text-gray-500"></i>
                         <span>بروزرسانی‌ها</span>
@@ -114,7 +114,7 @@
                     <a href="#"
                     data-tab="notes"
 
-                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'notes']) }}"
+                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'notes'], false) }}"
                        class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-sticky-note text-gray-500"></i>
                         <span>یادداشت‌ها</span>
@@ -123,7 +123,7 @@
                     <a href="#"
                     data-tab="contact"
 
-                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'contact']) }}"
+                       data-url="{{ route('marketing.leads.tab', ['lead' => $lead->id, 'tab' => 'contact'], false) }}"
                        class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-user-friends text-gray-500"></i>
                         <span>مخاطب مرتبط</span>
@@ -181,14 +181,55 @@ document.addEventListener("DOMContentLoaded", function () {
     const links = document.querySelectorAll('.load-tab');
     const contentArea = document.getElementById('lead-tab-content');
 
-    // کلاس‌های انتخاب تب
     const activeClasses = ['bg-blue-100', 'text-blue-800', 'font-semibold'];
     const inactiveClasses = ['text-gray-700', 'hover:bg-gray-100'];
+
+    function initRotationTimer(scope = document) {
+    const el = scope.querySelector('#rotation-timer');
+    if (!el) return;
+
+    const dueStr = el.dataset.due;
+    const due = dueStr ? new Date(dueStr) : null;
+    if (!due || isNaN(due.getTime())) {
+        el.textContent = '—';
+        return;
+    }
+
+    // جلوگیری از چند interval
+    if (el._rotationInterval) {
+        clearInterval(el._rotationInterval);
+        el._rotationInterval = null;
+    }
+
+    const formatRemaining = (ms) => {
+        if (ms <= 0) return '00:00:00';
+        const totalSeconds = Math.floor(ms / 1000);
+        const h = String(Math.floor(totalSeconds / 3600)).padStart(2, '0');
+        const m = String(Math.floor((totalSeconds % 3600) / 60)).padStart(2, '0');
+        const s = String(totalSeconds % 60).padStart(2, '0');
+        return `${h}:${m}:${s}`;
+    };
+
+    const tick = () => {
+        const remaining = due - new Date();
+        el.textContent = formatRemaining(remaining);
+
+        if (remaining <= 0) {
+            el.classList.remove('bg-amber-600');
+            el.classList.add('bg-red-600');
+            clearInterval(el._rotationInterval);
+            el._rotationInterval = null;
+        }
+    };
+
+    tick(); // اجرا قبل از interval مشکلی ندارد
+    el._rotationInterval = setInterval(tick, 1000);
+}
+
 
     function setActiveTab(el) {
         links.forEach(l => {
             l.classList.remove(...activeClasses);
-            // فقط اگر لازم بود کلاس‌های غیرفعال را اضافه کنیم
             if (!l.classList.contains('text-gray-700')) {
                 l.classList.add('text-gray-700');
             }
@@ -197,24 +238,8 @@ document.addEventListener("DOMContentLoaded", function () {
         el.classList.remove('text-gray-700');
     }
 
-    // لود تب با fetch
-    function loadTab(url, clickedEl = null) {
-        contentArea.innerHTML = '<div class="text-gray-400 p-4 flex items-center gap-2"><svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="4" opacity=".25"></circle><path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" fill="none"></path></svg>در حال بارگذاری...</div>';
+    function loadTab(url, clickedEl = null) { console.log('[LeadTabs] fetching', url); contentArea.innerHTML = '<div class="text-gray-400 p-4 flex items-center gap-2">' + '<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24">' + '<circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="4" opacity=".25"></circle>' + '<path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" fill="none"></path>' + '</svg>' + 'در حال بارگذاری...' + '</div>'; fetch(url) .then(async (res) => { if (!res.ok) { const body = await res.text(); console.error('[LeadTabs] not ok', res.status, res.statusText, body); throw new Error('http_' + res.status); } return res.text(); }) .then(html => { contentArea.innerHTML = html; initRotationTimer(contentArea); if (clickedEl && window.matchMedia('(max-width: 767px)').matches) { closeSidebar(); } }) .catch((err) => { console.error('[LeadTabs] failed', err); contentArea.innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری اطلاعات.</div>'; }); }
 
-        fetch(url)
-            .then(res => res.text())
-            .then(html => {
-                contentArea.innerHTML = html;
-
-                // اگر از موبایل باز شده بود، بعد از انتخاب تب، منو بسته شود
-                if (clickedEl && window.matchMedia('(max-width: 767px)').matches) {
-                    closeSidebar();
-                }
-            })
-            .catch(() => {
-                contentArea.innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری محتوا.</div>';
-            });
-    }
 
     links.forEach(link => {
         link.addEventListener('click', function (e) {
@@ -225,14 +250,12 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // لود پیش‌فرض تب overview
     const defaultTab = document.querySelector('.load-tab[data-url*="overview"]');
     if (defaultTab) {
         setActiveTab(defaultTab);
         loadTab(defaultTab.dataset.url);
     }
 
-    // --- کنترل سایدبار موبایل (آف‌کانواس) ---
     const sidebar = document.getElementById('mobileSidebar');
     const overlay = document.getElementById('mobileOverlay');
     const openBtn = document.getElementById('mobileMenuBtn');
@@ -258,11 +281,6 @@ document.addEventListener("DOMContentLoaded", function () {
         e.preventDefault();
         const expanded = openBtn.getAttribute('aria-expanded') === 'true';
         expanded ? closeSidebar() : openSidebar();
-    });
-
-    closeBtn?.addEventListener('click', (e) => {
-        e.preventDefault();
-        closeSidebar();
     });
 
     overlay?.addEventListener('click', closeSidebar);

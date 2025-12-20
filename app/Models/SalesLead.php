@@ -94,6 +94,7 @@ class SalesLead extends Model
         'reengaged_at',
         'rotation_due_at',
         'rotation_warning_sent_at',
+        'rotation_timer_paused_at',
     ];
 
     protected $casts = [
@@ -123,6 +124,7 @@ class SalesLead extends Model
         'reengaged_at'         => 'datetime',
         'rotation_due_at'      => 'datetime',
         'rotation_warning_sent_at' => 'datetime',
+        'rotation_timer_paused_at' => 'datetime',
     ];
 
     protected $attributes = [
@@ -212,11 +214,13 @@ class SalesLead extends Model
                     $lead->pool_status = self::POOL_ASSIGNED;
                     $lead->rotation_due_at = self::computeRotationDueAtFrom($lead->assigned_at);
                     $lead->rotation_warning_sent_at = null;
+                    $lead->rotation_timer_paused_at = null;
                 } else {
                     $lead->assigned_at = null;
                     $lead->pool_status = self::POOL_IN_POOL;
                     $lead->rotation_due_at = null;
                     $lead->rotation_warning_sent_at = null;
+                    $lead->rotation_timer_paused_at = null;
                 }
             }
         });
@@ -422,11 +426,15 @@ class SalesLead extends Model
      */
     public function markFirstActivity(?Carbon $timestamp = null, bool $force = false): void
     {
+        $time = $timestamp ? Carbon::parse($timestamp) : Carbon::now();
+
+        // Pause SLA/rotation timer whenever a real activity is logged.
+        $this->rotation_timer_paused_at = $time;
+
         if ($this->first_activity_at && !$force) {
+            $this->save();
             return;
         }
-
-        $time = $timestamp ? Carbon::parse($timestamp) : Carbon::now();
 
         $this->first_activity_at = $time;
         if ($this->pool_status !== self::POOL_RECYCLED) {
