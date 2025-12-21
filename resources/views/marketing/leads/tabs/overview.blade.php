@@ -1,11 +1,14 @@
 @php
     use App\Models\SalesLead;
 
-    $needsRotationAction = $lead->assigned_to
+    $statusValue = $lead->getStatusValue();
+    $isFinalized = in_array($statusValue, [SalesLead::STATUS_CONVERTED, SalesLead::STATUS_DISCARDED], true);
+    $finalizedAt = $lead->converted_at ?? ($isFinalized ? $lead->updated_at : null);
+    $needsRotationAction = !$isFinalized
+        && $lead->assigned_to
         && $lead->pool_status === SalesLead::POOL_ASSIGNED
         && empty($lead->first_activity_at);
     $rotationDueAt = $lead->rotation_due_at;
-    $timerPausedAt = $lead->rotation_timer_paused_at;
 @endphp
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 p-6">
@@ -67,7 +70,7 @@
                 </span>
                 <div class="text-sm font-semibold">موعد تخصیص مجدد</div>
             </div>
-            @if($timerPausedAt)
+            @if($isFinalized)
                 <span class="px-3 py-1 rounded-full text-xs font-semibold bg-emerald-100 text-emerald-700">توقف شده</span>
             @elseif($needsRotationAction && $rotationDueAt)
                 <span class="px-3 py-1 rounded-full text-xs font-semibold bg-amber-100 text-amber-800">فعال</span>
@@ -76,13 +79,19 @@
             @endif
         </div>
 
-        @if($timerPausedAt)
+        @if($isFinalized)
             <div class="flex items-start gap-3 text-sm text-gray-700">
                 <div class="flex-1">
                     <div class="font-medium">پیگیری انجام شد</div>
-                    <div class="text-xs text-gray-500 mt-1">
-                        تایمر در {{ \App\Helpers\DateHelper::toJalali($timerPausedAt, 'H:i Y/m/d') }} متوقف شده است.
-                    </div>
+                    @if($finalizedAt)
+                        <div class="text-xs text-gray-500 mt-1">
+                            نتیجه نهایی در {{ \App\Helpers\DateHelper::toJalali($finalizedAt, 'H:i Y/m/d') }} ثبت شده است.
+                        </div>
+                    @else
+                        <div class="text-xs text-gray-500 mt-1">
+                            نتیجه نهایی ثبت شده است.
+                        </div>
+                    @endif
                 </div>
             </div>
         @elseif($needsRotationAction && $rotationDueAt)
@@ -120,7 +129,7 @@
          data-card-tab="updates" role="button" tabindex="0">
         <div>
             <h3 class="text-lg font-semibold text-green-800">بروزرسانی‌ها</h3>
-            <p class="text-sm text-green-600 mt-1">تعداد بروزرسانی‌ها: 0</p>
+            <p class="text-sm text-green-600 mt-1">تعداد بروزرسانی ها: {{ $lead->activities_count ?? 0 }}</p>
         </div>
         <i class="fas fa-tasks text-3xl text-green-400"></i>
     </div>
@@ -138,7 +147,7 @@
     <div class="bg-yellow-50 rounded-lg p-4 shadow flex items-center justify-between">
         <div>
             <h3 class="text-lg font-semibold text-yellow-800">مخاطبین</h3>
-            <p class="text-sm text-yellow-600 mt-1">فهرست مخاطبین مرتبط</p>
+            <p class="text-sm text-yellow-600 mt-1">تعداد مخاطبین: {{ !empty($lead->contact_id) ? 1 : 0 }}</p>
         </div>
         <i class="fas fa-user-friends text-3xl text-yellow-400"></i>
     </div>

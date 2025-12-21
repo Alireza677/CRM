@@ -39,3 +39,70 @@
         </div>
     </div>
 </div>
+
+@push('scripts')
+<script>
+function openLeadContactModal() {
+  const modal = document.getElementById('leadContactModal');
+  if (!modal) return;
+  modal.classList.remove('hidden');
+  modal.classList.add('flex');
+  const input = document.getElementById('leadContactSearchInput');
+  if (input) {
+    input.value = '';
+    input.dispatchEvent(new Event('input'));
+    setTimeout(() => input.focus(), 10);
+  }
+}
+
+function closeLeadContactModal() {
+  const modal = document.getElementById('leadContactModal');
+  if (!modal) return;
+  modal.classList.add('hidden');
+  modal.classList.remove('flex');
+}
+
+function selectLeadContact(id, name) {
+  const idInput = document.getElementById('lead_contact_id');
+  const nameInput = document.getElementById('lead_contact_display');
+  if (idInput) idInput.value = id || '';
+  if (nameInput) nameInput.value = name || '';
+  closeLeadContactModal();
+}
+
+(function () {
+  const modal = document.getElementById('leadContactModal');
+  const searchInput = document.getElementById('leadContactSearchInput');
+  const rows = Array.from(document.querySelectorAll('#leadContactTableBody tr'));
+  const emptyState = document.getElementById('leadContactNoResults');
+
+  function applyFilter() {
+    if (!searchInput) return;
+    const term = (searchInput.value || '').trim().toLowerCase();
+    let visible = 0;
+    rows.forEach((row) => {
+      const name = (row.dataset.name || '').toLowerCase();
+      const phone = (row.dataset.phone || '').toLowerCase();
+      const match = !term || name.includes(term) || phone.includes(term);
+      row.classList.toggle('hidden', !match);
+      if (match) visible += 1;
+    });
+    if (emptyState) emptyState.classList.toggle('hidden', visible !== 0);
+  }
+
+  if (searchInput) {
+    searchInput.addEventListener('input', applyFilter);
+  }
+
+  document.addEventListener('keydown', function (e) {
+    if (e.key === 'Escape') closeLeadContactModal();
+  });
+
+  if (modal) {
+    modal.addEventListener('click', function (e) {
+      if (e.target === modal) closeLeadContactModal();
+    });
+  }
+})();
+</script>
+@endpush

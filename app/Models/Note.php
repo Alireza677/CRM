@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use App\Models\User;
+use App\Models\SalesLead;
 use Illuminate\Database\Eloquent\Relations\MorphTo;
 
 class Note extends Model
@@ -17,8 +18,13 @@ class Note extends Model
 
             if (!$model) return;
 
+            if ($model instanceof SalesLead) {
+                $model->refreshRotationDueAtFromActivity(now());
+                return;
+            }
+
             if (method_exists($model, 'markFirstActivity')) {
-                $model->markFirstActivity(now(), 'note');
+                $model->markFirstActivity(now());
             }
         });
     }

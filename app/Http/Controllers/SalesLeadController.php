@@ -970,6 +970,7 @@ public function update(Request $request, SalesLead $lead)
 public function show(SalesLead $lead)
 {
     $lead->load(['lastNote', 'assignedTo']);
+    $lead->loadCount(['notes', 'activities']);
     $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
     $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
 
@@ -990,6 +991,7 @@ public function show(SalesLead $lead)
         $view = "marketing.leads.tabs.{$tab}";
         abort_unless(view()->exists($view), 404);
 
+        $lead->loadCount(['notes', 'activities']);
         $data = ['lead' => $lead];
 
         if ($tab === 'overview') {

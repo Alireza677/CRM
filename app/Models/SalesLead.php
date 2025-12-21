@@ -445,6 +445,26 @@ class SalesLead extends Model
     }
 
     /**
+     * Refresh the rotation/SLA deadline without marking the lead as completed.
+     */
+    public function refreshRotationDueAtFromActivity(?Carbon $timestamp = null): void
+    {
+        if (empty($this->assigned_to) || $this->pool_status !== self::POOL_ASSIGNED) {
+            return;
+        }
+
+        if ($this->first_activity_at !== null) {
+            return;
+        }
+
+        $time = $timestamp ? Carbon::parse($timestamp) : Carbon::now();
+        $this->rotation_due_at = self::computeRotationDueAtFrom($time);
+        $this->rotation_warning_sent_at = null;
+        $this->rotation_timer_paused_at = null;
+        $this->save();
+    }
+
+    /**
      * Require at least one recent activity before allowing status/stage change.
      */
     public function canChangeStageTo(string $newStage, int $withinDays = 30): bool
