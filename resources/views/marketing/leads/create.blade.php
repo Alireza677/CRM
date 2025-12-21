@@ -100,8 +100,8 @@ $(function () {
 
   function toggleFollowupForLead() {
     const val = (statusEl && statusEl.value ? statusEl.value : '').toLowerCase();
-    const isJunk = val === 'junk'; // ????? ?????? ???? ?? ?????? ???? ?????
-    if (isJunk) {
+    const isDiscarded = val === 'discarded';
+    if (isDiscarded) {
       if (dateTextEl) {
         dateTextEl.setAttribute('disabled', 'disabled');
         dateTextEl.classList.add('bg-gray-100', 'cursor-not-allowed');

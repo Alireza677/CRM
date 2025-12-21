@@ -192,12 +192,12 @@ $(function () {
     if (overrideInput && overrideInput.value === '1') return false;
     if (hasRecentActivity) return false;
     const current = (statusSelect.value || '').toLowerCase();
-    if (current === 'junk') return false;
+    if (current === 'discarded') return false;
     return current !== originalStatus;
   }
 
   function isJunkStatus() {
-    return (statusSelect?.value || '').toLowerCase() === 'junk';
+    return (statusSelect?.value || '').toLowerCase() === 'discarded';
   }
 
   function openDisqualModal() {
@@ -319,7 +319,6 @@ $(function () {
 })();
 </script>
 @endpush
-
 
 
 

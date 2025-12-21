@@ -30,7 +30,7 @@ class ImportNormalize
             // canonical => aliases/labels
             'new'                      => ['جدید', 'اولیه', 'followup', 'doing', 'to_contact'],
             'contacted'                => ['تماس گرفته شده', 'پیگیری', 'future', 'qualified', 'contacted', 'qualifying'],
-            'converted_to_opportunity' => ['converted', 'converted_to_opportunity', 'تبدیل شده', 'فرصت', 'مشتری بالقوه', 'پایان موفق'],
+            'converted'                => ['converted', 'converted_to_opportunity', 'تبدیل شده', 'فرصت', 'مشتری بالقوه', 'پایان موفق'],
             'discarded'                => ['junk', 'disqualified', 'رد صلاحیت', 'سرکاری', 'حذف شده', 'bad lead'],
             'proposal'                 => ['ارسال پروپوزال', 'proposal', 'quote'],
             'negotiation'              => ['مذاکره', 'negotiation'],

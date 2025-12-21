@@ -38,25 +38,18 @@ class SalesLeadController extends Controller
     {
         $query = SalesLead::visibleFor(auth()->user(), 'leads')
             ->with('assignedUser')
-            ->whereNull('converted_at');
-
-        $query->where(function (Builder $builder) {
-    $builder
-        ->whereNull('lead_status')
-        ->orWhereNotIn('lead_status', [
-            SalesLead::STATUS_DISCARDED,
-            'lost',
-        ]);
-});
+            ->activeListing();
 
 
         $this->applyLeadFilters($request, $query);
 
         $listingData = $this->prepareLeadListingData($request, $query);
+        $tabCounts = SalesLead::tabCountsFor($request->user());
 
         return view('marketing.leads.index', array_merge($listingData, [
             'leadListingRoute' => 'marketing.leads.index',
             'isJunkListing' => false,
+            'leadTabCounts' => $tabCounts,
         ]))->with('breadcrumb', $this->leadsBreadcrumb([], false));
     }
 
@@ -64,22 +57,18 @@ class SalesLeadController extends Controller
 {
     $query = SalesLead::visibleFor(auth()->user(), 'leads')
         ->with('assignedUser')
-        ->whereNull('converted_at')
-        ->where(function (Builder $builder) {
-            $builder->whereIn('lead_status', [
-                SalesLead::STATUS_DISCARDED,
-                'lost', // اگر ثابت STATUS_LOST ندارید
-            ]);
-        });
+        ->junkListing();
 
     // در لیست سرکاری‌ها فیلتر وضعیت غیرفعال می‌ماند
     $this->applyLeadFilters($request, $query, false);
 
     $listingData = $this->prepareLeadListingData($request, $query);
+    $tabCounts = SalesLead::tabCountsFor($request->user());
 
     return view('marketing.leads.index', array_merge($listingData, [
         'leadListingRoute' => 'sales.leads.junk',
         'isJunkListing' => true,
+        'leadTabCounts' => $tabCounts,
     ]))->with('breadcrumb', $this->leadsBreadcrumb([
         ['title' => 'سرکاری‌ها'],
     ], false));
@@ -182,41 +171,9 @@ class SalesLeadController extends Controller
     {
         $query = SalesLead::visibleFor(auth()->user(), 'leads')
             ->with(['assignedUser', 'convertedOpportunity'])
-            ->whereNotNull('converted_at');
+            ->convertedListing();
 
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('first_name', 'like', "%{$search}%")
-                    ->orWhere('last_name', 'like', "%{$search}%")
-                    ->orWhere('company', 'like', "%{$search}%")
-                    ->orWhere('state', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->filled('lead_source')) {
-            $query->where('lead_source', $request->lead_source);
-        }
-
-        $statusFilter = $request->input('status', $request->lead_status);
-        if (!empty($statusFilter)) {
-            $query->where('lead_status', $statusFilter);
-        }
-
-        if ($request->filled('assigned_to')) {
-            $query->where('assigned_to', $request->assigned_to);
-        }
-
-        if ($request->filled('full_name')) {
-            $query->where('full_name', 'like', '%' . $request->full_name . '%');
-        }
-
-        if ($request->filled('mobile')) {
-            $query->where(function ($q) use ($request) {
-                $q->where('mobile', 'like', '%' . $request->mobile . '%')
-                    ->orWhere('phone', 'like', '%' . $request->mobile . '%');
-            });
-        }
+        $this->applyLeadFilters($request, $query);
 
         $perPageOptions = [20, 50, 100, 200];
         $perPage = (int) $request->input('per_page', 20);
@@ -237,6 +194,7 @@ class SalesLeadController extends Controller
 
         $users = User::all();
         $leadSources = \App\Helpers\FormOptionsHelper::leadSources();
+        $leadTabCounts = SalesLead::tabCountsFor($request->user());
 
         return view('marketing.leads.converted', compact(
             'leads',
@@ -244,7 +202,8 @@ class SalesLeadController extends Controller
             'leadSources',
             'favoriteLeadIds',
             'perPage',
-            'perPageOptions'
+            'perPageOptions',
+            'leadTabCounts'
         ))->with('breadcrumb', $this->leadsBreadcrumb([
             ['title' => 'سرنخ‌های تبدیل‌شده'],
         ], false));
@@ -1088,8 +1047,8 @@ public function show(SalesLead $lead)
             $lead->converted_at             = Carbon::now();
             $lead->converted_opportunity_id = $opportunity->id;
             $lead->converted_by             = Auth::id();
-            $lead->status                   = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
-            $lead->lead_status              = SalesLead::STATUS_CONVERTED_TO_OPPORTUNITY;
+            $lead->status                   = SalesLead::STATUS_CONVERTED;
+            $lead->lead_status              = SalesLead::STATUS_CONVERTED;
             $lead->save();
 
             $this->transferLeadNotesToOpportunity($lead, $opportunity);

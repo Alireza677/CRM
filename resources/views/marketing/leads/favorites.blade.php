@@ -13,18 +13,29 @@
     </div>
 @endif
 
-<div class="py-12">
+<div >
     <div class="px-4">
-        <div class="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between mb-6">
+        <div class="flex flex-col gap-3 mb-6">
             <div>
                 <h2 class="text-2xl font-semibold text-gray-800">سرنخ‌های مورد علاقه</h2>
                 <p class="text-sm text-gray-500 mt-1">لیست شخصی از سرنخ‌هایی که برای پیگیری سریع‌تر علامت‌گذاری کرده‌اید.</p>
             </div>
-            <a href="{{ route('marketing.leads.index') }}" class="inline-flex items-center px-4 py-2 bg-gray-200 text-gray-800 rounded hover:bg-gray-300 text-sm">
-                <i class="fas fa-arrow-right ml-2"></i>
-                بازگشت به همه سرنخ‌ها
-            </a>
+            <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
+                @include('marketing.leads.partials.listing-tabs')
+            </div>
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex flex-wrap items-center gap-2">
+                    <a href="{{ route('marketing.leads.create') }}"
+                    class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md shadow hover:bg-blue-700">
+                    <i class="fas fa-plus ml-1 text-sm"></i>
+                    ایجاد سرنخ
+                </a>
+                @role('admin')
+                @include('marketing.leads.partials.export-dropdown')
+                @endrole
+            </div>
         </div>
+    </div>
 
         @if($leads->count() === 0)
             <div class="bg-white border rounded-lg p-6 text-center text-sm text-gray-500">
@@ -74,10 +85,8 @@
                                         $leadStatusColors = [
                                             'new'       => 'bg-blue-100 text-blue-800',
                                             'contacted' => 'bg-amber-100 text-amber-800',
-                                            'converted_to_opportunity' => 'bg-green-100 text-green-800',
                                             'converted' => 'bg-green-100 text-green-800',
                                             'discarded' => 'bg-red-100 text-red-800',
-                                            'junk'      => 'bg-red-100 text-red-800',
                                         ];
                                         $rawStatus = $lead->status ?? $lead->lead_status;
                                         $statusKey = \App\Models\SalesLead::normalizeStatus($rawStatus) ?? $rawStatus;

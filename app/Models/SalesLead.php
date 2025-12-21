@@ -18,6 +18,7 @@ use App\Models\Note;
 use App\Traits\NotifiesAssignee; // باقی می‌ماند؛ اما با گارد داخلی جلوی دوبل‌شدن را می‌گیریم
 use App\Models\Opportunity;
 use App\Services\ActivityGuard;
+use App\Models\User;
 
 use App\Models\Traits\AppliesVisibilityScope;
 
@@ -28,9 +29,8 @@ class SalesLead extends Model
     public const STATUS_NEW = 'new';
     public const STATUS_CONTACTED = 'contacted';
     public const STATUS_CONVERTED = 'converted';
-    public const STATUS_CONVERTED_TO_OPPORTUNITY = 'converted_to_opportunity';
     public const STATUS_DISCARDED = 'discarded';
-    public const STATUS_JUNK = 'junk';
+    public const STATUS_LOST = 'lost';
 
     public const POOL_IN_POOL = 'in_pool';
     public const POOL_ASSIGNED = 'assigned';
@@ -564,46 +564,13 @@ class SalesLead extends Model
         return !is_null($this->converted_at ?? null);
     }
 
-    public static function statusOptions(): array
+  public static function statusOptions(): array
     {
-        $statuses = [
+        return [
             self::STATUS_NEW       => 'جدید',
             self::STATUS_CONTACTED => 'تماس گرفته شده',
-            self::STATUS_CONVERTED => 'تبدیل شده به فرصت',
-            self::STATUS_DISCARDED => 'سرکاری  ',
-        ];
-
-
-        $aliases = [
-            self::STATUS_CONVERTED => self::STATUS_CONVERTED_TO_OPPORTUNITY,
-            self::STATUS_JUNK      => self::STATUS_DISCARDED,
-        ];
-
-        foreach ($aliases as $alias => $target) {
-            if (isset($statuses[$target]) && !isset($statuses[$alias])) {
-                $statuses[$alias] = $statuses[$target];
-            }
-        }
-
-        return $statuses;
-    }
-
-
-    public static function disqualifyReasons(): array
-    {
-        $reasons = config('lead.disqualify_reasons', []);
-        if (!empty($reasons)) {
-            return array_combine($reasons, $reasons);
-        }
-
-        return [
-            'no_need'             => 'no_need',
-            'no_budget'           => 'no_budget',
-            'not_decision_maker'  => 'not_decision_maker',
-            'competitor_price'    => 'competitor_price',
-            'wrong_or_duplicate'  => 'wrong_or_duplicate',
-            'out_of_scope'        => 'out_of_scope',
-            'unrealistic_timing'  => 'unrealistic_timing',
+            self::STATUS_CONVERTED => 'تبدیل‌شده به فرصت',
+            self::STATUS_DISCARDED => 'سرکاری',
         ];
     }
 
@@ -620,57 +587,103 @@ class SalesLead extends Model
     }
 
     public static function normalizeStatus(?string $status): ?string
-{
-    if (!$status || !is_string($status)) {
-        return null;
+    {
+        if (!$status || !is_string($status)) {
+            return null;
+        }
+
+        $normalized = strtolower(trim($status));
+
+        $final = [self::STATUS_NEW, self::STATUS_CONTACTED, self::STATUS_CONVERTED, self::STATUS_DISCARDED];
+        if (in_array($normalized, $final, true)) {
+            return $normalized;
+        }
+
+        $map = [
+            'to_contact'               => self::STATUS_NEW,
+            'qualifying'               => self::STATUS_CONTACTED,
+            'contacted'                => self::STATUS_CONTACTED,
+
+            'qualified'                => self::STATUS_CONVERTED,
+            'converted_to_opportunity' => self::STATUS_CONVERTED,
+            'opportunity'              => self::STATUS_CONVERTED,
+
+            'disqualified'             => self::STATUS_DISCARDED,
+            'lost'                     => self::STATUS_DISCARDED,
+            'junk'                     => self::STATUS_DISCARDED,
+            'removed'                  => self::STATUS_DISCARDED,
+        ];
+
+        return $map[$normalized] ?? self::STATUS_NEW;
     }
 
-    $normalized = strtolower(trim($status));
-
-    // چهار وضعیت نهایی
-    $final = ['new', 'contacted', 'converted', 'discarded'];
-    if (in_array($normalized, $final, true)) {
-        return $normalized;
-    }
-
-    // مپ وضعیت‌های قدیمی → وضعیت‌های نهایی
-    $map = [
-        'to_contact'               => 'new',
-        'qualifying'               => 'contacted',
-        'contacted'                => 'contacted',
-
-        'qualified'                => 'converted',
-        'converted_to_opportunity' => 'converted',
-        'opportunity'              => 'converted',
-
-        'disqualified'             => 'discarded',
-        'lost'                     => 'discarded',
-        'junk'                     => 'discarded',
-        'removed'                  => 'discarded',
-    ];
-
-    return $map[$normalized] ?? 'new'; // پیش‌فرض جدید
-}
-
-
-    public function isOpen(): bool
+public function isOpen(): bool
     {
         $status = $this->getStatusValue();
-        return !in_array($status, [self::STATUS_DISCARDED, self::STATUS_JUNK], true);
+        return $status !== self::STATUS_DISCARDED;
     }
 
     public function isJunk(): bool
     {
-        return in_array($this->getStatusValue(), [self::STATUS_DISCARDED, self::STATUS_JUNK], true);
+        return $this->getStatusValue() === self::STATUS_DISCARDED;
     }
 
     public function isConverted(): bool
     {
-        return in_array(
-            $this->getStatusValue(),
-            [self::STATUS_CONVERTED_TO_OPPORTUNITY, self::STATUS_CONVERTED],
-            true
-        );
+        return $this->getStatusValue() === self::STATUS_CONVERTED;
+    }
+
+    public function scopeActiveListing($query)
+    {
+        return $query
+            ->whereNull('converted_at')
+            ->where(function ($builder) {
+                $builder
+                    ->whereNull('lead_status')
+                    ->orWhereNotIn('lead_status', self::junkLeadStatuses());
+            });
+    }
+
+    public function scopeJunkListing($query)
+    {
+        return $query
+            ->whereNull('converted_at')
+            ->whereIn('lead_status', self::junkLeadStatuses());
+    }
+
+    public function scopeConvertedListing($query)
+    {
+        return $query->whereNotNull('converted_at');
+    }
+
+    public static function junkLeadStatuses(): array
+    {
+        return [
+            self::STATUS_DISCARDED,
+            self::STATUS_LOST,
+        ];
+    }
+
+    public static function tabCountsFor(User $user): array
+    {
+        $junkStatuses = self::junkLeadStatuses();
+        $placeholders = implode(',', array_fill(0, count($junkStatuses), '?'));
+        $case = "CASE WHEN converted_at IS NOT NULL THEN ? WHEN lead_status IN ($placeholders) THEN ? ELSE ? END as tab_key";
+        $bindings = array_merge(['converted'], $junkStatuses, ['junk', 'active']);
+
+        $rows = self::query()
+            ->visibleFor($user, 'leads')
+            ->selectRaw($case, $bindings)
+            ->selectRaw('COUNT(*) as aggregate')
+            ->groupBy('tab_key')
+            ->pluck('aggregate', 'tab_key');
+
+        return [
+            'active' => (int) ($rows['active'] ?? 0),
+            'favorites' => (int) $user->favoriteLeads()->count(),
+            'converted' => (int) ($rows['converted'] ?? 0),
+            'junk' => (int) ($rows['junk'] ?? 0),
+        ];
     }
 
 }

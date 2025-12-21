@@ -25,7 +25,9 @@ class LeadFavoriteController extends Controller
             ->orderByDesc('lead_favorites.created_at')
             ->paginate(10);
 
-        return view('marketing.leads.favorites', compact('leads'))
+        $leadTabCounts = SalesLead::tabCountsFor($request->user());
+
+        return view('marketing.leads.favorites', compact('leads', 'leadTabCounts'))
             ->with('breadcrumb', $this->leadsBreadcrumb([
                 ['title' => 'علاقه‌مندی‌ها'],
             ]));

@@ -27,8 +27,10 @@ class FormOptionsHelper
         $statuses = self::leadStatuses();
         $status = strtolower(trim((string)$status));
         $aliasMap = [
-            'converted' => 'converted_to_opportunity',
-            'junk'      => 'discarded',
+            'converted_to_opportunity' => 'converted',
+            'qualified'                => 'converted',
+            'junk'                     => 'discarded',
+            'lost'                     => 'discarded',
         ];
 
         $lookupKey = $aliasMap[$status] ?? $status;
@@ -44,21 +46,30 @@ class FormOptionsHelper
     }
 
     public static function leadStatuses(): array
-{
-    // فقط ۴ وضعیت نهایی را از config بخوان
-    $configured = config('lead.statuses', []);
+    {
+        $configured = config('lead.statuses', []);
 
-    // اگر config خالی بود، این مقادیر را پیش‌فرض بگذار
-    $statuses = !empty($configured) ? $configured : [
-        'new'       => 'جدید',
-        'contacted' => 'تماس گرفته شده',
-        'converted' => 'تبدیل شده به فرصت',
-        'discarded' => 'سرکاری / حذف شده',
-    ];
+        $allowed = ['new', 'contacted', 'converted', 'discarded'];
 
-    // هیچ alias اضافه نکن — نمایش باید فقط همین ۴ گزینه باشد
-    return $statuses;
-}
+        $defaults = [
+            'new'       => 'جدید',
+            'contacted' => 'تماس گرفته شده',
+            'converted' => 'تبدیل‌شده به فرصت',
+            'discarded' => 'سرکاری',
+        ];
+
+        if (!empty($configured)) {
+            $filtered = array_intersect_key($configured, array_flip($allowed));
+            $statuses = array_replace($defaults, $filtered);
+        } else {
+            $statuses = $defaults;
+        }
+
+        return $statuses;
+    }
+
+
+
 
 
 
