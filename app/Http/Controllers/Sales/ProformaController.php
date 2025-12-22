@@ -321,6 +321,7 @@ class ProformaController extends Controller
 
             // -------------------- 4) DB & محاسبات --------------------
             DB::beginTransaction();
+            $user = $request->user();
 
             $proforma = Proforma::create([
                 'subject'           => $validated['subject'],
@@ -335,7 +336,10 @@ class ProformaController extends Controller
                 'state'             => $validated['state']             ?? null,
                 'assigned_to'       => $validated['assigned_to'],
                 'opportunity_id'    => $validated['opportunity_id']    ?? null,
-                'total_amount'      => 0, // بعداً آپدیت می‌کنیم
+                'total_amount'      => 0,
+                'owner_user_id'     => $user?->id,
+                'team_id'           => $user?->team_id ?? null,
+                'department'        => $user?->department ?? null,
             ]);
             \Log::info('📄 Proforma Created', ['id' => $proforma->id]);
 
@@ -740,6 +744,12 @@ class ProformaController extends Controller
                 'products.*.discount_value' => 'nullable|numeric|min:0',
                 'products.*.tax_type' => 'nullable|in:percentage,fixed',
                 'products.*.tax_value' => 'nullable|numeric|min:0',
+
+                // UcU+O¦OñU,ƒ?OUØOUO O3OñOO3OñUO (U+O^UO)
+                'global_discount_type' => 'nullable|in:none,percentage,fixed',
+                'global_discount_value'=> 'nullable|numeric|min:0',
+                'global_tax_type'      => 'nullable|in:none,percentage,fixed',
+                'global_tax_value'     => 'nullable|numeric|min:0',
             ]);
             Log::debug('✅ اعتبارسنجی به‌روزرسانی با موفقیت انجام شد:', $validated);
             $submitMode = $validated['submit_mode'];
@@ -792,7 +802,7 @@ class ProformaController extends Controller
                 'user_id' => $request->user()->id,
             ]);
     
-            $totalAmount   = 0;
+            $itemsSubtotal = 0.0;
             $proformaItems = [];
     
             foreach ($validated['products'] ?? [] as $item) {
@@ -816,7 +826,7 @@ class ProformaController extends Controller
                 $totalPrice    = $unitPrice * $quantity;
                 $totalAfterTax = ($priceAfterDiscount + $taxAmount) * $quantity;
     
-                $totalAmount += $totalAfterTax;
+                $itemsSubtotal += $totalPrice;
     
                 $proformaItems[] = [
                     'name'            => $item['name'],
@@ -833,7 +843,36 @@ class ProformaController extends Controller
                     'total_after_tax' => $totalAfterTax,
                 ];
             }
+
+            $gDiscType = $validated['global_discount_type'] ?? 'none';
+            $gDiscVal  = (float) ($validated['global_discount_value'] ?? 0);
+            $gTaxType  = $validated['global_tax_type'] ?? 'none';
+            $gTaxVal   = (float) ($validated['global_tax_value'] ?? 0);
+
+            $globalDiscount = 0.0;
+            if ($gDiscType === 'percentage') {
+                $globalDiscount = ($itemsSubtotal * $gDiscVal) / 100;
+            } elseif ($gDiscType === 'fixed') {
+                $globalDiscount = $gDiscVal;
+            }
+            $globalDiscount = min($globalDiscount, $itemsSubtotal);
+
+            $afterDiscount = $itemsSubtotal - $globalDiscount;
+
+            $globalTax = 0.0;
+            if ($gTaxType === 'percentage') {
+                $globalTax = ($afterDiscount * $gTaxVal) / 100;
+            } elseif ($gTaxType === 'fixed') {
+                $globalTax = $gTaxVal;
+            }
+            $globalTax = max($globalTax, 0);
+
+            $grandTotal = $afterDiscount + $globalTax;
+            $toInt = fn($x) => (int) round((float) $x, 0);
+            $dbDiscType = ($gDiscType === 'none') ? null : $gDiscType;
+            $dbTaxType  = ($gTaxType === 'none') ? null : $gTaxType;
     
+            $user = $request->user();
             $oldAssignedTo = $proforma->assigned_to;
 
             $proforma->update([
@@ -849,7 +888,17 @@ class ProformaController extends Controller
                 'state'            => $validated['state'],
                 'assigned_to'      => $validated['assigned_to'],
                 'opportunity_id'   => $validated['opportunity_id'] ?? null,
-                'total_amount'     => $totalAmount,
+                'items_subtotal'        => $toInt($itemsSubtotal),
+                'global_discount_type'  => $dbDiscType,
+                'global_discount_value' => $toInt($gDiscVal),
+                'global_discount_amount'=> $toInt($globalDiscount),
+                'global_tax_type'       => $dbTaxType,
+                'global_tax_value'      => $toInt($gTaxVal),
+                'global_tax_amount'     => $toInt($globalTax),
+                'total_amount'          => $toInt($grandTotal),
+                'owner_user_id'  => $proforma->owner_user_id ?? $user?->id,
+                'team_id'        => $proforma->team_id ?? $user?->team_id ?? null,
+                'department'     => $proforma->department ?? $user?->department ?? null,
             ]);
             Log::info('Proforma updated:', ['id' => $proforma->id]);
 

@@ -89,6 +89,9 @@ class ProformaPolicy
         if ($user->can("{$this->prefix}.{$action}.department")) {
             $dept = $user->department ?? null;
             if ($dept && ($model->department ?? null) === $dept) { return true; }
+            if (($model->department ?? null) === null && (int)($model->assigned_to ?? 0) === (int)$user->id) {
+                return true;
+            }
         }
         if ($user->can("{$this->prefix}.{$action}.team")) {
             $teamIds = [];
@@ -99,7 +102,10 @@ class ProformaPolicy
             if (empty($teamIds) && $dept && ($model->department ?? null) === $dept) { return true; }
         }
         if ($user->can("{$this->prefix}.{$action}.own")) {
-            return (int)($model->owner_user_id ?? 0) === (int)$user->id;
+            $uid = (int) $user->id;
+            return (int)($model->owner_user_id ?? 0) === $uid
+                || (int)($model->assigned_to ?? 0) === $uid
+                || (int)($model->created_by ?? 0) === $uid;
         }
         return false;
     }
