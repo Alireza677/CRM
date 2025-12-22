@@ -19,6 +19,7 @@ use App\Models\Note;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\Rule;
 use Illuminate\Http\Request;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Str;
@@ -1046,8 +1047,8 @@ class ProformaController extends Controller
         };
 
         $approvals = $proforma->relationLoaded('approvals')
-            ? $proforma->approvals->loadMissing('approver', 'approvedBy')
-            : $proforma->approvals()->with(['approver', 'approvedBy'])->get();
+            ? $proforma->approvals->loadMissing('approver', 'approvedBy', 'decidedBy')
+            : $proforma->approvals()->with(['approver', 'approvedBy', 'decidedBy'])->get();
 
         $approvals = $approvals->sortBy(function ($approval) {
             return sprintf('%02d-%010d', (int)($approval->step ?? 99), (int)($approval->id ?? 0));
@@ -1064,26 +1065,34 @@ class ProformaController extends Controller
             $dateDisplay = '—';
             $approvedAt  = null;
             $actor       = $approved ?? $rejected ?? $pending;
+            $primaryId   = $actor?->user_id ? (int) $actor->user_id : null;
+            $decidedBy   = null;
+            $deciderId   = null;
             $mainName    = optional($actor?->approver)->name;
             $subName     = null;
             $mainApproved = false;
             $subApproved  = false;
 
             if ($actor) {
-                if ($actor->approved_by && (int) $actor->approved_by !== (int) $actor->user_id) {
-                    $subName = optional($actor->approvedBy)->name;
+                if (in_array($actor->status, ['approved', 'rejected'], true)) {
+                    $decidedBy = $actor->decidedBy ?? $actor->approvedBy ?? null;
+                    $deciderId = $decidedBy?->id ?? null;
                 }
 
                 if ($actor->status === 'approved') {
-                    if (empty($actor->approved_by) || (int) $actor->approved_by === (int) $actor->user_id) {
+                    if ($deciderId && $primaryId && $deciderId === $primaryId) {
                         $mainApproved = true;
-                    } elseif (!empty($actor->approved_by) && (int) $actor->approved_by !== (int) $actor->user_id) {
+                    } elseif ($deciderId && $primaryId && $deciderId !== $primaryId) {
                         $subApproved = true;
                     }
                 }
+
+                if ($deciderId && $primaryId && $deciderId !== $primaryId) {
+                    $subName = $decidedBy?->name;
+                }
             }
 
-           if ($rejected) {
+            if ($rejected) {
                 $statusClass = 'bg-red-50 text-red-800';
                 $statusLabel = 'رد شده';
                 $approvedAt  = $rejected->approved_at ?? $rejected->created_at;
@@ -1093,17 +1102,33 @@ class ProformaController extends Controller
                 $approvedAt  = $approved->approved_at ?? $approved->created_at;
             }
 
-
             if ($approvedAt) {
                 $dateDisplay = $formatDate($approvedAt);
+            }
+
+            $decidedClass = null;
+            if ($approved) {
+                $decidedClass = 'bg-green-100';
+            } elseif ($rejected) {
+                $decidedClass = 'bg-red-100 text-red-800';
+            }
+
+            $mainCellClass = '';
+            $subCellClass  = '';
+            if ($decidedClass && $deciderId) {
+                if ($primaryId && $deciderId === $primaryId) {
+                    $mainCellClass = $decidedClass;
+                } elseif ($primaryId && $deciderId !== $primaryId) {
+                    $subCellClass = $decidedClass;
+                }
             }
 
             return [
                 'status_class'      => $statusClass,
                 'status_label'      => $statusLabel,
                 'date_display'      => $dateDisplay,
-                'main_cell_class'   => $mainApproved ? 'bg-green-100' : ($rejected ? 'bg-red-100 text-red-800' : ''),
-                'sub_cell_class'    => $subApproved ? 'bg-green-100' : '',
+                'main_cell_class'   => $mainCellClass,
+                'sub_cell_class'    => $subCellClass,
                 'main_name' => $mainName ?: '—',
                 'sub_name'  => $subName ?: '—',
                 'main_approved'     => $mainApproved,
@@ -1113,6 +1138,7 @@ class ProformaController extends Controller
                 'pending_approver'  => optional($pending?->approver)->name,
             ];
         };;
+
 
         $step1 = $buildStep(1);
         $step2 = $buildStep(2);
@@ -1344,24 +1370,12 @@ class ProformaController extends Controller
                     ->get();
 
                 // رکوردِ مرحله‌ی در انتظار
-                $pending = $approvals
-                    ->where('status', 'pending')
-                    ->sortBy(function ($approval) {
-                        return sprintf('%02d-%010d', (int)($approval->step ?? 99), (int)($approval->id ?? 0));
-                    })
-                    ->first();
+                $pending = $this->resolveCurrentPendingApproval($proforma, $approvals);
                 if (! $pending) {
                     throw new \RuntimeException('هیچ مرحله‌ی در انتظاری برای تأیید وجود ندارد.');
                 }
-    
-                $latestForUserThisStep = $approvals
-                    ->filter(function ($approval) use ($userId, $pending) {
-                        return (int) $approval->user_id === (int) $userId
-                            && (int) ($approval->step ?? 0) === (int) ($pending->step ?? 0)
-                            && $approval->status !== Approval::STATUS_SUPERSEDED;
-                    })
-                    ->sortByDesc('id')
-                    ->first();
+
+                $latestForUserThisStep = $this->latestDecisionForUserStep($approvals, $userId, (int) ($pending->step ?? 0));
 
                 if ($latestForUserThisStep && $latestForUserThisStep->status !== 'pending') {
                     throw new \RuntimeException('شما قبلاً این پیش‌فاکتور را تأیید کرده‌اید.');
@@ -1376,15 +1390,11 @@ class ProformaController extends Controller
     
                 // حالت 2: اگر اصلی نبود، بررسی تأییدکننده اضطراری روی همان pending
                 $asEmergency = false;
-                if (! $current) {
-                    $rule = $proforma->automationRule()->first();
-                    if ($rule && (int) $rule->emergency_approver_id === (int) $userId) {
-                        $current = $pending;   // اجازه بده اضطراری همان مرحله‌ی pending را تأیید کند
-                        $asEmergency = true;
-                    }
+                if (! $current && $this->userCanActOnApproval(auth()->user(), $proforma, $pending)) {
+                    $current = $pending;   // OOOOU O"O_U OOOO3OOUO UU.OU+ U.OO-U,U?OUO pending OO OOUUOUO_ UcU+O_
+                    $asEmergency = true;
                 }
-    
-                $currentApproval = $current ?? null;
+$currentApproval = $current ?? null;
                 \Log::info('🔍 Proforma Approval Debug', [
                     'auth_user_id' => auth()->id(),
                     'auth_user_name' => auth()->user()->name ?? null,
@@ -1398,15 +1408,7 @@ class ProformaController extends Controller
                 }
     
                 // رعایت ترتیب مراحل: اگر پیش از این رکورد، آیتمی هنوز approved نشده، خطا بده
-                $idx           = $approvals->search(fn ($a) => (int) $a->id === (int) $current->id);
-                $currentStep   = (int) ($current->step ?? 0);
-                $previousSteps = $approvals
-                    ->take($idx)
-                    ->filter(fn ($a) => (int) ($a->step ?? 0) < $currentStep);
-
-                $blocker = $previousSteps->first(function ($approval) {
-                    return in_array($approval->status, ['pending', 'rejected'], true);
-                });
+                $blocker = $this->findBlockerBeforeStep($approvals, (int) ($current->step ?? 0));
                 if ($blocker) {
                     \Log::warning('🚫 Proforma Approval Blocker Debug', [
                         'proforma_id'    => $proforma->id,
@@ -1502,15 +1504,22 @@ class ProformaController extends Controller
         }
     }
     
-    public function reject(Proforma $proforma)
-    {
-        $this->authorize('approve', $proforma); // همان policy که برای approve استفاده می‌کنی
     
-        try {
-            \DB::transaction(function () use ($proforma) {
-                $userId = auth()->id();
-    
-                // اگر قبلاً نهایی شده (approved/rejected) ادامه نده
+public function reject(Request $request, Proforma $proforma)
+{
+    $this->authorize('approve', $proforma);
+
+    $data = $request->validate([
+        'reject_reason' => ['required', 'string', 'max:2000'],
+    ]);
+
+    $reason = trim($data['reject_reason']);
+
+    try {
+        \DB::transaction(function () use ($proforma, $reason) {
+            $userId = auth()->id();
+
+ // اگر قبلاً نهایی شده (approved/rejected) ادامه نده
                 if (in_array($proforma->approval_stage, ['approved','rejected'], true)) {
                     throw new \RuntimeException('این پیش‌فاکتور قبلاً نهایی شده است.');
                 }
@@ -1518,29 +1527,36 @@ class ProformaController extends Controller
                 // approvals را با لاک بخوان
                 $approvals = $proforma->approvals()
                     ->with('approver')
-                    ->orderBy('created_at')
+                    ->orderBy('step')
+                    ->orderBy('id')
                     ->lockForUpdate()
                     ->get();
     
                 // مرحله‌ی در انتظار
-                $pending = $approvals->firstWhere('status', 'pending');
+                $pending = $this->resolveCurrentPendingApproval($proforma, $approvals);
                 if (! $pending) {
                     throw new \RuntimeException('هیچ مرحله‌ی در انتظاری برای رد وجود ندارد.');
                 }
+
+                $latestForUserThisStep = $this->latestDecisionForUserStep($approvals, $userId, (int) ($pending->step ?? 0));
+
+                if ($latestForUserThisStep && $latestForUserThisStep->status !== 'pending') {
+                    throw new \RuntimeException('شما قبلاً این پیش‌فاکتور را تأیید کرده‌اید.');
+                }
     
                 // حالت 1: ردکننده‌ی اصلی همین pending است
-                $current = $approvals->firstWhere('user_id', $userId);
+                $current = $approvals->first(function ($approval) use ($userId, $pending) {
+                    return $approval->status === 'pending'
+                        && (int) $approval->user_id === (int) $userId
+                        && (int) ($approval->step ?? 0) === (int) ($pending->step ?? 0);
+                });
     
                 // حالت 2: اگر اصلی نبود، بررسی اضطراری برای همان pending
                 $asEmergency = false;
-                if (! $current) {
-                    $rule = $proforma->automationRule()->first();
-                    if ($rule && (int) $rule->emergency_approver_id === (int) $userId) {
-                        $current = $pending;   // اجازه بده اضطراری همان pending را رد کند
-                        $asEmergency = true;
-                    }
+                if (! $current && $this->userCanActOnApproval(auth()->user(), $proforma, $pending)) {
+                    $current = $pending;   // allow emergency approver to act on current pending
+                    $asEmergency = true;
                 }
-    
                 if (! $current) {
                     throw new \RuntimeException('شما مجاز به رد این پیش‌فاکتور نیستید.');
                 }
@@ -1551,49 +1567,87 @@ class ProformaController extends Controller
                 }
     
                 // رعایت ترتیب مراحل (اگر قبل از این رکورد، آیتمی هنوز approved نشده، بلاک کن)
-                $idx     = $approvals->search(fn ($a) => (int) $a->id === (int) $current->id);
-                $blocker = $approvals->take($idx)->first(fn ($a) => $a->status !== 'approved');
+                $blocker = $this->findBlockerBeforeStep($approvals, (int) ($current->step ?? 0));
                 if ($blocker) {
                     $who = optional($blocker->approver)->name ?: ('کاربر #' . $blocker->user_id);
                     throw new \RuntimeException("رد امکان‌پذیر نیست؛ پیش‌فاکتور در انتظار تصمیم {$who} است.");
-                }
-    
-                // رد همین مرحله
-                $current->update([
-                    'status'      => 'rejected',
-                    'approved_at' => now(),
-                    'approved_by' => $userId,
-                ]);
-    
-                // ست کردن وضعیت کلی پروفرما به «رد شده»
-                $proforma->fill([
-                    'approval_stage' => 'rejected',
-                    'proforma_stage' => 'rejected',
-                ])->save();
-    
-                // پاک کردن تمام pendingهای دیگر تا فرآیند متوقف شود
-                $proforma->approvals()
-                    ->where('status', 'pending')
-                    ->delete();
-    
-                \Log::info('🛑 پیش‌فاکتور رد شد', [
-                    'proforma_id' => $proforma->id,
-                    'by_user'     => $userId,
-                    'step'        => (int) ($current->step ?? 1),
-                    'as_emergency'=> $asEmergency,
-                ]);
-            });
-    
-            return back()->with('success', 'پیش‌فاکتور با موفقیت رد شد.');
-    
-        } catch (\Throwable $e) {
-            \Log::error('❌ خطا در رد پیش‌فاکتور', [
-                'proforma_id' => $proforma->id ?? null,
-                'error'       => $e->getMessage(),
+                } 
+           $current->update([
+                'status'      => 'rejected',
+                'approved_at' => now(),
+                'approved_by' => $userId,
             ]);
-    
-            return back()->with('error', $e->getMessage());
+
+            $proforma->fill([
+                'approval_stage' => 'rejected',
+                'proforma_stage' => 'rejected',
+            ])->save();
+
+            // ✅ ذخیره دلیل رد در Notes
+            Note::create([
+                'body'          => "❌ رد پیش‌فاکتور\n\nدلیل رد:\n{$reason}",
+                'user_id'       => $userId,
+                'noteable_type' => get_class($proforma),
+                'noteable_id'   => $proforma->id,
+            ]);
+
+            // پاک کردن تمام pendingهای دیگر
+            $proforma->approvals()
+                ->where('status', 'pending')
+                ->delete();
+        });
+
+        return back()->with('success', 'پیش‌فاکتور با موفقیت رد شد.');
+    } catch (\Throwable $e) {
+        \Log::error('❌ خطا در رد پیش‌فاکتور', [
+            'proforma_id' => $proforma->id ?? null,
+            'error'       => $e->getMessage(),
+        ]);
+
+        return back()->with('error', $e->getMessage());
+    }
+}
+
+
+    private function resolveCurrentPendingApproval(Proforma $proforma, ?Collection $approvals = null): ?Approval
+    {
+        $approvals = $approvals ?? $proforma->approvals()->get();
+
+        return $approvals
+            ->where('status', 'pending')
+            ->sortBy(function ($approval) {
+                return sprintf('%02d-%010d', (int) ($approval->step ?? 99), (int) ($approval->id ?? 0));
+            })
+            ->first();
+    }
+
+    private function userCanActOnApproval(User $user, Proforma $proforma, Approval $pending): bool
+    {
+        if ((int) $pending->user_id === (int) $user->id) {
+            return true;
         }
+
+        $rule = $proforma->automationRule()->first();
+        return $rule && (int) $rule->emergency_approver_id === (int) $user->id;
+    }
+
+    private function latestDecisionForUserStep(Collection $approvals, int $userId, int $step): ?Approval
+    {
+        return $approvals
+            ->filter(function ($approval) use ($userId, $step) {
+                return (int) $approval->user_id === (int) $userId
+                    && (int) ($approval->step ?? 0) === (int) $step
+                    && $approval->status !== Approval::STATUS_SUPERSEDED;
+            })
+            ->sortByDesc('id')
+            ->first();
+    }
+
+    private function findBlockerBeforeStep(Collection $approvals, int $pendingStep): ?Approval
+    {
+        return $approvals
+            ->filter(fn ($approval) => (int) ($approval->step ?? 0) < (int) $pendingStep)
+            ->first(fn ($approval) => in_array($approval->status, ['pending', 'rejected'], true));
     }
 
     private function extractMentions($rawMentions, string $body): array
@@ -1756,8 +1810,5 @@ class ProformaController extends Controller
     }
    
 }
-
-
-
 
 
