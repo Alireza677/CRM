@@ -8,6 +8,7 @@ use App\Models\User;
 use Illuminate\Http\Request;
 use App\Models\Contact;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Schema;
 
 
 class OrganizationController extends Controller
@@ -80,6 +81,7 @@ class OrganizationController extends Controller
             'city'  => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
+            'contact_id'  => 'nullable|exists:contacts,id',
     
             // می‌تونیم صحت مخاطب را چک کنیم، اما در create استفاده‌اش نمی‌کنیم
             'contact_id'  => 'nullable|exists:contacts,id',
@@ -87,6 +89,7 @@ class OrganizationController extends Controller
             'name.required'      => 'نام سازمان الزامی است.',
             'website.url'        => 'فرمت آدرس وب‌سایت نامعتبر است.',
             'assigned_to.exists' => 'کاربر انتخاب شده معتبر نیست.',
+            'contact_id.exists'  => 'مخاطب انتخاب شده معتبر نیست.',
             'contact_id.exists'  => 'مخاطب انتخاب شده معتبر نیست.',
         ]);
     
@@ -115,6 +118,8 @@ class OrganizationController extends Controller
     {
         $organization = Organization::findOrFail($id);
         $this->authorize('update', $organization);
+        $hadContactColumn = Schema::hasColumn('organizations', 'contact_id');
+        $oldContactId = $hadContactColumn ? $organization->contact_id : null;
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'phone' => 'nullable|string|max:20',
@@ -130,7 +135,27 @@ class OrganizationController extends Controller
             'assigned_to.exists' => 'کاربر انتخاب شده معتبر نیست.',
         ]);
 
-        $organization->update($validated);
+        $organization->update(Arr::except($validated, ['contact_id']));
+
+        $newContactId = $validated['contact_id'] ?? null;
+        if (!empty($newContactId)) {
+            Contact::whereKey($newContactId)->update(['organization_id' => $organization->id]);
+        }
+
+        if ($hadContactColumn && $organization->contact_id !== $newContactId) {
+            $organization->forceFill(['contact_id' => $newContactId])->save();
+        }
+
+        if ($oldContactId !== $newContactId) {
+            activity('organization')
+                ->performedOn($organization)
+                ->causedBy(auth()->user())
+                ->withProperties([
+                    'attributes' => ['contact_id' => $newContactId],
+                    'old' => ['contact_id' => $oldContactId],
+                ])
+                ->log('updated');
+        }
 
         return redirect()->route('sales.organizations.index')
             ->with('success', 'سازمان با موفقیت بروزرسانی شد.');

@@ -16,6 +16,7 @@ class ContactFactory extends Factory
         return [
             'first_name' => $this->faker->firstName(),
             'last_name' => $this->faker->lastName(),
+            'position' => $this->faker->jobTitle(),
             'email' => $this->faker->unique()->safeEmail(),
             'phone' => $this->faker->phoneNumber(),
             'organization_id' => \App\Models\Organization::inRandomOrder()->first()?->id,

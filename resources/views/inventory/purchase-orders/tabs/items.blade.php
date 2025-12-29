@@ -15,8 +15,8 @@
                         <th class="px-3 py-2 font-medium">نام آیتم</th>
                         <th class="px-3 py-2 font-medium">تعداد</th>
                         <th class="px-3 py-2 font-medium">واحد</th>
-                        <th class="px-3 py-2 font-medium">قیمت واحد</th>
-                        <th class="px-3 py-2 font-medium">جمع خط</th>
+                        <th class="px-3 py-2 font-medium">قیمت واحد (ریال)</th>
+                        <th class="px-3 py-2 font-medium">جمع خط (ریال)</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y">
@@ -26,8 +26,8 @@
                             <td class="px-3 py-2 font-medium text-gray-800">{{ $item->item_name }}</td>
                             <td class="px-3 py-2">{{ rtrim(rtrim(number_format((float) $item->quantity, 2, '.', ''), '0'), '.') }}</td>
                             <td class="px-3 py-2">{{ $item->unit }}</td>
-                            <td class="px-3 py-2">{{ number_format((float) $item->unit_price, 2) }}</td>
-                            <td class="px-3 py-2 font-semibold">{{ number_format((float) $item->line_total, 2) }}</td>
+                            <td class="px-3 py-2">{{ number_format((float) $item->unit_price) }}</td>
+                            <td class="px-3 py-2 font-semibold">{{ number_format((float) $item->line_total) }} </td>
                         </tr>
                     @endforeach
                 </tbody>
@@ -36,7 +36,7 @@
                         <td class="px-3 py-2" colspan="5">
                             <span class="text-gray-600">جمع اقلام</span>
                         </td>
-                        <td class="px-3 py-2 font-bold text-gray-900">{{ number_format((float) $total, 2) }}</td>
+                        <td class="px-3 py-2 font-bold text-gray-900">{{ number_format((float) $total) }}</td>
                     </tr>
                 </tfoot>
             </table>

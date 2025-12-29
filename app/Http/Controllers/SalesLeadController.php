@@ -23,6 +23,7 @@ use App\Http\Controllers\Concerns\LeadsBreadcrumbs;
 use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
+use App\Services\DuplicateMobileFinder;
 class SalesLeadController extends Controller
 {
     use LeadsBreadcrumbs;
@@ -210,7 +211,7 @@ class SalesLeadController extends Controller
 
     }
 
-   public function create()
+   public function create(Request $request)
 {
     $users = User::all();
     $referrals = $users;
@@ -220,83 +221,223 @@ class SalesLeadController extends Controller
         ->orderBy('first_name')
         ->get();
 
-    return view('marketing.leads.create', compact('users', 'referrals', 'contacts'))
+    $lead = new SalesLead();
+    $contactId = $request->input('contact_id');
+    if (!empty($contactId)) {
+        $contact = Contact::visibleFor($request->user(), 'contacts')->find($contactId);
+        if ($contact) {
+            $lead->contact_id = $contact->id;
+            $lead->full_name = $contact->full_name ?: ($contact->company ?? null);
+            $lead->mobile = $contact->mobile;
+            $lead->state = $contact->state;
+            $lead->city = $contact->city;
+        }
+    }
+
+    return view('marketing.leads.create', compact('users', 'referrals', 'contacts', 'lead'))
         ->with('breadcrumb', $this->leadsBreadcrumb([
             ['title' => 'ایجاد سرنخ'],
         ]));
 }
 
 
-    public function store(Request $request)
+ public function store(\Illuminate\Http\Request $request)
 {
-    \Log::info('🐙 store() method started');
-    \Log::info('🐙 Raw request input:', $request->all());
+    // ---------- Logging helpers ----------
+    $traceId = (string) \Illuminate\Support\Str::uuid();
 
-    $validator = Validator::make($request->all(), [
-        'prefix' => 'nullable|string|max:10',
-        'full_name' => 'required|string|max:255',
-        'company' => 'nullable|string|max:255',
-        'email' => 'nullable|email|max:255',
-        'mobile' => 'nullable|string|max:20',
-        'phone' => 'nullable|string|max:20',
-        'website' => 'nullable|url|max:255',
-        'create_contact' => 'nullable|boolean',
-        'contact_id' => 'nullable|exists:contacts,id',
-        'lead_source' => ['required', 'string', Rule::in(array_keys(FormOptionsHelper::leadSources()))],
+    $sanitizeForLog = function (array $data): array {
+        $data = \Illuminate\Support\Arr::except($data, ['_token', 'password', 'password_confirmation']);
 
-        'lead_status' => ['nullable', 'string', Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
-        'disqualify_reason' => ['nullable', 'string', Rule::in(array_keys(FormOptionsHelper::leadDisqualifyReasons()))],
-        'assigned_to' => 'nullable|exists:users,id',
-        'lead_date' => 'nullable|string',
-        'next_follow_up_date' => 'nullable|string',
+        // Mask sensitive-ish fields
+        if (!empty($data['mobile'])) {
+            $m = (string) $data['mobile'];
+            $data['mobile'] = (mb_strlen($m) >= 4) ? (str_repeat('*', max(0, mb_strlen($m) - 4)) . mb_substr($m, -4)) : '***';
+        }
+        if (!empty($data['email'])) {
+            $data['email'] = '***';
+        }
 
-        'referred_to' => 'nullable|exists:users,id',
-        'do_not_email' => 'boolean',
-        // نوع مشتری: جدید / قدیمی / بالقوه
-        'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
-        'industry' => 'nullable|string|max:255',
-        'nationality' => 'nullable|string|max:255',
-        'main_test_field' => 'nullable|string|max:255',
-        'dependent_test_field' => 'nullable|string|max:255',
-        'address' => 'nullable|string|max:1000',
-        'state' => 'nullable|string|max:255',
-        'city' => 'nullable|string|max:255',
-        'notes' => 'nullable|string',
-        'building_usage' => 'nullable|string|max:255',
-        'internal_temperature' => 'nullable|numeric',
-        'external_temperature' => 'nullable|numeric',
-        'building_length' => 'nullable|numeric|min:0',
-        'building_width' => 'nullable|numeric|min:0',
-        'eave_height' => 'nullable|numeric|min:0',
-        'ridge_height' => 'nullable|numeric|min:0',
-        'wall_material' => 'nullable|string|max:255',
-        'insulation_status' => 'nullable|string|in:good,medium,weak',
-        'spot_heating_systems' => 'nullable|integer|min:0',
-        'central_200_systems' => 'nullable|integer|min:0',
-        'central_300_systems' => 'nullable|integer|min:0',
-    ], [
-        'full_name.required' => 'نام و نام خانوادگی الزامی است.',
-        'email.email'        => 'فرمت ایمیل نامعتبر است.',
-        'website.url'        => 'فرمت وب‌سایت نامعتبر است.',
+        // Prevent huge logs
+        if (isset($data['notes']) && is_string($data['notes']) && mb_strlen($data['notes']) > 500) {
+            $data['notes'] = mb_substr($data['notes'], 0, 500) . '...';
+        }
+
+        return $data;
+    };
+
+    \Log::withContext([
+        'trace_id' => $traceId,
+        'actor_id' => \Illuminate\Support\Facades\Auth::id(),
+        'ip'       => $request->ip(),
+        'route'    => optional($request->route())->getName(),
     ]);
 
+    \Log::info('🐙 leads.store.started', [
+        'method' => $request->method(),
+        'url'    => $request->fullUrl(),
+    ]);
+
+    \Log::debug('🐙 leads.store.raw_request', [
+        'input' => $sanitizeForLog($request->all()),
+    ]);
+
+    // ---------- Validation ----------
+    $validator = \Illuminate\Support\Facades\Validator::make(
+        $request->all(),
+        [
+            'prefix' => 'nullable|string|max:10',
+            'full_name' => 'required|string|max:255',
+            'company' => 'nullable|string|max:255',
+            'email' => 'nullable|email|max:255',
+            'mobile' => 'nullable|string|max:20',
+            'phone' => 'nullable|string|max:20',
+            'website' => 'nullable|url|max:255',
+            'create_contact' => 'nullable|boolean',
+            'contact_id' => 'nullable|exists:contacts,id',
+            'confirm_use_existing_contact' => 'nullable|boolean',
+            'existing_contact_id' => 'nullable|exists:contacts,id',
+            'lead_source' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(FormOptionsHelper::leadSources()))],
+
+            'lead_status' => ['nullable', 'string', \Illuminate\Validation\Rule::in(array_keys(FormOptionsHelper::leadStatuses()))],
+            'disqualify_reason' => ['nullable', 'string', \Illuminate\Validation\Rule::in(array_keys(FormOptionsHelper::leadDisqualifyReasons()))],
+            'assigned_to' => 'nullable|exists:users,id',
+            'lead_date' => 'nullable|string',
+            'next_follow_up_date' => 'nullable|string',
+
+            'referred_to' => 'nullable|exists:users,id',
+            'do_not_email' => 'boolean',
+            'customer_type' => 'nullable|string|in:مشتری جدید,مشتری قدیمی,مشتری بالقوه',
+            'industry' => 'nullable|string|max:255',
+            'nationality' => 'nullable|string|max:255',
+            'main_test_field' => 'nullable|string|max:255',
+            'dependent_test_field' => 'nullable|string|max:255',
+            'address' => 'nullable|string|max:1000',
+            'state' => 'nullable|string|max:255',
+            'city' => 'nullable|string|max:255',
+            'notes' => 'nullable|string',
+            'building_usage' => 'nullable|string|max:255',
+            'internal_temperature' => 'nullable|numeric',
+            'external_temperature' => 'nullable|numeric',
+            'building_length' => 'nullable|numeric|min:0',
+            'building_width' => 'nullable|numeric|min:0',
+            'eave_height' => 'nullable|numeric|min:0',
+            'ridge_height' => 'nullable|numeric|min:0',
+            'wall_material' => 'nullable|string|max:255',
+            'insulation_status' => 'nullable|string|in:good,medium,weak',
+            'spot_heating_systems' => 'nullable|integer|min:0',
+            'central_200_systems' => 'nullable|integer|min:0',
+            'central_300_systems' => 'nullable|integer|min:0',
+        ],
+        [
+            'full_name.required' => 'نام و نام خانوادگی الزامی است.',
+            'email.email'        => 'فرمت ایمیل نامعتبر است.',
+            'website.url'        => 'فرمت وب‌سایت نامعتبر است.',
+        ]
+    );
+
     if ($validator->fails()) {
-        \Log::warning('🔴 Validation failed:', $validator->errors()->toArray());
+        \Log::warning('🔴 leads.store.validation_failed', [
+            'errors' => $validator->errors()->toArray(),
+            'input'  => $sanitizeForLog($request->all()),
+        ]);
+
         return redirect()->back()->withErrors($validator)->withInput();
     }
 
     try {
         $validated = $validator->validated();
-        \Log::info('🟢 Validation passed:', $validated);
+
+        \Log::info('🟢 leads.store.validation_passed', [
+            'validated' => $sanitizeForLog($validated),
+        ]);
+
+        // ---------- Normalize / Prepare payload ----------
+        $confirmUseExistingContact = (bool) ($validated['confirm_use_existing_contact'] ?? false);
+        $existingContactId = $validated['existing_contact_id'] ?? null;
+        unset($validated['confirm_use_existing_contact'], $validated['existing_contact_id']);
+
+        $duplicateFinder = app(DuplicateMobileFinder::class);
+        $normalizedMobile = $duplicateFinder->normalizeMobile($validated['mobile'] ?? null);
+
+       if ($normalizedMobile) {
+            $validated['mobile'] = $normalizedMobile;
+
+            \Log::info('leads.store.mobile.normalized', [
+                'mobile' => $sanitizeForLog(['mobile' => $normalizedMobile])['mobile'],
+            ]);
+        } else {
+            $validated['mobile'] = $this->cleanupMobileInput($validated['mobile'] ?? null);
+
+            \Log::info('leads.store.mobile.cleaned', [
+                'mobile' => $sanitizeForLog(['mobile' => $validated['mobile']])['mobile'],
+            ]);
+        }
 
         $selectedContactId = $validated['contact_id'] ?? null;
+        if ($confirmUseExistingContact) {
+            $confirmedContact = null;
+            if ($existingContactId) {
+                $confirmedContact = Contact::visibleFor($request->user(), 'contacts')->find($existingContactId);
+            }
+
+            $contactMobileNormalized = $confirmedContact
+                ? $duplicateFinder->normalizeMobile($confirmedContact->mobile ?? null)
+                : null;
+
+            if (!$confirmedContact || !$contactMobileNormalized || ($normalizedMobile && $contactMobileNormalized !== $normalizedMobile)) {
+                return redirect()
+                    ->back()
+                    ->withErrors(['mobile' => '??????? ????? ?????????? ?? ????? ?????? ?????? ?????.'])
+                    ->withInput();
+            }
+
+            $contactFullName = trim((string) $confirmedContact->first_name . ' ' . (string) $confirmedContact->last_name);
+            $missingFields = [];
+
+            if ($contactFullName === '') {
+                $missingFields['full_name'] = '??? ????? ???? ???.';
+            }
+
+            if (!$contactMobileNormalized) {
+                $missingFields['mobile'] = '????? ?????? ????? ???? ???.';
+            }
+
+            if (empty($confirmedContact->state)) {
+                $missingFields['state'] = '????? ????? ???? ???.';
+            }
+
+            if (empty($confirmedContact->city)) {
+                $missingFields['city'] = '??? ????? ???? ???.';
+            }
+
+            if (!empty($missingFields)) {
+                return redirect()
+                    ->back()
+                    ->withErrors($missingFields)
+                    ->with('error', '??????? ????? ???? ???? ????? ????? ???? ?? ????? ????.')
+                    ->withInput();
+            }
+
+            $normalizedMobile = $contactMobileNormalized;
+            $validated['contact_id'] = $confirmedContact->id;
+            $validated['create_contact'] = false;
+            $validated['full_name'] = $contactFullName;
+            $validated['mobile'] = $contactMobileNormalized;
+            $validated['state'] = $confirmedContact->state;
+            $validated['city'] = $confirmedContact->city;
+
+            $selectedContactId = $confirmedContact->id;
+        }
+
+
         $shouldCreateContact = empty($selectedContactId) && (bool) ($validated['create_contact'] ?? false);
+
         $validated['contact_id'] = $selectedContactId ? (int) $selectedContactId : null;
         unset($validated['create_contact']);
 
-        $validated['created_by'] = Auth::id();
-        // ثبت مالکیت ایجادکننده برای محدوده‌های دسترسی
-        $validated['owner_user_id'] = Auth::id();
+        $validated['created_by'] = \Illuminate\Support\Facades\Auth::id();
+        $validated['owner_user_id'] = \Illuminate\Support\Facades\Auth::id();
         $validated['do_not_email'] = $request->has('do_not_email');
         $validated['lead_date'] = DateHelper::normalizeDateInput($validated['lead_date'] ?? null);
 
@@ -305,41 +446,110 @@ class SalesLeadController extends Controller
         $validated['lead_status'] = $leadStatusValue;
 
         if ($leadStatusValue === SalesLead::STATUS_DISCARDED) {
-            // در حالت سرکاری/حذف‌شده تاریخ پیگیری بعدی صفر می‌شود
             $validated['next_follow_up_date'] = null;
         } else {
             $validated['next_follow_up_date'] = DateHelper::normalizeDateInput($validated['next_follow_up_date'] ?? null);
         }
 
-        $normalizedMobile = $this->normalizeMobile($validated['mobile'] ?? null);
+        \Log::info('🔧 leads.store.normalized', [
+            'should_create_contact' => $shouldCreateContact,
+            'status'                => $leadStatusValue,
+            'lead_date'             => $validated['lead_date'] ?? null,
+            'next_follow_up_date'   => $validated['next_follow_up_date'] ?? null,
+        ]);
 
+        // ---------- Duplicate mobile check ----------
         if ($normalizedMobile) {
-            $validated['mobile'] = $normalizedMobile;
-            $existingLead = $this->findLeadByNormalizedMobile($normalizedMobile);
+            $existingLead = $duplicateFinder->findLeadByMobile($normalizedMobile);
             if ($existingLead) {
-                $existingStatus = SalesLead::normalizeStatus($existingLead->lead_status ?? $existingLead->status);
-                if ($existingStatus === SalesLead::STATUS_DISCARDED) {
-                    $reactivatedLead = $this->reactivateDiscardedLead($existingLead, $validated, $shouldCreateContact);
+                \Log::warning('?? leads.store.duplicate_lead_by_mobile', [
+                    'lead_id' => $existingLead->id ?? null,
+                    'mobile' => $sanitizeForLog(['mobile' => $normalizedMobile])['mobile'],
+                ]);
 
-                    return redirect()
-                        ->route('marketing.leads.show', $reactivatedLead)
-                        ->with('success', '??? ????? ????? ?? ???? ????????? ???? ? ?????? ???? ?????? ???? ??.');
-                }
+                $alertPayload = $duplicateFinder->buildModalPayload(
+                    $existingLead,
+                    DuplicateMobileFinder::TYPE_LEAD,
+                    $normalizedMobile,
+                    ['intent' => 'block']
+                );
+                $alertPayload['intent'] = 'block';
 
-                return redirect()->back()
-                    ->withErrors(['mobile' => '????? ?? ??? ????? ?????? ????? ??? ??? ???.'])
-                    ->with('duplicate_lead_alert', $this->duplicateLeadAlertPayload($existingLead))
+                return redirect()
+                    ->route('marketing.leads.create')
+                    ->withErrors(['mobile' => 'Oاین شماره موبایل قبلاً در سرنخ دیگری ثبت شده است.'])
+                    ->with('duplicate_mobile_alert', $alertPayload)
                     ->withInput();
             }
-        } else {
-            $validated['mobile'] = $this->cleanupMobileInput($validated['mobile'] ?? null);
         }
 
+        if (!empty($selectedContactId)) {
+            $existingLeadByContact = SalesLead::query()
+                ->where('contact_id', $selectedContactId)
+                ->latest()
+                ->first();
 
+            if ($existingLeadByContact) {
+                \Log::warning('?? leads.store.duplicate_lead_by_contact', [
+                    'lead_id' => $existingLeadByContact->id ?? null,
+                    'contact_id' => $selectedContactId,
+                ]);
 
-        \Log::info('🔧 Final data before create:', $validated);
+                $leadMobile = $normalizedMobile
+                    ?: $duplicateFinder->normalizeMobile($existingLeadByContact->mobile ?? $existingLeadByContact->phone);
 
-        $lead = DB::transaction(function () use ($validated, $shouldCreateContact) {
+                $alertPayload = $duplicateFinder->buildModalPayload(
+                    $existingLeadByContact,
+                    DuplicateMobileFinder::TYPE_LEAD,
+                    $leadMobile ?? ''
+                );
+                $alertPayload['intent'] = 'block';
+
+                return redirect()
+                    ->route('marketing.leads.create')
+                    ->withErrors(['mobile' => 'Oبرای این مخاطب قبلاً سرنخ ثبت شده است و امکان ثبت جدید وجود ندارد.'])
+                    ->with('duplicate_mobile_alert', $alertPayload)
+                    ->withInput();
+            }
+        }
+
+        if ($normalizedMobile && empty($selectedContactId)) {
+            $existingContact = $duplicateFinder->findContactByMobile($normalizedMobile);
+            if ($existingContact && !$confirmUseExistingContact) {
+                \Log::info('dY"? leads.store.duplicate_contact_by_mobile', [
+                    'contact_id' => $existingContact->id ?? null,
+                    'mobile' => $sanitizeForLog(['mobile' => $normalizedMobile])['mobile'],
+                ]);
+
+                $alertPayload = $duplicateFinder->buildModalPayload(
+                    $existingContact,
+                    DuplicateMobileFinder::TYPE_CONTACT,
+                    $normalizedMobile,
+                    [
+                        'intent' => 'confirm_contact',
+                        'contact' => [
+                            'id' => $existingContact->id,
+                            'name' => $existingContact->full_name,
+                            'mobile' => $existingContact->mobile,
+                            'state' => $existingContact->state,
+                            'city' => $existingContact->city,
+                        ],
+                    ]
+                );
+                $alertPayload['intent'] = 'confirm_contact';
+
+                return redirect()
+                    ->back()
+                    ->with('duplicate_mobile_alert', $alertPayload)
+                    ->withInput();
+            }
+        }
+        \Log::info('🧾 leads.store.final_payload_before_create', [
+            'payload' => $sanitizeForLog($validated),
+        ]);
+
+        // ---------- Create inside transaction ----------
+        $lead = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $shouldCreateContact) {
             $payload = $validated;
 
             if (empty($payload['assigned_to'])) {
@@ -352,50 +562,71 @@ class SalesLeadController extends Controller
                 if ($nextRoundRobin) {
                     $payload['assigned_to'] = $nextRoundRobin->user_id;
                     $nextRoundRobin->forceFill(['last_assigned_at' => now()])->save();
+
+                    \Log::info('🎯 leads.store.round_robin_assigned', [
+                        'assigned_to' => $payload['assigned_to'],
+                        'round_robin_id' => $nextRoundRobin->id ?? null,
+                    ]);
                 } else {
-                    Log::warning('lead_round_robin_empty_active_list');
+                    \Log::warning('⚠️ leads.store.round_robin_empty_active_list');
                 }
             }
 
             $lead = SalesLead::create($payload);
 
+            \Log::info('✅ leads.store.lead_created', [
+                'lead_id' => $lead->id ?? null,
+            ]);
+
             if ($shouldCreateContact && $lead) {
                 $contact = $this->createContactFromLead($lead);
+
                 if ($contact) {
                     $lead->forceFill(['contact_id' => $contact->id])->saveQuietly();
 
-                    \Log::info('👤 Contact created from lead', [
-                        'lead_id' => $lead->id,
+                    \Log::info('👤 leads.store.contact_created_from_lead', [
+                        'lead_id'    => $lead->id,
                         'contact_id' => $contact->id,
+                    ]);
+                } else {
+                    \Log::warning('⚠️ leads.store.contact_create_failed', [
+                        'lead_id' => $lead->id ?? null,
                     ]);
                 }
             }
-
 
             return $lead;
         });
 
         if ($lead && $lead->id) {
-            \Log::info('✔ Sales lead created successfully with ID: ' . $lead->id);
+            \Log::info('✔ leads.store.completed', [
+                'lead_id' => $lead->id,
+            ]);
 
-            return redirect()->route('marketing.leads.index')
+            return redirect()
+                ->route('marketing.leads.index')
                 ->with('success', 'سرنخ فروش با موفقیت ایجاد شد.');
         }
 
-        \Log::error('❌ Sales lead creation failed. No ID returned.');
+        \Log::error('❌ leads.store.failed_no_id_returned');
 
         return redirect()->back()
             ->with('error', 'ایجاد سرنخ فروش انجام نشد. لطفاً اطلاعات را بررسی کنید و دوباره تلاش کنید.')
             ->withInput();
 
-    } catch (\Exception $e) {
-        \Log::error('🔥 Exception caught during sales lead creation: ' . $e->getMessage());
+    } catch (\Throwable $e) {
+        \Log::error('🔥 leads.store.exception', [
+            'message' => $e->getMessage(),
+            'file'    => $e->getFile(),
+            'line'    => $e->getLine(),
+        ]);
 
         return redirect()->back()
             ->with('error', 'خطا در ایجاد سرنخ فروش: ' . $e->getMessage())
             ->withInput();
     }
 }
+
 
 
 
@@ -865,20 +1096,7 @@ public function update(Request $request, SalesLead $lead)
             $creatorId = auth()->id() ?: $lead->assigned_to;
             $assigneeId = $lead->assigned_to ?: $creatorId;
 
-            $activity = CrmActivity::create([
-                'subject'        => 'lead_status_reason',
-                'start_at'       => now(),
-                'due_at'         => now(),
-                'assigned_to_id' => $assigneeId,
-                'related_type'   => SalesLead::class,
-                'related_id'     => $lead->id,
-                'status'         => 'completed',
-                'priority'       => 'normal',
-                'description'    => $statusReasonBody,
-                'is_private'     => false,
-                'created_by_id'  => $creatorId,
-                'updated_by_id'  => $creatorId,
-            ]);
+          
 
             if (method_exists($lead, 'markFirstActivity')) {
                 $activityTime = $activity->start_at ?? $activity->created_at ?? now();

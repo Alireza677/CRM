@@ -22,6 +22,7 @@
                     'state' => 'استان',
                     'city' => 'شهر',
                     'assigned_to' => 'ارجاع به',
+                    'contact_id' => 'مخاطب',
                 ];
             @endphp
 
@@ -33,6 +34,15 @@
                             if ($key === 'assigned_to') {
                                 $oldVal = \App\Models\User::find($oldVal)?->name ?? $oldVal;
                                 $newVal = \App\Models\User::find($newVal)?->name ?? $newVal;
+                            } elseif ($key === 'contact_id') {
+                                $oldContact = \App\Models\Contact::find($oldVal);
+                                $newContact = \App\Models\Contact::find($newVal);
+                                $oldVal = $oldContact?->full_name
+                                    ?? trim((($oldContact?->first_name ?? '') . ' ' . ($oldContact?->last_name ?? '')))
+                                    ?? $oldVal;
+                                $newVal = $newContact?->full_name
+                                    ?? trim((($newContact?->first_name ?? '') . ' ' . ($newContact?->last_name ?? '')))
+                                    ?? $newVal;
                             }
                             $oldDisp = UpdateHelper::beautify($oldVal, $key);
                             $newDisp = UpdateHelper::beautify($newVal, $key);
@@ -55,4 +65,3 @@
         <div class="text-sm text-gray-500">به‌روزرسانی‌ای برای این سازمان ثبت نشده است.</div>
     @endforelse
 </div>
-

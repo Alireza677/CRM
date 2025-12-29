@@ -100,6 +100,7 @@ class ContactController extends Controller
             $validated = $request->validate([
                 'first_name'         => 'nullable|string|max:255',
                 'last_name'          => 'nullable|string|max:255',
+                'position'           => 'nullable|string|max:255',
                 'email'              => 'nullable|string|email|max:255|unique:contacts,email',
                 'phone'              => 'nullable|string|max:20',
                 'mobile'             => 'nullable|string|max:20',
@@ -203,6 +204,13 @@ class ContactController extends Controller
             $data['activities'] = $contact->activities()->latest()->get();
         }
 
+        if ($tab === 'leads') {
+            $data['leads'] = $contact->leads()
+                ->visibleFor(auth()->user(), 'leads')
+                ->latest()
+                ->get();
+        }
+
         return view($view, $data);
     }
 
@@ -225,6 +233,7 @@ class ContactController extends Controller
             $validated = $request->validate([
                 'first_name'         => 'nullable|string|max:255',
                 'last_name'          => 'nullable|string|max:255',
+                'position'           => 'nullable|string|max:255',
                 'email'              => 'nullable|email|max:255|unique:contacts,email,' . $contact->id,
                 'phone'              => 'nullable|string|max:20',
                 'mobile'             => 'nullable|string|max:20',

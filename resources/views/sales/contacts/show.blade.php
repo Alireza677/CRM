@@ -44,6 +44,10 @@
                        class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-briefcase text-gray-500"></i><span>فرصت‌های مرتبط</span>
                     </a>
+                    <a href="#" data-url="{{ route('sales.contacts.tab', ['contact' => $contact->id, 'tab' => 'leads']) }}"
+                       class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
+                        <i class="fas fa-bullseye text-gray-500"></i><span>سرنخ‌های مرتبط</span>
+                    </a>
                     <a href="#" data-url="{{ route('sales.contacts.tab', ['contact' => $contact->id, 'tab' => 'proformas']) }}"
                        class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
                         <i class="fas fa-file-invoice text-gray-500"></i><span>پیش‌فاکتور</span>
@@ -179,4 +183,3 @@ document.addEventListener("DOMContentLoaded", function () {
 });
 </script>
 @endpush
-

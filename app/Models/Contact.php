@@ -16,6 +16,7 @@ class Contact extends Model
         'owner_user_id',
         'first_name',
         'last_name',
+        'position',
         'email',
         'phone',
         'mobile',
@@ -50,6 +51,11 @@ class Contact extends Model
             ->orderByDesc('created_at');
     }
 
+    public function leads()
+    {
+        return $this->hasMany(\App\Models\SalesLead::class, 'contact_id');
+    }
+
     public function assignedUser()
     {
         return $this->belongsTo(\App\Models\User::class, 'assigned_to');
@@ -73,6 +79,7 @@ class Contact extends Model
             ->logOnly([
                 'first_name',
                 'last_name',
+                'position',
                 'email',
                 'phone',
                 'mobile',

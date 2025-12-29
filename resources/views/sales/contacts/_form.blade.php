@@ -34,6 +34,16 @@
     </div>
 
     <div>
+        <label for="position" class="block text-sm font-medium text-gray-700">سمت</label>
+        <input type="text" name="position" id="position"
+               value="{{ old('position', $contact->position ?? '') }}"
+               class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
+        @error('position')
+            <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
+        @enderror
+    </div>
+
+    <div>
         <label for="email" class="block text-sm font-medium text-gray-700">ایمیل <span class="text-red-500">*</span></label>
         <input type="email" name="email" id="email"
                value="{{ old('email', $contact->email ?? '') }}"

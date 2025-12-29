@@ -69,20 +69,24 @@
                     @php
                         $name = $contact->name ?? trim((($contact->first_name ?? '') . ' ' . ($contact->last_name ?? '')));
                         $email = $contact->email ?? null;
-                        $phone = $contact->phone ?? null;
+                        $phone = $contact->mobile ?? $contact->phone ?? null;
                     @endphp
                     <li class="p-4 flex flex-col sm:flex-row sm:items-center sm:justify-between">
                         <div class="font-medium text-gray-900">
                             {{ $name !== '' ? $name : '-' }}
                         </div>
-                        <div class="mt-2 sm:mt-0 text-gray-700 space-x-4 space-x-reverse">
-                            @if(!empty($email))
+                        <div class="font-medium text-gray-900">
+                            @if(!empty($contact->position))
                                 <span class="inline-block">
-                                    <span class="text-gray-600">ایمیل:</span>
-                                    <span class="ml-1">{{ $email }}</span>
+                                    <span class="text-gray-600">سمت:</span>
+                                    <span class="ml-1">{{ $contact->position }}</span>
                                 </span>
+                            @else
+                                <span class="inline-block text-gray-500">سمت مخاطب ثبت نشده!</span>
                             @endif
-                            @if(!empty($phone))
+                        </div>
+                        <div class="font-medium text-gray-900">
+                           @if(!empty($phone))
                                 <span class="inline-block">
                                     <span class="text-gray-600">تلفن:</span>
                                     <span class="ml-1">{{ $phone }}</span>
@@ -91,6 +95,20 @@
                             @if(empty($email) && empty($phone))
                                 <span class="text-gray-500">اطلاعات تماس ثبت نشده است</span>
                             @endif
+                        </div>
+                        <div class="mt-2 sm:mt-0 text-gray-700 space-x-4 space-x-reverse">
+                            <a href="{{ route('sales.contacts.show', $contact->id) }}"
+                               class="inline-block text-blue-600 hover:text-blue-700 hover:underline">
+                                مشاهده
+                            </a>
+                           
+                            @if(!empty($email))
+                                <span class="inline-block">
+                                    <span class="text-gray-600">ایمیل:</span>
+                                    <span class="ml-1">{{ $email }}</span>
+                                </span>
+                            @endif
+                            
                         </div>
                     </li>
                 @endforeach
