@@ -38,7 +38,7 @@ class DuplicateScanner
                 ->select(array_merge(['id'], $fields));
 
             if (Schema::hasColumn($table, 'merged_into_id')) {
-                $query->whereNull('merged_into_id');
+                $query->whereNull($table . '.merged_into_id');
             }
 
             $query

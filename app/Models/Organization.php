@@ -36,7 +36,8 @@ class Organization extends Model
     protected static function booted(): void
     {
         static::addGlobalScope('notMerged', function (Builder $builder) {
-            $builder->whereNull('merged_into_id');
+            $table = $builder->getModel()->getTable();
+            $builder->whereNull($table . '.merged_into_id');
         });
     }
 
