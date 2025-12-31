@@ -127,11 +127,7 @@ class="fixed right-0 top-[105px] h-[calc(100vh-115px)] w-72 bg-white shadow-lg z
                         <i class="fas fa-receipt text-gray-500"></i><span>اسناد</span>
                     </a>
 
-                    <a href="#"
-                       data-url="{{ route('sales.opportunities.tab', ['opportunity' => $opportunity->id, 'tab' => 'approvals']) }}"
-                       class="load-tab flex items-center space-x-2 rtl:space-x-reverse px-3 py-2 text-gray-700 hover:bg-gray-100 rounded">
-                        <i class="fas fa-check-circle text-gray-500"></i><span>تأییدیه‌ها</span>
-                    </a>
+                    
 
                     <a href="#"
                        data-url="{{ route('sales.opportunities.tab', ['opportunity' => $opportunity->id, 'tab' => 'calls']) }}"

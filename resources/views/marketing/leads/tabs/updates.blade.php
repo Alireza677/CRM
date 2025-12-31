@@ -8,6 +8,7 @@
         'customer_type' => 'نوع مشتری',
         'lead_source' => 'منبع',
         'assigned_to' => 'ارجاع شده به',
+        'contact_id' => 'مخاطب',
         'success_rate' => 'نرخ موفقیت',
         'amount' => 'مبلغ',
         'next_follow_up_date' => 'پیگیری بعدی',
@@ -20,6 +21,7 @@
         'lead_status' => 'وضعیت',
         'customer_type' => 'نوع مشتری',
         'assigned_to' => 'ارجاع شده به',
+        'contact_id' => 'مخاطب',
         'next_follow_up_date' => 'پیگیری بعدی',
         'mobile' => 'موبایل',
         'phone' => 'تلفن',
@@ -27,6 +29,25 @@
     ];
 
     $users = \App\Models\User::pluck('name', 'id')->toArray();
+    $contacts = \App\Models\Contact::select('id', 'first_name', 'last_name')
+        ->get()
+        ->mapWithKeys(function ($contact) {
+            $name = trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? ''));
+            return [$contact->id => ($name !== '' ? $name : ('مخاطب #' . $contact->id))];
+        })
+        ->toArray();
+    $resolveContactName = function ($value) use (&$contacts) {
+        if (!is_numeric($value)) return $value;
+        $id = (int) $value;
+        if (!isset($contacts[$id])) {
+            $contact = \App\Models\Contact::select('id', 'first_name', 'last_name')->find($id);
+            if ($contact) {
+                $name = trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? ''));
+                $contacts[$id] = $name !== '' ? $name : ('مخاطب #' . $id);
+            }
+        }
+        return $contacts[$id] ?? $value;
+    };
 @endphp
 
 <div class="space-y-4" dir="rtl">
@@ -41,9 +62,31 @@
                 @php
                     $eventType = $activity->event ?? $activity->description ?? null;
                     $isCreated = $eventType === 'created';
+                    $isContactAttached = $eventType === 'contact_attached';
+                    $isContactDetached = $eventType === 'contact_detached';
                 @endphp
 
-                @if($isCreated)
+                @if($isContactAttached)
+                    @php
+                        $contactName = $activity->getExtraProperty('contact_name');
+                        if (empty($contactName)) {
+                            $contactName = $resolveContactName($activity->getExtraProperty('contact_id'));
+                        }
+                    @endphp
+                    <div class="text-sm text-green-700 font-semibold">
+                        مخاطب {{ $contactName }} به این سرنخ اضافه شد
+                    </div>
+                @elseif($isContactDetached)
+                    @php
+                        $contactName = $activity->getExtraProperty('contact_name');
+                        if (empty($contactName)) {
+                            $contactName = $resolveContactName($activity->getExtraProperty('contact_id'));
+                        }
+                    @endphp
+                    <div class="text-sm text-red-700 font-semibold">
+                        ارتباط مخاطب {{ $contactName }} حذف شد
+                    </div>
+                @elseif($isCreated)
                     <div class="text-sm text-green-700 font-semibold">سرنخ جدید ایجاد شد</div>
                 @else
                     <div class="text-sm text-gray-800"> تغییری ایجاد شد</div>
@@ -62,9 +105,12 @@
                         return $v;
                     };
 
-                    $display = function ($v, $k) use ($users) {
+                    $display = function ($v, $k) use ($users, $resolveContactName) {
                         if ($k === 'assigned_to' && (is_numeric($v) || is_string($v))) {
                             return $users[$v] ?? $v;
+                        }
+                        if ($k === 'contact_id' && (is_numeric($v) || is_string($v))) {
+                            return $resolveContactName($v);
                         }
                         if ($k === 'next_follow_up_date' && !empty($v)) {
                             try { return jdate($v)->format('Y/m/d'); } catch (\Exception $e) {}
@@ -86,7 +132,9 @@
                     }
                 @endphp
 
-                @if($isCreated)
+                @if($isContactAttached || $isContactDetached)
+                    @php $attributes = []; $old = []; $new = []; @endphp
+                @elseif($isCreated)
                     @php
                         $orderedKeys = [
                             'full_name','company','lead_source','lead_status','customer_type','assigned_to','next_follow_up_date','mobile','phone','email'
@@ -153,6 +201,28 @@
                                 $newNorm = $normalize($newRaw, $key);
                             @endphp
                             @continue($oldNorm === $newNorm)
+
+                            @if($key === 'contact_id')
+                                @php
+                                    $newName = $display($newRaw, $key);
+                                    $oldName = $oldRaw ? $display($oldRaw, $key) : null;
+                                @endphp
+                                <li class="flex flex-row-reverse justify-end items-center gap-1 flex-wrap">
+                                    @if(!empty($oldName))
+                                        
+                                        <span class="text-gray-800">{{ $oldName }}</span>
+                                        <span>به</span>
+                                        <span class="text-gray-800">{{ $newName }}</span>
+                                        <span>تغییر یافت: </span>
+                                        <span class="text-gray-800">مخاطب</span>
+                                    @else
+                                        <span class="text-gray-800">مخاطب</span>
+                                        <span class="text-gray-800">{{ $newName }}</span>
+                                        <span>به این سرنخ اضافه شد</span>
+                                    @endif
+                                </li>
+                                @continue
+                            @endif
 
                             <li class="flex flex-row-reverse justify-end items-center gap-1 flex-wrap">
                                 <span class="bg-green-100 text-green-800 px-2 py-0.5 rounded text-xs">

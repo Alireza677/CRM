@@ -147,7 +147,7 @@
     <div class="bg-yellow-50 rounded-lg p-4 shadow flex items-center justify-between">
         <div>
             <h3 class="text-lg font-semibold text-yellow-800">مخاطبین</h3>
-            <p class="text-sm text-yellow-600 mt-1">تعداد مخاطبین: {{ !empty($lead->contact_id) ? 1 : 0 }}</p>
+            <p class="text-sm text-yellow-600 mt-1">تعداد مخاطبین: {{ $lead->contacts_count ?? ($lead->contacts->count() ?? 0) }}</p>
         </div>
         <i class="fas fa-user-friends text-3xl text-yellow-400"></i>
     </div>

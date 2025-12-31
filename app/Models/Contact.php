@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Models\Traits\AppliesVisibilityScope;
@@ -31,7 +32,20 @@ class Contact extends Model
         'team_id',
         'department',
         'visibility',
+        'merged_into_id',
+        'merged_at',
     ];
+
+    protected $casts = [
+        'merged_at' => 'datetime',
+    ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('notMerged', function (Builder $builder) {
+            $builder->whereNull('merged_into_id');
+        });
+    }
 
     // Relations
     public function opportunities()
@@ -53,12 +67,23 @@ class Contact extends Model
 
     public function leads()
     {
-        return $this->hasMany(\App\Models\SalesLead::class, 'contact_id');
+        return $this->belongsToMany(\App\Models\SalesLead::class, 'lead_contacts')
+            ->withTimestamps();
     }
 
     public function assignedUser()
     {
         return $this->belongsTo(\App\Models\User::class, 'assigned_to');
+    }
+
+    public function mergedInto()
+    {
+        return $this->belongsTo(self::class, 'merged_into_id');
+    }
+
+    public function scopeNotMerged(Builder $query): Builder
+    {
+        return $query->whereNull($this->getTable() . '.merged_into_id');
     }
 
     // Accessors

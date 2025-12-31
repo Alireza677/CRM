@@ -249,7 +249,90 @@ document.addEventListener("DOMContentLoaded", function () {
         el.classList.remove('text-gray-700');
     }
 
-    function loadTab(url, clickedEl = null) { console.log('[LeadTabs] fetching', url); contentArea.innerHTML = '<div class="text-gray-400 p-4 flex items-center gap-2">' + '<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24">' + '<circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="4" opacity=".25"></circle>' + '<path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" fill="none"></path>' + '</svg>' + 'در حال بارگذاری...' + '</div>'; fetch(url) .then(async (res) => { if (!res.ok) { const body = await res.text(); console.error('[LeadTabs] not ok', res.status, res.statusText, body); throw new Error('http_' + res.status); } return res.text(); }) .then(html => { contentArea.innerHTML = html; initReassignTimer(contentArea); if (clickedEl && window.matchMedia('(max-width: 767px)').matches) { closeSidebar(); } }) .catch((err) => { console.error('[LeadTabs] failed', err); contentArea.innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری اطلاعات.</div>'; }); }
+    
+    function initLeadContactModal(scope = document) {
+        const modal = scope.querySelector('#leadContactModal');
+        if (!modal) return;
+
+        const searchInput = modal.querySelector('#leadContactSearchInput');
+        const rows = Array.from(modal.querySelectorAll('#leadContactTableBody tr'));
+        const emptyState = modal.querySelector('#leadContactNoResults');
+
+        function applyFilter() {
+            const term = (searchInput?.value || '').trim().toLowerCase();
+            let visible = 0;
+            rows.forEach((row) => {
+                const name = (row.dataset.name || '').toLowerCase();
+                const phone = (row.dataset.phone || '').toLowerCase();
+                const match = !term || name.includes(term) || phone.includes(term);
+                row.classList.toggle('hidden', !match);
+                if (match) visible += 1;
+            });
+            emptyState?.classList.toggle('hidden', visible !== 0);
+        }
+
+        window.openLeadContactModal = function () {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (searchInput) {
+                searchInput.value = '';
+                applyFilter();
+                setTimeout(() => searchInput.focus(), 10);
+            }
+        };
+
+        window.closeLeadContactModal = function () {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+        window.handleLeadContactSelect = async function (id) {
+            const attachUrl = modal.dataset.attachUrl;
+            if (!attachUrl) return;
+            const csrf = modal.dataset.csrf || document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+            try {
+                const res = await fetch(attachUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                    },
+                    body: JSON.stringify({ contact_id: id }),
+                });
+                if (!res.ok) {
+                    const payload = await res.json().catch(() => ({}));
+                    throw new Error(payload.message || '??? ?? ????? ?????.');
+                }
+                window.closeLeadContactModal?.();
+                window.reloadLeadContactTab?.();
+            } catch (err) {
+                console.error('[LeadContact] attach failed', err);
+                alert(err?.message || '??? ?? ????? ?????.');
+            }
+        };
+
+        if (searchInput && !searchInput.dataset.bound) {
+            searchInput.addEventListener('input', applyFilter);
+            searchInput.dataset.bound = '1';
+        }
+
+        if (!modal.dataset.bound) {
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) window.closeLeadContactModal?.();
+            });
+            modal.dataset.bound = '1';
+        }
+
+        if (!window._leadContactModalEscapeBound) {
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') window.closeLeadContactModal?.();
+            });
+            window._leadContactModalEscapeBound = true;
+        }
+    }
+
+    function loadTab(url, clickedEl = null) { console.log('[LeadTabs] fetching', url); contentArea.innerHTML = '<div class="text-gray-400 p-4 flex items-center gap-2">' + '<svg class="w-5 h-5 animate-spin" viewBox="0 0 24 24">' + '<circle cx="12" cy="12" r="10" stroke="currentColor" fill="none" stroke-width="4" opacity=".25"></circle>' + '<path d="M4 12a8 8 0 018-8" stroke="currentColor" stroke-width="4" fill="none"></path>' + '</svg>' + 'در حال بارگذاری...' + '</div>'; fetch(url) .then(async (res) => { if (!res.ok) { const body = await res.text(); console.error('[LeadTabs] not ok', res.status, res.statusText, body); throw new Error('http_' + res.status); } return res.text(); }) .then(html => { contentArea.innerHTML = html; initReassignTimer(contentArea); initLeadContactModal(contentArea); if (clickedEl && window.matchMedia('(max-width: 767px)').matches) { closeSidebar(); } }) .catch((err) => { console.error('[LeadTabs] failed', err); contentArea.innerHTML = '<div class="text-red-500 p-4">خطا در بارگذاری اطلاعات.</div>'; }); }
 
 
     links.forEach(link => {
@@ -259,6 +342,72 @@ document.addEventListener("DOMContentLoaded", function () {
             const url = this.dataset.url;
             loadTab(url, this);
         });
+    });
+
+    window.reloadLeadContactTab = function () {
+        const contactTab = document.querySelector('.load-tab[data-tab="contact"]');
+        if (contactTab) {
+            setActiveTab(contactTab);
+            loadTab(contactTab.dataset.url, contactTab);
+        }
+    };
+
+    contentArea?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+
+        const action = btn.dataset.action;
+        const contactId = btn.dataset.contactId;
+        const container = btn.closest('[data-detach-url][data-primary-url]');
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        if (!contactId || !container) return;
+
+        if (action === 'detach-contact') {
+            if (!confirm('??? ?? ??? ?????? ??? ????? ????? ??????')) return;
+            const url = container.dataset.detachUrl;
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                    },
+                    body: JSON.stringify({ contact_id: contactId }),
+                });
+                if (!res.ok) {
+                    const payload = await res.json().catch(() => ({}));
+                    throw new Error(payload.message || '??? ?? ??? ?????? ?????.');
+                }
+                window.reloadLeadContactTab?.();
+            } catch (err) {
+                console.error('[LeadContact] detach failed', err);
+                alert(err?.message || '??? ?? ??? ?????? ?????.');
+            }
+            return;
+        }
+
+        if (action === 'set-primary') {
+            const url = container.dataset.primaryUrl;
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                    },
+                    body: JSON.stringify({ contact_id: contactId }),
+                });
+                if (!res.ok) {
+                    const payload = await res.json().catch(() => ({}));
+                    throw new Error(payload.message || '??? ?? ????? ????? ????.');
+                }
+                window.reloadLeadContactTab?.();
+            } catch (err) {
+                console.error('[LeadContact] set primary failed', err);
+                alert(err?.message || '??? ?? ????? ????? ????.');
+            }
+        }
     });
 
     const defaultTab = document.querySelector('.load-tab[data-url*="overview"]');

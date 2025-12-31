@@ -81,6 +81,11 @@ class Opportunity extends Model
         return $this->belongsTo(Contact::class, 'contact_id');
     }
 
+    public function contacts()
+    {
+        return $this->hasMany(Contact::class, 'opportunity_id');
+    }
+
     public function assignedUser()
     {
     return $this->belongsTo(User::class, 'assigned_to');

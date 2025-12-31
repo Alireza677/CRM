@@ -495,6 +495,15 @@ class OpportunityController extends Controller
                 ->get();
         }
 
+        if ($tab === 'contacts') {
+            $opportunity->loadMissing(['contact.organization', 'contacts.organization']);
+            $contacts = $opportunity->contacts;
+            if ($opportunity->contact && !$contacts->contains('id', $opportunity->contact->id)) {
+                $contacts = $contacts->prepend($opportunity->contact);
+            }
+            $data['contacts'] = $contacts;
+        }
+
         return view($view, $data);
     }
 
@@ -536,8 +545,12 @@ class OpportunityController extends Controller
                 return view('sales.opportunities.tabs.documents', compact('opportunity'));
 
             case 'contacts':
-                $opportunity->load('contact', 'contact.organization');
-                return view('sales.opportunities.tabs.contacts', compact('opportunity'));
+                $opportunity->loadMissing(['contact.organization', 'contacts.organization']);
+                $contacts = $opportunity->contacts;
+                if ($opportunity->contact && !$contacts->contains('id', $opportunity->contact->id)) {
+                    $contacts = $contacts->prepend($opportunity->contact);
+                }
+                return view('sales.opportunities.tabs.contacts', compact('opportunity', 'contacts'));
 
             case 'orders':
                 return view('sales.opportunities.tabs.orders', compact('opportunity'));

@@ -28,9 +28,11 @@ use App\Http\Controllers\Sales\ContactImportController;
 use App\Http\Controllers\Sales\OpportunityController;
 use App\Http\Controllers\Sales\OpportunityImportController;
 use App\Http\Controllers\Sales\ContactController;
+use App\Http\Controllers\Sales\ContactDuplicateController;
 use App\Http\Controllers\Sales\ProformaController;
 use App\Http\Controllers\Sales\QuotationController;
 use App\Http\Controllers\Sales\OrganizationController;
+use App\Http\Controllers\Sales\OrganizationDuplicateController;
 use App\Http\Controllers\Sales\AjaxCreateController;
 use App\Http\Controllers\Sales\DocumentController;
 use App\Http\Controllers\Inventory\ProductController;
@@ -133,6 +135,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('marketing/leads/converted', [SalesLeadController::class, 'converted'])->name('marketing.leads.converted');
     Route::post('marketing/leads/{lead}/favorite', [LeadFavoriteController::class, 'store'])->name('marketing.leads.favorites.store');
     Route::delete('marketing/leads/{lead}/favorite', [LeadFavoriteController::class, 'destroy'])->name('marketing.leads.favorites.destroy');
+    Route::post('marketing/leads/{lead}/attach-contact', [SalesLeadController::class, 'attachContact'])
+        ->name('marketing.leads.attach-contact');
+    Route::post('marketing/leads/{lead}/detach-contact', [SalesLeadController::class, 'detachContact'])
+        ->name('marketing.leads.detach-contact');
+    Route::post('marketing/leads/{lead}/primary-contact', [SalesLeadController::class, 'setPrimaryContact'])
+        ->name('marketing.leads.primary-contact');
 
     // ریسورس اصلی که نمایش، ویرایش، حذف و ایجاد سرنخ‌ها را پوشش می‌دهد
     Route::resource('marketing/leads', SalesLeadController::class)->names('marketing.leads');
@@ -316,6 +324,14 @@ Route::middleware(['auth'])->group(function () {
         Route::get('contacts/export/{format}', [ContactImportController::class, 'export'])
             ->whereIn('format', ['csv', 'xlsx'])
             ->name('contacts.export.format');
+        Route::get('contacts/duplicates', [ContactDuplicateController::class, 'index'])
+            ->name('contacts.duplicates.index');
+        Route::post('contacts/duplicates/scan', [ContactDuplicateController::class, 'scan'])
+            ->name('contacts.duplicates.scan');
+        Route::get('contacts/duplicates/{group}/review', [ContactDuplicateController::class, 'review'])
+            ->name('contacts.duplicates.review');
+        Route::post('contacts/merge', [ContactDuplicateController::class, 'merge'])
+            ->name('contacts.merge');
         Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])
             ->name('contacts.bulk_delete');
         Route::get('contacts/{contact}/tab/{tab}', [ContactController::class, 'loadTab'])->name('contacts.tab');
@@ -332,6 +348,14 @@ Route::middleware(['auth'])->group(function () {
         // سازمان‌ها
         Route::get('organizations/import', [OrganizationImportController::class, 'importForm'])->name('organizations.import.form');
         Route::post('organizations/import', [OrganizationImportController::class, 'import'])->name('organizations.import');
+        Route::get('organizations/duplicates', [OrganizationDuplicateController::class, 'index'])
+            ->name('organizations.duplicates.index');
+        Route::post('organizations/duplicates/scan', [OrganizationDuplicateController::class, 'scan'])
+            ->name('organizations.duplicates.scan');
+        Route::get('organizations/duplicates/{group}/review', [OrganizationDuplicateController::class, 'review'])
+            ->name('organizations.duplicates.review');
+        Route::post('organizations/merge', [OrganizationDuplicateController::class, 'merge'])
+            ->name('organizations.merge');
         Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // قبل از resource
         Route::get('organizations/{organization}/tab/{tab}', [OrganizationController::class, 'loadTab'])->name('organizations.tab');
         Route::resource('organizations', OrganizationController::class)->names('organizations');

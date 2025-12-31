@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Builder;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Models\Traits\AppliesVisibilityScope;
@@ -23,8 +24,21 @@ class Organization extends Model
         'notes',
         'state',
         'city',
-        'assigned_to',     // ← اضافه کن
+        'assigned_to',
+        'merged_into_id',
+        'merged_at',
     ];
+
+    protected $casts = [
+        'merged_at' => 'datetime',
+    ];
+
+    protected static function booted(): void
+    {
+        static::addGlobalScope('notMerged', function (Builder $builder) {
+            $builder->whereNull('merged_into_id');
+        });
+    }
 
     public function contacts()
     {
@@ -44,6 +58,16 @@ class Organization extends Model
     public function contact()
     {
         return $this->belongsTo(Contact::class, 'contact_id');
+    }
+
+    public function mergedInto()
+    {
+        return $this->belongsTo(self::class, 'merged_into_id');
+    }
+
+    public function scopeNotMerged(Builder $query): Builder
+    {
+        return $query->whereNull($this->getTable() . '.merged_into_id');
     }
 
     // Activity Log
@@ -71,3 +95,4 @@ class Organization extends Model
         return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
     }
 }
+

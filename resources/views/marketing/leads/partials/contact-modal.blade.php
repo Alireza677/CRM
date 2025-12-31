@@ -1,7 +1,8 @@
 {{-- مودال انتخاب مخاطب --}}
 @php $contacts = $contacts ?? collect(); @endphp
 <div id="leadContactModal"
-     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center"
+     @if(!empty($attachUrl)) data-attach-url="{{ $attachUrl }}" data-csrf="{{ csrf_token() }}" @endif>
     <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
         <div class="flex justify-between items-center mb-4">
             <h3 class="text-lg font-semibold">انتخاب مخاطب</h3>
@@ -28,7 +29,7 @@
                     <tr class="cursor-pointer hover:bg-gray-50"
                         data-name="{{ $c->full_name }}"
                         data-phone="{{ preg_replace('/\D+/', '', (string)($c->mobile ?? '')) }}"
-                        onclick="selectLeadContact({{ $c->id }}, @js($c->full_name))">
+                        onclick="handleLeadContactSelect({{ $c->id }}, @js($c->full_name))">
                         <td class="px-4 py-2 border-b border-gray-200">{{ $c->full_name }}</td>
                         <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $c->mobile ?? '—' }}</td>
                     </tr>
@@ -69,6 +70,10 @@ function selectLeadContact(id, name) {
   if (nameInput) nameInput.value = name || '';
   closeLeadContactModal();
 }
+
+window.handleLeadContactSelect = window.handleLeadContactSelect || function (id, name) {
+  selectLeadContact(id, name);
+};
 
 (function () {
   const modal = document.getElementById('leadContactModal');

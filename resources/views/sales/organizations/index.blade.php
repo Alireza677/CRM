@@ -37,6 +37,8 @@
 
             <a href="{{ route('sales.organizations.create') }}"
                class="inline-block bg-blue-500 text-white px-4 py-2 rounded hover:bg-blue-600 text-sm">+ سازمان جدید</a>
+            <a href="{{ route('sales.organizations.duplicates.index') }}"
+               class="inline-block bg-indigo-600 text-white px-4 py-2 rounded hover:bg-indigo-700 text-sm">یافتن موارد تکراری</a>
 
             <a href="{{ route('sales.organizations.import.form') }}"
                class="inline-block bg-emerald-500 text-white px-4 py-2 rounded hover:bg-emerald-600 text-sm">درون‌ریزی از Excel</a>
@@ -148,4 +150,3 @@
     })();
 </script>
 @endpush
-

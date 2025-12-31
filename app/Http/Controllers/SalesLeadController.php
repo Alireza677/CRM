@@ -388,7 +388,7 @@ class SalesLeadController extends Controller
             if (!$confirmedContact || !$contactMobileNormalized || ($normalizedMobile && $contactMobileNormalized !== $normalizedMobile)) {
                 return redirect()
                     ->back()
-                    ->withErrors(['mobile' => '??????? ????? ?????????? ?? ????? ?????? ?????? ?????.'])
+                    ->withErrors(['mobile' => 'موبایل مخاطب انتخاب‌شده با موبایل واردشده مطابقت ندارد.'])
                     ->withInput();
             }
 
@@ -396,26 +396,27 @@ class SalesLeadController extends Controller
             $missingFields = [];
 
             if ($contactFullName === '') {
-                $missingFields['full_name'] = '??? ????? ???? ???.';
+                $missingFields['full_name'] = 'نام و نام خانوادگی مخاطب وارد نشده است.';
             }
 
             if (!$contactMobileNormalized) {
-                $missingFields['mobile'] = '????? ?????? ????? ???? ???.';
+                $missingFields['mobile'] = 'شماره موبایل مخاطب وارد نشده است.';
             }
 
             if (empty($confirmedContact->state)) {
-                $missingFields['state'] = '????? ????? ???? ???.';
+                $missingFields['state'] = 'استان مخاطب وارد نشده است.';
             }
 
             if (empty($confirmedContact->city)) {
-                $missingFields['city'] = '??? ????? ???? ???.';
+                $missingFields['city'] = 'شهر مخاطب وارد نشده است.';
             }
+
 
             if (!empty($missingFields)) {
                 return redirect()
                     ->back()
                     ->withErrors($missingFields)
-                    ->with('error', '??????? ????? ???? ???? ????? ????? ???? ?? ????? ????.')
+                    ->with('error', 'اطلاعات مخاطب ناقص است. لطفاً ابتدا اطلاعات مخاطب را تکمیل کنید.')
                     ->withInput();
             }
 
@@ -549,7 +550,7 @@ class SalesLeadController extends Controller
         ]);
 
         // ---------- Create inside transaction ----------
-        $lead = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $shouldCreateContact) {
+        $lead = \Illuminate\Support\Facades\DB::transaction(function () use ($validated, $shouldCreateContact, $selectedContactId) {
             $payload = $validated;
 
             if (empty($payload['assigned_to'])) {
@@ -583,6 +584,7 @@ class SalesLeadController extends Controller
 
                 if ($contact) {
                     $lead->forceFill(['contact_id' => $contact->id])->saveQuietly();
+                    $lead->contacts()->syncWithoutDetaching([$contact->id]);
 
                     \Log::info('👤 leads.store.contact_created_from_lead', [
                         'lead_id'    => $lead->id,
@@ -593,6 +595,10 @@ class SalesLeadController extends Controller
                         'lead_id' => $lead->id ?? null,
                     ]);
                 }
+            }
+
+            if ($lead && !empty($selectedContactId)) {
+                $lead->contacts()->syncWithoutDetaching([(int) $selectedContactId]);
             }
 
             return $lead;
@@ -1172,6 +1178,7 @@ public function show(SalesLead $lead)
         $data = ['lead' => $lead];
 
         if ($tab === 'overview') {
+            $lead->loadCount('contacts');
             $data['rotationRemainingSeconds'] = $this->rotationRemainingSeconds($lead);
         }
 
@@ -1183,8 +1190,104 @@ public function show(SalesLead $lead)
                 ->orderBy('name')
                 ->get();
         }
+        if ($tab === 'contact') {
+            $lead->load(['contacts.organization', 'primaryContact']);
+            $data['contacts'] = Contact::select('id', 'first_name', 'last_name', 'mobile')
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get();
+        }
 
         return view($view, $data);
+    }
+
+    public function attachContact(Request $request, SalesLead $lead)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer|exists:contacts,id',
+        ]);
+
+        $contact = Contact::visibleFor($request->user(), 'contacts')->find($validated['contact_id']);
+        if (!$contact) {
+            return response()->json(['message' => 'مخاطب انتخاب شده یافت نشد.'], 404);
+        }
+
+        $lead->contacts()->syncWithoutDetaching([$contact->id]);
+        if (empty($lead->contact_id)) {
+            $lead->forceFill(['contact_id' => $contact->id])->save();
+        }
+
+        activity('lead')
+            ->performedOn($lead)
+            ->causedBy($request->user())
+            ->withProperties([
+                'contact_id' => $contact->id,
+                'contact_name' => $contact->full_name ?? $contact->name ?? '',
+            ])
+            ->log('contact_attached');
+
+        return response()->json([
+            'ok' => true,
+            'contact' => [
+                'id' => $contact->id,
+                'name' => $contact->full_name ?? $contact->name ?? '',
+            ],
+        ]);
+    }
+
+    public function detachContact(Request $request, SalesLead $lead)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer|exists:contacts,id',
+        ]);
+
+        $contactId = (int) $validated['contact_id'];
+        $contact = Contact::visibleFor($request->user(), 'contacts')->find($contactId);
+        if (!$contact) {
+            return response()->json(['message' => 'مخاطب انتخاب شده یافت نشد.'], 404);
+        }
+
+        $lead->contacts()->detach($contactId);
+
+        $wasPrimary = (int) ($lead->contact_id ?? 0) === $contactId;
+        $newPrimaryId = null;
+        if ($wasPrimary) {
+            $newPrimaryId = $lead->contacts()->orderBy('lead_contacts.created_at')->value('contacts.id');
+            $lead->forceFill(['contact_id' => $newPrimaryId])->save();
+        }
+
+        activity('lead')
+            ->performedOn($lead)
+            ->causedBy($request->user())
+            ->withProperties([
+                'contact_id' => $contactId,
+                'contact_name' => $contact->full_name ?? $contact->name ?? '',
+                'was_primary' => $wasPrimary,
+                'new_primary_id' => $newPrimaryId,
+            ])
+            ->log('contact_detached');
+
+        return response()->json([
+            'ok' => true,
+            'new_primary_id' => $newPrimaryId,
+        ]);
+    }
+
+    public function setPrimaryContact(Request $request, SalesLead $lead)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer|exists:contacts,id',
+        ]);
+
+        $contactId = (int) $validated['contact_id'];
+        $exists = $lead->contacts()->whereKey($contactId)->exists();
+        if (!$exists) {
+            return response()->json(['message' => 'مخاطب انتخاب شده به این سرنخ متصل نیست.'], 422);
+        }
+
+        $lead->forceFill(['contact_id' => $contactId])->save();
+
+        return response()->json(['ok' => true]);
     }
 
     private function rotationRemainingSeconds(SalesLead $lead): int
@@ -1230,9 +1333,13 @@ public function show(SalesLead $lead)
                 }
             }
 
-            $contact = null;
-            if (!empty($firstName) || !empty($lastName)) {
-                $contact = Contact::create([
+            $primaryContact = null;
+            if (!empty($lead->contact_id)) {
+                $primaryContact = Contact::find($lead->contact_id);
+            }
+
+            if (!$primaryContact && (!empty($firstName) || !empty($lastName))) {
+                $primaryContact = Contact::create([
                     'first_name'      => $firstName,
                     'last_name'       => $lastName,
                     'email'           => $lead->email,
@@ -1254,13 +1361,27 @@ public function show(SalesLead $lead)
             $opportunity = Opportunity::create([
                 'name'            => $name,
                 'organization_id' => $organization?->id,
-                'contact_id'      => $contact?->id,
+                'contact_id'      => $primaryContact?->id,
                 'assigned_to'     => $lead->assigned_to,
                 'source'          => $lead->lead_source,
                 'next_follow_up'  => $lead->next_follow_up_date,
                 'description'     => $lead->notes,
                 'stage'           => Opportunity::STAGE_OPEN,
             ]);
+
+            $leadContactIds = $lead->contacts()->pluck('contacts.id')->all();
+            if (!empty($lead->contact_id)) {
+                $leadContactIds[] = (int) $lead->contact_id;
+            }
+            if (!empty($primaryContact?->id)) {
+                $leadContactIds[] = (int) $primaryContact->id;
+            }
+            $leadContactIds = array_values(array_unique(array_filter($leadContactIds)));
+
+            if (!empty($leadContactIds)) {
+                Contact::whereIn('id', $leadContactIds)
+                    ->update(['opportunity_id' => $opportunity->id]);
+            }
 
             $lead->converted_at             = Carbon::now();
             $lead->converted_opportunity_id = $opportunity->id;

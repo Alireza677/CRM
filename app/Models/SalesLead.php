@@ -352,6 +352,17 @@ class SalesLead extends Model
         return $this->belongsTo(Contact::class);
     }
 
+    public function primaryContact()
+    {
+        return $this->belongsTo(Contact::class, 'contact_id');
+    }
+
+    public function contacts()
+    {
+        return $this->belongsToMany(Contact::class, 'lead_contacts')
+            ->withTimestamps();
+    }
+
     public function creator()
     {
         return $this->belongsTo(User::class, 'created_by');

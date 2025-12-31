@@ -14,6 +14,10 @@
                     class="px-4 py-2 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-semibold">
                         <i class="fas fa-plus ml-1"></i> ایجاد مخاطب جدید
                     </a>
+                    <a href="{{ route('sales.contacts.duplicates.index') }}"
+                    class="px-4 py-2 bg-indigo-600 text-white rounded hover:bg-indigo-700 text-xs font-semibold">
+                        <i class="fas fa-copy ml-1"></i> یافتن تکراری ها
+                    </a>
                     @role('admin')
                         <a href="{{ route('sales.contacts.import.form') }}"
                         class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-semibold">
@@ -363,3 +367,4 @@
 </div>
 
 @endsection
+
