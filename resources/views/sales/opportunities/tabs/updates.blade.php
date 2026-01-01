@@ -9,6 +9,13 @@
         'full_name','company','lead_source','lead_status','customer_type','assigned_to','next_follow_up_date','mobile','phone','email'
     ];
     $users = \App\Models\User::pluck('name', 'id')->toArray();
+    $resolveContactName = function ($value) {
+        if (!is_numeric($value)) return $value;
+        $contact = \App\Models\Contact::find((int) $value);
+        if (!$contact) return $value;
+        $name = trim(($contact->first_name ?? '') . ' ' . ($contact->last_name ?? ''));
+        return $name !== '' ? $name : ('مخاطب #' . $contact->id);
+    };
 @endphp
 
 <div class="space-y-6">
@@ -24,10 +31,33 @@
                 $isCreated = $eventType === 'created';
                 $isProformaCreated = $eventType === 'proforma_created';
                 $isDocumentVoid = in_array($eventType, ['document_voided', 'document_unvoided'], true);
+                $isContactAttached = $eventType === 'contact_attached';
+                $isContactDetached = $eventType === 'contact_detached';
                 $copiedFromLead = ($activity->properties['copied_from'] ?? null) === 'lead';
             @endphp
 
-            @if($isCreated)
+            @if($isContactAttached)
+                @php
+                    $contactName = $activity->properties['contact_name'] ?? null;
+                    if (empty($contactName)) {
+                        $contactName = $resolveContactName($activity->properties['contact_id'] ?? null);
+                    }
+                @endphp
+                <div class="text-sm mb-2 font-semibold text-green-700">
+                    مخاطب {{ $contactName }} به این فرصت فروش متصل شد.
+                </div>
+            @elseif($isContactDetached)
+                @php
+                    $contactName = $activity->properties['contact_name'] ?? null;
+                    if (empty($contactName)) {
+                        $contactName = $resolveContactName($activity->properties['contact_id'] ?? null);
+                    }
+                @endphp
+                <div class="text-sm mb-2 font-semibold text-red-700">
+                    مخاطب {{ $contactName }} از این فرصت فروش جدا شد.
+                </div>
+
+            @elseif($isCreated)
                 <div class="text-sm mb-2 font-semibold text-green-700">فرصت فروش جدید ایجاد شد</div>
                 @if($copiedFromLead)
                     <div class="text-xs text-gray-500 mb-2">این رویداد از لاگ‌های سرنخ منتقل شده است.</div>

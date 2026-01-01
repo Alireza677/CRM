@@ -396,7 +396,10 @@ class OpportunityController extends Controller
     {
         $reasons = $this->sanitizeLossReasons($reasons);
         $cleanBody = trim($body);
-        $reasonsLine = $reasons !== [] ? '????? ??????????: ' . implode('? ', $reasons) : '';
+
+        $reasonsLine = $reasons !== []
+            ? 'دلایل عدم موفقیت: ' . implode('، ', $reasons)
+            : '';
 
         if ($reasonsLine !== '') {
             if (Str::startsWith($cleanBody, $reasonsLine)) {
@@ -410,6 +413,7 @@ class OpportunityController extends Controller
 
         return $cleanBody;
     }
+
 
     public function destroy(Opportunity $opportunity)
     {
@@ -488,7 +492,7 @@ class OpportunityController extends Controller
             $data['activities'] = Activity::where('subject_type', Opportunity::class)
                 ->where('subject_id', $opportunity->id)
                 ->where(function ($query) {
-                    $query->whereIn('event', ['created', 'updated', 'proforma_created', 'document_voided', 'document_unvoided'])
+                    $query->whereIn('event', ['created', 'updated', 'proforma_created', 'document_voided', 'document_unvoided', 'contact_attached', 'contact_detached'])
                         ->orWhereNull('event');
                 })
                 ->latest()
@@ -502,6 +506,11 @@ class OpportunityController extends Controller
                 $contacts = $contacts->prepend($opportunity->contact);
             }
             $data['contacts'] = $contacts;
+            $data['allContacts'] = Contact::visibleFor(auth()->user(), 'contacts')
+                ->select('id', 'first_name', 'last_name', 'mobile')
+                ->orderBy('last_name')
+                ->orderBy('first_name')
+                ->get();
         }
 
         return view($view, $data);
@@ -523,7 +532,7 @@ class OpportunityController extends Controller
                 $activities = Activity::where('subject_type', Opportunity::class)
                     ->where('subject_id', $opportunity->id)
                     ->where(function ($query) {
-                        $query->whereIn('event', ['created', 'updated', 'proforma_created', 'document_voided', 'document_unvoided'])
+                        $query->whereIn('event', ['created', 'updated', 'proforma_created', 'document_voided', 'document_unvoided', 'contact_attached', 'contact_detached'])
                             ->orWhereNull('event');
                     })
                     ->latest()
@@ -550,7 +559,12 @@ class OpportunityController extends Controller
                 if ($opportunity->contact && !$contacts->contains('id', $opportunity->contact->id)) {
                     $contacts = $contacts->prepend($opportunity->contact);
                 }
-                return view('sales.opportunities.tabs.contacts', compact('opportunity', 'contacts'));
+                $allContacts = Contact::visibleFor(auth()->user(), 'contacts')
+                    ->select('id', 'first_name', 'last_name', 'mobile')
+                    ->orderBy('last_name')
+                    ->orderBy('first_name')
+                    ->get();
+                return view('sales.opportunities.tabs.contacts', compact('opportunity', 'contacts', 'allContacts'));
 
             case 'orders':
                 return view('sales.opportunities.tabs.orders', compact('opportunity'));
@@ -558,5 +572,103 @@ class OpportunityController extends Controller
             default:
                 abort(404);
         }
+    }
+
+    public function attachContact(Request $request, Opportunity $opportunity)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer|exists:contacts,id',
+        ]);
+
+        $contact = Contact::visibleFor($request->user(), 'contacts')->find($validated['contact_id']);
+        if (!$contact) {
+            return response()->json(['message' => 'مخاطب انتخاب شده یافت نشد.'], 404);
+        }
+
+        $contact->forceFill(['opportunity_id' => $opportunity->id])->save();
+        if (empty($opportunity->contact_id)) {
+            $opportunity->forceFill(['contact_id' => $contact->id])->save();
+        }
+
+        activity('opportunity')
+            ->performedOn($opportunity)
+            ->causedBy($request->user())
+            ->withProperties([
+                'contact_id' => $contact->id,
+                'contact_name' => $contact->full_name ?? $contact->name ?? '',
+            ])
+            ->log('contact_attached');
+
+        return response()->json([
+            'ok' => true,
+            'contact' => [
+                'id' => $contact->id,
+                'name' => $contact->full_name ?? $contact->name ?? '',
+            ],
+        ]);
+    }
+
+    public function detachContact(Request $request, Opportunity $opportunity)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer|exists:contacts,id',
+        ]);
+
+        $contactId = (int) $validated['contact_id'];
+
+        $contact = Contact::visibleFor($request->user(), 'contacts')->find($contactId);
+        if (!$contact) {
+            return response()->json(['message' => 'مخاطب انتخاب‌شده یافت نشد.'], 404);
+        }
+
+        if ((int) ($contact->opportunity_id ?? 0) !== (int) $opportunity->id
+            && (int) ($opportunity->contact_id ?? 0) !== $contactId) {
+            return response()->json(['message' => 'این مخاطب به این فرصت فروش مرتبط نیست.'], 422);
+        }
+
+        $contact->forceFill(['opportunity_id' => null])->save();
+
+        $wasPrimary = (int) ($opportunity->contact_id ?? 0) === $contactId;
+        $newPrimaryId = null;
+
+        if ($wasPrimary) {
+            $newPrimaryId = $opportunity->contacts()->orderBy('created_at')->value('id');
+            $opportunity->forceFill(['contact_id' => $newPrimaryId])->save();
+        }
+
+        activity('opportunity')
+            ->performedOn($opportunity)
+            ->causedBy($request->user())
+            ->withProperties([
+                'contact_id' => $contactId,
+                'contact_name' => $contact->full_name ?? $contact->name ?? '',
+                'was_primary' => $wasPrimary,
+                'new_primary_id' => $newPrimaryId,
+            ])
+            ->log('contact_detached');
+
+        return response()->json([
+            'ok' => true,
+            'new_primary_id' => $newPrimaryId,
+        ]);
+    }
+
+
+    public function setPrimaryContact(Request $request, Opportunity $opportunity)
+    {
+        $validated = $request->validate([
+            'contact_id' => 'required|integer|exists:contacts,id',
+        ]);
+
+        $contactId = (int) $validated['contact_id'];
+        $exists = $opportunity->contacts()->whereKey($contactId)->exists()
+            || (int) ($opportunity->contact_id ?? 0) === $contactId;
+        if (!$exists) {
+            return response()->json(['message' => 'مخاطب انتخاب شده به این فرصت متصل نیست.'], 422);
+        }
+
+        $opportunity->forceFill(['contact_id' => $contactId])->save();
+
+        return response()->json(['ok' => true]);
     }
 }

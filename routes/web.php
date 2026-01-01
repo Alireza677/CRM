@@ -218,6 +218,15 @@ Route::middleware(['auth'])->group(function () {
 
         Route::get('opportunities/{opportunity}/tab/{tab}', [OpportunityController::class, 'loadTab'])->name('opportunities.tab');
         Route::post('opportunities/{opportunity}/notes', [OpportunityNoteController::class, 'store'])->name('opportunities.notes.store');
+        Route::post('opportunities/{opportunity}/attach-contact', [OpportunityController::class, 'attachContact'])
+            ->name('opportunities.attach-contact')
+            ->middleware('can:update,opportunity');
+        Route::post('opportunities/{opportunity}/detach-contact', [OpportunityController::class, 'detachContact'])
+            ->name('opportunities.detach-contact')
+            ->middleware('can:update,opportunity');
+        Route::post('opportunities/{opportunity}/primary-contact', [OpportunityController::class, 'setPrimaryContact'])
+            ->name('opportunities.primary-contact')
+            ->middleware('can:update,opportunity');
 
         // سرنخ‌ها
         Route::get('leads/export', [LeadExportController::class, 'export'])

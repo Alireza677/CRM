@@ -199,7 +199,7 @@ document.addEventListener("DOMContentLoaded", function () {
         return;
     }
 
-    // ??????? ?? ???? ??? interval
+// جلوگیری از چندباره شدن interval
     if (el._reassignInterval) {
         clearInterval(el._reassignInterval);
         el._reassignInterval = null;
@@ -232,7 +232,7 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
-    tick(); // ????? ????? ?? ??? ?? interval ???? ????? ????
+tick(); // یک‌بار اجرا برای نمایش سریع قبل از شروع interval
     el._reassignInterval = setInterval(tick, 1000);
 }
 
@@ -302,13 +302,14 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 if (!res.ok) {
                     const payload = await res.json().catch(() => ({}));
-                    throw new Error(payload.message || '??? ?? ????? ?????.');
+                    throw new Error(payload.message || 'خطا در اتصال مخاطب.');
+
                 }
                 window.closeLeadContactModal?.();
                 window.reloadLeadContactTab?.();
             } catch (err) {
                 console.error('[LeadContact] attach failed', err);
-                alert(err?.message || '??? ?? ????? ?????.');
+                alert(err?.message || 'خطا در اتصال مخاطب.');
             }
         };
 
@@ -364,7 +365,7 @@ document.addEventListener("DOMContentLoaded", function () {
         if (!contactId || !container) return;
 
         if (action === 'detach-contact') {
-            if (!confirm('??? ?? ??? ?????? ??? ????? ????? ??????')) return;
+            if (!confirm('آیا از جداسازی این مخاطب مطمئن هستید؟')) return;
             const url = container.dataset.detachUrl;
             try {
                 const res = await fetch(url, {
@@ -377,12 +378,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 if (!res.ok) {
                     const payload = await res.json().catch(() => ({}));
-                    throw new Error(payload.message || '??? ?? ??? ?????? ?????.');
+                    throw new Error(payload.message || 'خطا در جداسازی مخاطب.');
                 }
                 window.reloadLeadContactTab?.();
             } catch (err) {
                 console.error('[LeadContact] detach failed', err);
-                alert(err?.message || '??? ?? ??? ?????? ?????.');
+                alert(err?.message || 'خطا در جداسازی مخاطب.');
             }
             return;
         }
@@ -400,12 +401,12 @@ document.addEventListener("DOMContentLoaded", function () {
                 });
                 if (!res.ok) {
                     const payload = await res.json().catch(() => ({}));
-                    throw new Error(payload.message || '??? ?? ????? ????? ????.');
+                    throw new Error(payload.message || 'خطا در تعیین مخاطب اصلی.');
                 }
                 window.reloadLeadContactTab?.();
             } catch (err) {
                 console.error('[LeadContact] set primary failed', err);
-                alert(err?.message || '??? ?? ????? ????? ????.');
+                alert(err?.message || 'خطا در تعیین مخاطب اصلی.');
             }
         }
     });

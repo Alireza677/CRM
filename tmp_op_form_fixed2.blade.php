@@ -104,23 +104,26 @@
     </div>
 
     {{-- منبع فرصت --}}
-    {{-- ???? ???? ???? --}}
-        <div>
-            <label for="source" class="block font-medium text-sm text-gray-700 required">???? ???? ????</label>
+       <div>
+            <label for="source" class="block font-medium text-sm text-gray-700 required">منبع فرصت فروش</label>
+
             @php
                 $sourceKey = old('source', isset($opportunity) ? ($opportunity->getRawOriginal('source') ?? '') : '');
                 $sources  = \App\Helpers\FormOptionsHelper::opportunitySources();
             @endphp
+
             <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-                <option value="">?????? ????</option>
+                <option value="">منبع را انتخاب کنید</option>
                 @foreach($sources as $key => $label)
                     <option value="{{ $key }}" {{ (string)$sourceKey === (string)$key ? 'selected' : '' }}>{{ $label }}</option>
                 @endforeach
             </select>
+
             @error('source')
                 <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
             @enderror
         </div>
+
     {{-- ارجاع به --}}
     <div>
         <label for="assigned_to" class="block font-medium text-sm text-gray-700 required">ارجاع به</label>

@@ -204,6 +204,93 @@ document.addEventListener("DOMContentLoaded", function () {
         el.classList.add(...activeClasses);
     }
 
+
+    function initOpportunityContactTab(scope = document) {
+        const modal = scope.querySelector('#opportunityContactModal');
+        if (!modal) return;
+
+        const searchInput = modal.querySelector('#opportunityContactSearchInput');
+        const rows = Array.from(modal.querySelectorAll('#opportunityContactTableBody tr'));
+        const emptyState = modal.querySelector('#opportunityContactNoResults');
+
+        function applyFilter() {
+            const term = (searchInput?.value || '').trim().toLowerCase();
+            let visible = 0;
+            rows.forEach((row) => {
+                const name = (row.dataset.name || '').toLowerCase();
+                const phone = (row.dataset.phone || '').toLowerCase();
+                const match = !term || name.includes(term) || phone.includes(term);
+                row.classList.toggle('hidden', !match);
+                if (match) visible += 1;
+            });
+            emptyState?.classList.toggle('hidden', visible !== 0);
+        }
+
+        window.openOpportunityContactModal = function () {
+            modal.classList.remove('hidden');
+            modal.classList.add('flex');
+            if (searchInput) {
+                searchInput.value = '';
+                applyFilter();
+                setTimeout(() => searchInput.focus(), 10);
+            }
+        };
+
+        window.closeOpportunityContactModal = function () {
+            modal.classList.add('hidden');
+            modal.classList.remove('flex');
+        };
+
+       window.handleOpportunityContactSelect = async function (id) {
+    const attachUrl = modal.dataset.attachUrl;
+    if (!attachUrl) return;
+
+    const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+    try {
+        const res = await fetch(attachUrl, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+            },
+            body: JSON.stringify({ contact_id: id }),
+        });
+
+        if (!res.ok) {
+            const payload = await res.json().catch(() => ({}));
+            throw new Error(payload.message || 'خطا در اتصال مخاطب.');
+        }
+
+        window.closeOpportunityContactModal?.();
+        window.reloadOpportunityContactTab?.();
+    } catch (err) {
+        console.error('[OpportunityContact] attach failed', err);
+        alert(err?.message || 'خطا در اتصال مخاطب.');
+    }
+};
+
+
+        if (searchInput && !searchInput.dataset.bound) {
+            searchInput.addEventListener('input', applyFilter);
+            searchInput.dataset.bound = '1';
+        }
+
+        if (!modal.dataset.bound) {
+            modal.addEventListener('click', function (e) {
+                if (e.target === modal) window.closeOpportunityContactModal?.();
+            });
+            modal.dataset.bound = '1';
+        }
+
+        if (!window._oppContactModalEscapeBound) {
+            document.addEventListener('keydown', function (e) {
+                if (e.key === 'Escape') window.closeOpportunityContactModal?.();
+            });
+            window._oppContactModalEscapeBound = true;
+        }
+    }
+
     function closeSidebar() {
         const sidebar = document.getElementById('mobileSidebar');
         const overlay = document.getElementById('mobileOverlay');
@@ -225,6 +312,7 @@ document.addEventListener("DOMContentLoaded", function () {
             .then(res => res.text())
             .then(html => {
                 contentArea.innerHTML = html;
+                initOpportunityContactTab(contentArea);
                 // در موبایل، پس از انتخاب تب، سایدبار را ببند
                 if (clickedEl && window.matchMedia('(max-width: 767px)').matches) {
                     closeSidebar();
@@ -243,7 +331,83 @@ document.addEventListener("DOMContentLoaded", function () {
         });
     });
 
-    // تب پیش‌فرض: summary
+    window.reloadOpportunityContactTab = function () {
+        const contactTab = document.querySelector('.load-tab[data-tab="contacts"]');
+        if (contactTab) {
+            setActiveTab(contactTab);
+            loadTab(contactTab.dataset.url, contactTab);
+        }
+    };
+
+    contentArea?.addEventListener('click', async (e) => {
+        const btn = e.target.closest('[data-action]');
+        if (!btn) return;
+
+        const action = btn.dataset.action;
+        const contactId = btn.dataset.contactId;
+        const container = btn.closest('[data-detach-url][data-primary-url]');
+        const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
+
+        if (!contactId || !container) return;
+
+       if (action === 'detach-contact') {
+    if (!confirm('آیا از جداسازی این مخاطب مطمئن هستید؟')) return;
+
+    const url = container.dataset.detachUrl;
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+            },
+            body: JSON.stringify({ contact_id: contactId }),
+        });
+
+        if (!res.ok) {
+            const payload = await res.json().catch(() => ({}));
+            throw new Error(payload.message || 'خطا در جداسازی مخاطب.');
+        }
+
+        window.reloadOpportunityContactTab?.();
+    } catch (err) {
+        console.error('[OpportunityContact] detach failed', err);
+        alert(err?.message || 'خطا در جداسازی مخاطب.');
+    }
+
+    return;
+}
+
+
+       if (action === 'set-primary') {
+    const url = container.dataset.primaryUrl;
+
+    try {
+        const res = await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+            },
+            body: JSON.stringify({ contact_id: contactId }),
+        });
+
+        if (!res.ok) {
+            const payload = await res.json().catch(() => ({}));
+            throw new Error(payload.message || 'خطا در تعیین مخاطب اصلی.');
+        }
+
+        window.reloadOpportunityContactTab?.();
+    } catch (err) {
+        console.error('[OpportunityContact] set primary failed', err);
+        alert(err?.message || 'خطا در تعیین مخاطب اصلی.');
+    }
+}
+
+    });
+
+    // O?O" U_UOO'??OU?O?O?: summary
     const defaultTab = document.querySelector('.load-tab[data-url*="summary"]');
     if (defaultTab) {
         setActiveTab(defaultTab);

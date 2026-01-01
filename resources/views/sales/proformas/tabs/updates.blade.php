@@ -7,10 +7,10 @@
         <div class="p-4 border rounded-lg bg-white shadow-sm flex items-start justify-between">
             <div class="space-y-1">
                 <div class="text-sm font-semibold text-gray-800">
-                    {{ $activity->description ?? $activity->event ?? '???????????' }}
+                    {{ $activity->description ?? $activity->event ?? '(بدون توضیح)' }}
                 </div>
                 <div class="text-xs text-gray-500">
-                    {{ $activity->causer->name ?? '?????' }}
+                    {{ $activity->causer->name ?? 'سیستم' }}
                 </div>
             </div>
             <div class="text-xs text-gray-500">
@@ -19,6 +19,7 @@
         </div>
     @empty
         <div class="text-center text-gray-500 text-sm py-8">
-هنوز هیچ به روزرسانی در این پیش فاکتور انجام نشده است.        </div>
+            هنوز هیچ به‌روزرسانی در این پیش‌فاکتور انجام نشده است.
+        </div>
     @endforelse
 </div>
