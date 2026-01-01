@@ -5,6 +5,38 @@
     $breadcrumb = [['title' => 'یافتن موارد تکراری', 'url' => route('sales.contacts.duplicates.index')], ['title' => 'بررسی و ادغام']];
     $winnerId = old('winner_id', $defaultWinnerId);
     $oldLosers = collect(old('loser_ids', collect($contacts)->pluck('id')->diff([$winnerId])->values()->all()));
+    $fieldLabels = [
+        'name' => 'نام',
+        'first_name' => 'نام',
+        'last_name' => 'نام خانوادگی',
+        'email' => 'ایمیل',
+        'mobile' => 'موبایل',
+        'phone' => 'تلفن',
+        'organization' => 'سازمان',
+        'company' => 'شرکت',
+        'organization_id' => 'سازمان',
+        'opportunity_id' => 'فرصت',
+        'assigned_to' => 'کارشناس',
+        'position' => 'سمت',
+        'title' => 'عنوان',
+        'source' => 'منبع',
+        'address' => 'آدرس',
+        'city' => 'شهر',
+        'state' => 'استان',
+        'country' => 'کشور',
+        'postal_code' => 'کد پستی',
+        'website' => 'وب‌سایت',
+        'fax' => 'فکس',
+        'notes' => 'یادداشت',
+        'description' => 'توضیحات',
+        'linkedin' => 'لینکدین',
+        'twitter' => 'توییتر',
+        'instagram' => 'اینستاگرام',
+        'telegram' => 'تلگرام',
+        'whatsapp' => 'واتساپ',
+        'birthdate' => 'تاریخ تولد',
+        'gender' => 'جنسیت',
+    ];
 @endphp
 
 <div class="py-6">
@@ -110,7 +142,7 @@
                                 <tr class="{{ $conflict ? 'bg-red-50' : '' }}">
                                     <td class="px-4 py-3 text-sm text-gray-700">
                                         <div class="flex items-center gap-2">
-                                            <span class="font-medium">{{ $field }}</span>
+                                            <span class="font-medium">{{ $fieldLabels[$field] ?? $field }}</span>
                                             @if($conflict)
                                                 <span class="text-xs text-red-600">تعارض</span>
                                             @endif
@@ -120,11 +152,15 @@
                                     @foreach($contacts as $contact)
                                         @php
                                             $value = $contact->{$field} ?? '';
+                                            $displayValue = $value;
+                                            if ($field === 'assigned_to') {
+                                                $displayValue = $contact->assignedUser?->name ?? '-';
+                                            }
                                         @endphp
                                         <td class="px-4 py-3 text-sm text-gray-900">
                                             <label class="flex items-start gap-2">
                                                 <input type="radio" name="field_resolution[{{ $field }}]" value="{{ $contact->id }}" {{ (int) $selectedId === (int) $contact->id ? 'checked' : '' }}>
-                                                <span class="break-all">{{ $value !== '' ? $value : '-' }}</span>
+                                                <span class="break-all">{{ $displayValue !== '' ? $displayValue : '-' }}</span>
                                             </label>
                                         </td>
                                     @endforeach

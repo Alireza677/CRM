@@ -45,6 +45,7 @@ class ContactDuplicateController extends Controller
 
         $contacts = Contact::withoutGlobalScopes()
             ->whereIn('id', $contactIds)
+            ->with(['assignedUser'])
             ->withCount(['leads', 'opportunities', 'proformas'])
             ->get();
 
