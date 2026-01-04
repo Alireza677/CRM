@@ -12,6 +12,7 @@
                 <form method="POST" action="{{ route('sales.contacts.update', $contact->id) }}" class="space-y-4">
                     @include('sales.contacts._form', ['contact' => $contact])
                 </form>
+                @include('sales.contacts.partials.duplicate-mobile-modal')
             </div>
         </div>
     </div>

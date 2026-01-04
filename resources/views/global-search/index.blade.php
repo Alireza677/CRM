@@ -6,13 +6,24 @@
         $q = $q ?? request('q');
         $results = $results ?? [];
 
-        $mapToTitleUrl = function ($collection, $type) {
-            return collect($collection ?? [])->map(function ($item) use ($type) {
+        $formatDate = function ($date) {
+            return $date ? jdate($date)->format('Y/m/d') : '—';
+        };
+
+        $valueOrDash = fn ($value) => (isset($value) && $value !== '') ? $value : '—';
+
+        $mapToCardItems = function ($collection, $type) use ($formatDate, $valueOrDash) {
+            return collect($collection ?? [])->map(function ($item) use ($type, $formatDate, $valueOrDash) {
                 // If already normalized
-                if (is_array($item) && (isset($item['url']) || isset($item['title']))) {
+                if (is_array($item) && (isset($item['url']) || isset($item['title']) || isset($item['label']))) {
                     return [
-                        'title' => $item['title'] ?? ($item['label'] ?? ''),
+                        'label' => $item['title'] ?? ($item['label'] ?? ''),
                         'url'   => $item['url']   ?? '#',
+                        'phone' => $item['phone'] ?? null,
+                        'state' => $item['state'] ?? null,
+                        'city' => $item['city'] ?? null,
+                        'created_at' => $item['created_at'] ?? null,
+                        'assigned_to' => $item['assigned_to'] ?? null,
                     ];
                 }
 
@@ -24,42 +35,79 @@
                             $title = $item->company ?? ('Lead #'.($item->id ?? ''));
                         }
                         $url = route('sales.leads.show', $item->id ?? $item);
+                        $phone = $valueOrDash($item->mobile ?? $item->phone ?? null);
+                        $state = $valueOrDash($item->state ?? null);
+                        $city = $valueOrDash($item->city ?? null);
+                        $createdAt = $formatDate($item->created_at ?? null);
+                        $assignedTo = $valueOrDash(optional($item->assignedTo)->name ?? null);
                         break;
                     case 'contacts':
                         $title = $item->full_name
                             ?? trim(($item->first_name ?? '') . ' ' . ($item->last_name ?? ''))
                             ?: ($item->name ?? ('Contact #'.($item->id ?? '')));
                         $url = route('sales.contacts.show', $item->id ?? $item);
+                        $phone = $valueOrDash($item->mobile ?? $item->phone ?? null);
+                        $state = $valueOrDash($item->state ?? null);
+                        $city = $valueOrDash($item->city ?? null);
+                        $createdAt = $formatDate($item->created_at ?? null);
+                        $assignedTo = $valueOrDash(optional($item->assignedUser)->name ?? null);
                         break;
                     case 'organizations':
                         $title = $item->name ?? $item->title ?? ('Org #'.($item->id ?? ''));
                         $url = route('sales.organizations.show', $item->id ?? $item);
+                        $phone = $valueOrDash($item->phone ?? null);
+                        $state = $valueOrDash($item->state ?? null);
+                        $city = $valueOrDash($item->city ?? null);
+                        $createdAt = $formatDate($item->created_at ?? null);
+                        $assignedTo = $valueOrDash(optional($item->assignedUser)->name ?? null);
                         break;
                     case 'opportunities':
                         $title = $item->name ?? $item->subject ?? $item->title ?? ('Opportunity #'.($item->id ?? ''));
                         $url = route('sales.opportunities.show', $item->id ?? $item);
+                        $org = $item->organization ?? null;
+                        $phone = $valueOrDash($org->phone ?? $item->phone ?? null);
+                        $state = $valueOrDash($org->state ?? $item->state ?? null);
+                        $city = $valueOrDash($org->city ?? $item->city ?? null);
+                        $createdAt = $formatDate($item->created_at ?? null);
+                        $assignedTo = $valueOrDash(optional($item->assignedTo)->name ?? null);
                         break;
                     case 'proformas':
                         $title = $item->subject ?? $item->title ?? ('PF-'.($item->id ?? ''));
                         $url = route('sales.proformas.show', $item->id ?? $item);
+                        $org = $item->organization ?? null;
+                        $phone = $valueOrDash($org->phone ?? $item->phone ?? null);
+                        $state = $valueOrDash($org->state ?? $item->state ?? null);
+                        $city = $valueOrDash($org->city ?? $item->city ?? null);
+                        $createdAt = $formatDate($item->created_at ?? null);
+                        $assignedTo = $valueOrDash(optional($item->assignedTo)->name ?? null);
                         break;
                     default:
                         $title = (string) ($item->title ?? $item->name ?? $item->id ?? '');
                         $url = '#';
+                        $phone = '—';
+                        $state = '—';
+                        $city = '—';
+                        $createdAt = '—';
+                        $assignedTo = '—';
                 }
 
                 return [
-                    'title' => $title,
+                    'label' => $title,
                     'url'   => $url,
+                    'phone' => $phone ?? '—',
+                    'state' => $state ?? '—',
+                    'city' => $city ?? '—',
+                    'created_at' => $createdAt ?? '—',
+                    'assigned_to' => $assignedTo ?? '—',
                 ];
             })->values()->all();
         };
 
-        $leads         = $mapToTitleUrl($results['leads']         ?? [], 'leads');
-        $contacts      = $mapToTitleUrl($results['contacts']      ?? [], 'contacts');
-        $organizations  = $mapToTitleUrl($results['organizations']  ?? [], 'organizations');
-        $opportunities  = $mapToTitleUrl($results['opportunities']  ?? [], 'opportunities');
-        $proformas      = $mapToTitleUrl($results['proformas']      ?? [], 'proformas');
+        $leads         = $mapToCardItems($results['leads']         ?? [], 'leads');
+        $contacts      = $mapToCardItems($results['contacts']      ?? [], 'contacts');
+        $organizations  = $mapToCardItems($results['organizations']  ?? [], 'organizations');
+        $opportunities  = $mapToCardItems($results['opportunities']  ?? [], 'opportunities');
+        $proformas      = $mapToCardItems($results['proformas']      ?? [], 'proformas');
 
         // Counts and totals
         $counts = [
@@ -72,19 +120,58 @@
         $total = array_sum($counts);
         $moduleCount = collect($counts)->filter(fn ($c) => $c > 0)->count();
 
-        // Convert to ['label','url'] for the card partial API
-        $toCardItems = function (array $items) {
-            return collect($items)->map(fn ($it) => [
-                'label' => $it['title'] ?? '',
-                'url'   => $it['url']   ?? '#',
-            ])->all();
-        };
+        $leadItems         = $leads;
+        $contactItems      = $contacts;
+        $organizationItems = $organizations;
+        $opportunityItems  = $opportunities;
+        $proformaItems     = $proformas;
 
-        $leadItems         = $toCardItems($leads);
-        $contactItems      = $toCardItems($contacts);
-        $organizationItems = $toCardItems($organizations);
-        $opportunityItems  = $toCardItems($opportunities);
-        $proformaItems     = $toCardItems($proformas);
+        $modules = [
+            [
+                'title' => 'سرنخ‌ها',
+                'icon' => 'icons.contact',
+                'tintClass' => 'text-rose-600',
+                'items' => $leadItems,
+                'count' => $counts['leads'],
+                'allUrl' => route('sales.leads.index'),
+            ],
+            [
+                'title' => 'مخاطبین',
+                'icon' => 'icons.contact',
+                'tintClass' => 'text-violet-600',
+                'items' => $contactItems,
+                'count' => $counts['contacts'],
+                'allUrl' => route('sales.contacts.index'),
+            ],
+            [
+                'title' => 'سازمان‌ها',
+                'icon' => 'icons.organization',
+                'tintClass' => 'text-sky-600',
+                'items' => $organizationItems,
+                'count' => $counts['organizations'],
+                'allUrl' => route('sales.organizations.index'),
+            ],
+            [
+                'title' => 'فرصت‌ها',
+                'icon' => 'icons.opportunity',
+                'tintClass' => 'text-emerald-600',
+                'items' => $opportunityItems,
+                'count' => $counts['opportunities'],
+                'allUrl' => route('sales.opportunities.index'),
+            ],
+            [
+                'title' => 'پیش‌فاکتورها',
+                'icon' => 'icons.proforma',
+                'tintClass' => 'text-orange-600',
+                'items' => $proformaItems,
+                'count' => $counts['proformas'],
+                'allUrl' => route('sales.proformas.index'),
+            ],
+        ];
+
+        usort($modules, function ($a, $b) {
+            return ($b['count'] ?? 0) <=> ($a['count'] ?? 0);
+        });
     @endphp
 
     <div x-data="{ isLoading: false }" class="max-w-7xl mx-auto px-4 lg:px-8 py-8">
@@ -107,52 +194,10 @@
             </form>
         </div>
 
-        <div class="mt-6 grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-            @include('global-search._module-card', [
-                'title' => 'سرنخ‌ها',
-                'icon' => 'icons.contact',
-                'tintClass' => 'text-rose-600',
-                'items' => $leadItems,
-                'count' => $counts['leads'],
-                'allUrl' => route('sales.leads.index'),
-            ])
-
-            @include('global-search._module-card', [
-                'title' => 'مخاطبین',
-                'icon' => 'icons.contact',
-                'tintClass' => 'text-violet-600',
-                'items' => $contactItems,
-                'count' => $counts['contacts'],
-                'allUrl' => route('sales.contacts.index'),
-            ])
-
-            @include('global-search._module-card', [
-                'title' => 'سازمان‌ها',
-                'icon' => 'icons.organization',
-                'tintClass' => 'text-sky-600',
-                'items' => $organizationItems,
-                'count' => $counts['organizations'],
-                'allUrl' => route('sales.organizations.index'),
-            ])
-
-            @include('global-search._module-card', [
-                'title' => 'فرصت‌ها',
-                'icon' => 'icons.opportunity',
-                'tintClass' => 'text-emerald-600',
-                'items' => $opportunityItems,
-                'count' => $counts['opportunities'],
-                'allUrl' => route('sales.opportunities.index'),
-            ])
-
-            @include('global-search._module-card', [
-                'title' => 'پیش‌فاکتورها',
-                'icon' => 'icons.proforma',
-                'tintClass' => 'text-orange-600',
-                'items' => $proformaItems,
-                'count' => $counts['proformas'],
-                'allUrl' => route('sales.proformas.index'),
-            ])
+        <div class="mt-6 grid grid-cols-1 gap-6">
+            @foreach($modules as $module)
+                @include('global-search._module-card', $module)
+            @endforeach
         </div>
     </div>
 @endsection
-

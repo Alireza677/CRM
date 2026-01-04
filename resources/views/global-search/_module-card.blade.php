@@ -46,17 +46,43 @@
         @else
             <div x-show="!isLoading">
                 <div x-data="{ expanded: false }" class="space-y-2">
-                    @foreach($items as $idx => $it)
-                        @if($idx < 3)
-                            <a href="{{ $it['url'] }}" class="block text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-50 active:bg-slate-100 transition rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300/50" title="{{ $it['label'] }}">
-                                <span class="truncate inline-block max-w-full align-middle">{{ $it['label'] }}</span>
-                            </a>
-                        @else
-                            <a href="{{ $it['url'] }}" x-show="expanded" x-cloak class="block text-sm text-slate-700 hover:text-slate-900 hover:bg-slate-50 active:bg-slate-100 transition rounded px-2 py-1 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-slate-300/50" title="{{ $it['label'] }}">
-                                <span class="truncate inline-block max-w-full align-middle">{{ $it['label'] }}</span>
-                            </a>
-                        @endif
-                    @endforeach
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-xs text-slate-700 border border-slate-200 border-collapse">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="border border-slate-200 px-2 py-2 text-right font-medium">عنوان</th>
+                                    <th class="border border-slate-200 px-2 py-2 text-right font-medium">تلفن یا موبایل</th>
+                                    <th class="border border-slate-200 px-2 py-2 text-right font-medium">استان</th>
+                                    <th class="border border-slate-200 px-2 py-2 text-right font-medium">شهر</th>
+                                    <th class="border border-slate-200 px-2 py-2 text-right font-medium">تاریخ ثبت</th>
+                                    <th class="border border-slate-200 px-2 py-2 text-right font-medium">ارجاع به</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($items as $idx => $it)
+                                    @php
+                                        $phone = $it['phone'] ?? '—';
+                                        $state = $it['state'] ?? '—';
+                                        $city = $it['city'] ?? '—';
+                                        $createdAt = $it['created_at'] ?? '—';
+                                        $assignedTo = $it['assigned_to'] ?? '—';
+                                    @endphp
+                                    <tr @if($idx >= 3) x-show="expanded" x-cloak @endif class="hover:bg-slate-50 transition">
+                                        <td class="border border-slate-200 px-2 py-2">
+                                            <a href="{{ $it['url'] }}" class="block truncate text-slate-800 hover:text-slate-900" title="{{ $it['label'] }}">
+                                                {{ $it['label'] }}
+                                            </a>
+                                        </td>
+                                        <td class="border border-slate-200 px-2 py-2 truncate">{{ $phone }}</td>
+                                        <td class="border border-slate-200 px-2 py-2 truncate">{{ $state }}</td>
+                                        <td class="border border-slate-200 px-2 py-2 truncate">{{ $city }}</td>
+                                        <td class="border border-slate-200 px-2 py-2 truncate">{{ $createdAt }}</td>
+                                        <td class="border border-slate-200 px-2 py-2 truncate">{{ $assignedTo }}</td>
+                                    </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                    </div>
 
                     <div class="pt-1 flex items-center gap-4">
                         @if(($count ?? 0) > 3)
@@ -73,4 +99,3 @@
         @endif
     </div>
 </div>
-

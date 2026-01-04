@@ -26,12 +26,32 @@ class OrganizationController extends Controller
             ->with('contacts');
 
         // Search functionality
-        if ($request->has('search')) {
+        if ($request->filled('search')) {
             $search = $request->search;
             $query->where(function($q) use ($search) {
                 $q->where('organizations.name', 'like', "%{$search}%")
-                  ->orWhere('organizations.phone', 'like', "%{$search}%");
+                  ->orWhere('organizations.phone', 'like', "%{$search}%")
+                  ->orWhere('organizations.city', 'like', "%{$search}%");
             });
+        }
+        if ($request->filled('name')) {
+            $query->where('organizations.name', 'like', '%' . $request->name . '%');
+        }
+        if ($request->filled('phone')) {
+            $query->where('organizations.phone', 'like', '%' . $request->phone . '%');
+        }
+        if ($request->filled('contact')) {
+            $contact = trim($request->contact);
+            $query->whereHas('contacts', function ($q) use ($contact) {
+                $q->where('first_name', 'like', "%{$contact}%")
+                  ->orWhere('last_name', 'like', "%{$contact}%");
+            });
+        }
+        if ($request->filled('city')) {
+            $query->where('organizations.city', 'like', '%' . $request->city . '%');
+        }
+        if ($request->filled('assigned_to')) {
+            $query->where('organizations.assigned_to', $request->assigned_to);
         }
 
         // Sorting
@@ -57,8 +77,16 @@ class OrganizationController extends Controller
         }
 
         $organizations = $query->paginate($perPage)->withQueryString();
+        $users = User::all(['id', 'name']);
 
-        return view('sales.organizations.index', compact('organizations', 'perPage'));
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('sales.organizations.partials.rows', compact('organizations'))->render(),
+                'pagination' => view('sales.organizations.partials.pagination', compact('organizations'))->render(),
+            ]);
+        }
+
+        return view('sales.organizations.index', compact('organizations', 'perPage', 'users'));
     }
 
     public function create()

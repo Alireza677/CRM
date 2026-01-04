@@ -12,6 +12,7 @@
                 <form method="POST" action="{{ route('sales.contacts.store') }}" class="space-y-4">
                     @include('sales.contacts._form')
                 </form>
+                @include('sales.contacts.partials.duplicate-mobile-modal')
             </div>
         </div>
     </div>

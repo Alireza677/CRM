@@ -26,6 +26,7 @@ class GlobalSearchController extends Controller
 
         /* ===================== Leads ===================== */
         $leads = SalesLead::query()
+            ->with(['assignedTo:id,name'])
             ->when($q, function ($qq) use ($q) {
                 $table = (new SalesLead)->getTable();
                 $qq->where(function ($w) use ($table, $q) {
@@ -51,7 +52,7 @@ class GlobalSearchController extends Controller
 
         /* ===================== Contacts ===================== */
         $contacts = Contact::query()
-            ->with(['organization:id,name']) // اگر چنین رابطه‌ای ندارید حذف کنید
+            ->with(['organization:id,name', 'assignedUser:id,name']) // اگر چنین رابطه‌ای ندارید حذف کنید
             ->when($q, function ($qq) use ($q) {
                 $table = (new Contact)->getTable();
                 $qq->where(function ($w) use ($table, $q) {
@@ -88,6 +89,7 @@ class GlobalSearchController extends Controller
 
         /* ===================== Organizations ===================== */
         $organizations = Organization::query()
+            ->with(['assignedUser:id,name'])
             ->when($q, function ($qq) use ($q) {
                 $table = (new Organization)->getTable();
                 $qq->where(function ($w) use ($table, $q) {
@@ -108,7 +110,7 @@ class GlobalSearchController extends Controller
 
         /* ===================== Opportunities ===================== */
         $opportunities = Opportunity::query()
-            ->with(['assignedTo:id,name','organization:id,name'])
+            ->with(['assignedTo:id,name','organization:id,name,phone,state,city'])
             ->when($q, function ($qq) use ($q) {
                 $table = (new Opportunity)->getTable();
                 $qq->where(function ($w) use ($table, $q) {
@@ -130,7 +132,7 @@ class GlobalSearchController extends Controller
 
         /* ===================== Proformas ===================== */
         $proformas = Proforma::query()
-            ->with(['assignedTo:id,name','organization:id,name'])
+            ->with(['assignedTo:id,name','organization:id,name,phone,state,city'])
             ->when($q, function ($qq) use ($q) {
                 $table = (new Proforma)->getTable();
                 $qq->where(function ($w) use ($table, $q) {
@@ -161,3 +163,4 @@ class GlobalSearchController extends Controller
         return view('global-search.index', compact('results'));
     }
 }
+

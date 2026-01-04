@@ -40,7 +40,7 @@
 @endphp
 
 <div class="py-6">
-    <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
+    <div class="w-full max-w-none px-4 sm:px-6 lg:px-8">
         <div class="mb-6">
             <h2 class="text-2xl font-semibold text-gray-800">بررسی گروه تکراری</h2>
             <p class="text-sm text-gray-500 mt-1">مخاطب اصلی را انتخاب کنید و قبل از ادغام، تعارض‌های فیلدها را مشخص کنید.</p>

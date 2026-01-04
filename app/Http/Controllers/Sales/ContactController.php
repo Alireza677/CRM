@@ -14,6 +14,7 @@ use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ContactsImport;
+use App\Services\DuplicateMobileFinder;
 
 class ContactController extends Controller
 {
@@ -42,6 +43,9 @@ class ContactController extends Controller
                     ->orWhere('contacts.last_name', 'like', "%{$search}%")
                     ->orWhere('contacts.mobile', 'like', "%{$search}%");
             });
+        }
+        if ($request->filled('mobile')) {
+            $query->where('contacts.mobile', 'like', '%' . $request->mobile . '%');
         }
 
         if ($request->filled('assigned_to')) {
@@ -75,6 +79,13 @@ class ContactController extends Controller
         $users         = \App\Models\User::all(['id', 'name']);
         $organizations = \App\Models\Organization::all(['id', 'name']);
         $smsLists      = SmsList::query()->orderByDesc('created_at')->get(['id', 'name']);
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('sales.contacts.partials.rows', compact('contacts'))->render(),
+                'pagination' => view('sales.contacts.partials.pagination', compact('contacts'))->render(),
+            ]);
+        }
 
         return view('sales.contacts.index', compact('contacts', 'users', 'organizations', 'smsLists'));
     }
@@ -126,6 +137,50 @@ class ContactController extends Controller
             // در صورت نبودن state اما وجود province، آن را به state نگاشت می‌کنیم
             if (!$request->filled('state') && $request->filled('province')) {
                 $validated['state'] = trim($request->input('province'));
+            }
+
+            $duplicateFinder = app(DuplicateMobileFinder::class);
+            $normalizedMobile = $duplicateFinder->normalizeMobile($validated['mobile'] ?? null);
+
+            if ($normalizedMobile) {
+                $validated['mobile'] = $normalizedMobile;
+            } else {
+                $validated['mobile'] = $this->cleanupMobileInput($validated['mobile'] ?? null);
+            }
+
+            if ($normalizedMobile) {
+                $existingContact = $duplicateFinder->findContactByMobile($normalizedMobile);
+                if ($existingContact) {
+                    $contactName = trim((string) ($existingContact->first_name ?? '') . ' ' . (string) ($existingContact->last_name ?? ''));
+                    if ($contactName === '') {
+                        $contactName = $existingContact->company ?? ('مخاطب #' . $existingContact->id);
+                    }
+
+                    $alertPayload = $duplicateFinder->buildModalPayload(
+                        $existingContact,
+                        DuplicateMobileFinder::TYPE_CONTACT,
+                        $normalizedMobile,
+                        [
+                            'intent' => 'block',
+                            'contact' => [
+                                'id' => $existingContact->id,
+                                'name' => $contactName,
+                                'mobile' => $existingContact->mobile ?? $existingContact->phone,
+                                'state' => $existingContact->state,
+                                'city' => $existingContact->city,
+                                'show_url' => route('sales.contacts.show', $existingContact),
+                                'edit_url' => route('sales.contacts.edit', $existingContact),
+                            ],
+                        ]
+                    );
+                    $alertPayload['intent'] = 'block';
+
+                    return redirect()
+                        ->route('sales.contacts.create')
+                        ->withErrors(['mobile' => 'این شماره موبایل قبلاً برای مخاطب دیگری ثبت شده است.'])
+                        ->with('duplicate_mobile_alert', $alertPayload)
+                        ->withInput();
+                }
             }
 
             $data = Arr::except($validated, [
@@ -259,6 +314,50 @@ class ContactController extends Controller
                 $validated['state'] = trim($request->input('province'));
             }
 
+            $duplicateFinder = app(DuplicateMobileFinder::class);
+            $normalizedMobile = $duplicateFinder->normalizeMobile($validated['mobile'] ?? null);
+
+            if ($normalizedMobile) {
+                $validated['mobile'] = $normalizedMobile;
+            } else {
+                $validated['mobile'] = $this->cleanupMobileInput($validated['mobile'] ?? null);
+            }
+
+            if ($normalizedMobile) {
+                $existingContact = $duplicateFinder->findContactByMobile($normalizedMobile);
+                if ($existingContact && $existingContact->id !== $contact->id) {
+                    $contactName = trim((string) ($existingContact->first_name ?? '') . ' ' . (string) ($existingContact->last_name ?? ''));
+                    if ($contactName === '') {
+                        $contactName = $existingContact->company ?? ('مخاطب #' . $existingContact->id);
+                    }
+
+                    $alertPayload = $duplicateFinder->buildModalPayload(
+                        $existingContact,
+                        DuplicateMobileFinder::TYPE_CONTACT,
+                        $normalizedMobile,
+                        [
+                            'intent' => 'block',
+                            'contact' => [
+                                'id' => $existingContact->id,
+                                'name' => $contactName,
+                                'mobile' => $existingContact->mobile ?? $existingContact->phone,
+                                'state' => $existingContact->state,
+                                'city' => $existingContact->city,
+                                'show_url' => route('sales.contacts.show', $existingContact),
+                                'edit_url' => route('sales.contacts.edit', $existingContact),
+                            ],
+                        ]
+                    );
+                    $alertPayload['intent'] = 'block';
+
+                    return redirect()
+                        ->back()
+                        ->withErrors(['mobile' => 'این شماره موبایل قبلاً برای مخاطب دیگری ثبت شده است.'])
+                        ->with('duplicate_mobile_alert', $alertPayload)
+                        ->withInput();
+                }
+            }
+
             $data = Arr::except($validated, [
                 'create_new_org',
                 'new_org_name',
@@ -370,6 +469,18 @@ class ContactController extends Controller
         }
 
         return $payload;
+    }
+
+    protected function cleanupMobileInput(?string $value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $cleaned = preg_replace('/[\s\-]+/u', '', $value) ?? '';
+        $cleaned = trim($cleaned);
+
+        return $cleaned === '' ? null : $cleaned;
     }
 
     public function bulkDelete(Request $request)

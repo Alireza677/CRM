@@ -3,9 +3,9 @@
 namespace App\Http\Controllers\Sales;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ScanDuplicateGroupsJob;
 use App\Models\Contact;
 use App\Models\DuplicateGroup;
+use App\Services\Merge\ContactDuplicateScanner;
 use App\Services\Merge\Configs\ContactMergeConfig;
 use App\Services\Merge\MergeService;
 use Illuminate\Http\Request;
@@ -16,8 +16,35 @@ class ContactDuplicateController extends Controller
 {
     public function index()
     {
+        $assigneesSubquery = DB::table('duplicate_group_items as dgi')
+            ->join('contacts as c', 'c.id', '=', 'dgi.entity_id')
+            ->leftJoin('users as u', 'u.id', '=', 'c.assigned_to')
+            ->where('dgi.entity_type', ContactMergeConfig::ENTITY_TYPE)
+            ->groupBy('dgi.duplicate_group_id')
+            ->select(
+                'dgi.duplicate_group_id',
+                DB::raw('COUNT(DISTINCT c.assigned_to) as assignee_count'),
+                DB::raw("GROUP_CONCAT(DISTINCT u.name ORDER BY u.name SEPARATOR ', ') as assignee_names")
+            );
+
         $groups = DuplicateGroup::query()
             ->where('entity_type', ContactMergeConfig::ENTITY_TYPE)
+            ->leftJoinSub($assigneesSubquery, 'assignees', function ($join) {
+                $join->on('duplicate_groups.id', '=', 'assignees.duplicate_group_id');
+            })
+            ->select('duplicate_groups.*')
+            ->selectRaw(
+                "CASE
+                    WHEN COALESCE(assignees.assignee_count, 0) = 0 THEN '—'
+                    WHEN assignees.assignee_count = 1 THEN COALESCE(assignees.assignee_names, '—')
+                    ELSE CONCAT(
+                        'چندگانه: ',
+                        SUBSTRING_INDEX(COALESCE(assignees.assignee_names, ''), ', ', 3),
+                        IF(assignees.assignee_count > 3, ' …', '')
+                    )
+                END as assignees_label"
+            )
+            ->selectRaw('IF(COALESCE(assignees.assignee_count, 0) > 1, 1, 0) as assignees_is_multiple')
             ->withCount('items')
             ->orderByDesc('created_at')
             ->paginate(20);
@@ -25,14 +52,29 @@ class ContactDuplicateController extends Controller
         return view('sales.contacts.duplicates.index', compact('groups'));
     }
 
-    public function scan()
+   public function scan(Request $request, ContactDuplicateScanner $scanner)
     {
-        ScanDuplicateGroupsJob::dispatchSync(ContactMergeConfig::ENTITY_TYPE);
+        $matchKeys = $request->input('match_keys');
+        if (!is_array($matchKeys) || count($matchKeys) === 0) {
+            $matchKeys = ['mobile'];
+        }
+
+        $validated = validator(
+            ['match_keys' => $matchKeys],
+            [
+                'match_keys' => ['required', 'array', 'min:1'],
+                'match_keys.*' => ['in:mobile,province,organization'],
+            ]
+        )->validate();
+
+        $scanner->scan($validated['match_keys']);
 
         return redirect()
             ->route('sales.contacts.duplicates.index')
-            ->with('success', 'اسکن موارد تکراری انجام شد.');
+            ->with('success', 'عملیات با موفقیت انجام شد.')
+            ->withInput();
     }
+
 
     public function review(DuplicateGroup $group)
     {
@@ -71,6 +113,13 @@ class ContactDuplicateController extends Controller
         $conflicts = $this->detectConflicts($contacts, $fields);
 
         $defaultWinnerId = $contacts->first()?->id;
+        $currentUserId = auth()->id();
+        if ($currentUserId) {
+            $assignedContact = $contacts->firstWhere('assigned_to', $currentUserId);
+            if ($assignedContact) {
+                $defaultWinnerId = $assignedContact->id;
+            }
+        }
 
         return view('sales.contacts.duplicates.review', compact(
             'group',
