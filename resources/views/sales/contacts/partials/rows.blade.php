@@ -3,6 +3,9 @@
         <td class="px-4 py-4">
             <input type="checkbox" name="selected_contacts[]" value="{{ $contact->id }}" class="select-contact">
         </td>
+        <td class="px-6 py-4 text-sm text-gray-900">
+            {{ $contact->contact_number ?? '-' }}
+        </td>
         <td class="px-6 py-4 whitespace-nowrap">
             <a href="{{ route('sales.contacts.show', $contact->id) }}"
                class="text-sm font-medium text-blue-600 hover:underline">
@@ -38,8 +41,9 @@
     </tr>
 @empty
     <tr>
-        <td colspan="7" class="px-6 py-4 text-center text-gray-400">
+        <td colspan="8" class="px-6 py-4 text-center text-gray-400">
             هیچ مخاطبی یافت نشد.
         </td>
     </tr>
 @endforelse
+

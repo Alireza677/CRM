@@ -37,6 +37,9 @@ class OrganizationController extends Controller
         if ($request->filled('name')) {
             $query->where('organizations.name', 'like', '%' . $request->name . '%');
         }
+        if ($request->filled('organization_number')) {
+            $query->where('organizations.organization_number', 'like', '%' . $request->organization_number . '%');
+        }
         if ($request->filled('phone')) {
             $query->where('organizations.phone', 'like', '%' . $request->phone . '%');
         }

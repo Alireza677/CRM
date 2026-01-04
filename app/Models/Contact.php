@@ -8,6 +8,7 @@ use Illuminate\Database\Eloquent\Builder;
 use Spatie\Activitylog\Traits\LogsActivity;
 use Spatie\Activitylog\LogOptions;
 use App\Models\Traits\AppliesVisibilityScope;
+use Illuminate\Support\Facades\DB;
 
 class Contact extends Model
 {
@@ -15,6 +16,7 @@ class Contact extends Model
 
     protected $fillable = [
         'owner_user_id',
+        'contact_number',
         'first_name',
         'last_name',
         'position',
@@ -45,6 +47,26 @@ class Contact extends Model
         static::addGlobalScope('notMerged', function (Builder $builder) {
             $table = $builder->getModel()->getTable();
             $builder->whereNull($table . '.merged_into_id');
+        });
+
+        static::creating(function (Contact $contact) {
+            if (empty($contact->contact_number)) {
+                $contact->contact_number = self::generateContactNumber();
+            }
+        });
+    }
+
+    protected static function generateContactNumber(): string
+    {
+        return DB::transaction(function () {
+            $max = DB::table('contacts')
+                ->lockForUpdate()
+                ->selectRaw("MAX(CAST(SUBSTRING(contact_number, 3) AS UNSIGNED)) as max_seq")
+                ->value('max_seq');
+
+            $next = ((int) $max) + 1;
+
+            return 'CO' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
         });
     }
 

@@ -1,4 +1,4 @@
-﻿@extends('layouts.app')
+@extends('layouts.app')
 
 @section('content')
 @if(session('success'))
@@ -17,8 +17,8 @@
     <div class="px-4">
         <div class="flex flex-col gap-3 mb-6">
             <div>
-                <h2 class="text-2xl font-semibold text-gray-800">سرنخ‌های مورد علاقه</h2>
-                <p class="text-sm text-gray-500 mt-1">لیست شخصی از سرنخ‌هایی که برای پیگیری سریع‌تر علامت‌گذاری کرده‌اید.</p>
+                <h2 class="text-2xl font-semibold text-gray-800">???????? ???? ?????</h2>
+                <p class="text-sm text-gray-500 mt-1">???? ???? ?? ????????? ?? ???? ?????? ??????? ??????????? ????????.</p>
             </div>
             <div class="flex flex-wrap items-center justify-between gap-3 mb-4">
                 @include('marketing.leads.partials.listing-tabs')
@@ -28,7 +28,7 @@
                     <a href="{{ route('marketing.leads.create') }}"
                     class="inline-flex items-center px-3 py-1.5 bg-blue-600 text-white text-sm rounded-md shadow hover:bg-blue-700">
                     <i class="fas fa-plus ml-1 text-sm"></i>
-                    ایجاد سرنخ
+                    ????? ????
                 </a>
                 @role('admin')
                 @include('marketing.leads.partials.export-dropdown')
@@ -39,26 +39,30 @@
 
         @if($leads->count() === 0)
             <div class="bg-white border rounded-lg p-6 text-center text-sm text-gray-500">
-                <p>تا الان هیچ سرنخی را به علاقه‌مندی‌ها اضافه نکرده‌اید.</p>
-                <p class="mt-2">در صفحه سرنخ‌ها روی دکمه «افزودن به علاقه‌مندی» بزنید تا اینجا نمایش داده شوند.</p>
+                <p>?? ???? ??? ????? ?? ?? ????????????? ????? ?????????.</p>
+                <p class="mt-2">?? ???? ??????? ??? ???? �?????? ?? ??????????� ????? ?? ????? ????? ???? ????.</p>
             </div>
         @else
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
                     <thead class="bg-gray-50">
                         <tr>
-                            <th class="px-2 py-2 text-right">نام کامل</th>
-                            <th class="px-2 py-2 text-right">تاریخ ایجاد</th>
-                            <th class="px-2 py-2 text-right">موبایل</th>
-                            <th class="px-2 py-2 text-right">منبع سرنخ</th>
-                            <th class="px-2 py-2 text-right">وضعیت</th>
-                            <th class="px-2 py-2 text-right">ارجاع به</th>
-                            <th class="px-2 py-2 text-center">عملیات</th>
+                            <th class="px-2 py-2 text-right">?????</th>
+                            <th class="px-2 py-2 text-right">??? ????</th>
+                            <th class="px-2 py-2 text-right">????? ?????</th>
+                            <th class="px-2 py-2 text-right">??????</th>
+                            <th class="px-2 py-2 text-right">???? ????</th>
+                            <th class="px-2 py-2 text-right">?????</th>
+                            <th class="px-2 py-2 text-right">????? ??</th>
+                            <th class="px-2 py-2 text-center">??????</th>
                         </tr>
                     </thead>
                     <tbody class="bg-white divide-y divide-gray-200">
 @foreach($leads as $lead)
                             <tr class="hover:bg-gray-50 transition">
+                                <td class="px-4 py-2 text-gray-500 text-right">
+                                    {{ $lead->lead_number ?? '�' }}
+                                </td>
                                 <td class="px-4 py-2">
                                     @php
                                         $showReengagedBadge = (bool) $lead->is_reengaged;
@@ -69,7 +73,7 @@
                                     </a>
                                     @if($showReengagedBadge)
                                         <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {{ $isWebsiteSource ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700' }}">
-                                            بازگشتی از وب‌سایت
+                                            ??????? ?? ???????
                                         </span>
                                     @endif
                                 </td>
@@ -100,17 +104,17 @@
                                     @if($lead->assignedUser)
                                         {{ $lead->assignedUser->name }}
                                     @elseif($lead->assigned_to)
-                                        (کاربر حذف شده) [ID: {{ $lead->assigned_to }}]
+                                        (????? ??? ???) [ID: {{ $lead->assigned_to }}]
                                     @else
-                                        بدون مسئول
+                                        ???? ?????
                                     @endif
                                 </td>
                                 <td class="px-4 py-2 text-center">
-                                    <form method="POST" action="{{ route('marketing.leads.favorites.destroy', $lead) }}" class="inline-flex" onsubmit="return confirm('از لیست علاقه‌مندی حذف شود؟');">
+                                    <form method="POST" action="{{ route('marketing.leads.favorites.destroy', $lead) }}" class="inline-flex" onsubmit="return confirm('?? ???? ?????????? ??? ????');">
                                         @csrf
                                         @method('DELETE')
                                         <input type="hidden" name="redirect_to" value="favorites">
-                                        <button type="submit" class="text-sm px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200">حذف از لیست</button>
+                                        <button type="submit" class="text-sm px-3 py-1 rounded bg-red-100 text-red-700 hover:bg-red-200">??? ?? ????</button>
                                     </form>
                                 </td>
                             </tr>
@@ -126,3 +130,7 @@
     </div>
 </div>
 @endsection
+
+
+
+

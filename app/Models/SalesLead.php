@@ -19,6 +19,7 @@ use App\Traits\NotifiesAssignee; // باقی می‌ماند؛ اما با گا�
 use App\Models\Opportunity;
 use App\Services\ActivityGuard;
 use App\Models\User;
+use Illuminate\Support\Facades\DB;
 
 use App\Models\Traits\AppliesVisibilityScope;
 
@@ -47,6 +48,7 @@ class SalesLead extends Model
     protected $fillable = [
         'owner_user_id',
         'prefix',
+        'lead_number',
         'full_name',
         'company',
         'email',
@@ -147,6 +149,10 @@ class SalesLead extends Model
             'assigned_at' => $lead->assigned_at,
             'dirty' => $lead->getDirty(),
         ]);
+
+        if (empty($lead->lead_number)) {
+            $lead->lead_number = self::generateLeadNumber();
+        }
 
         if (!empty($lead->assigned_to)) {
             $lead->assigned_at = $lead->assigned_at ?? \Illuminate\Support\Carbon::now();
@@ -350,6 +356,20 @@ class SalesLead extends Model
     public function contact()
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    protected static function generateLeadNumber(): string
+    {
+        return DB::transaction(function () {
+            $max = DB::table('sales_leads')
+                ->lockForUpdate()
+                ->selectRaw("MAX(CAST(SUBSTRING(lead_number, 2) AS UNSIGNED)) as max_seq")
+                ->value('max_seq');
+
+            $next = ((int) $max) + 1;
+
+            return 'L' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
+        });
     }
 
     public function primaryContact()

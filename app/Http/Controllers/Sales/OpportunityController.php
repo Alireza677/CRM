@@ -32,6 +32,10 @@ class OpportunityController extends Controller
             $query->where('name', 'like', '%' . $request->name . '%');
         }
 
+        if ($request->filled('opportunity_number')) {
+            $query->where('opportunity_number', 'like', '%' . $request->opportunity_number . '%');
+        }
+
         if ($request->filled('contact')) {
             $query->whereHas('contact', function ($q) use ($request) {
                 $term = '%' . $request->contact . '%';
@@ -65,6 +69,13 @@ class OpportunityController extends Controller
 
         $perPage = (int) $request->get('per_page', 15);
         $opportunities = $query->latest()->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('sales.opportunities.partials.rows', compact('opportunities'))->render(),
+                'pagination' => view('sales.opportunities.partials.pagination', compact('opportunities'))->render(),
+            ]);
+        }
 
         return view('sales.opportunities.index', compact('opportunities'));
     }

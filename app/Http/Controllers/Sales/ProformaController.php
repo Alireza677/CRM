@@ -39,23 +39,23 @@ class ProformaController extends Controller
 
     public function index(Request $request)
     {
-        // ورودی‌ها
+        // ???????
         $search          = trim((string) $request->get('search', ''));
         $organizationId  = $request->get('organization_id');
         $stage           = $request->get('stage');
         $assignedTo      = $request->get('assigned_to');
 
-        // دیتای کم‌حجم برای ویو (فقط فیلدهای لازم)
+        // ???????? ???? ???? ???????
         $organizations = Organization::select('id', 'name')->orderBy('name')->get();
         $users         = User::select('id', 'name')->orderBy('name')->get();
 
-        // کوئری اصلی
+        // ???? ?????
         $query = Proforma::visibleFor(auth()->user(), 'proformas')
             ->with(['organization', 'contact', 'opportunity', 'assignedTo'])
             ->orderByDesc('proforma_date')
             ->orderByDesc('created_at');
 
-        // جست‌وجو
+        // ????? ??? ?????/??????/?????
         $query->when($search !== '', function ($q) use ($search) {
             $q->where(function ($qq) use ($search) {
                 $qq->where('subject', 'like', "%{$search}%")
@@ -65,15 +65,47 @@ class ProformaController extends Controller
                    ->orWhereHas('contact', function ($q3) use ($search) {
                        $q3->where('first_name', 'like', "%{$search}%")
                           ->orWhere('last_name',  'like', "%{$search}%");
-                       // اگر مدل contact ستون full_name دارد، می‌توانید این را هم اضافه کنید:
                        // ->orWhere('full_name', 'like', "%{$search}%");
                    });
             });
         });
 
-        // فیلتر سازمان (هماهنگ با input hidden[name=organization_id])
+        // ????? ????? ??????????
+        $query->when($request->filled('proforma_number'), function ($q) use ($request) {
+            $term = trim((string) $request->get('proforma_number', ''));
+            if ($term === '') {
+                return;
+            }
+            $q->where('proforma_number', 'like', "%{$term}%");
+        });
+
+        // ????? ??????
         $query->when(!empty($organizationId), function ($q) use ($organizationId) {
             $q->where('organization_id', (int) $organizationId);
+        });
+
+        $query->when($request->filled('contact'), function ($q) use ($request) {
+            $term = trim((string) $request->get('contact', ''));
+            if ($term === '') {
+                return;
+            }
+            $q->where(function ($cq) use ($term) {
+                $cq->whereHas('contact', function ($q2) use ($term) {
+                    $q2->where('first_name', 'like', "%{$term}%")
+                       ->orWhere('last_name', 'like', "%{$term}%");
+                })->orWhere('contact_name', 'like', "%{$term}%");
+            });
+        });
+
+        // فیلتر فرصت
+        $query->when($request->filled('opportunity'), function ($q) use ($request) {
+            $term = trim((string) $request->get('opportunity', ''));
+            if ($term === '') {
+                return;
+            }
+            $q->whereHas('opportunity', function ($oq) use ($term) {
+                $oq->where('name', 'like', "%{$term}%");
+            });
         });
 
         // فیلتر مرحله
@@ -96,6 +128,13 @@ class ProformaController extends Controller
 
         // Paginate with current query string preserved
         $proformas = $query->paginate($perPage)->withQueryString();
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('sales.proformas.partials.rows', compact('proformas'))->render(),
+                'pagination' => view('sales.proformas.partials.pagination', compact('proformas'))->render(),
+            ]);
+        }
 
         return view('sales.proformas.index', compact('proformas', 'organizations', 'users'));
     }
@@ -1810,5 +1849,8 @@ public function reject(Request $request, Proforma $proforma)
     }
    
 }
+
+
+
 
 

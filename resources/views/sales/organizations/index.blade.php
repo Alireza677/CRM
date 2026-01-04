@@ -23,6 +23,7 @@
         </div>
 
         <form method="GET" action="{{ route('sales.organizations.index') }}" class="mb-4 inline-flex items-center gap-2">
+            <input type="hidden" name="organization_number" value="{{ request('organization_number') }}">
             <input type="hidden" name="search" value="{{ request('search') }}">
             <input type="hidden" name="name" value="{{ request('name') }}">
             <input type="hidden" name="contact" value="{{ request('contact') }}">
@@ -60,6 +61,7 @@
                             <th class="px-3 py-2">
                                 <input type="checkbox" id="select-all">
                             </th>
+                            <th class="px-3 py-2 text-gray-600">شماره</th>
                             <th class="px-3 py-2 text-gray-600">
                                 <a href="{{ route('sales.organizations.index', array_merge(request()->except(['sort', 'direction', 'page']), ['sort' => 'name', 'direction' => $sort === 'name' ? $opposite : 'asc'])) }}" class="hover:text-gray-900">
                                     نام سازمان
@@ -83,6 +85,11 @@
                         </tr>
                         <tr>
                             <th class="px-3 py-2"></th>
+                            <th class="px-3 py-2">
+                                <input type="text" id="filter-number" name="organization_number" value="{{ request('organization_number') }}"
+                                       placeholder="شماره"
+                                       class="w-full px-2 py-1 border rounded text-sm">
+                            </th>
                             <th class="px-3 py-2">
                                 <input type="text" id="filter-name" name="name" value="{{ request('name') }}"
                                        placeholder="نام سازمان"
@@ -144,6 +151,7 @@
 </script>
 <script>
 (function () {
+    var numberInput = document.getElementById('filter-number');
     var nameInput = document.getElementById('filter-name');
     var contactInput = document.getElementById('filter-contact');
     var phoneInput = document.getElementById('filter-phone');
@@ -156,6 +164,7 @@
 
     function buildParams() {
         var params = new URLSearchParams(window.location.search);
+        var numberVal = (numberInput && numberInput.value || '').trim();
         var nameVal = (nameInput && nameInput.value || '').trim();
         var contactVal = (contactInput && contactInput.value || '').trim();
         var phoneVal = (phoneInput && phoneInput.value || '').trim();
@@ -163,6 +172,7 @@
         var assignedVal = assignedSelect ? assignedSelect.value : '';
         var perPageVal = perPageSelect ? perPageSelect.value : '';
 
+        if (numberVal) params.set('organization_number', numberVal); else params.delete('organization_number');
         if (nameVal) params.set('name', nameVal); else params.delete('name');
         if (contactVal) params.set('contact', contactVal); else params.delete('contact');
         if (phoneVal) params.set('phone', phoneVal); else params.delete('phone');
@@ -203,6 +213,7 @@
         filterTimer = setTimeout(applyFilters, 300);
     }
 
+    if (numberInput) numberInput.addEventListener('input', scheduleFilterApply);
     if (nameInput) nameInput.addEventListener('input', scheduleFilterApply);
     if (contactInput) contactInput.addEventListener('input', scheduleFilterApply);
     if (phoneInput) phoneInput.addEventListener('input', scheduleFilterApply);

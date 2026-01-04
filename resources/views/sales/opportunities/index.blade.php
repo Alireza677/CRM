@@ -44,7 +44,8 @@
             @endrole
         </div>
 
-        <form method="GET" action="{{ route('sales.opportunities.index') }}" class="mb-4 inline-flex items-center gap-2">
+        <form method="GET" action="{{ route('sales.opportunities.index') }}" class="mb-4 inline-flex items-center gap-2" onsubmit="return false">
+            <input type="hidden" name="opportunity_number" value="{{ request('opportunity_number') }}">
             <input type="hidden" name="name" value="{{ request('name') }}">
             <input type="hidden" name="contact" value="{{ request('contact') }}">
             <input type="hidden" name="stage" value="{{ request('stage') }}">
@@ -52,7 +53,7 @@
             <input type="hidden" name="assigned_to" value="{{ request('assigned_to') }}">
             @php $currentPerPage = (int) request('per_page', 15); @endphp
             <label for="per_page" class="text-sm text-gray-700 whitespace-nowrap">تعداد در صفحه</label>
-            <select id="per_page" name="per_page" class="border rounded px-2 py-1 text-sm" onchange="this.form.submit()">
+            <select id="per_page" name="per_page" class="border rounded px-2 py-1 text-sm">
                 @foreach([10,15,25,50,100] as $size)
                     <option value="{{ $size }}" {{ $currentPerPage === $size ? 'selected' : '' }}>{{ $size }}</option>
                 @endforeach
@@ -71,6 +72,7 @@
                             <input type="checkbox" id="select-all" class="h-4 w-4">
                         </th>
                         @endrole
+                        <th class="px-2 py-2 text-right text-gray-600">شماره</th>
                         <th class="px-2 py-2 text-right text-gray-600">عنوان</th>
                         <th class="px-2 py-2 text-right text-gray-600">مخاطب</th>
                         <th class="px-2 py-2 text-right text-gray-600">مرحله فروش</th>
@@ -80,124 +82,57 @@
                         <th class="px-2 py-2 text-right text-gray-600">عملیات</th>
                     </tr>
                     <tr>
-                        <form method="GET" action="{{ route('sales.opportunities.index') }}">
-                            @role('admin')
-                            <th class="px-2 py-1"></th>
-                            @endrole
-                            <th class="px-2 py-1">
-                                <input type="text" name="name" value="{{ request('name') }}"
-                                    class="w-full px-2 py-1 border rounded text-sm" placeholder="جستجوی عنوان">
-                            </th>
-                            <th class="px-2 py-1">
-                                <input type="text" name="contact" value="{{ request('contact') }}"
-                                    class="w-full px-2 py-1 border rounded text-sm" placeholder="نام مخاطب">
-                            </th>
-                            <th class="px-2 py-1">
-                                @php $stageOptions = \App\Helpers\FormOptionsHelper::opportunityStages(); @endphp
-                                <select name="stage" class="w-full px-2 py-1 border rounded text-sm">
-                                    <option value="">{{ __('همه') }}</option>
-                                    @foreach($stageOptions as $key => $label)
-                                        <option value="{{ $key }}" {{ request('stage') == $key ? 'selected' : '' }}>{{ $label }}</option>
-                                    @endforeach
-                                </select>
-                            </th>
-                            <th class="px-2 py-1">
-                                <select name="source" class="w-full px-2 py-1 border rounded text-sm">
-                                    <option value="">همه</option>
-                                    <option value="وب سایت" {{ request('source') == 'وب سایت' ? 'selected' : '' }}>وب سایت</option>
-                                    <option value="مشتریان قدیمی" {{ request('source') == 'مشتریان قدیمی' ? 'selected' : '' }}>مشتریان قدیمی</option>
-                                    <option value="نمایشگاه" {{ request('source') == 'نمایشگاه' ? 'selected' : '' }}>نمایشگاه</option>
-                                    <option value="بازاریابی حضوری" {{ request('source') == 'بازاریابی حضوری' ? 'selected' : '' }}>بازاریابی حضوری</option>
-                                </select>
-                            </th>
-                            <th class="px-2 py-1">
-                                <input type="text" name="assigned_to" value="{{ request('assigned_to') }}"
-                                    class="w-full px-2 py-1 border rounded text-sm" placeholder="ارجاع به">
-                            </th>
-                            <th class="px-2 py-1 text-center">
-                                <button type="submit" class="text-sm text-blue-600 hover:underline">جستجو</button>
-                            </th>
-                            <th class="px-2 py-1 text-center">
-                                <a href="{{ route('sales.opportunities.index') }}" class="text-sm text-gray-500 hover:text-red-500">
-                                    پاک‌سازی
-                                </a>
-                            </th>
-                        </form>
+                        @role('admin')
+                        <th class="px-2 py-1"></th>
+                        @endrole
+                        <th class="px-2 py-1">
+                            <input type="text" id="filter-number" name="opportunity_number" value="{{ request('opportunity_number') }}"
+                                class="w-full px-2 py-1 border rounded text-sm" placeholder="شماره">
+                        </th>
+                        <th class="px-2 py-1">
+                            <input type="text" id="filter-name" name="name" value="{{ request('name') }}"
+                                class="w-full px-2 py-1 border rounded text-sm" placeholder="جستجوی عنوان">
+                        </th>
+                        <th class="px-2 py-1">
+                            <input type="text" id="filter-contact" name="contact" value="{{ request('contact') }}"
+                                class="w-full px-2 py-1 border rounded text-sm" placeholder="نام مخاطب">
+                        </th>
+                        <th class="px-2 py-1">
+                            @php $stageOptions = \App\Helpers\FormOptionsHelper::opportunityStages(); @endphp
+                            <select id="filter-stage" name="stage" class="w-full px-2 py-1 border rounded text-sm">
+                                <option value="">{{ __('همه') }}</option>
+                                @foreach($stageOptions as $key => $label)
+                                    <option value="{{ $key }}" {{ request('stage') == $key ? 'selected' : '' }}>{{ $label }}</option>
+                                @endforeach
+                            </select>
+                        </th>
+                        <th class="px-2 py-1">
+                            <select id="filter-source" name="source" class="w-full px-2 py-1 border rounded text-sm">
+                                <option value="">همه</option>
+                                <option value="وب سایت" {{ request('source') == 'وب سایت' ? 'selected' : '' }}>وب سایت</option>
+                                <option value="مشتریان قدیمی" {{ request('source') == 'مشتریان قدیمی' ? 'selected' : '' }}>مشتریان قدیمی</option>
+                                <option value="نمایشگاه" {{ request('source') == 'نمایشگاه' ? 'selected' : '' }}>نمایشگاه</option>
+                                <option value="بازاریابی حضوری" {{ request('source') == 'بازاریابی حضوری' ? 'selected' : '' }}>بازاریابی حضوری</option>
+                            </select>
+                        </th>
+                        <th class="px-2 py-1">
+                            <input type="text" id="filter-assigned-to" name="assigned_to" value="{{ request('assigned_to') }}"
+                                class="w-full px-2 py-1 border rounded text-sm" placeholder="ارجاع به">
+                        </th>
+                        <th class="px-2 py-1 text-center"></th>
+                        <th class="px-2 py-1 text-center"></th>
                     </tr>
                 </thead>
 
-                <tbody class="bg-white divide-y divide-gray-200">
-                    @forelse($opportunities as $opportunity)
-                        <tr>
-                            @role('admin')
-                            <td class="px-3 py-4 text-center">
-                                <input type="checkbox" class="row-checkbox h-4 w-4" value="{{ $opportunity->id }}">
-                            </td>
-                            @endrole
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                <a href="{{ route('sales.opportunities.show', $opportunity) }}" class="text-blue-600 hover:text-blue-900">
-                                    {{ $opportunity->name ?? '-' }}
-                                </a>
-                            </td>
-
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                {{ $opportunity->contact->name ?? '—' }}
-                            </td>
-
-                            {{-- ⭐ مرحله فروش به صورت بادج رنگی --}}
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                @php
-                                    $stageKey = $opportunity->getStageValue() ?? '—';
-                                    $badgeClass = $stageColors[$stageKey] ?? 'bg-gray-100 text-gray-700';
-                                @endphp
-                                <span class="px-2 py-1 text-xs font-medium rounded-full {{ $badgeClass }}">
-                                    {{ \App\Helpers\FormOptionsHelper::getOpportunityStageLabel($stageKey) }}
-                                </span>
-                            </td>
-
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                {{ $opportunity->source ?? '—' }}
-                            </td>
-
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                {{ $opportunity->assignedTo->name ?? '—' }}
-                            </td>
-
-                            <td class="px-6 py-4 whitespace-nowrap">
-                                {{ jdate($opportunity->created_at) }}
-                            </td>
-
-                            <td class="px-6 py-4 whitespace-nowrap text-sm font-medium">
-                                <div class="flex gap-4">
-                                    <a href="{{ route('sales.opportunities.edit', $opportunity) }}" class="text-indigo-600 hover:text-indigo-900">ویرایش</a>
-                                    @role('admin')
-                                    <form action="{{ route('sales.opportunities.destroy', $opportunity) }}" method="POST" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" 
-                                                class="text-red-600 hover:text-red-900"
-                                                onclick="return confirm('آیا از حذف این فرصت فروش اطمینان دارید؟')">
-                                            حذف
-                                        </button>
-                                    </form>
-                                    @endrole
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="{{ auth()->user() && method_exists(auth()->user(), 'hasRole') && auth()->user()->hasRole('admin') ? 8 : 7 }}" class="px-6 py-4 text-center text-gray-400">
-                                هیچ فرصتی یافت نشد.
-                            </td>
-                        </tr>
-                    @endforelse
+                <tbody id="opportunities-tbody" class="bg-white divide-y divide-gray-200">
+                    @include('sales.opportunities.partials.rows', ['opportunities' => $opportunities])
                 </tbody>
             </table>
         </div>
     </div>
 
-    <div class="mt-4">
-        {{ $opportunities->links() }}
+    <div id="opportunities-pagination" class="mt-4">
+        @include('sales.opportunities.partials.pagination', ['opportunities' => $opportunities])
     </div>
 </div>
 @endsection
@@ -242,9 +177,10 @@
         return true;
     }
 
-    document.addEventListener('DOMContentLoaded', function () {
+    function bindBulkCheckboxes() {
         const master = document.getElementById('select-all');
-        if (master) {
+        if (master && master.dataset.bound !== '1') {
+            master.dataset.bound = '1';
             master.addEventListener('change', function () {
                 document.querySelectorAll('.row-checkbox').forEach(cb => {
                     cb.checked = master.checked;
@@ -256,6 +192,90 @@
             cb.addEventListener('change', updateBulkDeleteState);
         });
         updateBulkDeleteState();
+    }
+
+    function setupLiveFilters() {
+        const nameInput = document.getElementById('filter-name');
+        const numberInput = document.getElementById('filter-number');
+        const contactInput = document.getElementById('filter-contact');
+        const stageSelect = document.getElementById('filter-stage');
+        const sourceSelect = document.getElementById('filter-source');
+        const assignedInput = document.getElementById('filter-assigned-to');
+        const perPageSelect = document.getElementById('per_page');
+        const tbody = document.getElementById('opportunities-tbody');
+        const pagination = document.getElementById('opportunities-pagination');
+
+        function buildParams() {
+            const params = new URLSearchParams(window.location.search);
+            const numberVal = (numberInput?.value || '').trim();
+            const nameVal = (nameInput?.value || '').trim();
+            const contactVal = (contactInput?.value || '').trim();
+            const stageVal = stageSelect?.value || '';
+            const sourceVal = sourceSelect?.value || '';
+            const assignedVal = (assignedInput?.value || '').trim();
+            const perPageVal = perPageSelect?.value || '';
+
+            if (numberVal) params.set('opportunity_number', numberVal); else params.delete('opportunity_number');
+            if (nameVal) params.set('name', nameVal); else params.delete('name');
+            if (contactVal) params.set('contact', contactVal); else params.delete('contact');
+            if (stageVal) params.set('stage', stageVal); else params.delete('stage');
+            if (sourceVal) params.set('source', sourceVal); else params.delete('source');
+            if (assignedVal) params.set('assigned_to', assignedVal); else params.delete('assigned_to');
+            if (perPageVal) params.set('per_page', perPageVal); else params.delete('per_page');
+
+            return params;
+        }
+
+        function fetchOpportunities(url, replaceUrl = true) {
+            const reqUrl = new URL(url, window.location.origin);
+            fetch(reqUrl.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+                .then(response => response.json())
+                .then(data => {
+                    if (tbody) tbody.innerHTML = data.rows || '';
+                    if (pagination) pagination.innerHTML = data.pagination || '';
+                    bindBulkCheckboxes();
+                    if (replaceUrl) {
+                        history.replaceState(null, '', reqUrl.toString());
+                    }
+                })
+                .catch(() => {
+                    window.location.search = reqUrl.search;
+                });
+        }
+
+        function applyFilters() {
+            const params = buildParams();
+            params.delete('page');
+            const query = params.toString();
+            const url = window.location.pathname + (query ? '?' + query : '');
+            fetchOpportunities(url, true);
+        }
+
+        let filterTimer = null;
+        function scheduleFilterApply() {
+            clearTimeout(filterTimer);
+            filterTimer = setTimeout(applyFilters, 300);
+        }
+
+        numberInput?.addEventListener('input', scheduleFilterApply);
+        nameInput?.addEventListener('input', scheduleFilterApply);
+        contactInput?.addEventListener('input', scheduleFilterApply);
+        assignedInput?.addEventListener('input', scheduleFilterApply);
+        stageSelect?.addEventListener('change', applyFilters);
+        sourceSelect?.addEventListener('change', applyFilters);
+        perPageSelect?.addEventListener('change', applyFilters);
+
+        pagination?.addEventListener('click', function (e) {
+            const link = e.target.closest('a');
+            if (!link) return;
+            e.preventDefault();
+            fetchOpportunities(link.href, true);
+        });
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        bindBulkCheckboxes();
+        setupLiveFilters();
         // Expose handler globally for inline onsubmit
         window.handleBulkDeleteSubmit = handleBulkDeleteSubmit;
     });

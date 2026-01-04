@@ -8,12 +8,14 @@ use Illuminate\Database\Eloquent\Builder;
 use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Models\Traits\AppliesVisibilityScope;
+use Illuminate\Support\Facades\DB;
 
 class Organization extends Model
 {
     use HasFactory, LogsActivity, AppliesVisibilityScope;
 
     protected $fillable = [
+        'organization_number',
         'name',
         'email',
         'phone',
@@ -38,6 +40,26 @@ class Organization extends Model
         static::addGlobalScope('notMerged', function (Builder $builder) {
             $table = $builder->getModel()->getTable();
             $builder->whereNull($table . '.merged_into_id');
+        });
+
+        static::creating(function (Organization $organization) {
+            if (empty($organization->organization_number)) {
+                $organization->organization_number = self::generateOrganizationNumber();
+            }
+        });
+    }
+
+    protected static function generateOrganizationNumber(): string
+    {
+        return DB::transaction(function () {
+            $max = DB::table('organizations')
+                ->lockForUpdate()
+                ->selectRaw("MAX(CAST(SUBSTRING(organization_number, 3) AS UNSIGNED)) as max_seq")
+                ->value('max_seq');
+
+            $next = ((int) $max) + 1;
+
+            return 'OR' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
         });
     }
 

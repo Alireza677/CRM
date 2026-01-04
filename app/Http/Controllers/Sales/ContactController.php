@@ -44,6 +44,9 @@ class ContactController extends Controller
                     ->orWhere('contacts.mobile', 'like', "%{$search}%");
             });
         }
+        if ($request->filled('contact_number')) {
+            $query->where('contacts.contact_number', 'like', '%' . $request->contact_number . '%');
+        }
         if ($request->filled('mobile')) {
             $query->where('contacts.mobile', 'like', '%' . $request->mobile . '%');
         }
@@ -526,3 +529,4 @@ class ContactController extends Controller
         }
     }
 }
+

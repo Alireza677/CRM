@@ -2,11 +2,11 @@
 
 return [
     'stages' => [
-        'draft' => 'Draft',
-        'send_for_approval' => 'Send for approval',
-        'awaiting_second_approval' => 'Awaiting second approval',
-        'approved' => 'Approved',
-        'rejected' => 'Rejected',
-        'finalized' => 'Finalized',
+        'draft' => 'پیش‌نویس',
+        'send_for_approval' => 'ارسال برای تایید',
+        'awaiting_second_approval' => 'در انتظار تایید دوم',
+        'approved' => 'تایید شده',
+        'rejected' => 'رد شده',
+        'finalized' => 'نهایی شده',
     ],
 ];

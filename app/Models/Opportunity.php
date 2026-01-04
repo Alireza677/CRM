@@ -14,6 +14,7 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 use App\Models\RoleAssignment;
 use App\Models\Activity as CrmActivity;
 use App\Services\ActivityGuard;
+use Illuminate\Support\Facades\DB;
 
 class Opportunity extends Model
 {
@@ -47,6 +48,7 @@ class Opportunity extends Model
 
     protected $fillable = [
         'owner_user_id',
+        'opportunity_number',
         'name',
         'organization_id',
         'contact_id',
@@ -323,11 +325,31 @@ public function orders()
 
 protected static function booted()
 {
+    static::creating(function (Opportunity $op) {
+        if (empty($op->opportunity_number)) {
+            $op->opportunity_number = self::generateOpportunityNumber();
+        }
+    });
+
     static::saving(function (Opportunity $op) {
         $stage = $op->getStageValue();
         if (in_array($stage, self::closedStages(), true)) {
             $op->next_follow_up = null;
         }
+    });
+}
+
+protected static function generateOpportunityNumber(): string
+{
+    return DB::transaction(function () {
+        $max = DB::table('opportunities')
+            ->lockForUpdate()
+            ->selectRaw("MAX(CAST(SUBSTRING(opportunity_number, 3) AS UNSIGNED)) as max_seq")
+            ->value('max_seq');
+
+        $next = ((int) $max) + 1;
+
+        return 'OP' . str_pad((string) $next, 6, '0', STR_PAD_LEFT);
     });
 }
 

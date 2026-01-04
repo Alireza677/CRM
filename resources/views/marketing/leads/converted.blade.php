@@ -71,6 +71,7 @@
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
                     <tr>
+                        <th class="px-4 py-2 text-right">?????</th>
                         <th class="px-4 py-2 text-right">نام کامل</th>
                         <th class="px-4 py-2 text-right">تاریخ تبدیل</th>
                         <th class="px-4 py-2 text-right">موبایل</th>
@@ -81,17 +82,18 @@
                         <th class="px-4 py-2 text-center">عملیات</th>
                     </tr>
                     <tr>
+                        <th class="px-4 py-2"></th>
                         <th class="px-4 py-2">
-                            <input type="text" name="full_name" value="{{ request('full_name') }}" placeholder="نام کامل"
+                            <input type="text" id="filter-full-name" name="full_name" value="{{ request('full_name') }}" placeholder="نام کامل"
                                    class="border rounded-md p-1 w-full text-sm">
                         </th>
                         <th class="px-4 py-2"></th>
                         <th class="px-4 py-2">
-                            <input type="text" name="mobile" value="{{ request('mobile') }}" placeholder="موبایل"
+                            <input type="text" id="filter-mobile" name="mobile" value="{{ request('mobile') }}" placeholder="موبایل"
                                    class="border rounded-md p-1 w-full text-sm">
                         </th>
                         <th class="px-4 py-2">
-                            <select name="lead_source" class="border rounded-md p-1 w-full text-sm">
+                            <select id="filter-lead-source" name="lead_source" class="border rounded-md p-1 w-full text-sm">
                                 <option value="">همه منابع</option>
                                 @foreach($leadSources as $key => $label)
                                     <option value="{{ $key }}" {{ request('lead_source') == $key ? 'selected' : '' }}>
@@ -102,7 +104,7 @@
                         </th>
                         <th class="px-4 py-2">
                             @php $leadStatusOptions = \App\Helpers\FormOptionsHelper::leadStatuses(); @endphp
-                            <select name="lead_status" class="border rounded-md p-1 w-full text-sm">
+                            <select id="filter-lead-status" name="lead_status" class="border rounded-md p-1 w-full text-sm">
                                 <option value="">{{ __('همه') }}</option>
                                 @foreach($leadStatusOptions as $key => $label)
                                     <option value="{{ $key }}" {{ request('lead_status') == $key ? 'selected' : '' }}>{{ $label }}</option>
@@ -110,7 +112,7 @@
                             </select>
                         </th>
                         <th class="px-4 py-2">
-                            <select name="assigned_to" class="border rounded-md p-1 w-full text-sm">
+                            <select id="filter-assigned-to" name="assigned_to" class="border rounded-md p-1 w-full text-sm">
                                 <option value="">همه</option>
                                 @foreach($users as $user)
                                     <option value="{{ $user->id }}" {{ request('assigned_to') == $user->id ? 'selected' : '' }}>
@@ -120,111 +122,17 @@
                             </select>
                         </th>
                         <th class="px-4 py-2"></th>
-                        <th class="px-4 py-2 text-center">
-                            <div class="flex gap-2 justify-center">
-                                <button type="submit" class="bg-blue-600 text-white px-3 py-1 rounded text-sm">جستجو</button>
-                                <a href="{{ route('marketing.leads.converted') }}" class="bg-gray-300 px-3 py-1 rounded text-sm">پاکسازی</a>
-                            </div>
-                        </th>
+                        <th class="px-4 py-2 text-center"></th>
                     </tr>
                 </thead>
-                <tbody class="bg-white divide-y divide-gray-200">
-@forelse($leads as $lead)
-                        <tr class="hover:bg-gray-50 transition">
-                            <td class="px-4 py-2">
-                                @php
-                                    $showReengagedBadge = (bool) $lead->is_reengaged;
-                                    $isWebsiteSource = $lead->lead_source === 'website';
-                                @endphp
-                                <a href="{{ route('marketing.leads.show', $lead) }}" class="text-blue-700 hover:underline">
-                                    {{ $lead->full_name ?? '---' }}
-                                </a>
-                                @if($showReengagedBadge)
-                                    <span class="ml-2 inline-flex items-center px-2 py-0.5 rounded-full text-[11px] font-medium {{ $isWebsiteSource ? 'bg-blue-100 text-blue-800' : 'bg-slate-100 text-slate-700' }}">
-                                        بازگشتی از وب‌سایت
-                                    </span>
-                                @endif
-                                <span class="ml-2 px-2 py-0.5 text-[10px] rounded-full bg-green-100 text-green-800 align-middle">تبدیل شده</span>
-                            </td>
-                            <td class="px-4 py-2 text-gray-500">
-                                {{ $lead->converted_at ? \Morilog\Jalali\Jalalian::forge($lead->converted_at)->format('Y/m/d') : '---' }}
-                            </td>
-                            <td class="px-4 py-2 text-gray-500">{{ $lead->mobile ?? $lead->phone ?? '---' }}</td>
-                            <td class="px-4 py-2 text-gray-500">
-                                {{ \App\Helpers\FormOptionsHelper::getLeadSourceLabel($lead->lead_source) }}
-                            </td>
-                            <td class="px-4 py-2">
-                                @php
-                                    $leadStatusColors = [
-                                        'new' => 'bg-blue-100 text-blue-800',
-                                        'contacted' => 'bg-yellow-100 text-yellow-800',
-                                        'converted' => 'bg-emerald-100 text-emerald-800',
-                                        'discarded' => 'bg-red-100 text-red-800',
-                                    ];
-                                    $rawStatus = $lead->status ?? $lead->lead_status;
-                                    $statusKey = \App\Models\SalesLead::normalizeStatus($rawStatus) ?? $rawStatus;
-                                    $badgeClass = $leadStatusColors[$statusKey] ?? 'bg-gray-200 text-gray-800';
-                                @endphp
-                                <span class="px-2 inline-flex text-xs font-semibold rounded-full {{ $badgeClass }}">
-                                    {{ \App\Helpers\FormOptionsHelper::getLeadStatusLabel($statusKey) }}
-                                </span>
-                            </td>
-                            <td class="px-4 py-2 text-gray-500">
-                                @if($lead->assignedUser)
-                                    {{ $lead->assignedUser->name }}
-                                @elseif($lead->assigned_to)
-                                    (کاربر حذف شده) [ID: {{ $lead->assigned_to }}]
-                                @else
-                                    بدون مسئول
-                                @endif
-                            </td>
-                            <td class="px-4 py-2 text-gray-500">
-                                @if($lead->convertedOpportunity)
-                                    <a href="{{ route('sales.opportunities.show', $lead->convertedOpportunity) }}"
-                                       class="text-indigo-600 hover:underline text-xs">
-                                        {{ $lead->convertedOpportunity->name }}
-                                    </a>
-                                @else
-                                    ---
-                                @endif
-                            </td>
-                            <td class="px-4 py-2 text-center">
-                                @php
-                                    $isFavorite = in_array($lead->id, $favoriteLeadIds);
-                                @endphp
-                                <div class="flex items-center gap-3 justify-center">
-                                    <button
-                                        type="submit"
-                                        formmethod="POST"
-                                        formaction="{{ $isFavorite ? route('marketing.leads.favorites.destroy', $lead) : route('marketing.leads.favorites.store', $lead) }}"
-                                        @if($isFavorite) data-method="DELETE" @endif
-                                        class="inline-flex items-center text-xs px-2 py-1 rounded {{ $isFavorite ? 'bg-amber-100 text-amber-700 hover:bg-amber-200' : 'bg-gray-100 text-gray-600 hover:bg-gray-200' }}"
-                                        aria-label="{{ $isFavorite ? 'حذف از علاقه‌مندی' : 'افزودن به علاقه‌مندی' }}">
-                                        <i class="{{ $isFavorite ? 'fas' : 'far' }} fa-star ml-1"></i>
-                                    </button>
-                                    <a href="{{ route('marketing.leads.show', $lead) }}" class="text-blue-500 hover:underline text-xs">مشاهده سرنخ</a>
-                                    @if($lead->convertedOpportunity)
-                                        <a href="{{ route('sales.opportunities.show', $lead->convertedOpportunity) }}"
-                                           class="text-indigo-600 hover:underline text-xs">
-                                            مشاهده فرصت
-                                        </a>
-                                    @endif
-                                </div>
-                            </td>
-                        </tr>
-                    @empty
-                        <tr>
-                            <td colspan="8" class="px-4 py-6 text-center text-sm text-gray-500">
-                                هیچ سرنخ تبدیل‌شده‌ای برای نمایش وجود ندارد.
-                            </td>
-                        </tr>
-                    @endforelse
+                <tbody id="converted-tbody" class="bg-white divide-y divide-gray-200">
+                    @include('marketing.leads.partials.converted-rows', ['leads' => $leads, 'favoriteLeadIds' => $favoriteLeadIds])
                 </tbody>
             </table>
         </div>
 
-        <div class="mt-4">
-            {{ $leads->links() }}
+        <div id="converted-pagination" class="mt-4">
+            @include('marketing.leads.partials.pagination', ['leads' => $leads])
         </div>
         </form>
     </div>
@@ -235,6 +143,13 @@ document.addEventListener('DOMContentLoaded', function () {
     const convertedForm = document.getElementById('converted-index-form');
     const methodField = document.getElementById('converted-form-method');
     const perPageSelect = document.getElementById('converted-per-page');
+    const tbody = document.getElementById('converted-tbody');
+    const pagination = document.getElementById('converted-pagination');
+    const filterFullName = document.getElementById('filter-full-name');
+    const filterMobile = document.getElementById('filter-mobile');
+    const filterLeadSource = document.getElementById('filter-lead-source');
+    const filterLeadStatus = document.getElementById('filter-lead-status');
+    const filterAssignedTo = document.getElementById('filter-assigned-to');
 
     if (convertedForm && methodField) {
         convertedForm.addEventListener('submit', function (event) {
@@ -256,15 +171,82 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
-    if (perPageSelect && convertedForm) {
+    function buildParams() {
+        const params = new URLSearchParams(window.location.search);
+        const fullNameVal = (filterFullName?.value || '').trim();
+        const mobileVal = (filterMobile?.value || '').trim();
+        const sourceVal = filterLeadSource?.value || '';
+        const statusVal = filterLeadStatus?.value || '';
+        const assignedVal = filterAssignedTo?.value || '';
+        const perPageVal = perPageSelect?.value || '';
+
+        if (fullNameVal) params.set('full_name', fullNameVal); else params.delete('full_name');
+        if (mobileVal) params.set('mobile', mobileVal); else params.delete('mobile');
+        if (sourceVal) params.set('lead_source', sourceVal); else params.delete('lead_source');
+        if (statusVal) params.set('lead_status', statusVal); else params.delete('lead_status');
+        if (assignedVal) params.set('assigned_to', assignedVal); else params.delete('assigned_to');
+        if (perPageVal) params.set('per_page', perPageVal); else params.delete('per_page');
+
+        return params;
+    }
+
+    function fetchConverted(url, replaceUrl = true) {
+        const reqUrl = new URL(url, window.location.origin);
+        fetch(reqUrl.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+            .then(response => response.json())
+            .then(data => {
+                if (tbody) tbody.innerHTML = data.rows || '';
+                if (pagination) pagination.innerHTML = data.pagination || '';
+                if (replaceUrl) {
+                    history.replaceState(null, '', reqUrl.toString());
+                }
+            })
+            .catch(() => {
+                window.location.search = reqUrl.search;
+            });
+    }
+
+    function applyFilters() {
+        const params = buildParams();
+        params.delete('page');
+        const query = params.toString();
+        const baseUrl = convertedForm ? convertedForm.action : window.location.pathname;
+        const url = baseUrl + (query ? '?' + query : '');
+        fetchConverted(url, true);
+    }
+
+    let filterTimer = null;
+    function scheduleFilterApply() {
+        clearTimeout(filterTimer);
+        filterTimer = setTimeout(applyFilters, 300);
+    }
+
+    filterFullName?.addEventListener('input', scheduleFilterApply);
+    filterMobile?.addEventListener('input', scheduleFilterApply);
+    filterLeadSource?.addEventListener('change', applyFilters);
+    filterLeadStatus?.addEventListener('change', applyFilters);
+    filterAssignedTo?.addEventListener('change', applyFilters);
+
+    if (perPageSelect) {
         perPageSelect.addEventListener('change', function () {
             if (methodField) {
                 methodField.value = '';
                 methodField.name = '';
             }
-            convertedForm.requestSubmit();
+            applyFilters();
+        });
+    }
+
+    if (pagination) {
+        pagination.addEventListener('click', function (event) {
+            const link = event.target.closest('a');
+            if (!link) return;
+            event.preventDefault();
+            fetchConverted(link.href, true);
         });
     }
 });
 </script>
 @endsection
+
+

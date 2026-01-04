@@ -47,6 +47,18 @@ class SalesLeadController extends Controller
         $listingData = $this->prepareLeadListingData($request, $query);
         $tabCounts = SalesLead::tabCountsFor($request->user());
 
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('marketing.leads.partials.rows', [
+                    'leads' => $listingData['leads'],
+                    'favoriteLeadIds' => $listingData['favoriteLeadIds'],
+                ])->render(),
+                'pagination' => view('marketing.leads.partials.pagination', [
+                    'leads' => $listingData['leads'],
+                ])->render(),
+            ]);
+        }
+
         return view('marketing.leads.index', array_merge($listingData, [
             'leadListingRoute' => 'marketing.leads.index',
             'isJunkListing' => false,
@@ -65,6 +77,18 @@ class SalesLeadController extends Controller
 
     $listingData = $this->prepareLeadListingData($request, $query);
     $tabCounts = SalesLead::tabCountsFor($request->user());
+
+    if ($request->ajax()) {
+        return response()->json([
+            'rows' => view('marketing.leads.partials.rows', [
+                'leads' => $listingData['leads'],
+                'favoriteLeadIds' => $listingData['favoriteLeadIds'],
+            ])->render(),
+            'pagination' => view('marketing.leads.partials.pagination', [
+                'leads' => $listingData['leads'],
+            ])->render(),
+        ]);
+    }
 
     return view('marketing.leads.index', array_merge($listingData, [
         'leadListingRoute' => 'sales.leads.junk',
@@ -105,6 +129,10 @@ class SalesLeadController extends Controller
 
         if ($request->filled('full_name')) {
             $query->where('full_name', 'like', '%' . $request->full_name . '%');
+        }
+
+        if ($request->filled('lead_number')) {
+            $query->where('lead_number', 'like', '%' . $request->lead_number . '%');
         }
 
         if ($request->filled('mobile')) {
@@ -196,6 +224,18 @@ class SalesLeadController extends Controller
         $users = User::all();
         $leadSources = \App\Helpers\FormOptionsHelper::leadSources();
         $leadTabCounts = SalesLead::tabCountsFor($request->user());
+
+        if ($request->ajax()) {
+            return response()->json([
+                'rows' => view('marketing.leads.partials.converted-rows', [
+                    'leads' => $leads,
+                    'favoriteLeadIds' => $favoriteLeadIds,
+                ])->render(),
+                'pagination' => view('marketing.leads.partials.pagination', [
+                    'leads' => $leads,
+                ])->render(),
+            ]);
+        }
 
         return view('marketing.leads.converted', compact(
             'leads',

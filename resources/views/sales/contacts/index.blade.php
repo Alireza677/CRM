@@ -43,6 +43,7 @@
             </div>
 
             <form method="GET" action="{{ route('sales.contacts.index') }}" class="mb-4 inline-flex items-center gap-2">
+                <input type="hidden" name="contact_number" value="{{ request('contact_number') }}">
                 <input type="hidden" name="search" value="{{ request('search') }}">
                 <input type="hidden" name="mobile" value="{{ request('mobile') }}">
                 <input type="hidden" name="assigned_to" value="{{ request('assigned_to') }}">
@@ -72,10 +73,11 @@
                 <div class="p-4 text-gray-900 overflow-x-auto">
                     <table class="min-w-full divide-y divide-gray-200">
                         <thead class="bg-gray-50">
-                            <tr>
+                            <tr >
                                 <th class="px-4 py-3">
                                     <input type="checkbox" id="select-all">
                                 </th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">شماره</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">نام</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">موبایل</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">سازمان</th>
@@ -83,8 +85,12 @@
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">تاریخ ایجاد</th>
                                 <th class="px-6 py-3 text-right text-xs font-medium text-gray-500 uppercase">عملیات</th>
                             </tr>
-                            <tr>
+                            <tr >
                                 <th class="px-4 py-2"></th>
+                                <th class="px-6 py-2">
+                                    <input type="text" id="filter-contact-number" name="contact_number" placeholder="شماره..." value="{{ request('contact_number') }}"
+                                           class="w-full px-2 py-1 border rounded text-sm">
+                                </th>
                                 <th class="px-6 py-2">
                                     <input type="text" id="filter-search" name="search" placeholder="نام..." value="{{ request('search') }}"
                                            class="w-full px-2 py-1 border rounded text-sm">
@@ -185,6 +191,7 @@
   const hidden  = document.getElementById('org-id-input');
   const list    = document.getElementById('org-filter-list');
   const clearBtn= document.getElementById('org-clear');
+  const numberInput = document.getElementById('filter-contact-number');
   const searchInput = document.getElementById('filter-search');
   const mobileInput = document.getElementById('filter-mobile');
   const assignedSelect = document.getElementById('filter-assigned-to');
@@ -196,6 +203,7 @@
 
   function buildParams() {
     const params = new URLSearchParams(window.location.search);
+    const numberVal = (numberInput?.value || '').trim();
     const searchVal = (searchInput?.value || '').trim();
     const mobileVal = (mobileInput?.value || '').trim();
     const assignedVal = assignedSelect?.value || '';
@@ -203,6 +211,7 @@
     const orgNameVal = (input.value || '').trim();
     const perPageVal = perPageSelect?.value || '';
 
+    if (numberVal) params.set('contact_number', numberVal); else params.delete('contact_number');
     if (searchVal) params.set('search', searchVal); else params.delete('search');
     if (mobileVal) params.set('mobile', mobileVal); else params.delete('mobile');
     if (assignedVal) params.set('assigned_to', assignedVal); else params.delete('assigned_to');
@@ -311,6 +320,7 @@
   filterList(input.value);
   updateClearVisibility();
 
+  numberInput?.addEventListener('input', scheduleFilterApply);
   searchInput?.addEventListener('input', scheduleFilterApply);
   mobileInput?.addEventListener('input', scheduleFilterApply);
   assignedSelect?.addEventListener('change', applyFilters);
@@ -386,4 +396,3 @@
 </div>
 
 @endsection
-

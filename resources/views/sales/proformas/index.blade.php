@@ -7,11 +7,13 @@
         ];
     @endphp
 
-    <div class="py-6">
-        <div class="w-full px-4">
-            <h2 class="text-2xl font-semibold text-gray-800 mb-6">
-                {{ __('پیش‌فاکتورها') }}
-            </h2>
+    <div class="py-6 px-4 sm:px-6 lg:px-8">
+        <div class="w-full max-w-none">
+            <div class="flex gap-3 flex-wrap items-center justify-between">
+                <div class="flex items-center gap-3 flex-wrap">
+                    <h2 class="text-2xl font-semibold text-gray-800 mb-6">
+                        {{ __('پیش‌فاکتورها') }}
+                    </h2>
             @if (session('success'))
                 <div class="mb-4 rounded-md bg-green-50 px-3 py-2 text-green-700 text-xs flex items-start justify-between gap-3 dismissible-alert">
                     <span>{{ session('success') }}</span>
@@ -34,25 +36,20 @@
                 </div>
             @endif
 
-            <!-- Create / Import / Bulk Delete -->
-            <div class="mb-4 flex flex-wrap items-center gap-2">
-
-                {{-- دکمه ایجاد پیش‌فاکتور --}}
-                <a href="{{ route('sales.proformas.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700">
-                    <i class="fas fa-plus mr-2"></i> ایجاد پیش‌فاکتور
-                </a>
-                @role('admin')
-                {{-- دکمه رفتن به صفحه ایمپورت --}}
-                <a href="{{ route('sales.proformas.import.form') }}" class="inline-flex items-center px-4 py-2 bg-yellow-500 text-white rounded-md hover:bg-yellow-600">
-                    <i class="fas fa-file-import mr-2"></i> ایمپورت پیش‌فاکتورها
-                </a>
-
-                
+                    {{-- دکمه ایجاد پیش‌فاکتور --}}
+                    <a href="{{ route('sales.proformas.create') }}" class="mb-4 inline-block bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
+                        <i class="fas fa-plus mr-2"></i> ایجاد پیش‌فاکتور
+                    </a>
+                    @role('admin')
+                    {{-- دکمه رفتن به صفحه ایمپورت --}}
+                    <a href="{{ route('sales.proformas.import.form') }}" class="mb-4 inline-block bg-yellow-500 text-white px-4 py-2 rounded hover:bg-yellow-600">
+                        <i class="fas fa-file-import mr-2"></i> ایمپورت پیش‌فاکتورها
+                    </a>
                     <button
                         id="bulk-delete-btn"
                         form="proformas-bulk-form"
                         type="submit"
-                        class="inline-flex items-center px-4 py-2 bg-red-600 text-white rounded-md disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
+                        class="mb-4 inline-flex items-center px-4 py-2 bg-red-600 text-white rounded disabled:opacity-50 disabled:cursor-not-allowed hover:bg-red-700"
                         disabled
                     >
                         <i class="fas fa-trash mr-2"></i>
@@ -61,123 +58,24 @@
                             0
                         </span>
                     </button>
-                @endrole
+                    @endrole
+                </div>
 
-
-                    
-            </div>
-
-            <!-- Search and Filters -->
-            <div class="mb-4">
-                <form action="{{ route('sales.proformas.index') }}" method="GET" class="flex flex-wrap items-center gap-2 text-xs">
-
-                    <!-- جستجو در موضوع یا سازمان -->
-                    <input type="text"
-                        name="search"
-                        class="border rounded px-3 py-1 w-full sm:w-64"
-                        placeholder="جستجو در موضوع یا نام سازمان..."
-                        value="{{ request('search') }}"
-                    >
-
-                    <!-- فیلتر سازمان -->
-                    {{-- فیلتر سازمان (لایو) --}}
-                        @php
-                            $selectedOrgId   = request('organization_id');
-                            $selectedOrgName = null;
-                            if ($selectedOrgId) {
-                                $selected = $organizations->firstWhere('id', (int) $selectedOrgId);
-                                $selectedOrgName = $selected?->name;
-                            }
-                        @endphp
-
-                        <div class="relative w-full md:max-w-sm">
-                            <!-- <label for="org-live-input" class="block text-sm font-medium text-gray-700">سازمان</label> -->
-
-                            <div class="mt-1 relative">
-                                <input
-                                    id="org-live-input"
-                                    type="text"
-                                    class="block w-full rounded-md border-gray-300 shadow-sm pr-10 focus:border-primary focus:ring-primary"
-                                    placeholder="نام سازمان را تایپ کنید…"
-                                    autocomplete="off"
-                                    value="{{ $selectedOrgName ?? '' }}"
-                                >
-
-                                {{-- دکمه پاک کردن --}}
-                                <button
-                                    type="button"
-                                    id="org-live-clear"
-                                    class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600"
-                                    aria-label="پاک کردن"
-                                    title="پاک کردن"
-                                >×</button>
-
-                                {{-- مقدار ارسالی (ID) --}}
-                                <input type="hidden" name="organization_id" id="org-live-hidden" value="{{ $selectedOrgId ?? '' }}">
-
-                                {{-- لیست نتایج --}}
-                                <ul
-                                    id="org-live-list"
-                                    class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded-md shadow max-h-60 overflow-y-auto hidden"
-                                >
-                                    {{-- گزینه «همه سازمان‌ها» برای پاک کردن سریع --}}
-                                    <li class="px-3 py-2 cursor-pointer hover:bg-gray-100" data-id="" data-name="">
-                                        همه سازمان‌ها
-                                    </li>
-
-                                    @foreach($organizations as $org)
-                                        <li
-                                            class="px-3 py-2 cursor-pointer hover:bg-gray-100"
-                                            data-id="{{ $org->id }}"
-                                            data-name="{{ $org->name }}"
-                                        >
-                                            {{ $org->name }}
-                                        </li>
-                                    @endforeach
-                                </ul>
-                            </div>
-                        </div>
-
-
-                    <!-- فیلتر مرحله -->
-                    <select name="stage" class="border rounded px-2 py-1">
-                        <option value="">همه مراحل</option>
-                        @foreach(config('proforma.stages') as $key => $label)
-                            <option value="{{ $key }}" {{ request('stage') == $key ? 'selected' : '' }}>
-                                {{ $label }}
-                            </option>
-                        @endforeach
-                    </select>
-
-                    <!-- تعداد آیتم در هر صفحه -->
-                    <label for="per-page" class="text-gray-600">تعداد در صفحه:</label>
-                    <select id="per-page" name="per_page" class="border rounded px-2 py-1" onchange="this.form.submit()">
+                <form action="{{ route('sales.proformas.index') }}" method="GET" class="mb-4 inline-flex items-center gap-2" onsubmit="return false">
+                    <input type="hidden" name="proforma_number" value="{{ request('proforma_number') }}">
+                    <input type="hidden" name="search" value="{{ request('search') }}">
+                    <input type="hidden" name="organization_id" value="{{ request('organization_id') }}">
+                    <input type="hidden" name="stage" value="{{ request('stage') }}">
+                    <input type="hidden" name="assigned_to" value="{{ request('assigned_to') }}">
+                    <input type="hidden" name="contact" value="{{ request('contact') }}">
+                    <input type="hidden" name="opportunity" value="{{ request('opportunity') }}">
+                    <label for="per_page" class="text-sm text-gray-700 whitespace-nowrap">تعداد در صفحه</label>
+                    <select id="per_page" name="per_page" class="border rounded px-2 py-1 text-sm">
                         <option value="10"  {{ (string)request('per_page', 10) === '10'  ? 'selected' : '' }}>10</option>
                         <option value="25"  {{ (string)request('per_page', 10) === '25'  ? 'selected' : '' }}>25</option>
                         <option value="50"  {{ (string)request('per_page', 10) === '50'  ? 'selected' : '' }}>50</option>
                         <option value="100" {{ (string)request('per_page', 10) === '100' ? 'selected' : '' }}>100</option>
                     </select>
-
-                    <!-- فیلتر ارجاع به -->
-                    <select name="assigned_to" class="border rounded px-2 py-1">
-                        <option value="">ارجاع به</option>
-                        @foreach($users as $user)
-                            <option value="{{ $user->id }}" {{ request('assigned_to') == $user->id ? 'selected' : '' }}>
-                                {{ $user->name }}
-                            </option>
-                        @endforeach
-                    </select>
-
-                    <!-- دکمه جستجو -->
-                    <button type="submit" class="bg-blue-600 text-white px-4 py-2 rounded hover:bg-blue-700">
-                        جستجو
-                    </button>
-
-                    <!-- دکمه بازنشانی -->
-                    <a href="{{ route('sales.proformas.index') }}" class="bg-gray-300 text-gray-800 px-3 py-2 rounded hover:bg-gray-400">
-                        بازنشانی
-                    </a>
-
                 </form>
             </div>
 
@@ -213,149 +111,126 @@
                                     <th class="px-6 py-3 text-right text-xs text-gray-500 uppercase">ارجاع به</th>
                                     <th class="px-6 py-3 text-right text-xs text-gray-500 uppercase">عملیات</th>
                                 </tr>
-                            </thead>
-                            <tbody class="bg-white divide-y divide-gray-200">
-                                @php
-                                    $stageColors = [
-                                        // Generic/legacy keys
-                                        'created' => 'bg-blue-100 text-blue-800',
-                                        'accepted' => 'bg-green-100 text-green-800',
-                                        'delivered' => 'bg-purple-100 text-purple-800',
-                                        'rejected' => 'bg-red-100 text-red-800',
-                                        'expired' => 'bg-gray-100 text-gray-800',
-
-                                        // Proforma stages
-                                        // "ارسال برای تاییدیه"
-                                        'send_for_approval' => 'bg-amber-100 text-amber-800',
-                                        // "در انتظار تایید نهایی" → Yellow background
-                                        'awaiting_second_approval' => 'bg-yellow-100 text-yellow-800',
-                                        // "تایید شده" → Green background
-                                        'approved' => 'bg-green-100 text-green-800',
-                                    ];
-                                @endphp
-
-                                @foreach($proformas as $proforma)
-                                @php
-                                    $stageKey   = $proforma->proforma_stage ?? 'unknown';
-                                    $stageClass = $stageColors[$stageKey] ?? 'bg-gray-100 text-gray-800';
-                                    $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? $stageKey;
-
-                                    $locked = ($proforma->proforma_stage === 'send_for_approval'); // قابل حذف نیست
-                                @endphp
-
-                                    <tr>
-                                        <td class="px-6 py-4">
-                                            <input
-                                                type="checkbox"
-                                                class="row-check rounded border-gray-300 text-indigo-600 shadow-sm focus:ring-indigo-200"
-                                                name="ids[]"
-                                                value="{{ $proforma->id }}"
-                                                {{ $locked ? 'disabled' : '' }}
-                                                title="{{ $locked ? 'در وضعیت تایید: قابل حذف نیست' : 'انتخاب' }}"
-                                            >
-                                        </td>
-
-                                        <td class="px-6 py-4 font-mono text-sm text-gray-700">
-                                            {{ $proforma->proforma_number ?? '-' }}
-                                        </td>
-
-                                        <td class="px-6 py-4">
-                                            <a href="{{ route('sales.proformas.show', $proforma) }}" class="text-blue-600 hover:text-blue-900">
-                                                {{ $proforma->subject }}
-                                            </a>
-                                        </td>
-
-                                        <td class="px-6 py-4">
-                                            <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full {{ $stageClass }}">
-                                                {{ $stageLabel }}
-                                            </span>
-                                        </td>
-
-                                        <td class="px-6 py-4">{{ $proforma->organization_name ?? '-' }}</td>
-                                        <td class="px-6 py-4">{{ $proforma->contact_name ?? '-' }}</td>
-                                        <td class="px-6 py-4">{{ number_format($proforma->total_amount) }} ریال</td>
-                                        <td class="px-6 py-4">
-                                            @php
-                                                $dateOut = '-';
-                                                if ($proforma->proforma_date) {
-                                                    try {
-                                                        $c = \Carbon\Carbon::parse($proforma->proforma_date);
-                                                        // Guard against corrupted years like 1404 AD
-                                                        if ($c->year >= 1700 && $c->year <= 2500) {
-                                                            $dateOut = \Morilog\Jalali\Jalalian::fromCarbon($c)->format('Y/m/d');
-                                                        }
-                                                    } catch (\Throwable $e) {
-                                                        $dateOut = '-';
-                                                    }
-                                                }
-                                            @endphp
-                                            {{ $dateOut }}
-                                        </td>
-                                        <td class="px-6 py-4">
-                                            @if($proforma->opportunity)
-                                                <a href="{{ route('sales.opportunities.show', $proforma->opportunity) }}" class="text-blue-600 hover:underline">
-                                                    {{ $proforma->opportunity->name ?? ('فرصت #'.$proforma->opportunity->id) }}
-                                                </a>
-                                            @else
-                                                -
-                                            @endif
-                                        </td>
-                                        <td class="px-6 py-4">{{ $proforma->assignedTo->name ?? '-' }}</td>
+                                <tr>
+                                    <th class="px-6 py-2"></th>
+                                    <th class="px-6 py-2">
+                                        <input type="text"
+                                            id="filter-proforma-number"
+                                            name="proforma_number"
+                                            class="w-full px-2 py-1 border rounded text-sm"
+                                            placeholder="شماره..."
+                                            value="{{ request('proforma_number') }}"
+                                        >
+                                    </th>
+                                    <th class="px-6 py-2">
+                                        <input type="text"
+                                            id="filter-search"
+                                            name="search"
+                                            class="w-full px-2 py-1 border rounded text-sm"
+                                            placeholder="جستجو موضوع..."
+                                            value="{{ request('search') }}"
+                                        >
+                                    </th>
+                                    <th class="px-6 py-2">
+                                        <select id="filter-stage" name="stage" class="w-full px-2 py-1 border rounded text-sm">
+                                            <option value="">همه مراحل</option>
+                                            @foreach(config('proforma.stages') as $key => $label)
+                                                <option value="{{ $key }}" {{ request('stage') == $key ? 'selected' : '' }}>
+                                                    {{ $label }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </th>
+                                    <th class="px-6 py-2">
                                         @php
-                                            $canEdit = method_exists($proforma, 'canEdit')
-                                                ? $proforma->canEdit()
-                                                : (strtolower((string)($proforma->approval_stage ?? $proforma->proforma_stage ?? '')) === 'draft');
+                                            $selectedOrgId   = request('organization_id');
+                                            $selectedOrgName = null;
+                                            if ($selectedOrgId) {
+                                                $selected = $organizations->firstWhere('id', (int) $selectedOrgId);
+                                                $selectedOrgName = $selected?->name;
+                                            }
                                         @endphp
+                                        <div class="relative">
+                                            <input
+                                                id="org-live-input"
+                                                type="text"
+                                                class="block w-full rounded border-gray-300 shadow-sm pr-10 text-sm"
+                                                placeholder="نام سازمان..."
+                                                autocomplete="off"
+                                                value="{{ $selectedOrgName ?? '' }}"
+                                            >
 
-                                        <td class="px-6 py-4">
-                                                <div class="flex items-center space-x-reverse space-x-3">
-                                                    {{-- مشاهده --}}
-                                                    <a href="{{ route('sales.proformas.show', $proforma->id) }}" 
-                                                    class="text-blue-600 hover:text-blue-900">
-                                                        مشاهده
-                                                    </a>
+                                            <button
+                                                type="button"
+                                                id="org-live-clear"
+                                                class="absolute inset-y-0 right-0 px-3 text-gray-400 hover:text-gray-600"
+                                                aria-label="پاک کردن"
+                                                title="پاک کردن"
+                                            >×</button>
 
-                                                    {{-- ویرایش: فقط در پیش‌نویس --}}
-                                                    @if($canEdit)
-                                                        <a href="{{ route('sales.proformas.edit', $proforma->id) }}" 
-                                                        class="text-indigo-600 hover:text-indigo-900">
-                                                            ویرایش
-                                                        </a>
-                                                    @else
-                                                        <button type="button"
-                                                                onclick="showEditDeleteAlert('ویرایش فقط در وضعیت «پیش‌نویس» مجاز است.')"
-                                                                class="text-gray-500 cursor-not-allowed opacity-60">
-                                                            ویرایش
-                                                        </button>
-                                                    @endif
+                                            <input type="hidden" name="organization_id" id="org-live-hidden" value="{{ $selectedOrgId ?? '' }}">
 
-                                                    <!-- {{-- حذف: فقط اگر طبق Policy مجاز باشد --}}
-                                                    @can('delete', $proforma)
-                                                        <button type="submit"
-                                                                form="single-delete-form"
-                                                                formaction="{{ route('sales.proformas.destroy', $proforma->id) }}"
-                                                                class="text-red-600 hover:underline"
-                                                                onclick="return confirm('آیا از حذف این پیش‌فاکتور مطمئن هستید؟')">
-                                                            حذف
-                                                        </button>
-                                                    @else
-                                                        <button type="button"
-                                                                onclick="showEditDeleteAlert('شما مجاز به حذف این پیش‌فاکتور نیستید.')"
-                                                                class="text-gray-500 cursor-not-allowed opacity-60">
-                                                            حذف
-                                                        </button>
-                                                    @endcan -->
-                                                </div>
-                                            </td>
+                                            <ul
+                                                id="org-live-list"
+                                                class="absolute z-20 mt-1 w-full bg-white border border-gray-200 rounded shadow max-h-60 overflow-y-auto hidden"
+                                            >
+                                                <li class="px-3 py-2 cursor-pointer hover:bg-gray-100" data-id="" data-name="">
+                                                    همه سازمان‌ها
+                                                </li>
 
-                                    </tr>
-                                @endforeach
+                                                @foreach($organizations as $org)
+                                                    <li
+                                                        class="px-3 py-2 cursor-pointer hover:bg-gray-100"
+                                                        data-id="{{ $org->id }}"
+                                                        data-name="{{ $org->name }}"
+                                                    >
+                                                        {{ $org->name }}
+                                                    </li>
+                                                @endforeach
+                                            </ul>
+                                        </div>
+                                    </th>
+                                    <th class="px-6 py-2">
+                                        <input type="text"
+                                            id="filter-contact"
+                                            name="contact"
+                                            class="w-full px-2 py-1 border rounded text-sm"
+                                            placeholder="مخاطب..."
+                                            value="{{ request('contact') }}"
+                                        >
+                                    </th>
+                                    <th class="px-6 py-2"></th>
+                                    <th class="px-6 py-2"></th>
+                                    <th class="px-6 py-2">
+                                        <input type="text"
+                                            id="filter-opportunity"
+                                            name="opportunity"
+                                            class="w-full px-2 py-1 border rounded text-sm"
+                                            placeholder="فرصت..."
+                                            value="{{ request('opportunity') }}"
+                                        >
+                                    </th>
+                                    <th class="px-6 py-2">
+                                        <select id="filter-assigned-to" name="assigned_to" class="w-full px-2 py-1 border rounded text-sm">
+                                            <option value=""> همه </option>
+                                            @foreach($users as $user)
+                                                <option value="{{ $user->id }}" {{ request('assigned_to') == $user->id ? 'selected' : '' }}>
+                                                    {{ $user->name }}
+                                                </option>
+                                            @endforeach
+                                        </select>
+                                    </th>
+                                    <th class="px-6 py-2"></th>
+                                </tr>
+                            </thead>
+                            <tbody id="proformas-tbody" class="bg-white divide-y divide-gray-200">
+                                @include('sales.proformas.partials.rows', ['proformas' => $proformas])
                             </tbody>
                         </table>
                     </form>
 
-                    <div class="mt-4">
-                        {{ $proformas->links() }}
+                    <div id="proformas-pagination" class="mt-4">
+                        @include('sales.proformas.partials.pagination', ['proformas' => $proformas])
                     </div>
                 </div>
             </div>
@@ -373,10 +248,14 @@ document.addEventListener('DOMContentLoaded', function () {
     const form       = document.getElementById('proformas-bulk-form');
     const bulkBtn    = document.getElementById('bulk-delete-btn');
     const selectAll  = document.getElementById('select-all');
-    const rowChecks  = Array.from(document.querySelectorAll('.row-check'));
     const countBadge = document.getElementById('selected-count-badge');
 
+    function getRowChecks() {
+        return Array.from(document.querySelectorAll('.row-check'));
+    }
+
     function refresh() {
+        const rowChecks = getRowChecks();
         const selected = rowChecks.filter(c => c.checked);
         const eligible = rowChecks.filter(c => !c.disabled);
 
@@ -398,19 +277,28 @@ document.addEventListener('DOMContentLoaded', function () {
         }
     }
 
-    if (selectAll) {
+    function bindRowChecks() {
+        const rowChecks = getRowChecks();
+        rowChecks.forEach(c => {
+            if (c.dataset.bound === '1') return;
+            c.dataset.bound = '1';
+            c.addEventListener('change', refresh);
+        });
+    }
+
+    if (selectAll && selectAll.dataset.bound !== '1') {
+        selectAll.dataset.bound = '1';
         selectAll.addEventListener('change', e => {
             const v = e.target.checked;
+            const rowChecks = getRowChecks();
             rowChecks.forEach(c => { if (!c.disabled) c.checked = v; });
             refresh();
         });
     }
 
-    rowChecks.forEach(c => c.addEventListener('change', refresh));
-
     // هندل ارسال فرم (global)
     window.handleBulkDeleteSubmit = function (e) {
-        const selected = rowChecks.filter(c => c.checked);
+        const selected = getRowChecks().filter(c => c.checked);
         if (selected.length === 0) {
             e.preventDefault();
             if (window.Swal) {
@@ -436,7 +324,13 @@ document.addEventListener('DOMContentLoaded', function () {
     };
 
     // مقدار اولیه
+    bindRowChecks();
     refresh();
+
+    window.proformasRebindBulk = function () {
+        bindRowChecks();
+        refresh();
+    };
 });
 </script>
 <script>
@@ -513,6 +407,9 @@ document.addEventListener('DOMContentLoaded', function () {
     $hidden.value = (li.dataset.id   || '');
     hideList();
     updateClearVisibility();
+    if (typeof window.proformasApplyFilters === 'function') {
+      window.proformasApplyFilters();
+    }
   }
 
   // --- رویدادها -------------------------------------------------
@@ -528,6 +425,9 @@ document.addEventListener('DOMContentLoaded', function () {
     filterList($input.value);
     showList();
     // انتخاب قبلی را دست‌نخورده می‌گذاریم؛ در submit بررسی می‌کنیم
+    if (typeof window.proformasScheduleFilterApply === 'function') {
+      window.proformasScheduleFilterApply();
+    }
   });
 
   // ناوبری کیبورد
@@ -571,6 +471,9 @@ document.addEventListener('DOMContentLoaded', function () {
     updateClearVisibility();
     $input.focus();
     showList();
+    if (typeof window.proformasApplyFilters === 'function') {
+      window.proformasApplyFilters();
+    }
   });
 
   // بستن با کلیک بیرون
@@ -599,6 +502,94 @@ document.addEventListener('DOMContentLoaded', function () {
   if ($hidden.value) hideList();
 });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+  const proformaNumberInput = document.getElementById('filter-proforma-number');
+  const searchInput = document.getElementById('filter-search');
+  const contactInput = document.getElementById('filter-contact');
+  const opportunityInput = document.getElementById('filter-opportunity');
+  const stageSelect = document.getElementById('filter-stage');
+  const assignedSelect = document.getElementById('filter-assigned-to');
+  const perPageSelect = document.getElementById('per_page');
+  const orgHidden = document.getElementById('org-live-hidden');
+  const tbody = document.getElementById('proformas-tbody');
+  const pagination = document.getElementById('proformas-pagination');
+
+  function buildParams() {
+    const params = new URLSearchParams(window.location.search);
+    const proformaNumberVal = (proformaNumberInput?.value || '').trim();
+    const searchVal = (searchInput?.value || '').trim();
+    const contactVal = (contactInput?.value || '').trim();
+    const opportunityVal = (opportunityInput?.value || '').trim();
+    const stageVal = stageSelect?.value || '';
+    const assignedVal = assignedSelect?.value || '';
+    const perPageVal = perPageSelect?.value || '';
+    const orgIdVal = orgHidden?.value || '';
+
+    if (proformaNumberVal) params.set('proforma_number', proformaNumberVal); else params.delete('proforma_number');
+    if (searchVal) params.set('search', searchVal); else params.delete('search');
+    if (contactVal) params.set('contact', contactVal); else params.delete('contact');
+    if (opportunityVal) params.set('opportunity', opportunityVal); else params.delete('opportunity');
+    if (stageVal) params.set('stage', stageVal); else params.delete('stage');
+    if (assignedVal) params.set('assigned_to', assignedVal); else params.delete('assigned_to');
+    if (perPageVal) params.set('per_page', perPageVal); else params.delete('per_page');
+    if (orgIdVal) params.set('organization_id', orgIdVal); else params.delete('organization_id');
+
+    return params;
+  }
+
+  function fetchProformas(url, replaceUrl = true) {
+    const reqUrl = new URL(url, window.location.origin);
+    fetch(reqUrl.toString(), { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
+      .then(response => response.json())
+      .then(data => {
+        if (tbody) tbody.innerHTML = data.rows || '';
+        if (pagination) pagination.innerHTML = data.pagination || '';
+        if (typeof window.proformasRebindBulk === 'function') {
+          window.proformasRebindBulk();
+        }
+        if (replaceUrl) {
+          history.replaceState(null, '', reqUrl.toString());
+        }
+      })
+      .catch(() => {
+        window.location.search = reqUrl.search;
+      });
+  }
+
+  function applyFilters() {
+    const params = buildParams();
+    params.delete('page');
+    const query = params.toString();
+    const url = window.location.pathname + (query ? '?' + query : '');
+    fetchProformas(url, true);
+  }
+
+  let filterTimer = null;
+  function scheduleFilterApply() {
+    clearTimeout(filterTimer);
+    filterTimer = setTimeout(applyFilters, 300);
+  }
+
+  window.proformasApplyFilters = applyFilters;
+  window.proformasScheduleFilterApply = scheduleFilterApply;
+
+  proformaNumberInput?.addEventListener('input', scheduleFilterApply);
+  searchInput?.addEventListener('input', scheduleFilterApply);
+  contactInput?.addEventListener('input', scheduleFilterApply);
+  stageSelect?.addEventListener('change', applyFilters);
+  opportunityInput?.addEventListener('input', scheduleFilterApply);
+  assignedSelect?.addEventListener('change', applyFilters);
+  perPageSelect?.addEventListener('change', applyFilters);
+
+  pagination?.addEventListener('click', function (e) {
+    const link = e.target.closest('a');
+    if (!link) return;
+    e.preventDefault();
+    fetchProformas(link.href, true);
+  });
+});
+</script>
 
 <script>
   // توجه: اگر button را disabled کنی، onclick اجرا نمی‌شود.
@@ -622,4 +613,3 @@ function deleteSingleProforma(id) {
 
 
 @endsection
-

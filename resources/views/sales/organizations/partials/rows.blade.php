@@ -4,6 +4,9 @@
             <input type="checkbox" name="selected[]" value="{{ $organization->id }}">
         </td>
         <td class="px-3 py-2 whitespace-nowrap">
+            {{ $organization->organization_number ?? '-' }}
+        </td>
+        <td class="px-3 py-2 whitespace-nowrap">
             <a href="{{ route('sales.organizations.show', $organization) }}" class="text-blue-600 hover:text-blue-800">
                 {{ $organization->name }}
             </a>
@@ -35,6 +38,7 @@
     </tr>
 @empty
     <tr>
-        <td colspan="7" class="px-6 py-4 text-center text-gray-400">هیچ سازمانی یافت نشد.</td>
+        <td colspan="8" class="px-6 py-4 text-center text-gray-400">هیچ سازمانی یافت نشد.</td>
     </tr>
 @endforelse
+
