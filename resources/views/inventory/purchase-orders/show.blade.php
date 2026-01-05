@@ -27,9 +27,9 @@
         <div id="mobileOverlay" class="fixed inset-0 bg-black/40 z-40 hidden md:hidden"></div>
 
 <aside id="mobileSidebar"
-  class="fixed right-0 top-[105px] h-[calc(100vh-115px)] w-72 bg-white shadow-lg z-40 border-l
+  class="fixed right-0 top-[105px] h-[calc(100vh-115px)] w-72 bg-white shadow-lg z-40 border-l hidden
          transform translate-x-full transition-transform duration-200 ease-out
-         md:translate-x-0 md:w-64 md:overflow-y-auto"> 
+         md:translate-x-0 md:w-64 md:overflow-y-auto md:block"> 
                     <div class="p-4">
                 <div class="flex items-center justify-between mb-2 md:mb-4">
                     <h2 class="text-m font-bold text-gray-600">{{ $purchaseOrder->subject }}</h2>
@@ -87,12 +87,19 @@ document.addEventListener("DOMContentLoaded", function () {
         el.classList.add(...activeClasses);
     }
 
+    function isMobileView() {
+        return window.matchMedia('(max-width: 767px)').matches;
+    }
+
     function closeSidebar() {
         const sidebar = document.getElementById('mobileSidebar');
         const overlay = document.getElementById('mobileOverlay');
         const openBtn = document.getElementById('mobileMenuBtn');
         if (!sidebar) return;
         sidebar.classList.add('translate-x-full');
+        if (isMobileView()) {
+            sidebar.classList.add('hidden');
+        }
         overlay?.classList.add('hidden');
         document.body.classList.remove('overflow-hidden');
         openBtn?.setAttribute('aria-expanded', 'false');
@@ -132,6 +139,9 @@ document.addEventListener("DOMContentLoaded", function () {
     const overlay = document.getElementById('mobileOverlay');
 
     openBtn?.addEventListener('click', () => {
+        if (isMobileView()) {
+            sidebar?.classList.remove('hidden');
+        }
         sidebar?.classList.remove('translate-x-full');
         overlay?.classList.remove('hidden');
         document.body.classList.add('overflow-hidden');

@@ -111,6 +111,18 @@
             <!-- جدول -->
             <div class="overflow-x-auto">
                 <table class="min-w-full divide-y divide-gray-200 text-sm">
+                     <colgroup>
+                    <col class="w-2">        <!-- چک‌باکس -->
+                    <col class="w-2">        <!-- شماره -->
+                    <col class="w-48">                     <!-- نام کامل: باقیِ عرض (بیشترین فضا) -->
+                    <col class="w-28">        <!-- تاریخ ایجاد -->
+                    <col class="w-36">        <!-- موبایل -->
+                    <col class="w-28">        <!-- منبع -->
+                    <col class="w-28">        <!-- وضعیت -->
+                    <col class="w-24">        <!-- ارجاع به -->
+                    <col class="w-40">        <!-- عملیات -->
+                    </colgroup>
+
                     <thead class="bg-gray-50">
                         <tr>
                             <th class="px-2 py-2 text-center">

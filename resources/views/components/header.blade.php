@@ -20,7 +20,7 @@
     x-init="$store.menu = $data"
     class="fixed top-0 left-0 right-0 bg-white shadow-md z-50 px-3 sm:px-4 py-1"
 >
-    <div class="flex items-center justify-between gap-3 flex-nowrap overflow-x-auto">
+    <div class="flex flex-wrap items-center justify-between gap-3 overflow-x-hidden">
         <!-- دکمه باز کردن منو + لوگو -->
         <div class="flex items-center gap-3 shrink-0">
             <!-- دکمه باز کردن منو -->
@@ -48,7 +48,7 @@
         <!-- تاریخ و ساعت شمسی: تمام عرض در موبایل، کنار بقیه در دسکتاپ -->
         <div 
             id="datetime-display" 
-            class="shrink-0 text-center leading-tight text-gray-700 font-medium"
+            class="shrink-0 min-w-0 text-center leading-tight text-gray-700 font-medium"
         >
             <div class="text-[11px] sm:text-sm">
                 {{ \Morilog\Jalali\Jalalian::now()->format('l j F Y') }}
@@ -104,6 +104,12 @@
 
             {{-- اعلان‌ها و منوی کاربر --}}
             @auth
+                @php
+                    $authUser = Auth::user();
+                    $avatarUrl = $authUser && $authUser->profile_photo_path
+                        ? asset('storage/' . $authUser->profile_photo_path)
+                        : asset('images/user.png');
+                @endphp
                 <!-- اعلان‌ها -->
                 <div
                     class="relative"
@@ -235,13 +241,14 @@
                         @click="toggle()"
                         class="text-gray-600 hover:text-gray-900 flex items-center gap-2"
                     >
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-7 w-7" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                                d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z" />
-                        </svg>
+                        <img
+                            src="{{ $avatarUrl }}"
+                            alt="User avatar"
+                            class="h-8 w-8 rounded-full object-cover border border-gray-200"
+                        >
                         <span class="hidden md:inline text-sm font-medium">
-                                {{ Auth::user()->name }}
-                            </span>
+                            {{ $authUser->name }}
+                        </span>
                     </button>
 
                     <template x-teleport="body">

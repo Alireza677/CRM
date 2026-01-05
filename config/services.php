@@ -50,5 +50,8 @@ return [
         ),
     ],
 
+    'navatel' => [
+        'webhook_token' => env('NAVATEL_WEBHOOK_TOKEN'),
+    ],
 
 ];

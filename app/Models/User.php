@@ -27,6 +27,7 @@ class User extends Authenticatable
         'mobile',        // ← اضافه شد
         'password',
         'is_admin',      // ← اگر از فلگ دیتابیسی استفاده می‌کنی
+        'profile_photo_path',
     ];
 
     /**

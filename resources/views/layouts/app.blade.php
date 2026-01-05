@@ -49,7 +49,7 @@
 </head>
 
 <body x-data="{ mainMenuOpen: false, subMenuOpen: false, activeMenu: null, openSubMenu(name) { this.subMenuOpen = true; this.activeMenu = name; } }"
-      class="font-sans antialiased">
+      class="font-sans antialiased overflow-x-hidden">
 <div class="min-h-screen bg-gray-100">
     <x-header :breadcrumb="$breadcrumb ?? []" />
     <x-sidebar />

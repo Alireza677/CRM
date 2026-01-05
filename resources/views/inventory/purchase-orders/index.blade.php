@@ -1,18 +1,18 @@
 @extends('layouts.app')
 
 @section('content')
-  <div>
-    <div class=" mx-auto sm:px-6 lg:px-8">
-      <div class="flex justify-between items-center mb-6">
-        <h2 class="font-semibold text-xl text-gray-800 leading-tight"> ثبت سفارش‌های خرید، تأمین موجودی و هزینه‌های جاری</h2>
-        <a href="{{ route('inventory.purchase-orders.create') }}" class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">سفارش خرید جدید</a>
+  <div class="overflow-x-hidden">
+    <div class="mx-auto px-4 sm:px-6 lg:px-8">
+      <div class="flex flex-col gap-3 mb-6 sm:flex-row sm:items-center sm:justify-between">
+        <h2 class="font-semibold text-base text-gray-800 leading-tight sm:text-xl">ثبت سفارش‌های خرید، تأمین موجودی و هزینه‌های جاری</h2>
+        <a href="{{ route('inventory.purchase-orders.create') }}" class="inline-flex items-center justify-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">سفارش خرید جدید</a>
       </div>
 
       <div class="bg-white overflow-hidden shadow-sm sm:rounded-lg">
         <div class="p-6">
-          <form action="{{ route('inventory.purchase-orders.index') }}" method="GET" class="flex gap-4 mb-4">
-            <input type="text" name="search" value="{{ request('search') }}" class="flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="جستجوی عنوان یا تأمین‌کننده...">
-            <button type="submit" class="px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700">جستجو</button>
+          <form action="{{ route('inventory.purchase-orders.index') }}" method="GET" class="flex flex-col gap-3 mb-4 sm:flex-row sm:items-center">
+            <input type="text" name="search" value="{{ request('search') }}" class="w-full flex-1 rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500" placeholder="جستجوی عنوان یا تأمین‌کننده...">
+            <button type="submit" class="w-full px-4 py-2 bg-gray-800 text-white rounded-md text-sm hover:bg-gray-700 sm:w-auto">جستجو</button>
           </form>
 
           @php

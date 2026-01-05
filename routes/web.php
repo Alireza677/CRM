@@ -67,6 +67,7 @@ use App\Http\Controllers\Admin\RolePermissionMatrixController;
 use App\Http\Controllers\HolidayController;
 use App\Http\Controllers\EmployeePortalController;
 use App\Http\Controllers\Telephony\PhoneCallController;
+use App\Http\Controllers\Telephony\WebhookEventController;
 use App\Http\Controllers\OnlineChatController;
 use App\Http\Controllers\Chat\ChatCallController;
 use App\Http\Controllers\MailController;
@@ -503,6 +504,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('telephony')->name('telephony.')->group(function () {
         Route::get('phone-calls', [PhoneCallController::class, 'index'])->name('phone-calls.index');
         Route::get('phone-calls/{phoneCall}', [PhoneCallController::class, 'show'])->name('phone-calls.show');
+        Route::get('webhook-events', [WebhookEventController::class, 'index'])
+            ->middleware('role:admin')
+            ->name('webhook-events.index');
     });
 
     // Reports (auth + verified)

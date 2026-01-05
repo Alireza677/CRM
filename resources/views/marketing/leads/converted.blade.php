@@ -71,7 +71,7 @@
             <table class="min-w-full divide-y divide-gray-200 text-sm">
                 <thead class="bg-gray-50">
                     <tr>
-                        <th class="px-4 py-2 text-right">?????</th>
+                        <th class="px-4 py-2 text-right">شماره</th>
                         <th class="px-4 py-2 text-right">نام کامل</th>
                         <th class="px-4 py-2 text-right">تاریخ تبدیل</th>
                         <th class="px-4 py-2 text-right">موبایل</th>

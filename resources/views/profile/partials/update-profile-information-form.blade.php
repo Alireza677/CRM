@@ -1,6 +1,40 @@
-<form method="post" action="{{ route('profile.update') }}" class="space-y-4">
+<form method="post" action="{{ route('profile.update') }}" class="space-y-4" enctype="multipart/form-data" x-ref="profileForm">
     @csrf
     @method('patch')
+
+    @php
+        $profileUser = Auth::user();
+        $profileAvatarUrl = $profileUser && $profileUser->profile_photo_path
+            ? asset('storage/' . $profileUser->profile_photo_path)
+            : asset('images/user.png');
+    @endphp
+
+    <div class="flex items-center gap-4">
+        <img
+            src="{{ $profileAvatarUrl }}"
+            alt="User avatar"
+            class="h-16 w-16 rounded-full object-cover border border-gray-200"
+        >
+        <div class="flex-1" x-data="{ fileName: 'عکسی انتخاب نشده' }">
+            <label class="block text-sm font-medium text-gray-700">عکس پروفایل</label>
+            <div class="mt-1 flex items-center gap-2">
+                <input
+                    id="profile_photo"
+                    name="profile_photo"
+                    type="file"
+                    accept="image/*"
+                    class="sr-only"
+                    @change="fileName = $event.target.files?.[0]?.name || 'عکسی انتخاب نشده'; $refs.profileForm.submit()"
+                >
+                <label for="profile_photo" class="px-3 py-1.5 rounded-md bg-gray-200 text-gray-700 cursor-pointer">
+                    انتخاب عکس
+                </label>
+                <span class="text-sm text-gray-600" x-text="fileName"></span>
+            </div>
+            <p class="text-xs text-gray-500 mt-1">حداکثر ۲ مگابایت (JPG, PNG, WEBP)</p>
+            @error('profile_photo') <p class="text-red-600 text-sm mt-1">{{ $message }}</p> @enderror
+        </div>
+    </div>
 
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div>
