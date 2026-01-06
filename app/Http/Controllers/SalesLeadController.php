@@ -1346,8 +1346,14 @@ public function show(SalesLead $lead)
         return redirect()->back()->with('error', 'این سرنخ قبلاً به فرصت تبدیل شده است.');
     }
 
+    $validated = $request->validate([
+        'acquirer_user_id' => ['nullable', 'integer', 'exists:users,id'],
+        'closer_user_id' => ['nullable', 'integer', 'exists:users,id'],
+        'execution_owner_user_id' => ['nullable', 'integer', 'exists:users,id'],
+    ]);
+
     try {
-        DB::transaction(function () use ($lead) {
+        DB::transaction(function () use ($lead, $validated) {
             $organization = null;
             if (!empty($lead->company)) {
                 $organization = Organization::firstOrCreate(
@@ -1408,6 +1414,46 @@ public function show(SalesLead $lead)
                 'description'     => $lead->notes,
                 'stage'           => Opportunity::STAGE_OPEN,
             ]);
+
+            $creatorId = Auth::id();
+            $rows = [];
+            $relationshipOwnerUserId = $lead->assigned_to;
+
+            if (!empty($validated['acquirer_user_id'])) {
+                $rows[] = [
+                    'user_id' => (int) $validated['acquirer_user_id'],
+                    'role_type' => 'acquirer',
+                    'created_by' => $creatorId,
+                ];
+            }
+
+            if (!empty($relationshipOwnerUserId)) {
+                $rows[] = [
+                    'user_id' => (int) $relationshipOwnerUserId,
+                    'role_type' => 'relationship_owner',
+                    'created_by' => $creatorId,
+                ];
+            }
+
+            if (!empty($validated['closer_user_id'])) {
+                $rows[] = [
+                    'user_id' => (int) $validated['closer_user_id'],
+                    'role_type' => 'closer',
+                    'created_by' => $creatorId,
+                ];
+            }
+
+            if (!empty($validated['execution_owner_user_id'])) {
+                $rows[] = [
+                    'user_id' => (int) $validated['execution_owner_user_id'],
+                    'role_type' => 'execution_owner',
+                    'created_by' => $creatorId,
+                ];
+            }
+
+            if ($rows !== []) {
+                $opportunity->roleAssignments()->createMany($rows);
+            }
 
             $leadContactIds = $lead->contacts()->pluck('contacts.id')->all();
             if (!empty($lead->contact_id)) {

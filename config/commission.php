@@ -12,10 +12,8 @@ return [
     */
     'roles' => [
         'acquirer'               => 3.0,
-        'temp_relationship_owner'=> 1.0,
         'relationship_owner'     => 4.0,
         'closer'                 => 5.0,
-        'pre_sales'              => 2.0,
         'execution_owner'        => 3.5,
     ],
 

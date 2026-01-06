@@ -99,16 +99,47 @@ class DocumentController extends Controller
         );
     }
 
-    public function store(Request $request)
-    {
-        $request->validate([
-            'title'             => ['required','string','max:255'],
-            'file'              => ['required','file','max:10240','mimetypes:application/pdf,application/msword,application/vnd.openxmlformats-officedocument.wordprocessingml.document,image/jpeg,image/png,image/gif,image/webp,image/svg+xml'],
-            'opportunity_id'    => ['nullable','integer','exists:opportunities,id'],
-            'purchase_order_id' => ['nullable','integer','exists:purchase_orders,id'],
-        ]);
+public function store(Request $request)
+{
+    $rules = [
+        'title'             => ['required', 'string', 'max:255'],
+        'opportunity_id'    => ['nullable', 'integer', 'exists:opportunities,id'],
+        'purchase_order_id' => ['nullable', 'integer', 'exists:purchase_orders,id'],
+    ];
 
-        $path = $request->file('file')->store('documents', 'public');
+    $allowedMimeTypes = [
+        'application/pdf',
+        'application/msword',
+        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
+        'image/jpeg',
+        'image/png',
+        'image/gif',
+        'image/webp',
+        'image/svg+xml',
+    ];
+
+    // اگر multi-upload باشد: files[] ، اگر تک فایل باشد: file
+    if ($request->hasFile('files')) {
+        $rules['files'] = ['required', 'array'];
+        $rules['files.*'] = ['file', 'max:10240', 'mimetypes:' . implode(',', $allowedMimeTypes)];
+    } else {
+        $rules['file'] = ['required', 'file', 'max:10240', 'mimetypes:' . implode(',', $allowedMimeTypes)];
+    }
+
+    $request->validate($rules);
+
+    $uploadedFiles = [];
+    if ($request->hasFile('files')) {
+        $uploadedFiles = $request->file('files');
+    } elseif ($request->hasFile('file')) {
+        $uploadedFiles = [$request->file('file')];
+    }
+
+    $actor = $request->user(); // مطمئن‌تر از auth()->user() در بعضی سناریوها
+    $actorName = $actor?->name ?? 'کاربر سیستم';
+
+    foreach ($uploadedFiles as $file) {
+        $path = $file->store('documents', 'public');
 
         $data = [
             'title'             => $request->input('title'),
@@ -117,28 +148,28 @@ class DocumentController extends Controller
             'purchase_order_id' => $request->integer('purchase_order_id') ?: null,
         ];
 
-        if (Schema::hasColumn('documents', 'user_id')) {
-            $data['user_id'] = $request->user()->id;
+        if (\Illuminate\Support\Facades\Schema::hasColumn('documents', 'user_id')) {
+            $data['user_id'] = $actor?->id;
         }
 
-        $document = Document::create($data);
+        $document = \App\Models\Document::create($data);
 
+        // اگر سند برای Opportunity باشد، روی پروفرماهای مرتبط هم لاگ بزن
         if ($document->opportunity_id) {
-            $relatedProformas = Proforma::where('opportunity_id', $document->opportunity_id)->get();
+            $relatedProformas = \App\Models\Proforma::where('opportunity_id', $document->opportunity_id)->get();
 
             foreach ($relatedProformas as $proforma) {
                 $logTime = now();
-                $actorName = auth()->user()->name ?? 'O3UOO3O?U.';
-                $actorName = auth()->user()->name ?? 'سیستم';
-                $description = "{$actorName} یک سند جدید برای فرصت مرتبط آپلود کرد در تاریخ "
-                    . DateHelper::toJalali($logTime, 'H:i Y/m/d');
+                $jalaliStamp = \App\Helpers\DateHelper::toJalali($logTime, 'H:i Y/m/d');
+
+                $description = "{$actorName} سند «{$document->title}» را به پیش‌فاکتور مرتبط اضافه کرد. {$jalaliStamp}";
 
                 activity('proforma')
                     ->performedOn($proforma)
-                    ->causedBy(auth()->user())
+                    ->causedBy($actor)
                     ->event('document_uploaded')
                     ->withProperties([
-                        'document_id' => $document->id,
+                        'document_id'    => $document->id,
                         'document_title' => $document->title,
                         'opportunity_id' => $document->opportunity_id,
                     ])
@@ -146,36 +177,41 @@ class DocumentController extends Controller
             }
         }
 
+        // اگر سند برای Purchase Order باشد، روی سفارش خرید لاگ بزن
         if ($document->purchase_order_id) {
-            try {
-                $purchaseOrder = PurchaseOrder::find($document->purchase_order_id);
-            } catch (\Throwable $e) {
-                $purchaseOrder = null;
-            }
+            $purchaseOrder = \App\Models\PurchaseOrder::find($document->purchase_order_id);
 
             if ($purchaseOrder) {
                 activity('purchase_order')
                     ->performedOn($purchaseOrder)
-                    ->causedBy($request->user())
+                    ->causedBy($actor)
                     ->event('document_added')
                     ->withProperties([
                         'document' => [
-                            'id' => $document->id,
-                            'title' => $document->title,
+                            'id'        => $document->id,
+                            'title'     => $document->title,
                             'file_path' => $document->file_path,
                             'extension' => pathinfo($document->file_path ?? '', PATHINFO_EXTENSION),
                         ],
                     ])
-                    ->log('document_added');
+                    ->log("سند «{$document->title}» به سفارش خرید اضافه شد.");
             }
         }
-
-        return redirect()
-            ->route('sales.documents.index')
-            ->with('success', 'سند با موفقیت ثبت شد.');
     }
 
-    
+    $purchaseOrderId = $request->integer('purchase_order_id') ?: null;
+
+    if ($purchaseOrderId) {
+        return redirect()
+            ->route('inventory.purchase-orders.show', $purchaseOrderId)
+            ->with('success', 'سند(ها) با موفقیت آپلود شد.');
+    }
+
+    return redirect()
+        ->route('sales.documents.index')
+        ->with('success', 'سند(ها) با موفقیت آپلود شد.');
+}
+
     public function view(Document $document)
     {
         $this->authorize('view', $document);

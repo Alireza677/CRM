@@ -198,6 +198,71 @@
     </div>
 </div>
 
+<!-- Lead convert modal -->
+<div id="lead-convert-modal" class="fixed inset-0 z-50 hidden items-center justify-center px-4" dir="rtl">
+    <div id="lead-convert-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-lead-convert-close></div>
+    <div class="relative bg-white rounded-lg shadow-xl border border-gray-200 max-w-lg w-full mx-auto p-6">
+        <div class="flex items-start justify-between mb-4">
+            <div>
+                <p class="text-sm text-gray-500 mb-1">تبدیل سرنخ به فرصت فروش</p>
+                <h3 class="text-lg font-semibold text-gray-800">
+                    اطلاعات نقش‌ها برای
+                    <span id="lead-convert-name" class="text-gray-900">—</span>
+                </h3>
+            </div>
+            <button type="button" class="text-gray-500 hover:text-gray-700 transition" aria-label="بستن" data-lead-convert-close>
+                <span class="text-xl leading-none">&times;</span>
+            </button>
+        </div>
+
+        <form id="lead-convert-form" method="POST" action="" class="space-y-4">
+            @csrf
+            <div class="text-sm text-gray-700 bg-gray-50 border border-gray-200 rounded-md px-3 py-2">
+                مالک اصلی فرصت: <span id="lead-convert-owner-name" class="font-semibold text-gray-800">—</span>
+            </div>
+
+            <div>
+                <label for="lead-convert-acquirer" class="block text-sm font-medium text-gray-700">جذب‌کننده</label>
+                <select id="lead-convert-acquirer" name="acquirer_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <option value="">انتخاب کنید</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="lead-convert-closer" class="block text-sm font-medium text-gray-700">نهایی‌کننده</label>
+                <select id="lead-convert-closer" name="closer_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <option value="">انتخاب کنید</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div>
+                <label for="lead-convert-execution" class="block text-sm font-medium text-gray-700">مسئول پشتیبانی</label>
+                <select id="lead-convert-execution" name="execution_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+                    <option value="">انتخاب کنید</option>
+                    @foreach($users as $user)
+                        <option value="{{ $user->id }}">{{ $user->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+
+            <div class="flex items-center justify-end gap-2 pt-2">
+                <button type="button" class="px-4 py-2 text-sm rounded-md border border-gray-200 text-gray-700 hover:bg-gray-50" data-lead-convert-close>
+                    انصراف
+                </button>
+                <button type="submit" class="px-4 py-2 text-sm rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
+                    تایید و تبدیل
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <!-- Lead rules modal -->
 <div id="lead-rules-modal" class="fixed inset-0 z-40 hidden items-center justify-center px-4">
     <div id="lead-rules-backdrop" class="absolute inset-0 bg-black/40 backdrop-blur-sm" data-lead-rules-close></div>
@@ -238,6 +303,15 @@ document.addEventListener('DOMContentLoaded', function () {
     const rulesModal = document.getElementById('lead-rules-modal');
     const rulesBackdrop = document.getElementById('lead-rules-backdrop');
     const rulesCloseButtons = document.querySelectorAll('[data-lead-rules-close]');
+    const convertModal = document.getElementById('lead-convert-modal');
+    const convertBackdrop = document.getElementById('lead-convert-backdrop');
+    const convertCloseButtons = document.querySelectorAll('[data-lead-convert-close]');
+    const convertForm = document.getElementById('lead-convert-form');
+    const convertLeadName = document.getElementById('lead-convert-name');
+    const convertOwnerName = document.getElementById('lead-convert-owner-name');
+    const convertAcquirer = document.getElementById('lead-convert-acquirer');
+    const convertCloser = document.getElementById('lead-convert-closer');
+    const convertExecution = document.getElementById('lead-convert-execution');
     const tbody = document.getElementById('leads-tbody');
     const pagination = document.getElementById('leads-pagination');
     const filterLeadNumber = document.getElementById('filter-lead-number');
@@ -376,6 +450,45 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 
+    const openConvertModal = (button) => {
+        if (!convertModal || !convertForm) return;
+        const action = button.getAttribute('data-convert-action');
+        const leadName = button.getAttribute('data-lead-name') || '—';
+        const ownerName = button.getAttribute('data-assigned-user-name') || '—';
+
+        if (action) convertForm.action = action;
+        if (convertLeadName) convertLeadName.textContent = leadName;
+        if (convertOwnerName) convertOwnerName.textContent = ownerName || '—';
+
+        if (convertAcquirer) convertAcquirer.value = '';
+        if (convertCloser) convertCloser.value = '';
+        if (convertExecution) convertExecution.value = '';
+
+        convertModal.classList.remove('hidden');
+        convertModal.classList.add('flex');
+    };
+
+    const closeConvertModal = () => {
+        if (!convertModal) return;
+        convertModal.classList.add('hidden');
+        convertModal.classList.remove('flex');
+    };
+
+    if (tbody) {
+        tbody.addEventListener('click', function (event) {
+            const button = event.target.closest('.js-open-convert-modal');
+            if (!button) return;
+            event.preventDefault();
+            openConvertModal(button);
+        });
+    }
+
+    convertCloseButtons.forEach(btn => btn.addEventListener('click', closeConvertModal));
+
+    if (convertBackdrop) {
+        convertBackdrop.addEventListener('click', closeConvertModal);
+    }
+
     // Lead rules modal interactions
     const openRulesModal = () => {
         if (!rulesModal) return;
@@ -403,8 +516,13 @@ document.addEventListener('DOMContentLoaded', function () {
     }
 
     document.addEventListener('keydown', function (event) {
-        if (event.key === 'Escape' && rulesModal && !rulesModal.classList.contains('hidden')) {
-            closeRulesModal();
+        if (event.key === 'Escape') {
+            if (rulesModal && !rulesModal.classList.contains('hidden')) {
+                closeRulesModal();
+            }
+            if (convertModal && !convertModal.classList.contains('hidden')) {
+                closeConvertModal();
+            }
         }
     });
 

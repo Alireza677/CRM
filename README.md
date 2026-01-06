@@ -40,6 +40,14 @@ Notes:
 
 The Spatie permission tables are already present via migration. All seeders and the command are idempotent and safe if data already exists.
 
+## Holidays Import
+
+Run the importer for a Jalali year:
+
+```bash
+php artisan holidays:import 1404
+```
+
 ## Learning Laravel
 
 Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework.

@@ -339,71 +339,111 @@ document.addEventListener("DOMContentLoaded", function () {
         }
     };
 
+    window.reloadOpportunityProformaTab = function () {
+        const proformaTab = document.querySelector('.load-tab[data-url*="/tab/proformas"]');
+        if (proformaTab) {
+            setActiveTab(proformaTab);
+            loadTab(proformaTab.dataset.url, proformaTab);
+        }
+    };
+
     contentArea?.addEventListener('click', async (e) => {
         const btn = e.target.closest('[data-action]');
         if (!btn) return;
 
         const action = btn.dataset.action;
-        const contactId = btn.dataset.contactId;
-        const container = btn.closest('[data-detach-url][data-primary-url]');
         const csrf = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content');
 
-        if (!contactId || !container) return;
+        if (action === 'detach-contact' || action === 'set-primary') {
+            const contactId = btn.dataset.contactId;
+            const container = btn.closest('[data-detach-url][data-primary-url]');
+            if (!contactId || !container) return;
 
-       if (action === 'detach-contact') {
-    if (!confirm('آیا از جداسازی این مخاطب مطمئن هستید؟')) return;
+            if (action === 'detach-contact') {
+                if (!confirm('آیا از جداسازی این مخاطب مطمئن هستید؟')) return;
 
-    const url = container.dataset.detachUrl;
+                const url = container.dataset.detachUrl;
 
-    try {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
-            },
-            body: JSON.stringify({ contact_id: contactId }),
-        });
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                        },
+                        body: JSON.stringify({ contact_id: contactId }),
+                    });
 
-        if (!res.ok) {
-            const payload = await res.json().catch(() => ({}));
-            throw new Error(payload.message || 'خطا در جداسازی مخاطب.');
+                    if (!res.ok) {
+                        const payload = await res.json().catch(() => ({}));
+                        throw new Error(payload.message || 'خطا در جداسازی مخاطب.');
+                    }
+
+                    window.reloadOpportunityContactTab?.();
+                } catch (err) {
+                    console.error('[OpportunityContact] detach failed', err);
+                    alert(err?.message || 'خطا در جداسازی مخاطب.');
+                }
+
+                return;
+            }
+
+            if (action === 'set-primary') {
+                const url = container.dataset.primaryUrl;
+
+                try {
+                    const res = await fetch(url, {
+                        method: 'POST',
+                        headers: {
+                            'Content-Type': 'application/json',
+                            ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                        },
+                        body: JSON.stringify({ contact_id: contactId }),
+                    });
+
+                    if (!res.ok) {
+                        const payload = await res.json().catch(() => ({}));
+                        throw new Error(payload.message || 'خطا در تعیین مخاطب اصلی.');
+                    }
+
+                    window.reloadOpportunityContactTab?.();
+                } catch (err) {
+                    console.error('[OpportunityContact] set primary failed', err);
+                    alert(err?.message || 'خطا در تعیین مخاطب اصلی.');
+                }
+            }
+
+            return;
         }
 
-        window.reloadOpportunityContactTab?.();
-    } catch (err) {
-        console.error('[OpportunityContact] detach failed', err);
-        alert(err?.message || 'خطا در جداسازی مخاطب.');
-    }
+        if (action === 'set-primary-proforma') {
+            const proformaId = btn.dataset.proformaId;
+            const container = btn.closest('[data-primary-proforma-url]');
+            if (!proformaId || !container) return;
 
-    return;
-}
+            const url = container.dataset.primaryProformaUrl;
 
+            try {
+                const res = await fetch(url, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
+                    },
+                    body: JSON.stringify({ proforma_id: proformaId }),
+                });
 
-       if (action === 'set-primary') {
-    const url = container.dataset.primaryUrl;
+                if (!res.ok) {
+                    const payload = await res.json().catch(() => ({}));
+                    throw new Error(payload.message || 'خطا در تعیین پیش‌فاکتور اصلی.');
+                }
 
-    try {
-        const res = await fetch(url, {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                ...(csrf ? { 'X-CSRF-TOKEN': csrf } : {}),
-            },
-            body: JSON.stringify({ contact_id: contactId }),
-        });
-
-        if (!res.ok) {
-            const payload = await res.json().catch(() => ({}));
-            throw new Error(payload.message || 'خطا در تعیین مخاطب اصلی.');
+                window.reloadOpportunityProformaTab?.();
+            } catch (err) {
+                console.error('[OpportunityProforma] set primary failed', err);
+                alert(err?.message || 'خطا در تعیین پیش‌فاکتور اصلی.');
+            }
         }
-
-        window.reloadOpportunityContactTab?.();
-    } catch (err) {
-        console.error('[OpportunityContact] set primary failed', err);
-        alert(err?.message || 'خطا در تعیین مخاطب اصلی.');
-    }
-}
 
     });
 

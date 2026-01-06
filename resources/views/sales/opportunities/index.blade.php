@@ -116,8 +116,14 @@
                             </select>
                         </th>
                         <th class="px-2 py-1">
-                            <input type="text" id="filter-assigned-to" name="assigned_to" value="{{ request('assigned_to') }}"
-                                class="w-full px-2 py-1 border rounded text-sm" placeholder="ارجاع به">
+                            <select id="filter-assigned-to" name="assigned_to" class="w-full px-2 py-1 border rounded text-sm">
+                                <option value="">همه</option>
+                                @foreach($users as $user)
+                                    <option value="{{ $user->id }}" {{ (string) request('assigned_to') === (string) $user->id ? 'selected' : '' }}>
+                                        {{ $user->name }}
+                                    </option>
+                                @endforeach
+                            </select>
                         </th>
                         <th class="px-2 py-1 text-center"></th>
                         <th class="px-2 py-1 text-center"></th>
@@ -200,7 +206,7 @@
         const contactInput = document.getElementById('filter-contact');
         const stageSelect = document.getElementById('filter-stage');
         const sourceSelect = document.getElementById('filter-source');
-        const assignedInput = document.getElementById('filter-assigned-to');
+        const assignedSelect = document.getElementById('filter-assigned-to');
         const perPageSelect = document.getElementById('per_page');
         const tbody = document.getElementById('opportunities-tbody');
         const pagination = document.getElementById('opportunities-pagination');
@@ -212,7 +218,7 @@
             const contactVal = (contactInput?.value || '').trim();
             const stageVal = stageSelect?.value || '';
             const sourceVal = sourceSelect?.value || '';
-            const assignedVal = (assignedInput?.value || '').trim();
+            const assignedVal = assignedSelect?.value || '';
             const perPageVal = perPageSelect?.value || '';
 
             if (numberVal) params.set('opportunity_number', numberVal); else params.delete('opportunity_number');
@@ -260,7 +266,7 @@
         numberInput?.addEventListener('input', scheduleFilterApply);
         nameInput?.addEventListener('input', scheduleFilterApply);
         contactInput?.addEventListener('input', scheduleFilterApply);
-        assignedInput?.addEventListener('input', scheduleFilterApply);
+        assignedSelect?.addEventListener('change', applyFilters);
         stageSelect?.addEventListener('change', applyFilters);
         sourceSelect?.addEventListener('change', applyFilters);
         perPageSelect?.addEventListener('change', applyFilters);

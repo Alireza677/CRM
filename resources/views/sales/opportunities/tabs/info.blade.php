@@ -72,21 +72,26 @@
         <div class="lg:col-span-3 rounded-2xl border border-amber-200 bg-amber-50/80 shadow-sm hover:shadow-md transition">
             <div class="p-5">
                 <h2 class="text-base font-semibold text-amber-800 mb-3">پیگیری و ارجاع</h2>
+                @php
+                    $roleLabels = [
+                        'acquirer' => 'جذب کننده',
+                        'relationship_owner' => 'مالک اصلی',
+                        'closer' => 'نهایی کننده',
+                        'execution_owner' => 'پشتیبان فنی',
+                    ];
+                    $roleAssignmentsByType = $opportunity->roleAssignments?->keyBy('role_type') ?? collect();
+                @endphp
                 <div class="space-y-2 text-sm">
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">ارجاع به</span>
-                        <span class="font-medium text-gray-900">{{ $opportunity->assignedTo->name ?? '-' }}</span>
-                    </div>
-                    <div class="flex items-center justify-between">
-                        <span class="text-gray-600">تاریخ پیگیری بعدی</span>
-                        <span class="font-medium text-gray-900">
-                            @if($opportunity->next_follow_up)
-                                {{ \App\Helpers\DateHelper::toJalali($opportunity->next_follow_up) }}
-                            @else
-                                —
-                            @endif
-                        </span>
-                    </div>
+                    @foreach($roleLabels as $roleType => $label)
+                        @php
+                            $assignment = $roleAssignmentsByType->get($roleType);
+                            $roleUser = $assignment?->user;
+                        @endphp
+                        <div class="flex items-center justify-between">
+                            <span class="text-gray-600">{{ $label }}</span>
+                            <span class="font-medium text-gray-900">{{ $roleUser?->name ?? $roleUser?->username ?? '?' }}</span>
+                        </div>
+                    @endforeach
                 </div>
             </div>
         </div>

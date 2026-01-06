@@ -61,9 +61,15 @@ class OpportunityPolicy
 
         if ($user->can("{$this->prefix}.{$action}.own")) {
             $uid = (int) $user->id;
-            return (int)($model->owner_user_id ?? 0) === $uid
-                || (int)($model->assigned_to ?? 0) === $uid
-                || (int)($model->created_by ?? 0) === $uid;
+            if ((int)($model->owner_user_id ?? 0) === $uid
+                || (int)($model->assigned_to ?? 0) === $uid) {
+                return true;
+            }
+
+            return $model->roleAssignments()
+                ->where('user_id', $uid)
+                ->whereIn('role_type', ['acquirer', 'relationship_owner', 'closer', 'execution_owner'])
+                ->exists();
         }
 
         return false;

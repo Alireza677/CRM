@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Opportunity;
 use App\Models\RoleAssignment;
+use App\Models\CommissionSetting;
 use Illuminate\Support\Collection;
 
 class CommissionService
@@ -11,14 +12,14 @@ class CommissionService
     /**
      * محاسبهٔ پورسانت فرصت وقتی مرحله به «won» می‌رسد؛ مبلغ فروش از فیلد `amount`
      * (در صورت نبود، value/total_price/total_amount) خوانده می‌شود و ضرایب
-     * config/commission.php برای درصد پایه و سطح اعمال می‌شود.
+     * درصد پایه از تنظیمات کمیسیون (در صورت نبود، config/commission.php) و ضرایب سطح اعمال می‌شود.
      */
     public function calculateForOpportunity(Opportunity $opportunity): void
     {
         $opportunity->loadMissing('roleAssignments');
 
         $netAmount = $this->resolveNetAmount($opportunity);
-        $rolePercents = config('commission.roles', []);
+        $rolePercents = CommissionSetting::resolveRolePercents();
         $levelMultipliers = config('commission.levels', []);
         $levelOrder = config('commission.level_order', []);
 

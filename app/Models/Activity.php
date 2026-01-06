@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Morilog\Jalali\Jalalian;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Route;
 
 class Activity extends Model
 {
@@ -15,6 +16,7 @@ class Activity extends Model
         'subject','start_at','due_at',
         'assigned_to_id','related_type','related_id',
         'status','priority','description','is_private',
+        'source',
         'created_by_id','updated_by_id',
     ];
 
@@ -113,12 +115,19 @@ class Activity extends Model
     }
 
     public function toCalendarEvent(): array {
+        $url = null;
+        if (Route::has('activities.show')) {
+            $url = route('activities.show', $this->id);
+        } elseif (Route::has('activities.edit')) {
+            $url = route('activities.edit', $this->id);
+        }
+
         return [
             'id'    => $this->id,
             'title' => $this->subject,
             'start' => optional($this->start_at)->toIso8601String(),
             'end'   => optional($this->due_at)->toIso8601String(),
-            'url'   => route('activities.show', $this->id),
+            'url'   => $url,
             'extendedProps' => [
                 'status'   => $this->status,
                 'priority' => $this->priority,

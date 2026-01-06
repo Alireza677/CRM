@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Sales;
 use App\Http\Controllers\Controller;
 use Illuminate\Http\Request;
 use App\Models\Opportunity;
+use App\Models\CommissionSetting;
 use App\Models\Contact;
 use App\Models\Organization;
 use App\Models\User;
@@ -23,6 +24,11 @@ use Illuminate\Support\Str;
 
 class OpportunityController extends Controller
 {
+    private const ROLE_TYPE_ACQUIRER = 'acquirer';
+    private const ROLE_TYPE_RELATIONSHIP_OWNER = 'relationship_owner';
+    private const ROLE_TYPE_CLOSER = 'closer';
+    private const ROLE_TYPE_EXECUTION_OWNER = 'execution_owner';
+
     public function index(Request $request)
     {
         $query = Opportunity::visibleFor(auth()->user(), 'opportunities')
@@ -54,9 +60,7 @@ class OpportunityController extends Controller
         }
 
         if ($request->filled('assigned_to')) {
-            $query->whereHas('assignedUser', function ($q) use ($request) {
-                $q->where('name', 'like', '%' . $request->assigned_to . '%');
-            });
+            $query->where('assigned_to', $request->assigned_to);
         }
 
         if ($request->filled('stage')) {
@@ -77,7 +81,9 @@ class OpportunityController extends Controller
             ]);
         }
 
-        return view('sales.opportunities.index', compact('opportunities'));
+        $users = User::orderBy('name')->get(['id', 'name']);
+
+        return view('sales.opportunities.index', compact('opportunities', 'users'));
     }
 
     public function create(Request $request)
@@ -114,7 +120,10 @@ class OpportunityController extends Controller
             'source' => 'required|string|max:255',
             // برچسب نوع کاربری بنا آزاد است (لیست UI تغییری نمی‌کند)
             'building_usage' => 'required|string|max:255',
-            'assigned_to' => 'nullable|exists:users,id',
+            'acquirer_user_id' => 'nullable|exists:users,id',
+            'relationship_owner_user_id' => 'nullable|exists:users,id',
+            'closer_user_id' => 'nullable|exists:users,id',
+            'execution_owner_user_id' => 'nullable|exists:users,id',
             'success_rate' => 'required|numeric|min:0|max:100',
             // Make follow-up optional when stage is "برنده" (won)
             'next_follow_up' => 'nullable|date|required_unless:stage,won,lost,dead',
@@ -125,12 +134,30 @@ class OpportunityController extends Controller
             'quick_note_body' => ['nullable','string','max:5000'],
         ]);
 
+        $acquirerUserId = $validated['acquirer_user_id'] ?? null;
+        $relationshipOwnerUserId = $validated['relationship_owner_user_id'] ?? null;
+        $closerUserId = $validated['closer_user_id'] ?? null;
+        $executionOwnerUserId = $validated['execution_owner_user_id'] ?? null;
+
+        $primaryOwnerId = $relationshipOwnerUserId ?: $closerUserId ?: $executionOwnerUserId ?: $acquirerUserId;
+        if (!empty($primaryOwnerId)) {
+            $validated['assigned_to'] = $primaryOwnerId;
+        }
+
+        unset(
+            $validated['acquirer_user_id'],
+            $validated['relationship_owner_user_id'],
+            $validated['closer_user_id'],
+            $validated['execution_owner_user_id']
+        );
+
         $validated['stage'] = $validated['stage'] ?? Opportunity::STAGE_OPEN;
         if (!in_array($validated['stage'], Opportunity::closedStages(), true)) {
             $validated['lost_reason'] = null;
         }
 
         $opportunity = Opportunity::create($validated);
+        $this->syncCommissionRoles($opportunity, $acquirerUserId, $relationshipOwnerUserId, $closerUserId, $executionOwnerUserId);
         $opportunity->notifyIfAssigneeChanged(null);
 
         return redirect()
@@ -154,6 +181,7 @@ class OpportunityController extends Controller
             ->get();
 
         $opportunity->load([
+            'primaryProforma',
             'proformas' => function ($q) use ($opportunity) {
                 $q->select(
                     'id',
@@ -168,6 +196,8 @@ class OpportunityController extends Controller
                 ->orderByDesc('proforma_date');
             },
         ])->loadMissing(['roleAssignments.user']);
+      
+
 
         return view('sales.opportunities.show', compact('opportunity', 'breadcrumb', 'activities'));
     }
@@ -223,7 +253,10 @@ class OpportunityController extends Controller
             'source' => 'nullable|string|max:255',
             // برچسب نوع کاربری بنا آزاد است (لیست UI تغییری نمی‌کند)
             'building_usage' => 'nullable|string|max:255',
-            'assigned_to' => 'nullable|exists:users,id',
+            'acquirer_user_id' => 'nullable|exists:users,id',
+            'relationship_owner_user_id' => 'nullable|exists:users,id',
+            'closer_user_id' => 'nullable|exists:users,id',
+            'execution_owner_user_id' => 'nullable|exists:users,id',
             'success_rate' => 'nullable|numeric|min:0|max:100',
             'next_follow_up' => 'nullable|date|required_unless:stage,won,lost,dead',
             'description' => 'nullable|string',
@@ -233,6 +266,23 @@ class OpportunityController extends Controller
             'loss_reasons' => ['nullable','array'],
             'loss_reasons.*' => ['string','max:255'],
         ]);
+
+        $acquirerUserId = $validated['acquirer_user_id'] ?? null;
+        $relationshipOwnerUserId = $validated['relationship_owner_user_id'] ?? null;
+        $closerUserId = $validated['closer_user_id'] ?? null;
+        $executionOwnerUserId = $validated['execution_owner_user_id'] ?? null;
+
+        $primaryOwnerId = $relationshipOwnerUserId ?: $closerUserId ?: $executionOwnerUserId ?: $acquirerUserId;
+        if (!empty($primaryOwnerId)) {
+            $validated['assigned_to'] = $primaryOwnerId;
+        }
+
+        unset(
+            $validated['acquirer_user_id'],
+            $validated['relationship_owner_user_id'],
+            $validated['closer_user_id'],
+            $validated['execution_owner_user_id']
+        );
 
         $oldStage = $opportunity->getStageValue() ?? Opportunity::STAGE_OPEN;
         $requestedStage = $validated['stage'] ?? $oldStage;
@@ -369,6 +419,7 @@ class OpportunityController extends Controller
 
         $opportunity->update($validated);
         $opportunity->notifyIfAssigneeChanged($oldAssignedTo);
+        $this->syncCommissionRoles($opportunity, $acquirerUserId, $relationshipOwnerUserId, $closerUserId, $executionOwnerUserId);
 
         $newStage = $opportunity->getStageValue();
         if ($previousStage !== Opportunity::STAGE_WON && $newStage === Opportunity::STAGE_WON) {
@@ -382,6 +433,64 @@ class OpportunityController extends Controller
             ->with('success', 'تغییرات فرصت فروش با موفقیت ذخیره شد.');
     }
 
+
+    protected function syncCommissionRoles(
+        Opportunity $opportunity,
+        $acquirerUserId,
+        $relationshipOwnerUserId,
+        $closerUserId,
+        $executionOwnerUserId
+    ): void {
+        $roleTypes = [
+            self::ROLE_TYPE_ACQUIRER,
+            self::ROLE_TYPE_RELATIONSHIP_OWNER,
+            self::ROLE_TYPE_CLOSER,
+            self::ROLE_TYPE_EXECUTION_OWNER,
+        ];
+
+        $opportunity->roleAssignments()
+            ->whereIn('role_type', $roleTypes)
+            ->delete();
+
+        $creatorId = auth()->id();
+        $rows = [];
+
+        if (!empty($acquirerUserId)) {
+            $rows[] = [
+                'user_id' => (int) $acquirerUserId,
+                'role_type' => self::ROLE_TYPE_ACQUIRER,
+                'created_by' => $creatorId,
+            ];
+        }
+
+        if (!empty($relationshipOwnerUserId)) {
+            $rows[] = [
+                'user_id' => (int) $relationshipOwnerUserId,
+                'role_type' => self::ROLE_TYPE_RELATIONSHIP_OWNER,
+                'created_by' => $creatorId,
+            ];
+        }
+
+        if (!empty($closerUserId)) {
+            $rows[] = [
+                'user_id' => (int) $closerUserId,
+                'role_type' => self::ROLE_TYPE_CLOSER,
+                'created_by' => $creatorId,
+            ];
+        }
+
+        if (!empty($executionOwnerUserId)) {
+            $rows[] = [
+                'user_id' => (int) $executionOwnerUserId,
+                'role_type' => self::ROLE_TYPE_EXECUTION_OWNER,
+                'created_by' => $creatorId,
+            ];
+        }
+
+        if ($rows !== []) {
+            $opportunity->roleAssignments()->createMany($rows);
+        }
+    }
 
     protected function sanitizeLossReasons($reasons): array
     {
@@ -490,7 +599,8 @@ class OpportunityController extends Controller
         $data = ['opportunity' => $opportunity];
 
         if ($tab === 'summary') {
-            $opportunity->loadMissing(['roleAssignments.user']);
+            $opportunity->loadMissing(['roleAssignments.user', 'primaryProforma']);
+            $data['commissionRows'] = $this->buildCommissionRows($opportunity);
         }
 
         // برای تب یادداشت‌ها، فهرست کاربران جهت منشن‌کردن نیاز است
@@ -525,6 +635,51 @@ class OpportunityController extends Controller
         }
 
         return view($view, $data);
+    }
+
+    protected function buildCommissionRows(Opportunity $opportunity): array
+    {
+        $rolePercents = CommissionSetting::resolveRolePercents();
+        $roles = [
+            [
+                'type' => self::ROLE_TYPE_ACQUIRER,
+                'label' => 'جذب‌کننده',
+                'percent' => (float) ($rolePercents[self::ROLE_TYPE_ACQUIRER] ?? 0),
+            ],
+            [
+                'type' => self::ROLE_TYPE_RELATIONSHIP_OWNER,
+                'label' => 'مالک فرصت',
+                'percent' => (float) ($rolePercents[self::ROLE_TYPE_RELATIONSHIP_OWNER] ?? 0),
+            ],
+            [
+                'type' => self::ROLE_TYPE_CLOSER,
+                'label' => 'نهایی‌کننده',
+                'percent' => (float) ($rolePercents[self::ROLE_TYPE_CLOSER] ?? 0),
+            ],
+            [
+                'type' => self::ROLE_TYPE_EXECUTION_OWNER,
+                'label' => 'پشتیبان فنی',
+                'percent' => (float) ($rolePercents[self::ROLE_TYPE_EXECUTION_OWNER] ?? 0),
+            ],
+        ];
+
+        $primaryProforma = $opportunity->resolvePrimaryProforma();
+        $baseAmount = $primaryProforma?->commission_base_amount;
+
+        $rows = [];
+        foreach ($roles as $role) {
+            $user = $opportunity->getRoleUser($role['type']);
+            $amount = is_null($baseAmount) ? null : ($baseAmount * $role['percent'] / 100);
+
+            $rows[] = [
+                'role_label' => $role['label'],
+                'user_name' => $user?->name ?? $user?->username ?? null,
+                'percent' => (float) $role['percent'],
+                'amount' => $amount,
+            ];
+        }
+
+        return $rows;
     }
 
     public function ajaxTab(Opportunity $opportunity, $tab)
@@ -679,6 +834,23 @@ class OpportunityController extends Controller
         }
 
         $opportunity->forceFill(['contact_id' => $contactId])->save();
+
+        return response()->json(['ok' => true]);
+    }
+
+    public function setPrimaryProforma(Request $request, Opportunity $opportunity)
+    {
+        $validated = $request->validate([
+            'proforma_id' => 'required|integer|exists:proformas,id',
+        ]);
+
+        $proformaId = (int) $validated['proforma_id'];
+        $exists = $opportunity->proformas()->whereKey($proformaId)->exists();
+        if (!$exists) {
+            return response()->json(['message' => 'پیش‌فاکتور انتخاب شده به این فرصت متصل نیست.'], 422);
+        }
+
+        $opportunity->forceFill(['primary_proforma_id' => $proformaId])->save();
 
         return response()->json(['ok' => true]);
     }

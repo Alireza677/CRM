@@ -72,11 +72,11 @@
                 <a href="{{ route('marketing.leads.edit', $lead) }}" class="text-blue-500 hover:underline">ویرایش</a>
                 @if(empty($lead->converted_at))
                     <button
-                        type="submit"
-                        class="text-sm px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700"
-                        formmethod="POST"
-                        formaction="{{ route('marketing.leads.convert', $lead) }}"
-                        onclick="return confirm('این سرنخ به فرصت فروش تبدیل شود؟');"
+                        type="button"
+                        class="text-sm px-2 py-1 rounded bg-indigo-600 text-white hover:bg-indigo-700 js-open-convert-modal"
+                        data-convert-action="{{ route('marketing.leads.convert', $lead) }}"
+                        data-lead-name="{{ $lead->full_name }}"
+                        data-assigned-user-name="{{ $lead->assignedUser?->name ?? '' }}"
                     >
                         تبدیل به فرصت
                     </button>

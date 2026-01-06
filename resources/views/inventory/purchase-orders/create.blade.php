@@ -8,7 +8,7 @@
   ];
 @endphp
 <div class="py-12" dir="rtl">
-  <div class="max-w-5xl mx-auto sm:px-6 lg:px-8">
+  <div class="max-w-7xl mx-auto sm:px-6 lg:px-8">
     <h2 class="text-2xl font-bold mb-6">ایجاد سفارش خرید</h2>
 
     @if ($errors->any())
@@ -132,55 +132,88 @@
         </div>
 
         <div class="overflow-x-auto">
-          <table class="min-w-full text-sm" id="items-table">
-            <thead class="bg-gray-50">
-              <tr>
-                <th class="px-3 py-2 text-right">نام کالا / خدمت</th>
-                <th class="px-3 py-2 text-right">تعداد</th>
-                <th class="px-3 py-2 text-right">واحد</th>
-                <th class="px-3 py-2 text-right">قیمت واحد</th>
-                <th class="px-3 py-2 text-right">مبلغ ردیف</th>
-                <th class="px-3 py-2"></th>
-              </tr>
-            </thead>
-            <tbody id="items-body">
-              <tr id="item-row-template" class="hidden">
-                <td class="px-3 py-2">
-                  <input data-name="items[__INDEX__][item_name]" class="w-48 rounded-md border-gray-300 item-name" disabled required>
-                </td>
-                <td class="px-3 py-2">
-                  <input type="number" step="0.001" min="0.001" data-name="items[__INDEX__][quantity]" class="w-24 rounded-md border-gray-300 item-qty" disabled required>
-                </td>
-                <td class="px-3 py-2">
-                  <select data-name="items[__INDEX__][unit]" class="w-28 rounded-md border-gray-300 item-unit" disabled required>
-                    <option value="">—</option>
-                    <option value="عدد">عدد</option>
-                    <option value="متر">متر</option>
-                    <option value="کیلوگرم">کیلوگرم</option>
-                    <option value="مترمربع">متر مربع</option>
-                    <option value="دستگاه">دستگاه</option>
-                    <option value="برگ">برگ</option>
-                  </select>
-                </td>
-                <td class="px-3 py-2">
-                  <div class="relative">
-                    <input type="number" step="0.01" min="0" data-name="items[__INDEX__][unit_price]" class="w-28 rounded-md border-gray-300 item-price pl-12" disabled required>
-                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
-                  </div>
-                </td>
-                <td class="px-3 py-2">
-                  <div class="relative">
-                    <input type="text" class="w-28 rounded-md border-gray-300 bg-gray-100 item-total pl-12" value="۰" readonly>
-                    <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
-                  </div>
-                </td>
-                <td class="px-3 py-2 text-right">
-                  <button type="button" class="text-red-600 remove-row" disabled>حذف</button>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
+  <table class="w-full table-fixed text-sm" id="items-table">
+    <thead class="bg-gray-50">
+      <tr>
+        <th class="px-3 py-2 text-right w-5/12">نام کالا / خدمت</th>
+        <th class="px-3 py-2 text-right w-2/12">تعداد</th>
+        <th class="px-3 py-2 text-right w-2/12">واحد</th>
+        <th class="px-3 py-2 text-right w-2/12">قیمت واحد</th>
+        <th class="px-3 py-2 text-right w-2/12">مبلغ ردیف</th>
+        <th class="px-3 py-2 w-1/12"></th>
+      </tr>
+    </thead>
+
+    <tbody id="items-body">
+      <tr id="item-row-template" class="hidden">
+        <td class="px-3 py-2">
+          <input
+            data-name="items[__INDEX__][item_name]"
+            class="w-full rounded-md border-gray-300 item-name"
+            disabled required
+          >
+        </td>
+
+        <td class="px-3 py-2">
+          <input
+            type="text" inputmode="decimal"
+            data-name="items[__INDEX__][quantity]"
+            class="w-full rounded-md border-gray-300 item-qty tabular-nums js-number-format"
+            dir="ltr"
+            disabled required
+          >
+        </td>
+
+        <td class="px-3 py-2">
+          <select
+            data-name="items[__INDEX__][unit]"
+            class="w-full rounded-md border-gray-300 item-unit"
+            disabled required
+          >
+            <option value="">—</option>
+            <option value="عدد">عدد</option>
+            <option value="متر">متر</option>
+            <option value="کیلوگرم">کیلوگرم</option>
+            <option value="مترمربع">متر مربع</option>
+            <option value="دستگاه">دستگاه</option>
+            <option value="برگ">برگ</option>
+          </select>
+        </td>
+
+        <td class="px-3 py-2">
+          <div class="relative w-full">
+            <input
+              type="text" inputmode="decimal"
+              data-name="items[__INDEX__][unit_price]"
+              class="w-full rounded-md border-gray-300 item-price pl-12 tabular-nums js-number-format"
+              dir="ltr"
+              disabled required
+            >
+            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+          </div>
+        </td>
+
+        <td class="px-3 py-2">
+          <div class="relative w-full">
+            <input
+              type="text"
+              class="w-full rounded-md border-gray-300 bg-gray-100 item-total pl-12 tabular-nums"
+              dir="ltr"
+              value="0"
+              readonly
+            >
+            <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
+          </div>
+        </td>
+
+        <td class="px-3 py-2 text-right">
+          <button type="button" class="text-red-600 remove-row" disabled>حذف</button>
+        </td>
+      </tr>
+    </tbody>
+  </table>
+</div>
+
 
         <div class="grid grid-cols-1 md:grid-cols-1 gap-4 mt-6">
           <div>
@@ -227,7 +260,7 @@
           <div>
             <label for="previously_paid_amount" class="block text-sm font-medium mb-1">مبلغ‌های پرداخت‌شده قبلی</label>
             <div class="relative">
-              <input type="number" step="1" min="0" name="previously_paid_amount" id="previously_paid_amount" value="{{ old('previously_paid_amount', 0) }}" class="w-full rounded-md border-gray-300 pl-12">
+              <input type="text" inputmode="decimal" name="previously_paid_amount" id="previously_paid_amount" value="{{ old('previously_paid_amount', 0) }}" class="w-full rounded-md border-gray-300 pl-12 js-number-format">
               <span class="absolute left-2 top-1/2 -translate-y-1/2 text-gray-500 text-sm">ریال</span>
             </div>
           </div>
@@ -320,14 +353,44 @@
   const applyVatCheckbox = document.getElementById('apply_vat');
   const remainingDisplay = document.getElementById('remaining_display');
 
-  function formatInt(n){ return String(Math.round(n)); }
+  function formatInt(n){
+    const v = String(Math.round(n));
+    return v.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+  }
+
+  function stripCommas(s){
+    return String(s || '').replace(/,/g, '');
+  }
+
+  function parseNumber(s){
+    const cleaned = stripCommas(s);
+    const n = parseFloat(cleaned);
+    return Number.isFinite(n) ? n : 0;
+  }
+
+  function formatNumberString(raw){
+    const s = String(raw ?? '');
+    if (!s) return '';
+    const hasTrailingDot = s.endsWith('.');
+    const parts = stripCommas(s).split('.');
+    const intPart = parts[0].replace(/\D/g, '');
+    const fracPart = parts.length > 1 ? parts.slice(1).join('').replace(/\D/g, '') : '';
+    const withCommas = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+    if (hasTrailingDot) return withCommas + '.';
+    return fracPart ? withCommas + '.' + fracPart : withCommas;
+  }
+
+  function formatNumberInput(el){
+    const formatted = formatNumberString(el.value);
+    if (formatted !== el.value) el.value = formatted;
+  }
 
   function recalc(){
     let sum = 0;
     itemsBody.querySelectorAll('tr').forEach(tr => {
       if (tr.id === 'item-row-template') return;
-      const qty = parseFloat(tr.querySelector('.item-qty')?.value || 0);
-      const price = parseFloat(tr.querySelector('.item-price')?.value || 0);
+      const qty = parseNumber(tr.querySelector('.item-qty')?.value || 0);
+      const price = parseNumber(tr.querySelector('.item-price')?.value || 0);
       const lt = qty * price;
       const totalEl = tr.querySelector('.item-total');
       if (totalEl) {
@@ -348,7 +411,7 @@
     const grand = sum + vatAmount;
     if (grandTotalDisplay) grandTotalDisplay.value = formatInt(grand);
 
-    const paid = parseFloat(previouslyPaidInput.value || 0);
+    const paid = parseNumber(previouslyPaidInput.value || 0);
     remainingDisplay.value = formatInt(Math.max(grand - paid, 0));
   }
 
@@ -378,16 +441,27 @@
     if (qtyInput) qtyInput.value = item.quantity ?? '';
     if (unitSelect) unitSelect.value = item.unit ?? '';
     if (priceInput) priceInput.value = item.unit_price ?? '';
+    if (qtyInput) formatNumberInput(qtyInput);
+    if (priceInput) formatNumberInput(priceInput);
 
     itemsBody.appendChild(tr);
-    tr.querySelectorAll('input, select').forEach(inp => inp.addEventListener('input', recalc));
+    tr.querySelectorAll('input, select').forEach(inp => {
+      inp.addEventListener('input', () => {
+        if (inp.classList.contains('js-number-format')) formatNumberInput(inp);
+        recalc();
+      });
+    });
     tr.querySelector('.remove-row')?.addEventListener('click', () => { tr.remove(); recalc(); });
     nextIndex++;
     recalc();
   }
 
   addItemBtn.addEventListener('click', () => addRowIndexed());
-  previouslyPaidInput.addEventListener('input', recalc);
+  previouslyPaidInput.addEventListener('input', () => {
+    formatNumberInput(previouslyPaidInput);
+    recalc();
+  });
+  if (previouslyPaidInput) formatNumberInput(previouslyPaidInput);
   if (applyVatCheckbox) {
     applyVatCheckbox.addEventListener('change', () => {
       if (vatPercentInput) vatPercentInput.disabled = !applyVatCheckbox.checked;
@@ -418,6 +492,15 @@
     }
   @endif
   attachSupplierEvents();
+
+  const poForm = document.getElementById('po-form');
+  if (poForm) {
+    poForm.addEventListener('submit', () => {
+      poForm.querySelectorAll('.js-number-format').forEach(el => {
+        el.value = stripCommas(el.value);
+      });
+    });
+  }
 
   // نمایش نام پروژه
   const usageSelect = document.getElementById('usage_type');

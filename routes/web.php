@@ -47,6 +47,7 @@ use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\OpportunityNoteController;
 use App\Http\Controllers\Settings\AutomationController;
+use App\Http\Controllers\Settings\CommissionSettingController;
 use App\Http\Controllers\Settings\Automation\LeadRoundRobinController;
 use App\Http\Controllers\Sales\OrganizationImportController;
 use App\Http\Controllers\Sales\ProformaImportController;
@@ -227,6 +228,9 @@ Route::middleware(['auth'])->group(function () {
             ->middleware('can:update,opportunity');
         Route::post('opportunities/{opportunity}/primary-contact', [OpportunityController::class, 'setPrimaryContact'])
             ->name('opportunities.primary-contact')
+            ->middleware('can:update,opportunity');
+        Route::post('opportunities/{opportunity}/primary-proforma', [OpportunityController::class, 'setPrimaryProforma'])
+            ->name('opportunities.primary-proforma')
             ->middleware('can:update,opportunity');
 
         // سرنخ‌ها
@@ -530,6 +534,8 @@ Route::middleware(['auth'])->group(function () {
         ->group(function () {
             Route::get('/', [SettingsController::class, 'index'])->name('index');
             Route::get('/general', [SettingsController::class, 'general'])->name('general');
+            Route::get('/commissions', [CommissionSettingController::class, 'edit'])->name('commissions.edit');
+            Route::post('/commissions', [CommissionSettingController::class, 'update'])->name('commissions.update');
             Route::resource('users', UserController::class)->except(['show']);
             Route::get('/workflows', [WorkflowController::class, 'index'])->name('workflows.index');
             Route::post('/workflows/purchase-orders', [WorkflowController::class, 'updatePurchaseOrder'])->name('workflows.purchase-orders.update');

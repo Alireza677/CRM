@@ -24,7 +24,7 @@
       </form>
 
       <a href="{{ route('activities.index') }}"
-         class="px-3 py-2 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">بازگشت</a>
+         class="px-3 py-2 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">بازگشت به فعالیت ها</a>
     </div>
   </div>
 

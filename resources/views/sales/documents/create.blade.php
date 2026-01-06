@@ -70,13 +70,20 @@
 
     {{-- فایل --}}
     <div>
-        <label for="file" class="block text-sm font-medium text-gray-700">فایل</label>
+        <label for="files" class="block text-sm font-medium text-gray-700">فایل</label>
         <input type="file"
-               name="file"
-               id="file"
+               name="files[]"
+               id="files"
                required
+               multiple
                accept=".pdf,.doc,.docx,.jpg,.jpeg,.png"
                class="mt-1 block w-full text-sm text-gray-700 border border-gray-300 rounded-md cursor-pointer focus:outline-none focus:ring-2 focus:ring-blue-500">
+        @error('files')
+            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+        @enderror
+        @error('files.*')
+            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+        @enderror
         @error('file')
             <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
         @enderror

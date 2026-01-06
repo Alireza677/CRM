@@ -53,6 +53,7 @@ return [
 
     'sidebar_settings' => 'سایدبار - تنظیمات',
     'sidebar_settings_general' => 'سایدبار - تنظیمات عمومی',
+    'sidebar_settings_commissions' => 'سایدبار - درصد کمیسیون نقش‌ها',
     'sidebar_settings_users' => 'سایدبار - مدیریت کاربران',
     'sidebar_settings_workflows' => 'سایدبار - گردش کارها',
     'sidebar_settings_automation' => 'سایدبار - اتوماسیون',

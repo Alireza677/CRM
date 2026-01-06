@@ -33,6 +33,7 @@ class Opportunity extends Model
     protected static $logAttributes = ['name',
         'organization_id',
         'contact_id',
+        'primary_proforma_id',
         'stage',
         'lost_reason',
         'type',
@@ -73,6 +74,7 @@ class Opportunity extends Model
         'owner_user_id' => 'integer',
         'assigned_to'   => 'integer',
         'team_id'       => 'integer',
+        'primary_proforma_id' => 'integer',
         'visibility'    => 'string',
         'stage'         => 'string',
         'lost_reason'   => 'string',
@@ -131,6 +133,15 @@ class Opportunity extends Model
         $assignment = $query->first();
 
         return $assignment?->user;
+    }
+
+    public function getRoleUserId(string $roleType): ?int
+    {
+        $userId = $this->roleAssignments()
+            ->where('role_type', $roleType)
+            ->value('user_id');
+
+        return $userId ? (int) $userId : null;
     }
 
     public function organization()
@@ -309,6 +320,28 @@ public function proformas()
         ->orderByDesc('proforma_date')
         ->orderByDesc('created_at'); 
 }
+
+    public function primaryProforma()
+    {
+        return $this->belongsTo(\App\Models\Proforma::class, 'primary_proforma_id');
+    }
+
+    public function resolvePrimaryProforma(): ?\App\Models\Proforma
+    {
+        if ($this->relationLoaded('primaryProforma') && $this->primaryProforma) {
+            return $this->primaryProforma;
+        }
+
+        if (!empty($this->primary_proforma_id)) {
+            return $this->primaryProforma()->first();
+        }
+
+        if ($this->relationLoaded('proformas')) {
+            return $this->proformas->first();
+        }
+
+        return $this->proformas()->first();
+    }
 
 
 // سفارش‌ها

@@ -509,6 +509,7 @@ class ProformaController extends Controller
                             'priority'       => 'normal',
                             'description'    => 'Automatically logged after proforma issuance.',
                             'is_private'     => false,
+                            'source'         => 'system',
                             'created_by_id'  => $creatorId ?: $assigneeId,
                             'updated_by_id'  => $creatorId ?: $assigneeId,
                         ]);

@@ -9,12 +9,14 @@ use Carbon\Carbon;
 class Holiday extends Model
 {
     protected $fillable = [
-        'date', 'date_end', 'title', 'notify', 'notify_message', 'created_by_id', 'notify_sent_at',
+        'date', 'date_end', 'jalali_date', 'title', 'is_holiday', 'source', 'external_id',
+        'notify', 'notify_message', 'created_by_id', 'notify_sent_at',
     ];
 
     protected $casts = [
         'date' => 'date',
         'date_end' => 'date',
+        'is_holiday' => 'boolean',
         'notify' => 'boolean',
         'notify_sent_at' => 'datetime',
     ];
@@ -88,6 +90,7 @@ class Holiday extends Model
         $start = optional($this->date)->toDateString();
         $endCandidate = $this->date_end ?: $this->date;
         $end = $endCandidate ? $endCandidate->copy()->addDay()->toDateString() : null;
+        $color = $this->is_holiday ? '#ef4444' : '#64748b';
 
         return [
             'id'    => 'h-'.$this->id,
@@ -95,9 +98,10 @@ class Holiday extends Model
             'start' => $start,
             'end'   => $end,
             'allDay'=> true,
-            'color' => '#ef4444', // red-500
+            'color' => $color,
             'extendedProps' => [
                 'kind' => 'holiday',
+                'is_holiday' => $this->is_holiday,
             ],
         ];
     }

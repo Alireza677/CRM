@@ -8,12 +8,11 @@ use App\Jobs\SyncMailboxJob;
 use App\Models\Mailbox;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Foundation\Console\Kernel as ConsoleKernel;
+use Morilog\Jalali\Jalalian;
 
 class Kernel extends ConsoleKernel
 {
-    /**
-     * OUOU+ U.O¦O_ OñO UcOñOU+ƒ?OOªOO" O3UOO3O¦U.UO (php artisan schedule:run) U?OñOOrU^OU+UO U.UOƒ?OUcU+O_ O¦O OªOO"ƒ?OUØOUO OýU.OU+ƒ?OO"U+O_UOƒ?OO'O_UØ O®O"O¦ O'U^U+O_.
-     */
+    
     protected function schedule(Schedule $schedule): void
     {
         $schedule->job(new CheckLeadSlaJob())
@@ -25,15 +24,28 @@ class Kernel extends ConsoleKernel
             ->withoutOverlapping();
 
         $schedule->command('mail:sync')
-            ->everyFiveMinutes()       // UOO everyMinute() OU_Oñ OrU^OO3O¦UO O3OñUOO1ƒ?OO¦Oñ
+            ->everyFiveMinutes()       
             ->withoutOverlapping()
             ->runInBackground()
             ->name('mail-sync');
+
+        $jalaliNow = Jalalian::now();
+        $currentJalaliYear = $jalaliNow->getYear();
+        $nextJalaliYear = $currentJalaliYear + 1;
+
+        $schedule->command("holidays:import {$currentJalaliYear}")
+            ->monthlyOn(1, '03:10')
+            ->withoutOverlapping()
+            ->name('holidays-import-current');
+
+        $schedule->command("holidays:import {$nextJalaliYear}")
+            ->monthlyOn(1, '03:20')
+            ->when(fn () => $jalaliNow->getMonth() >= 11)
+            ->withoutOverlapping()
+            ->name('holidays-import-next');
     }
 
-    /**
-     * OUOU+ U.O¦O_ UØU+U_OU. O"U^O¦ artisan U?OñOOrU^OU+UO U.UOƒ?OO'U^O_ O¦O O_O3O¦U^OñOO¦ UcU+O3U^U, U_OñU^U~UØ O"OOñU_OøOOñUO O'U^U+O_.
-     */
+   
     protected function commands(): void
     {
         $this->load(__DIR__ . '/Commands');

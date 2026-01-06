@@ -115,33 +115,23 @@
         @error('stage') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
         @error('loss_reason_body') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
     </div>
-
-   {{-- منبع فرصت فروش --}}
+{{-- منبع فرصت فروش --}}
 <div>
     <label for="source" class="block font-medium text-sm text-gray-700 required">منبع فرصت فروش</label>
     @php
         $sources = \App\Helpers\FormOptionsHelper::opportunitySources();
 
-        // اولویت با مقدار قدیمی فرم (در صورت خطای ولیدیشن)
         $selectedSource = old('source');
 
-        // اگر old وجود نداشت، از مقدار ذخیره‌شده در مدل استفاده کن
         if (!$selectedSource && isset($opportunity)) {
             $stored = $opportunity->source ?? null;
 
             if ($stored !== null) {
                 if (array_key_exists($stored, $sources)) {
-                    // اگر مقدار ذخیره‌شده خودش key بود
                     $selectedSource = $stored;
                 } else {
-                    // اگر مقدار ذخیره‌شده برابر label است، key متناظر را پیدا کن
-                    $foundKey = collect($sources)->search(function ($label) use ($stored) {
-                        return (string) $label === (string) $stored;
-                    });
-
-                    if ($foundKey !== false) {
-                        $selectedSource = $foundKey;
-                    }
+                    $foundKey = collect($sources)->search(fn ($label) => (string)$label === (string)$stored);
+                    if ($foundKey !== false) $selectedSource = $foundKey;
                 }
             }
         }
@@ -150,78 +140,111 @@
     <select id="source" name="source" required class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
         <option value="">انتخاب کنید</option>
         @foreach($sources as $key => $label)
-            <option value="{{ $key }}" {{ (string) $selectedSource === (string) $key ? 'selected' : '' }}>
+            <option value="{{ $key }}" {{ (string)$selectedSource === (string)$key ? 'selected' : '' }}>
                 {{ $label }}
             </option>
         @endforeach
     </select>
 
-    @error('source')
-        <div class="text-red-500 text-xs mt-2">{{ $message }}</div>
-    @enderror
+    @error('source') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
 </div>
 
+{{-- نقش‌های کمیسیون --}}
+<div>
+    <label for="acquirer_user_id" class="block font-medium text-sm text-gray-700">جذب‌کننده</label>
+    @php $acquirerSelected = old('acquirer_user_id', $opportunity?->getRoleUserId('acquirer') ?? ''); @endphp
+    <select id="acquirer_user_id" name="acquirer_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        <option value="">انتخاب کنید</option>
+        @foreach($users as $user)
+            <option value="{{ $user->id }}" {{ (string)$acquirerSelected === (string)$user->id ? 'selected' : '' }}>
+                {{ $user->name }}
+            </option>
+        @endforeach
+    </select>
+    @error('acquirer_user_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+</div>
 
-    {{-- ارجاع به --}}
-    <div>
-        <label for="assigned_to" class="block font-medium text-sm text-gray-700 required">ارجاع به</label>
-        @php $assigned = old('assigned_to', $isEdit ? ($opportunity->assigned_to ?? '') : (auth()->id() ?? '')); @endphp
-        <select id="assigned_to" name="assigned_to" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
-            <option value="">انتخاب کنید</option>
-            @foreach($users as $user)
-                <option value="{{ $user->id }}" {{ (string)$assigned === (string)$user->id ? 'selected' : '' }}>
-                    {{ $user->name }}
-                </option>
-            @endforeach
-        </select>
-        @error('assigned_to') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-    </div>
+<div>
+    <label for="relationship_owner_user_id" class="block font-medium text-sm text-gray-700">مالک اصلی فرصت</label>
+    @php $relationshipOwnerSelected = old('relationship_owner_user_id', $opportunity?->getRoleUserId('relationship_owner') ?? ''); @endphp
+    <select id="relationship_owner_user_id" name="relationship_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        <option value="">انتخاب کنید</option>
+        @foreach($users as $user)
+            <option value="{{ $user->id }}" {{ (string)$relationshipOwnerSelected === (string)$user->id ? 'selected' : '' }}>
+                {{ $user->name }}
+            </option>
+        @endforeach
+    </select>
+    @error('relationship_owner_user_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+</div>
 
-    {{-- درصد موفقیت --}}
-    <div>
-        <label for="success_rate" class="block font-medium text-sm text-gray-700">درصد موفقیت</label>
-        <input id="success_rate" name="success_rate" type="number" min="0" max="100"
-               class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
-               value="{{ old('success_rate', $opportunity->success_rate ?? '') }}" required>
-        @error('success_rate') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-    </div>
+<div>
+    <label for="closer_user_id" class="block font-medium text-sm text-gray-700">نهایی‌کننده</label>
+    @php $closerSelected = old('closer_user_id', $opportunity?->getRoleUserId('closer') ?? ''); @endphp
+    <select id="closer_user_id" name="closer_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        <option value="">انتخاب کنید</option>
+        @foreach($users as $user)
+            <option value="{{ $user->id }}" {{ (string)$closerSelected === (string)$user->id ? 'selected' : '' }}>
+                {{ $user->name }}
+            </option>
+        @endforeach
+    </select>
+    @error('closer_user_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+</div>
 
-    {{-- تاریخ پیگیری بعدی (نمایش شمسی + hidden میلادی) --}}
-    <div class="md:col-span-2 lg:col-span-3">
-        <label for="next_follow_up_shamsi" class="block font-medium text-sm text-gray-700">
-            تاریخ پیگیری بعدی
-        </label>
+<div>
+    <label for="execution_owner_user_id" class="block font-medium text-sm text-gray-700">مسئول پشتیبانی </label>
+    @php $executionOwnerSelected = old('execution_owner_user_id', $opportunity?->getRoleUserId('execution_owner') ?? ''); @endphp
+    <select id="execution_owner_user_id" name="execution_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+        <option value="">انتخاب کنید</option>
+        @foreach($users as $user)
+            <option value="{{ $user->id }}" {{ (string)$executionOwnerSelected === (string)$user->id ? 'selected' : '' }}>
+                {{ $user->name }}
+            </option>
+        @endforeach
+    </select>
+    @error('execution_owner_user_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+</div>
 
-        {{-- ورودی نمایشی شمسی (استفاده از persian-datepicker عمومی پروژه) --}}
-        <input
-            type="text"
-            id="next_follow_up_shamsi"
-            name="next_follow_up_shamsi"
-            class="form-control persian-datepicker"
-            data-alt-field="next_follow_up"
-            dir="ltr"
-            placeholder="انتخاب تاریخ"
-            value="{{ old('next_follow_up_shamsi', $nextFollowUpDate ?? '') }}"
-        >
+{{-- درصد موفقیت --}}
+<div>
+    <label for="success_rate" class="block font-medium text-sm text-gray-700">درصد موفقیت</label>
+    <input id="success_rate" name="success_rate" type="number" min="0" max="100"
+           class="mt-1 block w-full border-gray-300 rounded-md shadow-sm"
+           value="{{ old('success_rate', $opportunity->success_rate ?? '') }}">
+    @error('success_rate') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+</div>
 
-        {{-- مقدار میلادی که به دیتابیس می‌رود (hidden) --}}
-        <input
-            type="hidden"
-            name="next_follow_up"
-            id="next_follow_up"
-            value="{{ old('next_follow_up', optional($opportunity->next_follow_up ?? null)->format('Y-m-d')) }}"
-        >
+{{-- تاریخ پیگیری بعدی --}}
+<div>
+    <label for="next_follow_up_shamsi" class="block font-medium text-sm text-gray-700">تاریخ پیگیری بعدی</label>
 
-        @error('next_follow_up')
-            <span class="text-danger text-xs">{{ $message }}</span>
-        @enderror
-    </div>
+    <input
+        type="text"
+        id="next_follow_up_shamsi"
+        name="next_follow_up_shamsi"
+        class="mt-1 block w-full border-gray-300 rounded-md shadow-sm persian-datepicker"
+        data-alt-field="next_follow_up"
+        dir="ltr"
+        placeholder="انتخاب تاریخ"
+        value="{{ old('next_follow_up_shamsi', $nextFollowUpDate ?? '') }}"
+    >
 
-    {{-- توضیحات --}}
-    <div class="md:col-span-2 lg:col-span-3">
-        <label for="description" class="block font-medium text-sm text-gray-700">توضیحات</label>
-        <textarea id="description" name="description" rows="3"
-                  class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('description', $opportunity->description ?? '') }}</textarea>
-        @error('description') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
-    </div>
+    <input
+        type="hidden"
+        name="next_follow_up"
+        id="next_follow_up"
+        value="{{ old('next_follow_up', optional($opportunity->next_follow_up ?? null)->format('Y-m-d')) }}"
+    >
+
+    @error('next_follow_up') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+</div>
+
+{{-- توضیحات --}}
+<div class="md:col-span-2 lg:col-span-3">
+    <label for="description" class="block font-medium text-sm text-gray-700">توضیحات</label>
+    <textarea id="description" name="description" rows="3"
+              class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">{{ old('description', $opportunity->description ?? '') }}</textarea>
+    @error('description') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+</div>
 </div>

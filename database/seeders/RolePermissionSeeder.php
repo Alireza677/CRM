@@ -134,6 +134,7 @@ class RolePermissionSeeder extends Seeder
             'sidebar_settings.view',
             'sidebar_calendar_holidays.view',
             'sidebar_settings_general.view',
+            'sidebar_settings_commissions.view',
             'sidebar_settings_users.view',
             'sidebar_settings_workflows.view',
             'sidebar_settings_automation.view',
