@@ -58,6 +58,7 @@ return [
         'base_url' => rtrim(env('NOVATEL_BASE_URL', 'https://navaphone.com'), '/'),
         'tenant' => env('NOVATEL_TENANT'),
         'token' => env('NOVATEL_TOKEN'),
+        'api_key' => env('NOVATEL_API_KEY'),
         'queue_id' => env('NOVATEL_QUEUE_ID'),
         'destination' => env('NOVATEL_DESTINATION'),
         'call_type' => env('NOVATEL_CALL_TYPE'),
