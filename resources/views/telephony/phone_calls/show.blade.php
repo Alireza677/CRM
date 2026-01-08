@@ -59,7 +59,7 @@
                     <p class="text-sm text-gray-500">
                         {{ $directionLabels[$phoneCall->direction] ?? $phoneCall->direction }}
                         @if($phoneCall->started_at)
-                            • {{ $phoneCall->started_at->format('Y/m/d H:i') }}
+                            • {{ \App\Helpers\DateHelper::toJalali($phoneCall->started_at, 'H:i Y/m/d') }}
                         @endif
                     </p>
                 </div>
@@ -152,7 +152,7 @@
                             <p class="text-sm text-gray-500 mt-1">
                                 شماره {{ $phoneCall->customer_number }}
                                 @if($phoneCall->started_at)
-                                    • {{ $phoneCall->started_at->format('Y/m/d H:i') }}
+                                    • {{ \App\Helpers\DateHelper::toJalali($phoneCall->started_at, 'H:i Y/m/d') }}
                                 @endif
                             </p>
                         </div>
@@ -175,7 +175,7 @@
                                         <p class="text-sm text-gray-500 mt-1">
                                             {{ $directionLabels[$phoneCall->direction] ?? $phoneCall->direction }}
                                             @if($phoneCall->started_at)
-                                                • {{ $phoneCall->started_at->format('Y/m/d H:i') }}
+                                                • {{ \App\Helpers\DateHelper::toJalali($phoneCall->started_at, 'H:i Y/m/d') }}
                                             @endif
                                         </p>
                                     </div>
@@ -221,7 +221,7 @@
                                     <div>
                                         <p class="text-gray-500 mb-1">زمان شروع</p>
                                         <p class="font-semibold text-gray-900">
-                                            {{ optional($phoneCall->started_at)->format('Y-m-d H:i') ?? '—' }}
+                                            {{ $phoneCall->started_at ? \App\Helpers\DateHelper::toJalali($phoneCall->started_at, 'H:i Y/m/d') : '—' }}
                                         </p>
                                     </div>
                                     <div>

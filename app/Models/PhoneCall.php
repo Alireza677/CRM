@@ -11,6 +11,7 @@ class PhoneCall extends Model
     use HasFactory;
 
     protected $fillable = [
+        'external_id',
         'status',
         'customer_number',
         'customer_id',

@@ -101,7 +101,7 @@
                                 <td class="px-4 py-3">{{ $call->handledBy?->name ?? '—' }}</td>
                                 <td class="px-4 py-3">{{ $call->source_identifier ?? '—' }}</td>
                                 <td class="px-4 py-3">
-                                    {{ optional($call->started_at)->format('Y-m-d H:i') ?? '—' }}
+                                    {{ $call->started_at ? \App\Helpers\DateHelper::toJalali($call->started_at, 'H:i Y/m/d') : '—' }}
                                 </td>
                                 <td class="px-4 py-3">
                                     {{ $directionLabels[$call->direction] ?? $call->direction }}

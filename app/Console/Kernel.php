@@ -29,6 +29,12 @@ class Kernel extends ConsoleKernel
             ->runInBackground()
             ->name('mail-sync');
 
+        $schedule->command('novatel:cdr-sync --minutes=' . (int) config('services.novatel.cdr_default_minutes', 10))
+            ->everyFiveMinutes()
+            ->withoutOverlapping()
+            ->runInBackground()
+            ->name('novatel-cdr-sync');
+
         $jalaliNow = Jalalian::now();
         $currentJalaliYear = $jalaliNow->getYear();
         $nextJalaliYear = $currentJalaliYear + 1;

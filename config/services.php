@@ -54,4 +54,15 @@ return [
         'webhook_token' => env('NAVATEL_WEBHOOK_TOKEN'),
     ],
 
+    'novatel' => [
+        'base_url' => rtrim(env('NOVATEL_BASE_URL', 'https://navaphone.com'), '/'),
+        'tenant' => env('NOVATEL_TENANT'),
+        'token' => env('NOVATEL_TOKEN'),
+        'queue_id' => env('NOVATEL_QUEUE_ID'),
+        'destination' => env('NOVATEL_DESTINATION'),
+        'call_type' => env('NOVATEL_CALL_TYPE'),
+        'cdr_default_minutes' => env('NOVATEL_CDR_DEFAULT_MINUTES', 10),
+        'use_full_logs' => env('NOVATEL_CDR_FULL_LOGS', false),
+    ],
+
 ];
