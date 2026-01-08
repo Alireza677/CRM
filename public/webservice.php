@@ -14,10 +14,38 @@ $targetUrl = $scheme . '://' . $host . '/api/phone-calls/webhook';
 $body = file_get_contents('php://input');
 $headers = function_exists('getallheaders') ? getallheaders() : [];
 
+/**
+ * Read a header value in a case-insensitive way.
+ * Also supports normalizing typical variants.
+ */
+$headerValueInsensitive = function (string $name) use ($headers): ?string {
+    $target = strtolower($name);
+
+    // getallheaders() keys can be in any case (e.g., "Apikey")
+    foreach ($headers as $k => $v) {
+        if (strtolower((string)$k) === $target) {
+            return is_string($v) ? trim($v) : null;
+        }
+    }
+
+    // Fallback via $_SERVER (in case headers array isn't complete)
+    $serverKey = 'HTTP_' . strtoupper(str_replace('-', '_', $name));
+    if (!empty($_SERVER[$serverKey])) {
+        return trim((string) $_SERVER[$serverKey]);
+    }
+
+    return null;
+};
+
 $apiKey = getenv('NOVATEL_API_KEY') ?: null;
 if ($apiKey) {
-    $provided = $headers['ApiKey'] ?? $headers['apikey'] ?? $headers['X-Api-Key'] ?? null;
-    if (!is_string($provided) || !hash_equals($apiKey, $provided)) {
+    // Support ApiKey / apikey / Apikey / X-Api-Key / x-api-key ...
+    $provided =
+        $headerValueInsensitive('ApiKey')
+        ?? $headerValueInsensitive('X-Api-Key')
+        ?? (isset($_SERVER['HTTP_APIKEY']) ? trim((string)$_SERVER['HTTP_APIKEY']) : null);
+
+    if (!is_string($provided) || $provided === '' || !hash_equals($apiKey, $provided)) {
         http_response_code(401);
         echo 'unauthorized';
         exit;
