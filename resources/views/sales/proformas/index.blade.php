@@ -304,15 +304,16 @@ document.addEventListener('DOMContentLoaded', function () {
             if (window.Swal) {
                 Swal.fire({ icon: 'info', text: 'هیچ موردی انتخاب نشده است.' });
             } else {
-                alert('هیچ موردی انتخاب نشده است.');
+                window.confirm('هیچ موردی انتخاب نشده است.');
             }
             return false;
         }
+        const confirmMsg = `آیا از حذف ${selected.length} مورد انتخابی اطمینان دارید؟`;
         if (window.Swal) {
             e.preventDefault();
             Swal.fire({
                 title: 'حذف گروهی',
-                text: `آیا از حذف ${selected.length} مورد انتخابی اطمینان دارید؟`,
+                text: confirmMsg,
                 icon: 'warning',
                 showCancelButton: true,
                 confirmButtonText: 'بله، حذف شود',
@@ -320,7 +321,7 @@ document.addEventListener('DOMContentLoaded', function () {
             }).then(res => { if (res.isConfirmed) form.submit(); });
             return false;
         }
-        return true;
+        return window.confirm(confirmMsg);
     };
 
     // مقدار اولیه

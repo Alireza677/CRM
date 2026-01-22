@@ -362,19 +362,19 @@
 
 
 {{-- مودال تأیید ارسال برای تاییدیه --}}
-<div class="modal fade" id="automationConfirmModal" tabindex="-1" aria-labelledby="automationConfirmLabel" aria-hidden="true">
-    <div class="modal-dialog">
-        <div class="modal-content text-end">
-            <div class="modal-header">
+<div id="automationConfirmModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50" data-modal-root aria-labelledby="automationConfirmLabel" aria-hidden="true" aria-modal="true" role="dialog" hidden>
+    <div class="w-full max-w-lg mx-4">
+        <div class="bg-white rounded-lg shadow-lg text-end">
+            <div class="flex items-center justify-between px-4 py-3 border-b">
                 <h5 class="modal-title" id="automationConfirmLabel">تأیید ارسال برای تاییدیه</h5>
-                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="بستن"></button>
+                <button type="button" class="btn-close text-gray-500 hover:text-gray-700 text-xl leading-none" data-modal-close aria-label="بستن">&times;</button>
             </div>
-            <div class="modal-body">
+            <div class="modal-body px-4 py-3">
                 مرحله‌ی انتخاب‌شده "ارسال برای تاییدیه" است. آیا مطمئن هستید که می‌خواهید پیش‌فاکتور را ارسال کنید؟
             </div>
-            <div class="modal-footer">
+            <div class="modal-footer px-4 py-3 border-t">
                 <button type="button" class="btn btn-success" id="confirm-save">بله، ارسال شود</button>
-                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">خیر</button>
+                <button type="button" class="btn btn-secondary" data-modal-close>خیر</button>
             </div>
         </div>
     </div>

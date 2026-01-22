@@ -133,13 +133,16 @@
                 <canvas id="runsChart" class="w-full h-full"></canvas>
             </div>
 
-            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            @if(!config('app.assets_emergency'))
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            @endif
             <script>
                 const chartData = @json($chart);
                 const ctx = document.getElementById('runsChart').getContext('2d');
 
                 // اگر صفحه چند بار رندر می‌شود، نمونه قبلی را نابود کن
                 if (window._runsChart) { window._runsChart.destroy(); }
+                if (!window.Chart) { return; }
 
                 window._runsChart = new Chart(ctx, {
                 type: 'line',

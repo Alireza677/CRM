@@ -193,7 +193,7 @@
 </div>
 
 <div>
-    <label for="execution_owner_user_id" class="block font-medium text-sm text-gray-700">مسئول پشتیبانی </label>
+    <label for="execution_owner_user_id" class="block font-medium text-sm text-gray-700">پشتیبان فنی  </label>
     @php $executionOwnerSelected = old('execution_owner_user_id', $opportunity?->getRoleUserId('execution_owner') ?? ''); @endphp
     <select id="execution_owner_user_id" name="execution_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
         <option value="">انتخاب کنید</option>

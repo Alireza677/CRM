@@ -46,10 +46,14 @@
 
 {{-- پیام موفقیت با SweetAlert --}}
 @if(session('success'))
-    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @if(!config('app.assets_emergency'))
+        <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+    @endif
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            Swal.fire({
+            const message = @json(session('success'));
+            if (window.Swal) {
+                Swal.fire({
                 icon: 'success',
                 title: 'ایمپورت موفق!',
                 html: '{{ session('success') }}<br><br>چه کاری می‌خواهید انجام دهید؟',
@@ -57,13 +61,18 @@
                 confirmButtonText: 'ایمپورت موارد جدید',
                 cancelButtonText: 'بازگشت به لیست پیش‌فاکتورها',
                 reverseButtons: true
-            }).then((result) => {
-                if (result.isConfirmed) {
-                    window.location.href = '{{ route("sales.proformas.import.form") }}';
-                } else {
-                    window.location.href = '{{ route("sales.proformas.index") }}';
-                }
-            });
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        window.location.href = '{{ route("sales.proformas.import.form") }}';
+                    } else {
+                        window.location.href = '{{ route("sales.proformas.index") }}';
+                    }
+                });
+            } else if (window.confirm(message)) {
+                window.location.href = '{{ route("sales.proformas.import.form") }}';
+            } else {
+                window.location.href = '{{ route("sales.proformas.index") }}';
+            }
         });
     </script>
 @endif

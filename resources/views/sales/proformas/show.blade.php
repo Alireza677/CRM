@@ -18,12 +18,16 @@
 @if(session('alert_error'))
     <script>
         document.addEventListener('DOMContentLoaded', function () {
-            Swal.fire({
+            if (window.Swal) {
+                Swal.fire({
                 icon: 'warning',
                 title: 'توجه',
                 text: "{{ session('alert_error') }}",
                 confirmButtonText: 'باشه'
-            });
+                });
+            } else {
+                window.confirm(@json(session('alert_error')));
+            }
         });
     </script>
 @endif

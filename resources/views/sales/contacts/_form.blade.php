@@ -320,7 +320,7 @@ document.addEventListener('DOMContentLoaded', function () {
         toggleNewOrg(true);
     }
 
-    if (window.jQuery) {
+    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
         const $orgSelect = window.jQuery('#organization_id');
         if ($orgSelect.length) {
             $orgSelect.select2({

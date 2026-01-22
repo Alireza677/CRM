@@ -169,20 +169,24 @@
 @push('scripts')
 <script>
     $(function(){
-        $('#users').select2({
+        if (window.jQuery && $.fn.select2) {
+            $('#users').select2({
             width: '100%',
             dir: 'rtl',
             placeholder: 'کاربران را انتخاب کنید',
         });
+        }
     });
 </script>
 <script>
     $(function(){
-        $('.select2-contacts').select2({
+        if (window.jQuery && $.fn.select2) {
+            $('.select2-contacts').select2({
             width: '100%',
             dir: 'rtl',
             placeholder: 'انتخاب مخاطبین...'
         });
+        }
     });
 </script>
 @endpush

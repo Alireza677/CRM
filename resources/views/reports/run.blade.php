@@ -164,7 +164,9 @@
                 </div>
             </div>
 
-            <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            @if(!config('app.assets_emergency'))
+                <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+            @endif
             <script>
                 function reportRun(){
                     return {
@@ -207,6 +209,10 @@
 
                         renderChart(){
                             this.chart.error = null;
+                            if (!window.Chart) {
+                                this.chart.error = 'Chart.js is not available.';
+                                return;
+                            }
 
                             const labels = [];
                             const datasets = [];

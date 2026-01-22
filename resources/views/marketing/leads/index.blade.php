@@ -242,7 +242,7 @@
             </div>
 
             <div>
-                <label for="lead-convert-execution" class="block text-sm font-medium text-gray-700">مسئول پشتیبانی</label>
+                <label for="lead-convert-execution" class="block text-sm font-medium text-gray-700"> پشتیبان فنی</label>
                 <select id="lead-convert-execution" name="execution_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
                     <option value="">انتخاب کنید</option>
                     @foreach($users as $user)

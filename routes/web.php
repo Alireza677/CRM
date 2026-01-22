@@ -534,6 +534,8 @@ Route::middleware(['auth'])->group(function () {
         ->group(function () {
             Route::get('/', [SettingsController::class, 'index'])->name('index');
             Route::get('/general', [SettingsController::class, 'general'])->name('general');
+            Route::post('/general/assets-emergency', [SettingsController::class, 'updateAssetsEmergency'])
+                ->name('general.assets-emergency');
             Route::get('/commissions', [CommissionSettingController::class, 'edit'])->name('commissions.edit');
             Route::post('/commissions', [CommissionSettingController::class, 'update'])->name('commissions.update');
             Route::resource('users', UserController::class)->except(['show']);

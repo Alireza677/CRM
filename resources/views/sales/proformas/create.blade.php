@@ -31,7 +31,7 @@
                             <input type="hidden" name="return_to" value="{{ $returnTo }}">
                         @endif
                         <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary ml-4">انصراف</a>
-                        <button type="button" id="save-btn" class="btn btn-primary">ذخیره پیش‌فاکتور</button>
+                        <button type="button" id="save-btn" class="btn btn-primary" data-modal-open="submitModeModal">ذخیره پیش‌فاکتور</button>
                     </div>
 
                     @if (request('opportunity_id'))
@@ -53,8 +53,7 @@
         const saveBtn = document.getElementById("save-btn");
         const form = document.getElementById("proforma-form");
         const submitModeInput = document.getElementById("submit_mode");
-        const modalEl = document.getElementById("submitModeModal");
-        const submitModeModal = modalEl ? new bootstrap.Modal(modalEl) : null;
+        const submitModeModalId = "submitModeModal";
 
         function submitWithMode(mode) {
             if (!form || !submitModeInput) return;
@@ -70,8 +69,8 @@
         });
 
         saveBtn?.addEventListener("click", function () {
-            if (submitModeModal) {
-                submitModeModal.show();
+            if (typeof window.openModal === 'function') {
+                window.openModal(submitModeModalId);
             } else {
                 submitWithMode('draft');
             }

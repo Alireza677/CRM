@@ -54,6 +54,14 @@ return [
 
     'url' => env('APP_URL', 'http://localhost'),
 
+    'assets_emergency' => (function () {
+        try {
+            return \App\Models\AppSetting::getBool('assets_emergency', env('ASSETS_EMERGENCY', false));
+        } catch (\Throwable $e) {
+            return env('ASSETS_EMERGENCY', false);
+        }
+    })(),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

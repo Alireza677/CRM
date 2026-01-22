@@ -7,6 +7,7 @@ use Illuminate\Routing\Router;
 use App\Models\Proforma;
 use App\Observers\ProformaObserver;
 use App\Services\Sms\FarazEdgeService;
+use App\Models\AppSetting;
 
 
 // Spatie middlewares
@@ -39,5 +40,12 @@ class AppServiceProvider extends ServiceProvider
         $router->aliasMiddleware('role', \Spatie\Permission\Middleware\RoleMiddleware::class);
         $router->aliasMiddleware('permission', \Spatie\Permission\Middleware\PermissionMiddleware::class);
         $router->aliasMiddleware('role_or_permission', \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class);
+
+        try {
+            $assetsEmergency = AppSetting::getBool('assets_emergency', config('app.assets_emergency'));
+            config(['app.assets_emergency' => $assetsEmergency]);
+        } catch (\Throwable $e) {
+            // ignore settings lookup failures
+        }
         }
 }

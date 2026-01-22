@@ -32,7 +32,8 @@
                 document.addEventListener('DOMContentLoaded', function () {
                     const data = @json(session('success'));
 
-                    Swal.fire({
+                    if (window.Swal) {
+                        Swal.fire({
                         icon: 'success',
                         title: 'عملیات موفق',
                         html: `
@@ -51,13 +52,18 @@
                         denyButtonText: 'ایمپورت جدید',
                         cancelButtonText: 'بستن',
                         reverseButtons: true
-                    }).then((result) => {
+                        }).then((result) => {
                         if (result.isConfirmed) {
                             window.location.href = '{{ route("sales.organizations.index") }}';
                         } else if (result.isDenied) {
                             window.location.reload();
                         }
-                    });
+                        });
+                    } else if (window.confirm(data.message || '')) {
+                        window.location.href = '{{ route("sales.organizations.index") }}';
+                    } else {
+                        window.location.reload();
+                    }
                 });
             </script>
         @endif

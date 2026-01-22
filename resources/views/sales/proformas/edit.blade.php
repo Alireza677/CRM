@@ -29,25 +29,25 @@
                         <input type="hidden" name="edit_reason" id="edit_reason_input" value="">
                         <input type="hidden" name="total_amount" id="total_amount_input" value="{{ $proforma->total_amount ?? 0 }}">
                         <a href="{{ route('sales.proformas.index') }}" class="btn btn-secondary ml-4">انصراف</a>
-                        <button type="button" id="save-btn" class="btn btn-primary">ذخیره تغییرات</button>
+                        <button type="button" id="save-btn" class="btn btn-primary" data-modal-open="submitModeModal">ذخیره تغییرات</button>
                     </div>
                 </form>
 
                 @include('sales.proformas.partials.submit-mode-modal')
-                <div class="modal fade" id="editReasonModal" tabindex="-1" aria-labelledby="editReasonModalLabel" aria-hidden="true">
-                    <div class="modal-dialog">
-                        <div class="modal-content">
-                            <div class="modal-header">
+                <div id="editReasonModal" class="fixed inset-0 z-50 hidden items-center justify-center bg-black/50" data-modal-root aria-labelledby="editReasonModalLabel" aria-hidden="true" aria-modal="true" role="dialog" hidden>
+                    <div class="w-full max-w-xl mx-4">
+                        <div class="bg-white rounded-lg shadow-lg">
+                            <div class="flex items-center justify-between px-4 py-3 border-b">
                                 <h5 class="modal-title" id="editReasonModalLabel">دلیل ویرایش پیش‌فاکتور</h5>
-                                <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+                                <button type="button" class="btn-close text-gray-500 hover:text-gray-700 text-xl leading-none" data-modal-close aria-label="Close">&times;</button>
                             </div>
-                            <div class="modal-body">
+                            <div class="modal-body px-4 py-3">
                                 <label for="edit-reason-text" class="form-label">لطفاً دلیل ویرایش پیش‌فاکتور را وارد کنید</label>
                                 <textarea class="form-control" id="edit-reason-text" rows="4" required></textarea>
                                 <div class="invalid-feedback">وارد کردن دلیل ویرایش الزامی است.</div>
                             </div>
-                            <div class="modal-footer">
-                                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">انصراف</button>
+                            <div class="modal-footer px-4 py-3 border-t">
+                                <button type="button" class="btn btn-secondary" data-modal-close>انصراف</button>
                                 <button type="button" class="btn btn-primary" id="confirm-edit-reason">تایید و ادامه</button>
                             </div>
                         </div>
@@ -67,10 +67,8 @@
         const form = document.getElementById("proforma-form");
         const submitModeInput = document.getElementById("submit_mode");
         const editReasonInput = document.getElementById("edit_reason_input");
-        const modalEl = document.getElementById("submitModeModal");
-        const submitModeModal = modalEl ? new bootstrap.Modal(modalEl) : null;
-        const editReasonModalEl = document.getElementById("editReasonModal");
-        const editReasonModal = editReasonModalEl ? new bootstrap.Modal(editReasonModalEl) : null;
+        const submitModeModalId = "submitModeModal";
+        const editReasonModalId = "editReasonModal";
         const editReasonTextarea = document.getElementById("edit-reason-text");
         const confirmEditReasonBtn = document.getElementById("confirm-edit-reason");
         let pendingSubmitMode = null;
@@ -88,8 +86,12 @@
                 editReasonTextarea.value = '';
                 editReasonTextarea.classList.remove('is-invalid');
             }
-            submitModeModal?.hide();
-            editReasonModal?.show();
+            if (typeof window.closeModal === 'function') {
+                window.closeModal(submitModeModalId);
+            }
+            if (typeof window.openModal === 'function') {
+                window.openModal(editReasonModalId);
+            }
         }
 
         form?.addEventListener('submit', function (event) {
@@ -103,8 +105,8 @@
         });
 
         saveBtn?.addEventListener("click", function () {
-            if (submitModeModal) {
-                submitModeModal.show();
+            if (typeof window.openModal === 'function') {
+                window.openModal(submitModeModalId);
             } else {
                 openEditReasonModal('draft');
             }
@@ -130,7 +132,9 @@
                 editReasonInput.value = reason;
             }
 
-            editReasonModal?.hide();
+            if (typeof window.closeModal === 'function') {
+                window.closeModal(editReasonModalId);
+            }
             submitWithMode(pendingSubmitMode || 'draft');
         });
 

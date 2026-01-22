@@ -8,21 +8,29 @@
     <title>{{ config('app.name', 'Laravel') }}</title>
 
     <!-- Fonts -->
-    <link rel="preconnect" href="https://fonts.bunny.net">
-    <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    @if(!config('app.assets_emergency'))
+        <link rel="preconnect" href="https://fonts.bunny.net">
+        <link href="https://fonts.bunny.net/css?family=figtree:400,500,600&display=swap" rel="stylesheet" />
+    @endif
 
     <!-- Bootstrap (RTL) -->
-    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    @if(!config('app.assets_emergency'))
+        <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.rtl.min.css" rel="stylesheet">
+    @endif
 
     <!-- FontAwesome -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" />
+    @if(!config('app.assets_emergency'))
+        <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css" crossorigin="anonymous" />
+    @endif
 
     <!-- Persian Datepicker (Local) -->
     <link href="{{ asset('vendor/persian-datepicker/css/persian-datepicker.min.css') }}" rel="stylesheet">
 
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
 
-    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    @if(!config('app.assets_emergency'))
+        <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    @endif
 
     <!-- Vite -->
     @vite([
@@ -71,7 +79,7 @@
 
 <!-- Notification Sound -->
 <audio id="notification-audio"
-       src="{{ asset('notification/notification.mp3') }}"
+       src="{{ asset('sounds/notification.mp3') }}"
        preload="auto"></audio>
 
 <!-- Persian Datepicker Dependencies (Local) -->
@@ -80,7 +88,11 @@
 <script src="{{ asset('vendor/persian-datepicker/js/persian-datepicker.min.js') }}"></script>
 
 <!-- Bootstrap Bundle -->
+@if(!config('app.assets_emergency'))
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+@endif
+
+<script src="{{ asset('js/emergency-modals.js') }}" defer></script>
 
 <!-- Datepicker Config (fixed) -->
 <script>
@@ -177,8 +189,10 @@
   });
 </script>
 
+@if(!config('app.assets_emergency'))
 <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+@endif
 
 @auth
 <script>
@@ -425,6 +439,8 @@
         timer: 2500,
         timerProgressBar: true
       });
+    } else {
+      window.alert(@json(session('success')));
     }
   });
 </script>
@@ -440,6 +456,8 @@
         text: @json(session('error')),
         confirmButtonText: 'باشه'
       });
+    } else {
+      window.alert(@json(session('error')));
     }
   });
 </script>
@@ -480,6 +498,7 @@
         });
     </script>
 @endif
+
 
 @stack('scripts')
 </body>
