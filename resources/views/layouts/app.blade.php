@@ -445,6 +445,7 @@
         const state = new Map();
         let heartbeatTimer = null;
         let statusTimer = null;
+        let started = false;
         let lastServerTimeMs = null;
 
         function normalizeIds(ids) {
@@ -564,14 +565,10 @@
         }
 
         function startIntervals() {
-            if (!heartbeatTimer) {
-                sendHeartbeat();
-                heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS);
-            }
-            if (!statusTimer) {
-                pollStatus();
-                statusTimer = setInterval(pollStatus, STATUS_MS);
-            }
+            sendHeartbeat();
+            pollStatus();
+            heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS);
+            statusTimer = setInterval(pollStatus, STATUS_MS);
         }
 
         function stopIntervals() {
@@ -583,6 +580,13 @@
                 clearInterval(statusTimer);
                 statusTimer = null;
             }
+        }
+
+        function start() {
+            if (started) return;
+            started = true;
+            stopIntervals();
+            startIntervals();
         }
 
         function recomputeWatchedIds() {
@@ -600,8 +604,6 @@
             const watcher = { ids, callback };
             watchers.add(watcher);
             ids.forEach((id) => watchedIds.add(id));
-            startIntervals();
-
             const initial = {};
             ids.forEach((id) => {
                 if (state.has(id)) {
@@ -615,9 +617,7 @@
             return function unwatch() {
                 watchers.delete(watcher);
                 recomputeWatchedIds();
-                if (!watchers.size) {
-                    stopIntervals();
-                }
+                // Keep a single poller alive per session; no per-watch teardown.
             };
         }
 
@@ -632,9 +632,10 @@
         });
 
         window.addEventListener('online', () => {
-            startIntervals();
+            start();
         });
 
+        start();
         window.PresenceService = { watch };
     })();
 </script>

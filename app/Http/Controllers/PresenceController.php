@@ -33,17 +33,17 @@ class PresenceController extends Controller
 
         $status = $users->mapWithKeys(function (User $user) use ($now) {
             $lastSeen = $user->last_seen_at;
-            $isOnline = false;
-            if ($lastSeen instanceof Carbon) {
-                $isOnline = $lastSeen->diffInSeconds($now) <= 30;
-            }
+            $lastSeenAt = $lastSeen instanceof Carbon
+                ? $lastSeen
+                : ($lastSeen ? Carbon::parse($lastSeen) : null);
+            $isOnline = $lastSeenAt
+                ? $lastSeenAt->diffInSeconds($now) <= 30
+                : false;
 
             return [
                 $user->id => [
                     'is_online' => $isOnline,
-                    'last_seen_at' => $lastSeen instanceof Carbon
-                        ? $lastSeen->toIso8601String()
-                        : ($lastSeen ? Carbon::parse($lastSeen)->toIso8601String() : null),
+                    'last_seen_at' => $lastSeenAt?->toIso8601String(),
                 ],
             ];
         });
