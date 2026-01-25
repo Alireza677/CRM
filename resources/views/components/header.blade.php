@@ -241,11 +241,14 @@
                         @click="toggle()"
                         class="text-gray-600 hover:text-gray-900 flex items-center gap-2"
                     >
-                        <img
-                            src="{{ $avatarUrl }}"
-                            alt="User avatar"
-                            class="h-8 w-8 rounded-full object-cover border border-gray-200"
-                        >
+                        <span class="relative inline-flex">
+                            <img
+                                src="{{ $avatarUrl }}"
+                                alt="User avatar"
+                                class="h-8 w-8 rounded-full object-cover border border-gray-200"
+                            >
+                            <span class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full bg-green-500 ring-2 ring-white"></span>
+                        </span>
                         <span class="hidden md:inline text-sm font-medium">
                             {{ $authUser->name }}
                         </span>

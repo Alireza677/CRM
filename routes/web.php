@@ -71,6 +71,7 @@ use App\Http\Controllers\Telephony\PhoneCallController;
 use App\Http\Controllers\Telephony\WebhookEventController;
 use App\Http\Controllers\OnlineChatController;
 use App\Http\Controllers\Chat\ChatCallController;
+use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MailboxSettingsController;
 
@@ -184,6 +185,12 @@ Route::middleware(['auth'])->group(function () {
         Route::get('groups/{group}/messages/{message}/file', [OnlineChatController::class, 'messageFile'])->name('groups.messages.file');
         Route::post('groups/{group}/messages', [OnlineChatController::class, 'sendMessage'])->name('groups.messages.store');
         Route::post('groups/{group}/start-call', [ChatCallController::class, 'startVideoCall'])->name('groups.start-call');
+    });
+
+    // Presence (heartbeat + status)
+    Route::prefix('presence')->name('presence.')->group(function () {
+        Route::post('heartbeat', [PresenceController::class, 'heartbeat'])->name('heartbeat');
+        Route::get('status', [PresenceController::class, 'status'])->name('status');
     });
 
     //// Sales
