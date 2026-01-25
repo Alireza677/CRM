@@ -490,8 +490,6 @@ document.addEventListener('DOMContentLoaded', () => {
     const fetchUrl = @json($activeGroup ? route('chat.groups.messages', ['group' => $activeGroup]) : '');
     const sendUrl  = @json($activeGroup ? route('chat.groups.messages.store', ['group' => $activeGroup]) : '');
     const unreadCountsUrl = @json(route('chat.groups.unread-counts'));
-    const presenceHeartbeatUrl = @json(route('presence.heartbeat'));
-    const presenceStatusUrl = @json(route('presence.status'));
     const startCallUrl = @json($activeGroup ? route('chat.groups.start-call', ['group' => $activeGroup]) : '');
     let groupCallLink = @json($activeGroup->call_link ?? '');
     const activeGroupTitle = @json($activeGroup->title ?? '');
@@ -532,14 +530,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let lastId = null;
     let poller = null;
-    let heartbeatTimer = null;
-    let statusTimer = null;
-    const presenceIndicators = Array.from(document.querySelectorAll('[data-presence-indicator]'));
-    const presenceUserIds = Array.from(new Set(
-        presenceIndicators
-            .map((el) => Number(el.dataset.userId))
-            .filter((id) => Number.isInteger(id) && id > 0)
-    ));
 
     function loadScriptOnce(src) {
         return new Promise((resolve, reject) => {
@@ -713,93 +703,6 @@ document.addEventListener('DOMContentLoaded', () => {
         setTimeout(() => wrapper.remove(), 10000);
     }
 
-    function setPresenceForUser(userId, isOnline) {
-        if (!userId) return;
-        presenceIndicators
-            .filter((el) => Number(el.dataset.userId) === Number(userId))
-            .forEach((el) => {
-                if (isOnline) {
-                    el.classList.add('bg-green-500');
-                    el.classList.remove('border', 'border-gray-400', 'text-gray-400');
-                    el.textContent = '';
-                } else {
-                    el.classList.remove('bg-green-500');
-                    el.classList.add('border', 'border-gray-400', 'text-gray-400');
-                    el.textContent = '×';
-                }
-            });
-    }
-
-    function markCurrentUserOffline() {
-        if (!currentUserId) return;
-        setPresenceForUser(currentUserId, false);
-    }
-
-    async function sendHeartbeat() {
-        if (!presenceHeartbeatUrl) return;
-        const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 5000);
-        try {
-            const response = await fetch(presenceHeartbeatUrl, {
-                method: 'POST',
-                headers: {
-                    'Accept': 'application/json',
-                    'X-CSRF-TOKEN': csrfToken,
-                },
-                credentials: 'same-origin',
-                signal: controller.signal,
-            });
-            if (!response.ok) {
-                throw new Error('heartbeat_failed');
-            }
-            setPresenceForUser(currentUserId, true);
-        } catch (error) {
-            markCurrentUserOffline();
-        } finally {
-            clearTimeout(timeoutId);
-        }
-    }
-
-    function startHeartbeatInterval() {
-        if (heartbeatTimer) return;
-        sendHeartbeat();
-        heartbeatTimer = setInterval(sendHeartbeat, 10000);
-    }
-
-    function stopHeartbeatInterval() {
-        if (heartbeatTimer) {
-            clearInterval(heartbeatTimer);
-            heartbeatTimer = null;
-        }
-    }
-
-    async function loadPresenceStatus() {
-        if (!presenceStatusUrl || !presenceUserIds.length) return;
-        try {
-            const response = await axios.get(presenceStatusUrl, {
-                params: { user_ids: presenceUserIds },
-            });
-            const data = response.data?.data || {};
-            Object.entries(data).forEach(([userId, info]) => {
-                setPresenceForUser(userId, !!info?.is_online);
-            });
-        } catch (error) {
-            console.error('خطا در دریافت وضعیت حضور', error);
-        }
-    }
-
-    function startPresenceStatusInterval() {
-        if (statusTimer) return;
-        loadPresenceStatus();
-        statusTimer = setInterval(loadPresenceStatus, 12000);
-    }
-
-    function stopPresenceStatusInterval() {
-        if (statusTimer) {
-            clearInterval(statusTimer);
-            statusTimer = null;
-        }
-    }
 
     async function loadMessages(opts = { reset: false }) {
         if (!fetchUrl) return;
@@ -997,8 +900,6 @@ document.addEventListener('DOMContentLoaded', () => {
     // Initial load + polling
     loadMessages({ reset: true });
     loadUnreadCounts();
-    startHeartbeatInterval();
-    startPresenceStatusInterval();
     poller = setInterval(() => {
         loadMessages({ reset: false });
         loadUnreadCounts();
@@ -1009,17 +910,6 @@ document.addEventListener('DOMContentLoaded', () => {
             loadMessages({ reset: false });
             loadUnreadCounts();
         }
-    });
-
-    window.addEventListener('offline', () => {
-        markCurrentUserOffline();
-        stopHeartbeatInterval();
-        stopPresenceStatusInterval();
-    });
-
-    window.addEventListener('online', () => {
-        startHeartbeatInterval();
-        startPresenceStatusInterval();
     });
 
     messageForm?.addEventListener('submit', async (e) => {
@@ -1288,8 +1178,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
     window.addEventListener('beforeunload', () => {
         clearInterval(poller);
-        stopHeartbeatInterval();
-        stopPresenceStatusInterval();
     });
 });
 </script>

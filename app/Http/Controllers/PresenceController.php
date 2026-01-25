@@ -15,7 +15,7 @@ class PresenceController extends Controller
 
         return response()->json([
             'ok' => true,
-            'server_time' => now()->toISOString(),
+            'server_time' => now()->toIso8601String(),
         ]);
     }
 
@@ -41,14 +41,16 @@ class PresenceController extends Controller
             return [
                 $user->id => [
                     'is_online' => $isOnline,
-                    'last_seen_at' => $lastSeen?->toISOString(),
+                    'last_seen_at' => $lastSeen instanceof Carbon
+                        ? $lastSeen->toIso8601String()
+                        : ($lastSeen ? Carbon::parse($lastSeen)->toIso8601String() : null),
                 ],
             ];
         });
 
         return response()->json([
             'data' => $status,
-            'server_time' => $now->toISOString(),
+            'server_time' => $now->toIso8601String(),
         ]);
     }
 }

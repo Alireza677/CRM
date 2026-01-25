@@ -426,6 +426,253 @@
 </script>
 @endauth
 
+@auth
+<script>
+    (function () {
+        if (window.PresenceService) return;
+
+        const heartbeatUrl = @json(route('presence.heartbeat'));
+        const statusUrl = @json(route('presence.status'));
+        const currentUserId = {{ auth()->id() ?? 'null' }};
+        const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const ONLINE_WINDOW_MS = 30000;
+        const HEARTBEAT_MS = 10000;
+        const STATUS_MS = 12000;
+        const HEARTBEAT_TIMEOUT_MS = 5000;
+
+        const watchers = new Set();
+        const watchedIds = new Set();
+        const state = new Map();
+        let heartbeatTimer = null;
+        let statusTimer = null;
+        let lastServerTimeMs = null;
+
+        function normalizeIds(ids) {
+            return Array.from(new Set(
+                (ids || [])
+                    .map((id) => Number(id))
+                    .filter((id) => Number.isInteger(id) && id > 0)
+            ));
+        }
+
+        function parseTimeMs(value) {
+            if (!value) return null;
+            const ms = Date.parse(value);
+            return Number.isNaN(ms) ? null : ms;
+        }
+
+        function setUserState(userId, payload, serverTimeMs) {
+            if (!userId || !payload) return false;
+            const prev = state.get(userId);
+            const lastSeen = payload.last_seen_at || null;
+            const lastSeenMs = parseTimeMs(lastSeen);
+            let online = typeof payload.is_online === 'boolean' ? payload.is_online : false;
+
+            if (lastSeenMs && serverTimeMs) {
+                online = serverTimeMs - lastSeenMs <= ONLINE_WINDOW_MS;
+            }
+
+            const next = { online, last_seen_at: lastSeen };
+            state.set(userId, next);
+            return !prev || prev.online !== next.online || prev.last_seen_at !== next.last_seen_at;
+        }
+
+        function notify(updatedIds, serverTimeMs) {
+            watchers.forEach((watcher) => {
+                const data = {};
+                const ids = updatedIds && updatedIds.length ? updatedIds : Array.from(watcher.ids);
+                ids.forEach((id) => {
+                    if (watcher.ids.has(id) && state.has(id)) {
+                        data[id] = state.get(id);
+                    }
+                });
+                if (Object.keys(data).length) {
+                    watcher.callback(data, { server_time_ms: serverTimeMs });
+                }
+            });
+        }
+
+        async function sendHeartbeat() {
+            if (!heartbeatUrl || !currentUserId) return;
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => controller.abort(), HEARTBEAT_TIMEOUT_MS);
+            try {
+                const response = await fetch(heartbeatUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': csrfToken,
+                    },
+                    credentials: 'same-origin',
+                    signal: controller.signal,
+                });
+                if (!response.ok) {
+                    throw new Error('heartbeat_failed');
+                }
+                const payload = await response.json().catch(() => ({}));
+                lastServerTimeMs = parseTimeMs(payload?.server_time) || Date.now();
+                const updated = setUserState(currentUserId, { last_seen_at: payload?.server_time, is_online: true }, lastServerTimeMs);
+                if (updated) {
+                    notify([currentUserId], lastServerTimeMs);
+                }
+            } catch (error) {
+                const updated = setUserState(currentUserId, { last_seen_at: null, is_online: false }, lastServerTimeMs || Date.now());
+                if (updated) {
+                    notify([currentUserId], lastServerTimeMs || Date.now());
+                }
+            } finally {
+                clearTimeout(timeoutId);
+            }
+        }
+
+        async function pollStatus() {
+            if (!statusUrl || !watchedIds.size) return;
+            const ids = Array.from(watchedIds);
+            const url = new URL(statusUrl, window.location.origin);
+            ids.forEach((id) => url.searchParams.append('user_ids[]', id));
+            try {
+                const response = await fetch(url.toString(), {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-Requested-With': 'XMLHttpRequest',
+                    },
+                    credentials: 'same-origin',
+                });
+                if (!response.ok) {
+                    throw new Error('status_failed');
+                }
+                const payload = await response.json().catch(() => ({}));
+                const serverTimeMs = parseTimeMs(payload?.server_time) || Date.now();
+                lastServerTimeMs = serverTimeMs;
+                const data = payload?.data || {};
+                const updatedIds = [];
+                Object.entries(data).forEach(([userId, info]) => {
+                    const id = Number(userId);
+                    if (!Number.isInteger(id)) return;
+                    const changed = setUserState(id, info || {}, serverTimeMs);
+                    if (changed) {
+                        updatedIds.push(id);
+                    }
+                });
+                if (updatedIds.length) {
+                    notify(updatedIds, serverTimeMs);
+                }
+            } catch (error) {
+                // keep last known states on failure
+            }
+        }
+
+        function startIntervals() {
+            if (!heartbeatTimer) {
+                sendHeartbeat();
+                heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS);
+            }
+            if (!statusTimer) {
+                pollStatus();
+                statusTimer = setInterval(pollStatus, STATUS_MS);
+            }
+        }
+
+        function stopIntervals() {
+            if (heartbeatTimer) {
+                clearInterval(heartbeatTimer);
+                heartbeatTimer = null;
+            }
+            if (statusTimer) {
+                clearInterval(statusTimer);
+                statusTimer = null;
+            }
+        }
+
+        function recomputeWatchedIds() {
+            watchedIds.clear();
+            watchers.forEach((watcher) => {
+                watcher.ids.forEach((id) => watchedIds.add(id));
+            });
+        }
+
+        function watch(userIds, callback) {
+            const ids = new Set(normalizeIds(userIds));
+            if (!ids.size || typeof callback !== 'function') {
+                return () => {};
+            }
+            const watcher = { ids, callback };
+            watchers.add(watcher);
+            ids.forEach((id) => watchedIds.add(id));
+            startIntervals();
+
+            const initial = {};
+            ids.forEach((id) => {
+                if (state.has(id)) {
+                    initial[id] = state.get(id);
+                }
+            });
+            if (Object.keys(initial).length) {
+                callback(initial, { server_time_ms: lastServerTimeMs });
+            }
+
+            return function unwatch() {
+                watchers.delete(watcher);
+                recomputeWatchedIds();
+                if (!watchers.size) {
+                    stopIntervals();
+                }
+            };
+        }
+
+        window.addEventListener('offline', () => {
+            if (currentUserId) {
+                const updated = setUserState(currentUserId, { last_seen_at: null, is_online: false }, lastServerTimeMs || Date.now());
+                if (updated) {
+                    notify([currentUserId], lastServerTimeMs || Date.now());
+                }
+            }
+            stopIntervals();
+        });
+
+        window.addEventListener('online', () => {
+            startIntervals();
+        });
+
+        window.PresenceService = { watch };
+    })();
+</script>
+@endauth
+
+@auth
+<script>
+    (function () {
+        if (!window.PresenceService) return;
+        const indicators = Array.from(document.querySelectorAll('[data-presence-indicator]'));
+        if (!indicators.length) return;
+        const userIds = indicators
+            .map((el) => Number(el.dataset.userId))
+            .filter((id) => Number.isInteger(id) && id > 0);
+
+        function updateIndicator(el, online) {
+            if (online) {
+                el.classList.add('bg-green-500');
+                el.classList.remove('border', 'border-gray-400', 'text-gray-400');
+                el.textContent = '';
+            } else {
+                el.classList.remove('bg-green-500');
+                el.classList.add('border', 'border-gray-400', 'text-gray-400');
+                el.textContent = '×';
+            }
+        }
+
+        window.PresenceService.watch(userIds, (data) => {
+            Object.entries(data).forEach(([userId, info]) => {
+                indicators
+                    .filter((el) => Number(el.dataset.userId) === Number(userId))
+                    .forEach((el) => updateIndicator(el, !!info?.online));
+            });
+        });
+    })();
+</script>
+@endauth
+
 <!-- Flash popups -->
 @if (session('success'))
 <script>
