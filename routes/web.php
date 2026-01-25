@@ -178,7 +178,10 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('groups/{group}', [OnlineChatController::class, 'destroyGroup'])->name('groups.destroy');
         Route::post('groups/{group}/members', [OnlineChatController::class, 'addMember'])->name('groups.members.store');
         Route::delete('groups/{group}/members/{user}', [OnlineChatController::class, 'removeMember'])->name('groups.members.destroy');
+        Route::get('groups/unread-counts', [OnlineChatController::class, 'unreadCounts'])->name('groups.unread-counts');
         Route::get('groups/{group}/messages', [OnlineChatController::class, 'messages'])->name('groups.messages');
+        Route::get('groups/{group}/messages/{message}/image', [OnlineChatController::class, 'messageImage'])->name('groups.messages.image');
+        Route::get('groups/{group}/messages/{message}/file', [OnlineChatController::class, 'messageFile'])->name('groups.messages.file');
         Route::post('groups/{group}/messages', [OnlineChatController::class, 'sendMessage'])->name('groups.messages.store');
         Route::post('groups/{group}/start-call', [ChatCallController::class, 'startVideoCall'])->name('groups.start-call');
     });

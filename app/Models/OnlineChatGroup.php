@@ -12,6 +12,7 @@ class OnlineChatGroup extends Model
     protected $fillable = [
         'title',
         'description',
+        'call_link',
         'created_by',
         'is_active',
     ];

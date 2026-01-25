@@ -13,6 +13,12 @@ class OnlineChatMessage extends Model
         'online_chat_group_id',
         'sender_id',
         'body',
+        'image_path',
+        'image_title',
+        'file_path',
+        'file_name',
+        'file_size',
+        'file_mime',
     ];
 
     public function group()

@@ -7,16 +7,30 @@ use App\Models\OnlineChatMembership;
 use App\Models\OnlineChatMessage;
 use App\Models\User;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
+use Illuminate\Validation\ValidationException;
 
 class OnlineChatController extends Controller
 {
+    private function unreadCountsQuery(User $user)
+    {
+        return OnlineChatGroup::query()
+            ->forUser($user)
+            ->withCount(['messages as unread_count' => function ($q) use ($user) {
+                $q->where('sender_id', '!=', $user->id)
+                    ->whereRaw(
+                        'online_chat_messages.id > COALESCE((select last_read_message_id from online_chat_group_user where online_chat_group_user.online_chat_group_id = online_chat_groups.id and user_id = ?), 0)',
+                        [$user->id]
+                    );
+            }]);
+    }
+
     public function index(Request $request)
     {
         $user = $request->user();
 
-        $groups = OnlineChatGroup::query()
-            ->forUser($user)
+        $groups = $this->unreadCountsQuery($user)
             ->with([
                 'memberships' => function ($q) {
                     $q->with('user:id,name,email');
@@ -60,7 +74,8 @@ class OnlineChatController extends Controller
         ]);
 
         $memberIds = collect($data['members'] ?? [])
-            ->filter(fn ($id) => $id !== $user->id)
+            ->map(fn ($id) => (int) $id)
+            ->filter(fn ($id) => $id !== (int) $user->id)
             ->unique();
 
         foreach ($memberIds as $memberId) {
@@ -82,14 +97,24 @@ class OnlineChatController extends Controller
         $data = $request->validate([
             'title' => ['required', 'string', 'max:255'],
             'description' => ['nullable', 'string'],
+            'call_link' => ['nullable', 'string', 'max:2048'],
             'is_active' => ['nullable', 'boolean'],
         ]);
 
         $group->update([
             'title' => $data['title'],
             'description' => $data['description'] ?? null,
+            'call_link' => $data['call_link'] ?? null,
             'is_active' => $request->boolean('is_active'),
         ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'data' => [
+                    'call_link' => $group->call_link,
+                ],
+            ]);
+        }
 
         return back()->with('success', 'تنظیمات گروه به‌روزرسانی شد.');
     }
@@ -159,8 +184,26 @@ class OnlineChatController extends Controller
             ->limit(200)
             ->get();
 
+        if ($messages->isNotEmpty()) {
+            $lastId = $messages->max('id');
+            $membership = $group->memberships()->where('user_id', $request->user()->id)->first();
+            if ($membership && (int) $membership->last_read_message_id < $lastId) {
+                $membership->update(['last_read_message_id' => $lastId]);
+            }
+        }
+
         return response()->json([
             'data' => $messages->map(fn (OnlineChatMessage $m) => $this->transformMessage($m))->values(),
+        ]);
+    }
+
+    public function unreadCounts(Request $request)
+    {
+        $user = $request->user();
+        $groups = $this->unreadCountsQuery($user)->get(['id']);
+
+        return response()->json([
+            'data' => $groups->mapWithKeys(fn (OnlineChatGroup $g) => [$g->id => (int) $g->unread_count]),
         ]);
     }
 
@@ -169,20 +212,105 @@ class OnlineChatController extends Controller
         $this->authorize('sendMessage', $group);
 
         $data = $request->validate([
-            'body' => ['required', 'string', 'max:5000'],
+            'body' => ['nullable', 'string', 'max:5000'],
+            'images' => ['nullable', 'array'],
+            'images.*' => ['image', 'max:5120'],
+            'files' => ['nullable', 'array'],
+            'files.*' => ['file', 'max:20480', 'mimes:pdf,zip,rar'],
+            'image_title' => ['nullable', 'string', 'max:255'],
         ]);
 
-        $message = $group->messages()->create([
-            'body' => $data['body'],
-            'sender_id' => $request->user()->id,
-        ]);
+        if (
+            !filled($data['body'] ?? null)
+            && ! $request->hasFile('images')
+            && ! $request->hasFile('files')
+        ) {
+            throw ValidationException::withMessages([
+                'body' => 'متن پیام یا تصویر یا فایل الزامی است.',
+            ]);
+        }
+
+        $messages = [];
+        $body = $data['body'] ?? '';
+        $imageTitle = $data['image_title'] ?? null;
+
+        if (filled($body)) {
+            $messages[] = $group->messages()->create([
+                'body' => $body,
+                'sender_id' => $request->user()->id,
+            ]);
+        }
+
+        foreach ($request->file('images', []) as $image) {
+            $imagePath = $image->store('chat-attachments', 'public');
+            $messages[] = $group->messages()->create([
+                'body' => '',
+                'sender_id' => $request->user()->id,
+                'image_path' => $imagePath,
+                'image_title' => $imageTitle,
+            ]);
+        }
+
+        foreach ($request->file('files', []) as $file) {
+            $filePath = $file->store('chat-files', 'public');
+            $messages[] = $group->messages()->create([
+                'body' => '',
+                'sender_id' => $request->user()->id,
+                'file_path' => $filePath,
+                'file_name' => $file->getClientOriginalName(),
+                'file_size' => $file->getSize(),
+                'file_mime' => $file->getMimeType(),
+            ]);
+        }
 
         $group->touch();
-        $message->load('sender:id,name,email');
+        if (!empty($messages)) {
+            $lastId = collect($messages)->max('id');
+            $membership = $group->memberships()->where('user_id', $request->user()->id)->first();
+            if ($membership && (int) $membership->last_read_message_id < $lastId) {
+                $membership->update(['last_read_message_id' => $lastId]);
+            }
+        }
+        foreach ($messages as $message) {
+            $message->load('sender:id,name,email');
+        }
 
         return response()->json([
-            'data' => $this->transformMessage($message),
+            'data' => collect($messages)->map(fn (OnlineChatMessage $m) => $this->transformMessage($m))->values(),
         ], 201);
+    }
+
+    public function messageImage(Request $request, OnlineChatGroup $group, OnlineChatMessage $message)
+    {
+        $this->authorize('view', $group);
+
+        if ($message->online_chat_group_id !== $group->id || ! $message->image_path) {
+            abort(404);
+        }
+
+        if (! Storage::disk('public')->exists($message->image_path)) {
+            abort(404);
+        }
+
+        return response()->file(Storage::disk('public')->path($message->image_path));
+    }
+
+    public function messageFile(Request $request, OnlineChatGroup $group, OnlineChatMessage $message)
+    {
+        $this->authorize('view', $group);
+
+        if ($message->online_chat_group_id !== $group->id || ! $message->file_path) {
+            abort(404);
+        }
+
+        if (! Storage::disk('public')->exists($message->file_path)) {
+            abort(404);
+        }
+
+        return response()->download(
+            Storage::disk('public')->path($message->file_path),
+            $message->file_name ?? basename($message->file_path)
+        );
     }
 
     private function transformMessage(OnlineChatMessage $message): array
@@ -190,6 +318,22 @@ class OnlineChatController extends Controller
         return [
             'id' => $message->id,
             'body' => $message->body,
+            'image_url' => $message->image_path
+                ? route('chat.groups.messages.image', [
+                    'group' => $message->online_chat_group_id,
+                    'message' => $message->id,
+                ])
+                : null,
+            'image_title' => $message->image_title,
+            'file_url' => $message->file_path
+                ? route('chat.groups.messages.file', [
+                    'group' => $message->online_chat_group_id,
+                    'message' => $message->id,
+                ])
+                : null,
+            'file_name' => $message->file_name,
+            'file_size' => $message->file_size,
+            'file_mime' => $message->file_mime,
             'sender' => [
                 'id' => $message->sender?->id,
                 'name' => $message->sender?->name,

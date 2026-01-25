@@ -25,10 +25,13 @@
                 <span>ایجاد ایمیل جدید</span>
             </a>
             <a href="https://akhgartabesh.com/webmail"
-               class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
-                <span class="fa fa-pen"></span>
-                <span>ایمیل سازمانی</span>
-            </a>
+                target="_blank"
+                rel="noopener noreferrer"
+                class="inline-flex items-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition">
+                    <span class="fa fa-pen"></span>
+                    <span>ایمیل سازمانی</span>
+                </a>
+
         </div>
     </div>
 

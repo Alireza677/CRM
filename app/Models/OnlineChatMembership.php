@@ -19,6 +19,7 @@ class OnlineChatMembership extends Model
         'online_chat_group_id',
         'user_id',
         'role',
+        'last_read_message_id',
     ];
 
     public function group()
