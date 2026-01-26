@@ -260,10 +260,17 @@
                                         </div>
                                     </div>
                                     <div class="flex gap-2 items-end">
-                                        <textarea id="messageBody"
-                                                  class="flex-1 input text-sm resize-none"
-                                                  rows="1"
-                                                  placeholder="پیام خود را بنویسید..."></textarea>
+                                        <div class="relative flex-1">
+                                            <textarea id="messageBody"
+                                                      class="w-full input text-sm resize-none"
+                                                      rows="1"
+                                                      placeholder="پیام خود را بنویسید..."></textarea>
+                                            <div id="mentionDropdown"
+                                                 class="fixed z-30 hidden min-w-[220px] max-w-[320px] rounded-xl border border-gray-200 bg-white shadow-lg">
+                                                <div class="px-3 py-2 text-[10px] font-semibold text-gray-500 border-b border-gray-100">کاربران</div>
+                                                <ul id="mentionList" class="max-h-44 overflow-y-auto py-1"></ul>
+                                            </div>
+                                        </div>
                                         <div class="relative">
                                             <button id="attachMenuButton"
                                                     type="button"
@@ -478,6 +485,17 @@
     border-width: 8px 10px 8px 0;
     border-color: transparent #ecfdf3 transparent transparent;
 }
+.mention-chip {
+    display: inline-flex;
+    align-items: center;
+    padding: 0 6px;
+    border-radius: 9999px;
+    background: #e0f2fe;
+    color: #0369a1;
+    font-size: 11px;
+    font-weight: 600;
+    cursor: pointer;
+}
 </style>
 
 @push('scripts')
@@ -493,10 +511,20 @@ document.addEventListener('DOMContentLoaded', () => {
     const startCallUrl = @json($activeGroup ? route('chat.groups.start-call', ['group' => $activeGroup]) : '');
     let groupCallLink = @json($activeGroup->call_link ?? '');
     const activeGroupTitle = @json($activeGroup->title ?? '');
+    const mentionCandidates = @json($activeGroup ? $activeGroup->memberships->map(function ($membership) {
+        return [
+            'id' => $membership->user_id,
+            'name' => $membership->user?->name,
+            'username' => $membership->user?->username,
+            'email' => $membership->user?->email,
+        ];
+    })->values() : []);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const messageList = document.getElementById('messageList');
     const messageForm = document.getElementById('messageForm');
     const messageBody = document.getElementById('messageBody');
+    const mentionDropdown = document.getElementById('mentionDropdown');
+    const mentionList = document.getElementById('mentionList');
     const messageImageInput = document.getElementById('messageImage');
     const messageFilesInput = document.getElementById('messageFiles');
     const messageImageTitle = document.getElementById('messageImageTitle');
@@ -589,6 +617,185 @@ document.addEventListener('DOMContentLoaded', () => {
         return `${size.toFixed(size >= 10 || unit === 0 ? 0 : 1)} ${units[unit]}`;
     }
 
+    let mentionMatches = [];
+    let mentionActiveIndex = 0;
+
+    function getMentionState(text, caretPos) {
+        const upToCaret = text.slice(0, caretPos);
+        const atIndex = upToCaret.lastIndexOf('@');
+        if (atIndex === -1) return null;
+        const charBefore = atIndex > 0 ? upToCaret[atIndex - 1] : ' ';
+        if (charBefore && !/\s/.test(charBefore)) return null;
+        const query = upToCaret.slice(atIndex + 1);
+        if (/\s/.test(query)) return null;
+        return { atIndex, query };
+    }
+
+    function getFilteredMentions(query) {
+        const needle = (query || '').trim().toLowerCase();
+        const items = Array.isArray(mentionCandidates) ? mentionCandidates : [];
+        const filtered = items.filter(item => item && item.id && item.id !== currentUserId);
+        if (!needle) return filtered;
+        return filtered.filter(item => {
+            const name = (item.name || '').toLowerCase();
+            const username = (item.username || '').toLowerCase();
+            return name.includes(needle) || username.includes(needle);
+        });
+    }
+
+    function buildMentionRow(item, isActive) {
+        const li = document.createElement('li');
+        li.className = `px-3 py-2 text-xs cursor-pointer flex items-center justify-between gap-2 ${isActive ? 'bg-blue-50 text-blue-700' : 'text-gray-700 hover:bg-gray-50'}`;
+        li.dataset.mentionId = item.id;
+        li.dataset.mentionName = item.name || '';
+        li.dataset.mentionUsername = item.username || '';
+
+        const name = document.createElement('span');
+        name.className = 'font-semibold truncate';
+        name.textContent = item.name || item.username || '';
+
+        const meta = document.createElement('span');
+        meta.className = 'text-[10px] text-gray-400';
+        meta.textContent = item.username ? `@${item.username}` : '';
+
+        li.appendChild(name);
+        li.appendChild(meta);
+        return li;
+    }
+
+    function getCaretCoordinates(textarea, position) {
+        const div = document.createElement('div');
+        const style = window.getComputedStyle(textarea);
+        const properties = [
+            'boxSizing', 'width', 'height', 'overflowX', 'overflowY',
+            'borderTopWidth', 'borderRightWidth', 'borderBottomWidth', 'borderLeftWidth',
+            'paddingTop', 'paddingRight', 'paddingBottom', 'paddingLeft',
+            'fontStyle', 'fontVariant', 'fontWeight', 'fontStretch',
+            'fontSize', 'fontSizeAdjust', 'lineHeight', 'fontFamily',
+            'textAlign', 'textTransform', 'textIndent', 'letterSpacing', 'wordSpacing',
+        ];
+        properties.forEach(prop => { div.style[prop] = style[prop]; });
+        div.style.position = 'absolute';
+        div.style.visibility = 'hidden';
+        div.style.whiteSpace = 'pre-wrap';
+        div.style.wordWrap = 'break-word';
+        div.textContent = textarea.value.substring(0, position);
+        const span = document.createElement('span');
+        span.textContent = textarea.value.substring(position) || '.';
+        div.appendChild(span);
+        document.body.appendChild(div);
+
+        div.scrollTop = textarea.scrollTop;
+        div.scrollLeft = textarea.scrollLeft;
+
+        const spanRect = span.getBoundingClientRect();
+        const divRect = div.getBoundingClientRect();
+        const coords = {
+            left: spanRect.left - divRect.left,
+            top: spanRect.top - divRect.top,
+            height: spanRect.height,
+        };
+
+        document.body.removeChild(div);
+        return coords;
+    }
+
+    function positionMentionDropdown() {
+        if (!messageBody || !mentionDropdown) return;
+        const caretPos = messageBody.selectionStart || 0;
+        const coords = getCaretCoordinates(messageBody, caretPos);
+        const rect = messageBody.getBoundingClientRect();
+        mentionDropdown.style.left = `${rect.left + coords.left}px`;
+        mentionDropdown.style.top = `${rect.top + coords.top + coords.height + 8}px`;
+    }
+
+    function hideMentionDropdown() {
+        mentionDropdown?.classList.add('hidden');
+        mentionActiveIndex = 0;
+        mentionMatches = [];
+    }
+
+    function renderMentionDropdown() {
+        if (!mentionDropdown || !mentionList) return;
+        mentionList.innerHTML = '';
+        mentionMatches.forEach((item, index) => {
+            const row = buildMentionRow(item, index === mentionActiveIndex);
+            mentionList.appendChild(row);
+        });
+        if (mentionMatches.length) {
+            mentionDropdown.classList.remove('hidden');
+            positionMentionDropdown();
+        } else {
+            hideMentionDropdown();
+        }
+    }
+
+    function showMentionDropdown(items) {
+        mentionMatches = items;
+        mentionActiveIndex = 0;
+        renderMentionDropdown();
+    }
+
+    function updateMentionDropdown() {
+        if (!messageBody) return;
+        const caretPos = messageBody.selectionStart || 0;
+        const state = getMentionState(messageBody.value, caretPos);
+        if (!state) {
+            hideMentionDropdown();
+            return;
+        }
+        const results = getFilteredMentions(state.query);
+        showMentionDropdown(results);
+    }
+
+    function insertMention(item) {
+        if (!messageBody) return;
+        const caretPos = messageBody.selectionStart || 0;
+        const state = getMentionState(messageBody.value, caretPos);
+        if (!state) return;
+        const token = `@[${item.name || item.username || ''}](user:${item.id})`;
+        const before = messageBody.value.slice(0, state.atIndex);
+        const after = messageBody.value.slice(caretPos);
+        const spacer = after.startsWith(' ') ? '' : ' ';
+        const nextValue = `${before}${token}${spacer}${after}`;
+        const nextCaret = before.length + token.length + spacer.length;
+        messageBody.value = nextValue;
+        messageBody.focus();
+        messageBody.setSelectionRange(nextCaret, nextCaret);
+        autoResizeMessageBody();
+        hideMentionDropdown();
+    }
+
+    function renderMessageBody(bodyText) {
+        const bodyEl = document.createElement('div');
+        bodyEl.className = 'text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mt-2';
+
+        const fragment = document.createDocumentFragment();
+        const regex = /@\\[([^\\]]+)\\]\\(user:(\\d+)\\)/g;
+        let lastIndex = 0;
+        let match;
+
+        while ((match = regex.exec(bodyText)) !== null) {
+            if (match.index > lastIndex) {
+                fragment.appendChild(document.createTextNode(bodyText.slice(lastIndex, match.index)));
+            }
+            const name = (match[1] || '').trim();
+            const id = match[2] || '';
+            const span = document.createElement('span');
+            span.className = 'mention-chip';
+            span.textContent = name ? `@${name}` : '@';
+            span.dataset.mentionId = id;
+            fragment.appendChild(span);
+            lastIndex = match.index + match[0].length;
+        }
+        if (lastIndex < bodyText.length) {
+            fragment.appendChild(document.createTextNode(bodyText.slice(lastIndex)));
+        }
+
+        bodyEl.appendChild(fragment);
+        return bodyEl;
+    }
+
     function renderMessage(msg) {
         const isOwn = currentUserId && msg.sender?.id === currentUserId;
         const wrapper = document.createElement('div');
@@ -596,41 +803,89 @@ document.addEventListener('DOMContentLoaded', () => {
 
         const el = document.createElement('div');
         el.className = `chat-bubble w-1/2 max-w-[50%] rounded-2xl px-3 py-2 shadow-sm ${isOwn ? 'is-own bg-white text-right' : 'is-other bg-green-50 text-right border border-green-100'}`;
-        const bodyHtml = msg.body
-            ? `<div class="text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mt-2">${escapeHtml(msg.body)}</div>`
-            : '';
-        const imageHtml = msg.image_url
-            ? `<div class="mt-2">
-                    <img src="${escapeHtml(msg.image_url)}"
-                         alt="تصویر پیوست"
-                         class="w-20 h-20 object-cover rounded-lg border border-gray-100 cursor-zoom-in"
-                         data-image-url="${escapeHtml(msg.image_url)}"
-                         data-image-title="${escapeHtml(msg.image_title || '')}">
-                    ${msg.image_title ? `<div class="mt-1 text-xs text-gray-600">${escapeHtml(msg.image_title)}</div>` : ''}
-               </div>`
-            : '';
-        const fileHtml = msg.file_url
-            ? `<div class="mt-2">
-                    <a href="${escapeHtml(msg.file_url)}" download
-                       class="inline-flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100">
-                        <span class="font-semibold">${escapeHtml(msg.file_name || 'فایل')}</span>
-                        ${msg.file_size ? `<span class="text-[10px] text-gray-500">${formatFileSize(msg.file_size)}</span>` : ''}
-                    </a>
-               </div>`
-            : '';
-        el.innerHTML = `
-            <div class="flex items-center justify-between text-xs text-gray-500">
-                <div class="flex items-center gap-2">
-                    <div class="text-xs font-semibold ${isOwn ? 'text-blue-700' : 'text-green-700'}">
-                        ${isOwn ? 'من' : escapeHtml(msg.sender?.name || 'کاربر')}
-                    </div>
-                </div>
-                <span>${formatTime(msg.created_at)}</span>
-            </div>
-            ${bodyHtml}
-            ${imageHtml}
-            ${fileHtml}
-        `;
+
+        const header = document.createElement('div');
+        header.className = 'flex items-center justify-between text-xs text-gray-500';
+
+        const nameWrap = document.createElement('div');
+        nameWrap.className = 'flex items-center gap-2';
+
+        const nameEl = document.createElement('div');
+        nameEl.className = `text-xs font-semibold ${isOwn ? 'text-blue-700' : 'text-green-700'}`;
+        nameEl.textContent = isOwn ? 'من' : (msg.sender?.name || 'کاربر');
+        nameWrap.appendChild(nameEl);
+
+        const metaWrap = document.createElement('div');
+        metaWrap.className = 'flex items-center gap-1';
+
+        const timeEl = document.createElement('span');
+        timeEl.textContent = formatTime(msg.created_at);
+        metaWrap.appendChild(timeEl);
+
+        if (isOwn && msg.delivery_status) {
+            const statusEl = document.createElement('span');
+            statusEl.className = `inline-flex items-center text-[10px] ${msg.delivery_status === 'read' ? 'text-blue-600' : 'text-gray-400'}`;
+            statusEl.title = msg.delivery_status === 'read' ? 'دیده‌شده' : 'ارسال‌شده';
+            statusEl.textContent = msg.delivery_status === 'read' ? '✓✓' : '✓';
+            metaWrap.appendChild(statusEl);
+        }
+
+        header.appendChild(nameWrap);
+        header.appendChild(metaWrap);
+        el.appendChild(header);
+
+        if (msg.body) {
+            el.appendChild(renderMessageBody(String(msg.body)));
+        }
+
+        if (msg.image_url) {
+            const imageWrap = document.createElement('div');
+            imageWrap.className = 'mt-2';
+
+            const img = document.createElement('img');
+            img.src = msg.image_url;
+            img.alt = 'تصویر پیوست';
+            img.className = 'w-20 h-20 object-cover rounded-lg border border-gray-100 cursor-zoom-in';
+            img.dataset.imageUrl = msg.image_url;
+            img.dataset.imageTitle = msg.image_title || '';
+
+            imageWrap.appendChild(img);
+
+            if (msg.image_title) {
+                const title = document.createElement('div');
+                title.className = 'mt-1 text-xs text-gray-600';
+                title.textContent = msg.image_title;
+                imageWrap.appendChild(title);
+            }
+
+            el.appendChild(imageWrap);
+        }
+
+        if (msg.file_url) {
+            const fileWrap = document.createElement('div');
+            fileWrap.className = 'mt-2';
+
+            const link = document.createElement('a');
+            link.href = msg.file_url;
+            link.download = '';
+            link.className = 'inline-flex items-center gap-2 rounded-lg border border-gray-100 bg-gray-50 px-3 py-2 text-xs text-gray-700 hover:bg-gray-100';
+
+            const name = document.createElement('span');
+            name.className = 'font-semibold';
+            name.textContent = msg.file_name || 'فایل';
+            link.appendChild(name);
+
+            if (msg.file_size) {
+                const size = document.createElement('span');
+                size.className = 'text-[10px] text-gray-500';
+                size.textContent = formatFileSize(msg.file_size);
+                link.appendChild(size);
+            }
+
+            fileWrap.appendChild(link);
+            el.appendChild(fileWrap);
+        }
+
         wrapper.appendChild(el);
         return wrapper;
     }
@@ -1143,6 +1398,11 @@ document.addEventListener('DOMContentLoaded', () => {
         if (attachMenu.contains(event.target) || attachMenuButton?.contains(event.target)) return;
         attachMenu.classList.add('hidden');
     });
+    document.addEventListener('click', (event) => {
+        if (!mentionDropdown || mentionDropdown.classList.contains('hidden')) return;
+        if (mentionDropdown.contains(event.target) || messageBody?.contains(event.target)) return;
+        hideMentionDropdown();
+    });
 
     function autoResizeMessageBody() {
         if (!messageBody) return;
@@ -1150,8 +1410,50 @@ document.addEventListener('DOMContentLoaded', () => {
         messageBody.style.height = `${messageBody.scrollHeight}px`;
     }
 
-    messageBody?.addEventListener('input', autoResizeMessageBody);
+    messageBody?.addEventListener('input', () => {
+        autoResizeMessageBody();
+        updateMentionDropdown();
+    });
+    messageBody?.addEventListener('click', updateMentionDropdown);
+    messageBody?.addEventListener('scroll', () => {
+        if (mentionDropdown && !mentionDropdown.classList.contains('hidden')) {
+            positionMentionDropdown();
+        }
+    });
+    messageBody?.addEventListener('keydown', (event) => {
+        if (!mentionDropdown || mentionDropdown.classList.contains('hidden')) return;
+        if (!mentionMatches.length) return;
+
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            mentionActiveIndex = (mentionActiveIndex + 1) % mentionMatches.length;
+            renderMentionDropdown();
+        } else if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            mentionActiveIndex = (mentionActiveIndex - 1 + mentionMatches.length) % mentionMatches.length;
+            renderMentionDropdown();
+        } else if (event.key === 'Enter') {
+            event.preventDefault();
+            const item = mentionMatches[mentionActiveIndex];
+            if (item) {
+                insertMention(item);
+            }
+        } else if (event.key === 'Escape') {
+            event.preventDefault();
+            hideMentionDropdown();
+        }
+    });
     autoResizeMessageBody();
+
+    mentionList?.addEventListener('click', (event) => {
+        const target = event.target instanceof HTMLElement ? event.target.closest('li') : null;
+        if (!target) return;
+        const id = Number(target.dataset.mentionId || 0);
+        const name = target.dataset.mentionName || '';
+        const username = target.dataset.mentionUsername || '';
+        if (!id) return;
+        insertMention({ id, name, username });
+    });
 
     startCallButton?.addEventListener('click', (e) => {
         e.preventDefault();

@@ -631,12 +631,20 @@
             stopIntervals();
         });
 
+        function getSnapshot() {
+            const snapshot = {};
+            state.forEach((value, key) => {
+                snapshot[key] = value;
+            });
+            return snapshot;
+        }
+
         window.addEventListener('online', () => {
             start();
         });
 
-        start();
-        window.PresenceService = { watch };
+        window.PresenceService = { start, watch, getSnapshot };
+        window.PresenceService.start();
     })();
 </script>
 @endauth
@@ -652,11 +660,13 @@
             .filter((id) => Number.isInteger(id) && id > 0);
 
         function updateIndicator(el, online) {
+            el.classList.remove('bg-white', 'bg-green-500');
             if (online) {
                 el.classList.add('bg-green-500');
                 el.classList.remove('border', 'border-gray-400', 'text-gray-400');
                 el.textContent = '';
             } else {
+                el.classList.add('bg-white');
                 el.classList.remove('bg-green-500');
                 el.classList.add('border', 'border-gray-400', 'text-gray-400');
                 el.textContent = '×';

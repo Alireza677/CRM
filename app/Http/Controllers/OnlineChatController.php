@@ -6,6 +6,7 @@ use App\Models\OnlineChatGroup;
 use App\Models\OnlineChatMembership;
 use App\Models\OnlineChatMessage;
 use App\Models\User;
+use App\Services\Notifications\NotificationRouter;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Validation\Rule;
@@ -33,7 +34,7 @@ class OnlineChatController extends Controller
         $groups = $this->unreadCountsQuery($user)
             ->with([
                 'memberships' => function ($q) {
-                    $q->with('user:id,name,email');
+                    $q->with('user:id,name,username,email');
                 },
                 'lastMessage.sender:id,name,email',
             ])
@@ -174,6 +175,7 @@ class OnlineChatController extends Controller
         $this->authorize('view', $group);
 
         $afterId = $request->integer('after_id');
+        $userId = (int) $request->user()->id;
 
         $messages = $group->messages()
             ->with('sender:id,name,email')
@@ -186,14 +188,18 @@ class OnlineChatController extends Controller
 
         if ($messages->isNotEmpty()) {
             $lastId = $messages->max('id');
-            $membership = $group->memberships()->where('user_id', $request->user()->id)->first();
+            $membership = $group->memberships()->where('user_id', $userId)->first();
             if ($membership && (int) $membership->last_read_message_id < $lastId) {
                 $membership->update(['last_read_message_id' => $lastId]);
             }
         }
 
+        $maxOtherReadId = $group->memberships()
+            ->where('user_id', '!=', $userId)
+            ->max('last_read_message_id') ?? 0;
+
         return response()->json([
-            'data' => $messages->map(fn (OnlineChatMessage $m) => $this->transformMessage($m))->values(),
+            'data' => $messages->map(fn (OnlineChatMessage $m) => $this->transformMessage($m, $userId, $maxOtherReadId))->values(),
         ]);
     }
 
@@ -264,19 +270,25 @@ class OnlineChatController extends Controller
         }
 
         $group->touch();
+        $userId = (int) $request->user()->id;
         if (!empty($messages)) {
             $lastId = collect($messages)->max('id');
-            $membership = $group->memberships()->where('user_id', $request->user()->id)->first();
+            $membership = $group->memberships()->where('user_id', $userId)->first();
             if ($membership && (int) $membership->last_read_message_id < $lastId) {
                 $membership->update(['last_read_message_id' => $lastId]);
             }
         }
         foreach ($messages as $message) {
             $message->load('sender:id,name,email');
+            $this->syncMessageMentions($message, $group, $userId);
         }
 
+        $maxOtherReadId = $group->memberships()
+            ->where('user_id', '!=', $userId)
+            ->max('last_read_message_id') ?? 0;
+
         return response()->json([
-            'data' => collect($messages)->map(fn (OnlineChatMessage $m) => $this->transformMessage($m))->values(),
+            'data' => collect($messages)->map(fn (OnlineChatMessage $m) => $this->transformMessage($m, $userId, $maxOtherReadId))->values(),
         ], 201);
     }
 
@@ -313,8 +325,13 @@ class OnlineChatController extends Controller
         );
     }
 
-    private function transformMessage(OnlineChatMessage $message): array
+    private function transformMessage(OnlineChatMessage $message, ?int $viewerId = null, int $maxOtherReadId = 0): array
     {
+        $deliveryStatus = null;
+        if ($viewerId && (int) $message->sender_id === $viewerId) {
+            $deliveryStatus = $message->id <= $maxOtherReadId ? 'read' : 'sent';
+        }
+
         return [
             'id' => $message->id,
             'body' => $message->body,
@@ -340,6 +357,55 @@ class OnlineChatController extends Controller
                 'email' => $message->sender?->email,
             ],
             'created_at' => $message->created_at?->toIso8601String(),
+            'delivery_status' => $deliveryStatus,
         ];
+    }
+
+    private function syncMessageMentions(OnlineChatMessage $message, OnlineChatGroup $group, int $senderId): void
+    {
+        $mentionIds = OnlineChatMessage::extractMentionIds((string) $message->body);
+        if (empty($mentionIds)) {
+            return;
+        }
+
+        $memberIds = $group->memberships()->pluck('user_id')->all();
+
+        $mentionIds = collect($mentionIds)
+            ->intersect($memberIds)
+            ->reject(fn ($id) => (int) $id === $senderId)
+            ->unique()
+            ->values();
+
+        if ($mentionIds->isEmpty()) {
+            return;
+        }
+
+        $message->mentions()->sync($mentionIds->all());
+
+        $users = User::whereIn('id', $mentionIds)->get();
+        if ($users->isEmpty()) {
+            return;
+        }
+
+        $message->loadMissing('sender');
+
+        $router = app(NotificationRouter::class);
+        $displayBody = OnlineChatMessage::renderBodyForDisplay((string) $message->body);
+
+        foreach ($users as $user) {
+            $context = [
+                'note_body' => $displayBody,
+                'mentioned_user' => $user,
+                'mentioned_user_name' => $user->name,
+                'context_label' => 'گفتگوی گروهی: ' . ($group->title ?? ''),
+                'form_title' => $group->title ?? '',
+                'actor' => $message->sender,
+                'sender_name' => $message->sender?->name,
+                'url' => route('chat.index', ['group_id' => $group->id]),
+            ];
+
+            $router->route('notes', 'note.mentioned', $context, [$user]);
+            $message->mentions()->updateExistingPivot($user->id, ['notified_at' => now()]);
+        }
     }
 }

@@ -85,6 +85,13 @@ class User extends Authenticatable
             ->withPivot('notified_at');
     }
 
+    public function mentionedInChatMessages()
+    {
+        return $this->belongsToMany(OnlineChatMessage::class, 'online_chat_message_mentions', 'user_id', 'message_id')
+            ->withTimestamps()
+            ->withPivot('notified_at');
+    }
+
     public function favoriteLeads()
     {
         return $this->belongsToMany(SalesLead::class, 'lead_favorites', 'user_id', 'lead_id')
