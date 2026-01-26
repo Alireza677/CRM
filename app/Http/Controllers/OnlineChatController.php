@@ -363,14 +363,16 @@ class OnlineChatController extends Controller
 
     private function syncMessageMentions(OnlineChatMessage $message, OnlineChatGroup $group, int $senderId): void
     {
-        $mentionIds = OnlineChatMessage::extractMentionIds((string) $message->body);
-        if (empty($mentionIds)) {
-            return;
-        }
+        $body = (string) $message->body;
+        $mentionAll = (bool) preg_match('/(^|\\s)@all(\\s|$)/i', $body);
 
         $memberIds = $group->memberships()->pluck('user_id')->all();
 
-        $mentionIds = collect($mentionIds)
+        $mentionIds = $mentionAll
+            ? collect($memberIds)
+            : collect(OnlineChatMessage::extractMentionIds($body));
+
+        $mentionIds = $mentionIds
             ->intersect($memberIds)
             ->reject(fn ($id) => (int) $id === $senderId)
             ->unique()

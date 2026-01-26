@@ -9,6 +9,16 @@
     $nonMembers  = $activeGroup
         ? $users->whereNotIn('id', $activeGroup->memberships->pluck('user_id'))->values()
         : $users;
+    $mentionCandidates = $activeGroup
+        ? $activeGroup->memberships->map(function ($membership) {
+            return [
+                'id' => $membership->user_id,
+                'name' => $membership->user?->name,
+                'username' => $membership->user?->username,
+                'email' => $membership->user?->email,
+            ];
+        })->values()
+        : collect();
 @endphp
 
 @section('content')
@@ -266,7 +276,7 @@
                                                       rows="1"
                                                       placeholder="پیام خود را بنویسید..."></textarea>
                                             <div id="mentionDropdown"
-                                                 class="fixed z-30 hidden min-w-[220px] max-w-[320px] rounded-xl border border-gray-200 bg-white shadow-lg">
+                                                 class="absolute z-30 hidden min-w-[220px] max-w-[320px] rounded-xl border border-gray-200 bg-white shadow-lg -top-2 -translate-y-full">
                                                 <div class="px-3 py-2 text-[10px] font-semibold text-gray-500 border-b border-gray-100">کاربران</div>
                                                 <ul id="mentionList" class="max-h-44 overflow-y-auto py-1"></ul>
                                             </div>
@@ -511,14 +521,7 @@ document.addEventListener('DOMContentLoaded', () => {
     const startCallUrl = @json($activeGroup ? route('chat.groups.start-call', ['group' => $activeGroup]) : '');
     let groupCallLink = @json($activeGroup->call_link ?? '');
     const activeGroupTitle = @json($activeGroup->title ?? '');
-    const mentionCandidates = @json($activeGroup ? $activeGroup->memberships->map(function ($membership) {
-        return [
-            'id' => $membership->user_id,
-            'name' => $membership->user?->name,
-            'username' => $membership->user?->username,
-            'email' => $membership->user?->email,
-        ];
-    })->values() : []);
+    const mentionCandidates = @json($mentionCandidates);
     const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
     const messageList = document.getElementById('messageList');
     const messageForm = document.getElementById('messageForm');
@@ -619,6 +622,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     let mentionMatches = [];
     let mentionActiveIndex = 0;
+    let selectedMentions = [];
 
     function getMentionState(text, caretPos) {
         const upToCaret = text.slice(0, caretPos);
@@ -635,12 +639,19 @@ document.addEventListener('DOMContentLoaded', () => {
         const needle = (query || '').trim().toLowerCase();
         const items = Array.isArray(mentionCandidates) ? mentionCandidates : [];
         const filtered = items.filter(item => item && item.id && item.id !== currentUserId);
-        if (!needle) return filtered;
-        return filtered.filter(item => {
-            const name = (item.name || '').toLowerCase();
-            const username = (item.username || '').toLowerCase();
-            return name.includes(needle) || username.includes(needle);
-        });
+        const results = !needle
+            ? filtered
+            : filtered.filter(item => {
+                const name = (item.name || '').toLowerCase();
+                const username = (item.username || '').toLowerCase();
+                return name.includes(needle) || username.includes(needle);
+            });
+
+        if (!needle || needle.startsWith('all') || needle.startsWith('همه')) {
+            results.unshift({ id: 'all', name: 'همه اعضا', username: 'all' });
+        }
+
+        return results;
     }
 
     function buildMentionRow(item, isActive) {
@@ -702,11 +713,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
     function positionMentionDropdown() {
         if (!messageBody || !mentionDropdown) return;
-        const caretPos = messageBody.selectionStart || 0;
-        const coords = getCaretCoordinates(messageBody, caretPos);
-        const rect = messageBody.getBoundingClientRect();
-        mentionDropdown.style.left = `${rect.left + coords.left}px`;
-        mentionDropdown.style.top = `${rect.top + coords.top + coords.height + 8}px`;
+        mentionDropdown.style.left = '0';
     }
 
     function hideMentionDropdown() {
@@ -753,7 +760,8 @@ document.addEventListener('DOMContentLoaded', () => {
         const caretPos = messageBody.selectionStart || 0;
         const state = getMentionState(messageBody.value, caretPos);
         if (!state) return;
-        const token = `@[${item.name || item.username || ''}](user:${item.id})`;
+        const mentionName = item.name || item.username || '';
+        const token = item.id === 'all' ? '@all' : `@${mentionName}`;
         const before = messageBody.value.slice(0, state.atIndex);
         const after = messageBody.value.slice(caretPos);
         const spacer = after.startsWith(' ') ? '' : ' ';
@@ -763,7 +771,31 @@ document.addEventListener('DOMContentLoaded', () => {
         messageBody.focus();
         messageBody.setSelectionRange(nextCaret, nextCaret);
         autoResizeMessageBody();
+        if (item.id !== 'all' && mentionName && !selectedMentions.some(m => m.id === item.id)) {
+            selectedMentions.push({ id: item.id, name: mentionName });
+        }
         hideMentionDropdown();
+    }
+
+    function syncMentionsWithBody() {
+        if (!messageBody) return;
+        const body = messageBody.value || '';
+        selectedMentions = selectedMentions.filter(item => body.includes(`@${item.name}`));
+    }
+
+    function buildMentionedBody(rawBody) {
+        let body = rawBody;
+        if (!selectedMentions.length) {
+            return body;
+        }
+        selectedMentions.forEach(item => {
+            const tokenText = `@${item.name}`;
+            const idx = body.indexOf(tokenText);
+            if (idx === -1) return;
+            const token = `@[${item.name}](user:${item.id})`;
+            body = `${body.slice(0, idx)}${token}${body.slice(idx + tokenText.length)}`;
+        });
+        return body;
     }
 
     function renderMessageBody(bodyText) {
@@ -771,7 +803,7 @@ document.addEventListener('DOMContentLoaded', () => {
         bodyEl.className = 'text-sm text-gray-800 leading-relaxed whitespace-pre-wrap mt-2';
 
         const fragment = document.createDocumentFragment();
-        const regex = /@\\[([^\\]]+)\\]\\(user:(\\d+)\\)/g;
+        const regex = /@\[(.*?)\]\(user:(\d+)\)/g;
         let lastIndex = 0;
         let match;
 
@@ -1171,9 +1203,10 @@ document.addEventListener('DOMContentLoaded', () => {
         e.preventDefault();
         const body = (messageBody.value || '').trim();
         const imageTitle = (messageImageTitle?.value || '').trim();
-        if (!body && !selectedImages.length && !selectedFiles.length) return;
+        const finalBody = buildMentionedBody(body);
+        if (!finalBody && !selectedImages.length && !selectedFiles.length) return;
         const sent = await sendMessage(
-            body,
+            finalBody,
             selectedImages.map(item => item.file),
             selectedFiles,
             imageTitle
@@ -1182,6 +1215,7 @@ document.addEventListener('DOMContentLoaded', () => {
         messageBody.value = '';
         autoResizeMessageBody();
         resetImagePreview();
+        selectedMentions = [];
     });
 
     groupSettingsForm?.addEventListener('submit', async (e) => {
@@ -1413,6 +1447,7 @@ document.addEventListener('DOMContentLoaded', () => {
     messageBody?.addEventListener('input', () => {
         autoResizeMessageBody();
         updateMentionDropdown();
+        syncMentionsWithBody();
     });
     messageBody?.addEventListener('click', updateMentionDropdown);
     messageBody?.addEventListener('scroll', () => {
@@ -1448,9 +1483,11 @@ document.addEventListener('DOMContentLoaded', () => {
     mentionList?.addEventListener('click', (event) => {
         const target = event.target instanceof HTMLElement ? event.target.closest('li') : null;
         if (!target) return;
-        const id = Number(target.dataset.mentionId || 0);
+        const rawId = target.dataset.mentionId || '';
         const name = target.dataset.mentionName || '';
         const username = target.dataset.mentionUsername || '';
+        if (!rawId) return;
+        const id = rawId === 'all' ? 'all' : Number(rawId);
         if (!id) return;
         insertMention({ id, name, username });
     });
