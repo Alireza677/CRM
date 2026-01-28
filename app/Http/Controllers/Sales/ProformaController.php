@@ -7,7 +7,6 @@ use App\Models\Proforma;
 use App\Models\Organization;
 use App\Models\Contact;
 use App\Models\Opportunity;
-use App\Models\Activity as CrmActivity;
 use App\Models\User;
 use App\Models\Product;
 use App\Models\AutomationRule;
@@ -495,30 +494,6 @@ class ProformaController extends Controller
                 try {
                     $opportunity = Opportunity::find($proforma->opportunity_id);
                     if ($opportunity) {
-                        $creatorId  = auth()->id() ?: $proforma->assigned_to ?: $opportunity->assigned_to;
-                        $assigneeId = $opportunity->assigned_to ?: $proforma->assigned_to ?: $creatorId;
-
-                        $activity = CrmActivity::create([
-                            'subject'        => 'proforma_created',
-                            'start_at'       => now(),
-                            'due_at'         => now(),
-                            'assigned_to_id' => $assigneeId ?: $creatorId,
-                            'related_type'   => Opportunity::class,
-                            'related_id'     => $opportunity->id,
-                            'status'         => 'completed',
-                            'priority'       => 'normal',
-                            'description'    => 'Automatically logged after proforma issuance.',
-                            'is_private'     => false,
-                            'source'         => 'system',
-                            'created_by_id'  => $creatorId ?: $assigneeId,
-                            'updated_by_id'  => $creatorId ?: $assigneeId,
-                        ]);
-
-                        if (method_exists($opportunity, 'markFirstActivity')) {
-                            $activityTime = $activity->start_at ?? $activity->created_at ?? now();
-                            $opportunity->markFirstActivity($activityTime);
-                        }
-
                         // Spatie activity log for opportunity updates tab
                         $properties = [
                             'proforma_id'     => $proforma->id,

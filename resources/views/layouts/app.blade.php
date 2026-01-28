@@ -4,8 +4,26 @@
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
+    @auth
+    <meta name="user-id" content="{{ auth()->id() }}">
+    <meta name="notifications-stream-url" content="{{ route('notifications.stream') }}">
+    <meta name="notifications-unread-count-url" content="{{ route('notifications.unreadCount') }}">
+    <meta name="notifications-feed-url" content="{{ route('notifications.feed.latest') }}">
+    <meta name="notifications-asset-settings-url" content="{{ route('notifications.asset-settings') }}">
+    @endauth
 
     <title>{{ config('app.name', 'Laravel') }}</title>
+
+    @auth
+    <script>
+        window.__authUserId = {{ auth()->id() ?? 'null' }};
+    </script>
+    <script>
+        window.__notificationAssetSettings = @json(\App\Models\NotificationEventSetting::getCachedMap());
+        window.__notificationMuteAll = @json(\App\Models\UserNotificationSetting::getBool(auth()->id(), \App\Models\UserNotificationSetting::MUTE_ALL_KEY, false));
+        window.__notificationDefaultSound = @json(asset('sounds/notification.mp3'));
+    </script>
+    @endauth
 
     <!-- Fonts -->
     @if(!config('app.assets_emergency'))
@@ -194,237 +212,7 @@
 <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 @endif
 
-@auth
-<script>
-    (function () {
-        const feedUrl = @json(route('notifications.feed.latest'));
-        const toastContainer = document.getElementById('notification-toast-container');
-        const audioEl = document.getElementById('notification-audio');
 
-        if (!toastContainer || !feedUrl) {
-            return;
-        }
-
-        const SEEN_KEY = 'crm_seen_notification_ids';
-        let audioUnlocked = false;
-        let seenIds;
-        try {
-            const raw = window.localStorage.getItem(SEEN_KEY);
-            const arr = raw ? JSON.parse(raw) : [];
-            seenIds = new Set(Array.isArray(arr) ? arr : []);
-        } catch (e) {
-            seenIds = new Set();
-        }
-
-        function persistSeenIds() {
-            try {
-                window.localStorage.setItem(SEEN_KEY, JSON.stringify(Array.from(seenIds)));
-            } catch (e) {
-                // ignore storage errors
-            }
-        }
-
-        function unlockAudioOnce() {
-            if (!audioEl || audioUnlocked) return;
-            try {
-                const playPromise = audioEl.play();
-                if (playPromise && typeof playPromise.then === 'function') {
-                    playPromise.then(function () {
-                        audioEl.pause();
-                        audioEl.currentTime = 0;
-                        audioUnlocked = true;
-                    }).catch(function () {
-                        // user gesture ممکن است کافی نباشد؛ ساکت می‌مانیم
-                    });
-                } else {
-                    audioUnlocked = true;
-                }
-            } catch (e) {
-                // ignore
-            }
-        }
-
-        document.addEventListener('click', unlockAudioOnce, { once: true });
-        document.addEventListener('keydown', unlockAudioOnce, { once: true });
-
-        function playNotificationSound() {
-            if (!audioEl || !audioUnlocked) return;
-            try {
-                audioEl.currentTime = 0;
-                const playPromise = audioEl.play();
-                if (playPromise && typeof playPromise.then === 'function') {
-                    playPromise.catch(function () {
-                        // autoplay may be blocked; ignore
-                    });
-                }
-            } catch (e) {
-                // ignore audio errors
-            }
-        }
-
-        function showToast(notification) {
-    if (!notification || !notification.id || !toastContainer) return;
-
-    const wrapper = document.createElement('div');
-    wrapper.className =
-        'pointer-events-auto max-w-sm w-80 bg-white border border-blue-200 shadow-lg ' +
-        'rounded-xl p-3 flex gap-3 items-start animate-fade-in-down';
-
-    // آیکن
-    const iconWrapper = document.createElement('div');
-    iconWrapper.innerHTML = `
-        <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-100">
-            <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
-                      d="M13 16h-1v-4h-1m1-4h.01M12 2a10 10 0 1010 10A10.011 10.011 0 0012 2z" />
-            </svg>
-        </span>
-    `;
-
-    // محتوای اعلان
-    const content = document.createElement('div');
-    content.className = 'flex-1';
-
-    const headerRow = document.createElement('div');
-    headerRow.className = 'flex items-start justify-between gap-2';
-
-    const titleEl = document.createElement('div');
-    titleEl.className = 'text-sm font-semibold text-gray-900 leading-snug';
-
-    const messageText = notification.message || 'اعلان جدیدی دارید';
-
-    if (notification.url) {
-        const link = document.createElement('a');
-        link.href = notification.url;
-        link.textContent = messageText;
-        link.className = 'hover:text-blue-600 hover:underline';
-        titleEl.appendChild(link);
-    } else {
-        titleEl.textContent = messageText;
-    }
-
-    const closeBtn = document.createElement('button');
-    closeBtn.type = 'button';
-    closeBtn.className = 'text-gray-400 hover:text-gray-600 text-lg leading-none flex-shrink-0';
-    closeBtn.innerHTML = '&times;';
-    closeBtn.addEventListener('click', function () {
-        if (wrapper.parentNode) {
-            wrapper.parentNode.removeChild(wrapper);
-        }
-    });
-
-    headerRow.appendChild(titleEl);
-    headerRow.appendChild(closeBtn);
-
-    const metaRow = document.createElement('div');
-    metaRow.className = 'mt-1 flex items-center justify-between text-[11px] text-gray-400';
-
-    const timeEl = document.createElement('span');
-    if (notification.created_at) {
-        try {
-            const d = new Date(notification.created_at);
-            if (!isNaN(d.getTime())) {
-                timeEl.textContent = d.toLocaleString('fa-IR');
-            }
-        } catch (e) {
-            // ignore parse errors
-        }
-    }
-
-    metaRow.appendChild(timeEl);
-
-    if (notification.url) {
-        const openBtn = document.createElement('button');
-        openBtn.type = 'button';
-        openBtn.textContent = 'باز کردن';
-        openBtn.className = 'text-blue-600 hover:text-blue-700 font-semibold';
-        openBtn.addEventListener('click', function () {
-            window.location.href = notification.url;
-        });
-        metaRow.appendChild(openBtn);
-    }
-
-    content.appendChild(headerRow);
-    if (timeEl.textContent) {
-        content.appendChild(metaRow);
-    }
-
-    wrapper.appendChild(iconWrapper);
-    wrapper.appendChild(content);
-
-    toastContainer.appendChild(wrapper);
-
-    setTimeout(function () {
-        if (wrapper.parentNode) {
-            wrapper.parentNode.removeChild(wrapper);
-        }
-    }, 7000);
-}
-
-
-        function handleNotifications(list) {
-            if (!Array.isArray(list) || !list.length) {
-                return;
-            }
-
-            // نمایش قدیمی‌ترها اول
-            const ordered = list.slice().reverse();
-
-            let hasNew = false;
-
-            ordered.forEach(function (item) {
-                if (!item || !item.id) return;
-                if (seenIds.has(item.id)) {
-                    return;
-                }
-                seenIds.add(item.id);
-                hasNew = true;
-                showToast(item);
-            });
-
-            if (hasNew) {
-                persistSeenIds();
-                playNotificationSound();
-            }
-        }
-
-        function fetchLatest() {
-            fetch(feedUrl, {
-                method: 'GET',
-                headers: {
-                    'X-Requested-With': 'XMLHttpRequest',
-                    'Accept': 'application/json',
-                },
-                credentials: 'same-origin',
-            })
-                .then(function (response) {
-                    if (!response.ok) {
-                        throw new Error('Request failed: ' + response.status);
-                    }
-                    const contentType = response.headers.get('Content-Type') || '';
-                    if (contentType.indexOf('application/json') === -1) {
-                        throw new Error('Unexpected content type');
-                    }
-                    return response.json();
-                })
-                .then(function (payload) {
-                    if (!payload || typeof payload !== 'object') return;
-                    handleNotifications(payload.data || []);
-                })
-                .catch(function () {
-                    // در صورت خطا سکوت می‌کنیم تا UI مختل نشود
-                });
-        }
-
-        document.addEventListener('DOMContentLoaded', function () {
-            // بار اول بعد از لود صفحه
-            fetchLatest();
-            // هر ۱۵ ثانیه یک بار
-            setInterval(fetchLatest, 15000);
-        });
-    })();
-</script>
-@endauth
 
 @auth
 <script>

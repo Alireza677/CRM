@@ -55,6 +55,31 @@
                         <p class="mt-2 text-xs text-gray-600">وقتی ایمیل تازه‌ای در صندوق شما ذخیره شود، در صورت فعال بودن این سوییچ یک اعلان داخلی در زنگ بالای صفحه ساخته می‌شود.</p>
                     </div>
 
+                    <div class="mb-6 border rounded-lg bg-amber-50/60 p-4">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="text-base font-semibold text-gray-800">صدای اعلان‌ها</div>
+                                <div class="text-sm text-gray-600">کنترل کلی پخش صدا برای همهٔ اعلان‌ها</div>
+                            </div>
+                            <form method="POST" action="{{ route('settings.notifications.mute-all') }}" class="flex items-center gap-3">
+                                @csrf
+                                <input type="hidden" name="mute_all" value="0">
+                                <label class="inline-flex items-center cursor-pointer gap-2">
+                                    <input
+                                        type="checkbox"
+                                        name="mute_all"
+                                        value="1"
+                                        class="h-5 w-5 rounded border-gray-300 text-amber-600 focus:ring-amber-500"
+                                        {{ $muteAllEnabled ? 'checked' : '' }}
+                                    >
+                                    <span class="text-sm text-gray-800">بی‌صدا</span>
+                                </label>
+                                <button type="submit" class="px-3 py-1.5 bg-amber-600 text-white rounded hover:bg-amber-700 text-sm">ذخیره</button>
+                            </form>
+                        </div>
+                        <p class="mt-2 text-xs text-gray-600">در صورت فعال بودن، هیچ صدایی برای اعلان‌ها پخش نمی‌شود.</p>
+                    </div>
+
                     @if($purchaseOrderSection)
                         <div class="mb-8 border rounded-lg overflow-hidden" x-data="{ showCreate: false, sectionOpen: true }" @po-rules-cancel.window="showCreate=false">
                             <div class="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer" @click="sectionOpen = !sectionOpen; if(!sectionOpen){ showCreate = false }">
@@ -68,6 +93,59 @@
                                 <button type="button" class="px-4 py-2 bg-blue-600 text-white rounded hover:bg-blue-700" @click.stop="showCreate = !showCreate">+ اعلان جدید</button>
                             </div>
                             <div class="divide-y divide-gray-200" x-show="sectionOpen" x-transition x-cloak>
+                                <div class="bg-white p-4">
+                                    <div class="text-sm font-semibold text-gray-800 mb-2">تنظیمات صوت و آیکن این رویداد</div>
+                                    <form method="POST" action="{{ route('settings.notifications.assets.update') }}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-4 gap-3 items-end">
+                                        @csrf
+                                        <input type="hidden" name="module" value="{{ $purchaseOrderSection['module'] }}">
+                                        <input type="hidden" name="event" value="{{ $purchaseOrderSection['event'] }}">
+                                        <input type="hidden" name="sound_enabled" value="0">
+                                        <label class="flex items-center gap-2 text-sm">
+                                            <input type="checkbox" name="sound_enabled" value="1" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                {{ ($purchaseOrderSection['asset_settings']['sound_enabled'] ?? true) ? 'checked' : '' }}>
+                                            <span>پخش صدا</span>
+                                        </label>
+                                        <label class="block text-xs text-gray-600">
+                                            صدای سفارشی
+                                            <input type="file" name="sound_file" accept=".mp3,.wav,.ogg" class="mt-1 block w-full text-xs">
+                                        </label>
+                                        <label class="block text-xs text-gray-600">
+                                            آیکن سفارشی
+                                            <input type="file" name="icon_file" accept=".png,.svg,.webp" class="mt-1 block w-full text-xs">
+                                        </label>
+                                        <button type="submit" class="px-3 py-2 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm">ذخیره</button>
+                                    </form>
+                                    <div class="mt-3 flex items-center gap-4 text-xs">
+                                        <div class="flex items-center gap-2">
+                                            <button type="button" class="px-2 py-1 bg-gray-100 border rounded" data-sound-preview data-sound-url="{{ $purchaseOrderSection['asset_settings']['sound_url'] ?? asset('sounds/notification.mp3') }}">پیش‌نمایش صدا</button>
+                                            @if(!empty($purchaseOrderSection['asset_settings']['sound_url']))
+                                                <form method="POST" action="{{ route('settings.notifications.assets.destroy') }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <input type="hidden" name="module" value="{{ $purchaseOrderSection['module'] }}">
+                                                    <input type="hidden" name="event" value="{{ $purchaseOrderSection['event'] }}">
+                                                    <input type="hidden" name="asset" value="sound">
+                                                    <button type="submit" class="px-2 py-1 bg-red-50 border border-red-200 text-red-600 rounded">حذف صدا</button>
+                                                </form>
+                                            @endif
+                                        </div>
+                                        <div class="flex items-center gap-2">
+                                            @if(!empty($purchaseOrderSection['asset_settings']['icon_url']))
+                                                <img src="{{ $purchaseOrderSection['asset_settings']['icon_url'] }}" alt="" class="h-8 w-8 rounded border bg-white">
+                                                <form method="POST" action="{{ route('settings.notifications.assets.destroy') }}">
+                                                    @csrf
+                                                    @method('DELETE')
+                                                    <input type="hidden" name="module" value="{{ $purchaseOrderSection['module'] }}">
+                                                    <input type="hidden" name="event" value="{{ $purchaseOrderSection['event'] }}">
+                                                    <input type="hidden" name="asset" value="icon">
+                                                    <button type="submit" class="px-2 py-1 bg-red-50 border border-red-200 text-red-600 rounded">حذف آیکن</button>
+                                                </form>
+                                            @else
+                                                <span class="text-gray-500">آیکن سفارشی ثبت نشده است.</span>
+                                            @endif
+                                        </div>
+                                    </div>
+                                </div>
                                 <div x-show="showCreate" x-cloak class="bg-blue-50/60">
                                     @php
                                         $poCreateRow = $purchaseOrderSection['defaults'] ?? [];
@@ -355,6 +433,54 @@
                                                     <button type="submit" class="px-3 py-1.5 bg-red-600 text-white rounded hover:bg-red-700">حذف</button>
                                                 </form>
                                             @endif
+
+                                            <div class="mt-3 border-t pt-3 text-xs text-gray-700">
+                                                <div class="font-semibold mb-2">صوت و آیکن سفارشی</div>
+                                                <form method="POST" action="{{ route('settings.notifications.assets.update') }}" enctype="multipart/form-data" class="grid grid-cols-1 md:grid-cols-4 gap-2 items-end">
+                                                    @csrf
+                                                    <input type="hidden" name="module" value="{{ $row['module'] }}">
+                                                    <input type="hidden" name="event" value="{{ $row['event'] }}">
+                                                    <input type="hidden" name="sound_enabled" value="0">
+                                                    <label class="flex items-center gap-2">
+                                                        <input type="checkbox" name="sound_enabled" value="1" class="rounded border-gray-300 text-blue-600 focus:ring-blue-500"
+                                                            {{ ($row['sound_enabled'] ?? true) ? 'checked' : '' }}>
+                                                        <span>پخش صدا</span>
+                                                    </label>
+                                                    <label class="block text-xs text-gray-600">
+                                                        صدای سفارشی
+                                                        <input type="file" name="sound_file" accept=".mp3,.wav,.ogg" class="mt-1 block w-full text-xs">
+                                                    </label>
+                                                    <label class="block text-xs text-gray-600">
+                                                        آیکن سفارشی
+                                                        <input type="file" name="icon_file" accept=".png,.svg,.webp" class="mt-1 block w-full text-xs">
+                                                    </label>
+                                                    <button type="submit" class="px-2 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700">ذخیره</button>
+                                                </form>
+                                                <div class="mt-2 flex flex-wrap items-center gap-3">
+                                                    <button type="button" class="px-2 py-1 bg-gray-100 border rounded" data-sound-preview data-sound-url="{{ $row['sound_url'] ?? asset('sounds/notification.mp3') }}">پیش‌نمایش صدا</button>
+                                                    @if(!empty($row['sound_url']))
+                                                        <form method="POST" action="{{ route('settings.notifications.assets.destroy') }}">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <input type="hidden" name="module" value="{{ $row['module'] }}">
+                                                            <input type="hidden" name="event" value="{{ $row['event'] }}">
+                                                            <input type="hidden" name="asset" value="sound">
+                                                            <button type="submit" class="px-2 py-1 bg-red-50 border border-red-200 text-red-600 rounded">حذف صدا</button>
+                                                        </form>
+                                                    @endif
+                                                    @if(!empty($row['icon_url']))
+                                                        <img src="{{ $row['icon_url'] }}" alt="" class="h-8 w-8 rounded border bg-white">
+                                                        <form method="POST" action="{{ route('settings.notifications.assets.destroy') }}">
+                                                            @csrf
+                                                            @method('DELETE')
+                                                            <input type="hidden" name="module" value="{{ $row['module'] }}">
+                                                            <input type="hidden" name="event" value="{{ $row['event'] }}">
+                                                            <input type="hidden" name="asset" value="icon">
+                                                            <button type="submit" class="px-2 py-1 bg-red-50 border border-red-200 text-red-600 rounded">حذف آیکن</button>
+                                                        </form>
+                                                    @endif
+                                                </div>
+                                            </div>
 
                                           <!-- Modal (teleported to body for consistent Alpine scope) -->
                                             @include('settings.notifications.partials.notification-template-editor', [
@@ -679,6 +805,26 @@ function notificationRuleRow(config = {}) {
         },
     };
 }
+</script>
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    const previewButtons = document.querySelectorAll('[data-sound-preview]');
+    if (!previewButtons.length) return;
+
+    previewButtons.forEach((btn) => {
+        btn.addEventListener('click', () => {
+            const url = btn.getAttribute('data-sound-url');
+            if (!url) return;
+            try {
+                const audio = new Audio(url);
+                audio.play().catch(() => {});
+            } catch (_) {
+                // ignore preview errors
+            }
+        });
+    });
+});
 </script>
 
 @endpush

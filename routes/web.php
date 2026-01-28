@@ -75,6 +75,12 @@ use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MailboxSettingsController;
 
+
+
+
+
+
+
 Route::get('/', function () {
     return view('welcome');
 });
@@ -166,6 +172,9 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
         Route::get('feed/latest', [NotificationController::class, 'latestFeed'])->name('feed.latest');
+        Route::get('unread-count', [NotificationController::class, 'unreadCount'])->name('unreadCount');
+        Route::get('stream', [NotificationController::class, 'stream'])->name('stream');
+        Route::get('asset-settings', [NotificationRuleController::class, 'assetSettings'])->name('asset-settings');
         Route::get('read/{notification}', [NotificationController::class, 'read'])->name('read');
         Route::post('mark-all-read', [NotificationController::class, 'markAllAsRead'])->name('markAllAsRead');
         Route::post('bulk-action', [NotificationController::class, 'bulkAction'])->name('bulkAction');
@@ -569,6 +578,9 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/notifications', [NotificationRuleController::class, 'index'])->name('notifications.index');
             Route::post('/notifications/preview', [NotificationRuleController::class, 'preview'])->name('notifications.preview');
             Route::post('/notifications/email-preference', [NotificationRuleController::class, 'updateEmailPreference'])->name('notifications.email-preference');
+            Route::post('/notifications/mute-all', [NotificationRuleController::class, 'updateMuteAll'])->name('notifications.mute-all');
+            Route::post('/notifications/assets', [NotificationRuleController::class, 'updateAssets'])->name('notifications.assets.update');
+            Route::delete('/notifications/assets', [NotificationRuleController::class, 'destroyAsset'])->name('notifications.assets.destroy');
             Route::post('/notifications', [NotificationRuleController::class, 'store'])->name('notifications.store');
             Route::put('/notifications/{notificationRule}', [NotificationRuleController::class, 'update'])->name('notifications.update');
             Route::patch('/notifications/{notificationRule}', [NotificationRuleController::class, 'update']);

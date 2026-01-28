@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class UserNotificationSetting extends Model
 {
     public const EMAIL_RECEIVED_KEY = 'notifications.email_received.enabled';
+    public const MUTE_ALL_KEY = 'notifications.mute_all.enabled';
 
     protected $fillable = [
         'user_id',

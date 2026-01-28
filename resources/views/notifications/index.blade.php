@@ -39,7 +39,7 @@
                         <th class="px-3 py-2 text-right">وضعیت</th>
                     </tr>
                 </thead>
-                <tbody>
+                <tbody id="notifications-table-body">
                     @forelse($notifications as $notification)
                         <tr class="{{ $notification->read_at ? 'bg-white text-gray-400' : 'bg-yellow-50 text-gray-800 font-semibold' }} border-b">
                             <td class="px-3 py-2 text-center">
@@ -68,7 +68,7 @@
                             </td>
                         </tr>
                     @empty
-                        <tr>
+                        <tr id="notifications-table-empty">
                             <td colspan="5" class="px-3 py-4 text-center text-gray-500">هیچ اعلانی وجود ندارد.</td>
                         </tr>
                     @endforelse

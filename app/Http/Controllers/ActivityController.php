@@ -25,6 +25,13 @@ class ActivityController extends Controller
                 // 'related'
             ]);
 
+        // Hide system-generated logs from task list.
+        $query->whereNotIn('subject', [
+            'proforma_created',
+            'lead_status_reason',
+            'lost_reason',
+        ]);
+
         if ($q !== '') {
             $query->where(function ($qb) use ($q) {
                 $qb->where('subject', 'like', "%{$q}%")

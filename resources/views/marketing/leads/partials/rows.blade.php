@@ -61,6 +61,7 @@
                     $isFavorite = in_array($lead->id, $favoriteLeadIds);
                 @endphp
                 <button
+                
                     type="submit"
                     formmethod="POST"
                     formaction="{{ $isFavorite ? route('marketing.leads.favorites.destroy', $lead) : route('marketing.leads.favorites.store', $lead) }}"

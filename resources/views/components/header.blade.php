@@ -88,6 +88,21 @@
                     <span class="text-[13px] leading-none text-gray-600 mt-0.5">تقویم</span>
                 </a>
 
+                 {{-- پروژه --}}
+                <a href="{{ route('projects.index') }}"
+                   class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
+                   title="پروژه">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none"
+                         stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
+                        <line x1="16" y1="2" x2="16" y2="6"></line>
+                        <line x1="8" y1="2" x2="8" y2="6"></line>
+                        <line x1="3" y1="10" x2="21" y2="10"></line>
+                        <rect x="7" y="14" width="4" height="4" rx="1"></rect>
+                    </svg>
+                    <span class="text-[13px] leading-none text-gray-600 mt-0.5">پروژه</span>
+                </a>
+
                 {{-- وظیفه --}}
                 <a href="{{ route('activities.index') }}"
                    class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
@@ -154,11 +169,11 @@
                                 d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6.002 6.002 0 00-4-5.659V4a2 2 0 10-4 0v1.341C7.67 6.165 6 8.388 6 11v3.159c0 .538-.214 1.055-.595 1.436L4 17h5m6 0v1a3 3 0 11-6 0v-1m6 0H9" />
                         </svg>
 
-                        @if($unreadCount > 0)
-                            <span class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full">
-                                {{ $unreadCount }}
-                            </span>
-                        @endif
+                        <span id="notification-unread-badge"
+                              class="absolute -top-1 -right-1 inline-flex items-center justify-center px-1.5 py-0.5 text-xs font-bold leading-none text-white bg-red-600 rounded-full {{ $unreadCount > 0 ? '' : 'hidden' }}"
+                              data-count="{{ $unreadCount }}">
+                            {{ $unreadCount }}
+                        </span>
                     </button>
 
                     <template x-teleport="body">
@@ -195,7 +210,7 @@
                                         </div>
                                     </div>
                                 @empty
-                                    <div class="p-4 text-sm text-gray-500">اعلان خوانده‌نشده‌ای وجود ندارد.</div>
+                                    <div id="notification-empty-state" class="p-4 text-sm text-gray-500">اعلان خوانده‌نشده‌ای وجود ندارد.</div>
                                 @endforelse
                             </div>
 

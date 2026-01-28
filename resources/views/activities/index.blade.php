@@ -6,10 +6,10 @@
 <div class="max-w-7xl mx-auto p-4" dir="rtl">
 
   <div class="flex items-center justify-between mb-4">
-    <h1 class="text-2xl font-semibold">وظایف</h1>
+    <h1 class="text-2xl font-semibold">فعالیت ها</h1>
     <a href="{{ route('activities.create') }}"
        class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
-      + ایجاد وظیفه
+      + ایجاد فعالیت
     </a>
   </div>
 

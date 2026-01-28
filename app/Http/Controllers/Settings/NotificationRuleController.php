@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Models\UserNotificationSetting;
 use App\Models\NotificationRule;
 use App\Models\NotificationTemplate;
+use App\Models\NotificationEventSetting;
 use App\Models\PurchaseOrder; // برای دسترسی به لیست وضعیت‌های سفارش خرید
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
@@ -13,6 +14,7 @@ use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
@@ -59,6 +61,7 @@ class NotificationRuleController extends Controller
             ->orderByDesc('updated_at')
             ->get()
             ->groupBy(fn($t) => $t->module.'.'.$t->event);
+        $eventSettings = NotificationEventSetting::getCachedMap();
 
         $matrix = [];
         $dynamicSections = [];
@@ -110,6 +113,7 @@ class NotificationRuleController extends Controller
                 $dbTpl    = $tplByChannel->get('database');
                 $smsTpl   = $tplByChannel->get('sms');
 
+                $setting = $eventSettings[$key] ?? null;
                 $matrix[] = [
                     'module' => $moduleKey,
                     'module_label' => $moduleLabel,
@@ -133,6 +137,9 @@ class NotificationRuleController extends Controller
                     'internal_template' => $dbTpl?->body_template
                         ?? $existing?->body_template
                         ?? ($eventDef['default_body'] ?? ''),
+                    'sound_enabled' => $setting['sound_enabled'] ?? true,
+                    'sound_url' => $setting['sound_url'] ?? null,
+                    'icon_url' => $setting['icon_url'] ?? null,
                     'id' => $existing?->id,
                 ];
             }
@@ -168,13 +175,27 @@ class NotificationRuleController extends Controller
         $poStatuses = PurchaseOrder::statuses(); // ['code' => 'label']
 
         $purchaseOrderSection = $dynamicSections['purchase_orders.status.changed'] ?? null;
+        if ($purchaseOrderSection) {
+            $poKey = 'purchase_orders.status.changed';
+            $purchaseOrderSection['asset_settings'] = $eventSettings[$poKey] ?? [
+                'sound_enabled' => true,
+                'sound_url' => null,
+                'icon_url' => null,
+            ];
+        }
 
         $emailNotificationEnabled = true;
+        $muteAllEnabled = false;
         if (Auth::id()) {
                 $emailNotificationEnabled = UserNotificationSetting::getBool(
                     Auth::id(),
                     UserNotificationSetting::EMAIL_RECEIVED_KEY,
                     true
+                );
+                $muteAllEnabled = UserNotificationSetting::getBool(
+                    Auth::id(),
+                    UserNotificationSetting::MUTE_ALL_KEY,
+                    false
                 );
             }
 
@@ -185,6 +206,7 @@ class NotificationRuleController extends Controller
             'dynamicSections' => $dynamicSections,
             'purchaseOrderSection' => $purchaseOrderSection,
             'emailNotificationEnabled' => $emailNotificationEnabled,
+            'muteAllEnabled' => $muteAllEnabled,
         ]);
     }
 
@@ -214,6 +236,131 @@ class NotificationRuleController extends Controller
         return redirect()
             ->route('settings.notifications.index')
             ->with('status', 'تنظیم اعلان ایمیل بروزرسانی شد.');
+    }
+
+    public function updateMuteAll(Request $request)
+    {
+        $user = Auth::user();
+        abort_unless($user, 403);
+
+        $data = $request->validate([
+            'mute_all' => ['required', 'boolean'],
+        ]);
+
+        UserNotificationSetting::setBool(
+            $user->id,
+            UserNotificationSetting::MUTE_ALL_KEY,
+            (bool) $data['mute_all']
+        );
+
+        if ($request->wantsJson()) {
+            return response()->json([
+                'status' => 'ok',
+                'key' => UserNotificationSetting::MUTE_ALL_KEY,
+                'enabled' => (bool) $data['mute_all'],
+            ]);
+        }
+
+        return redirect()
+            ->route('settings.notifications.index')
+            ->with('status', 'وضعیت بی‌صدا کردن اعلان‌ها ذخیره شد.');
+    }
+
+    public function assetSettings(Request $request)
+    {
+        $user = Auth::user();
+        abort_unless($user, 403);
+
+        return response()->json([
+            'mute_all' => UserNotificationSetting::getBool(
+                $user->id,
+                UserNotificationSetting::MUTE_ALL_KEY,
+                false
+            ),
+            'settings' => NotificationEventSetting::getCachedMap(),
+            'default_sound_url' => asset('sounds/notification.mp3'),
+        ]);
+    }
+
+    public function updateAssets(Request $request)
+    {
+        $data = $request->validate([
+            'module' => ['required', 'string'],
+            'event' => ['required', 'string'],
+            'sound_enabled' => ['nullable', 'boolean'],
+            'sound_file' => ['nullable', 'file', 'mimes:mp3,wav,ogg', 'max:4096'],
+            'icon_file' => ['nullable', 'file', 'mimes:png,svg,webp', 'max:1024'],
+        ]);
+
+        $modules = config('notification_events.modules', []);
+        abort_unless(array_key_exists($data['module'], $modules), 422, 'ماژول معتبر نیست.');
+        $events = $modules[$data['module']]['events'] ?? [];
+        abort_unless(array_key_exists($data['event'], $events), 422, 'رویداد معتبر نیست.');
+
+        $setting = NotificationEventSetting::query()
+            ->firstOrNew(['module' => $data['module'], 'event' => $data['event']]);
+
+        if ($request->hasFile('sound_file')) {
+            if ($setting->sound_path) {
+                Storage::disk('public')->delete($setting->sound_path);
+            }
+            $setting->sound_path = $request->file('sound_file')
+                ->store('notification-assets/sounds', 'public');
+        }
+
+        if ($request->hasFile('icon_file')) {
+            if ($setting->icon_path) {
+                Storage::disk('public')->delete($setting->icon_path);
+            }
+            $setting->icon_path = $request->file('icon_file')
+                ->store('notification-assets/icons', 'public');
+        }
+
+        if ($request->has('sound_enabled')) {
+            $setting->sound_enabled = (bool) $data['sound_enabled'];
+        }
+
+        if ($setting->isDirty()) {
+            $setting->save();
+            NotificationEventSetting::clearCache();
+        }
+
+        return redirect()
+            ->route('settings.notifications.index')
+            ->with('status', 'تنظیمات صوت و آیکن ذخیره شد.');
+    }
+
+    public function destroyAsset(Request $request)
+    {
+        $data = $request->validate([
+            'module' => ['required', 'string'],
+            'event' => ['required', 'string'],
+            'asset' => ['required', 'in:sound,icon'],
+        ]);
+
+        $setting = NotificationEventSetting::query()
+            ->where('module', $data['module'])
+            ->where('event', $data['event'])
+            ->first();
+
+        if ($setting) {
+            if ($data['asset'] === 'sound' && $setting->sound_path) {
+                Storage::disk('public')->delete($setting->sound_path);
+                $setting->sound_path = null;
+            }
+            if ($data['asset'] === 'icon' && $setting->icon_path) {
+                Storage::disk('public')->delete($setting->icon_path);
+                $setting->icon_path = null;
+            }
+            if ($setting->isDirty()) {
+                $setting->save();
+            }
+            NotificationEventSetting::clearCache();
+        }
+
+        return redirect()
+            ->route('settings.notifications.index')
+            ->with('status', 'فایل سفارشی حذف شد و به پیش‌فرض بازگشت.');
     }
 
     public function store(Request $request)

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Notifications\DatabaseNotification;
 
@@ -117,15 +118,116 @@ class NotificationController extends Controller
             ->get();
 
         $data = $notifications->map(function (DatabaseNotification $notification) {
+            $payload = (array) ($notification->data ?? []);
             return [
                 'id'         => $notification->id,
-                'message'    => $notification->data['title'] ?? $notification->data['message'] ?? 'اعلان جدیدی دارید',
+                'title'      => $payload['title'] ?? $payload['message'] ?? 'OO1U,OOU+ OUO_UO O_OOUOO_',
+                'body'       => $payload['body'] ?? '',
+                'message'    => $payload['title'] ?? $payload['message'] ?? 'OO1U,OOU+ OUO_UO O_OOUOO_',
+                'module'     => $payload['module'] ?? null,
+                'event'      => $payload['event'] ?? null,
                 'created_at' => $notification->created_at?->toIso8601String(),
                 'url'        => route('notifications.read', ['notification' => $notification->id]),
+                'is_read'    => (bool) $notification->read_at,
             ];
         })->values();
 
         return response()->json(['data' => $data]);
+    }
+
+    public function unreadCount()
+    {
+        $user = Auth::user();
+        if (!$user) {
+            return response()->json(['count' => 0], 401);
+        }
+
+        return response()->json([
+            'count' => $user->unreadNotifications()->count(),
+        ]);
+    }
+
+    public function stream(Request $request)
+    {
+        $user = Auth::user();
+        if (!$user) {
+            abort(401);
+        }
+
+        @set_time_limit(0);
+        @ignore_user_abort(true);
+
+        $since = $request->query('since');
+        try {
+            $cursor = $since ? Carbon::parse($since) : now();
+        } catch (\Throwable $e) {
+            $cursor = now();
+        }
+
+        return response()->stream(function () use ($user, $cursor) {
+            $lastPing = time();
+            $currentCursor = $cursor;
+
+            echo "retry: 5000\n\n";
+            $this->flushStream();
+
+            while (true) {
+                if (connection_aborted()) {
+                    break;
+                }
+
+                $notifications = $user->unreadNotifications()
+                    ->where('created_at', '>', $currentCursor)
+                    ->orderBy('created_at')
+                    ->limit(10)
+                    ->get();
+
+                foreach ($notifications as $notification) {
+                    /** @var DatabaseNotification $notification */
+                    $data = (array) ($notification->data ?? []);
+            $payload = [
+                        'id' => $notification->id,
+                        'title' => $data['title'] ?? $data['message'] ?? 'OO1U,OOU+ OUO_UO O_OOUOO_',
+                        'body' => $data['body'] ?? '',
+                        'module' => $data['module'] ?? null,
+                        'event' => $data['event'] ?? null,
+                        'created_at' => $notification->created_at?->toIso8601String(),
+                        'url' => route('notifications.read', ['notification' => $notification->id]),
+                        'is_read' => (bool) $notification->read_at,
+                    ];
+
+                    echo "event: notification\n";
+                    echo 'data: ' . json_encode($payload, JSON_UNESCAPED_UNICODE) . "\n\n";
+                    $this->flushStream();
+
+                    if ($notification->created_at) {
+                        $currentCursor = $notification->created_at;
+                    }
+                }
+
+                if (time() - $lastPing >= 15) {
+                    echo "event: ping\n";
+                    echo "data: {}\n\n";
+                    $this->flushStream();
+                    $lastPing = time();
+                }
+
+                usleep(500000);
+            }
+        }, 200, [
+            'Content-Type' => 'text/event-stream',
+            'Cache-Control' => 'no-cache',
+            'X-Accel-Buffering' => 'no',
+            'Connection' => 'keep-alive',
+        ]);
+    }
+
+    private function flushStream(): void
+    {
+        if (function_exists('ob_get_level') && ob_get_level() > 0) {
+            @ob_flush();
+        }
+        @flush();
     }
 
     
