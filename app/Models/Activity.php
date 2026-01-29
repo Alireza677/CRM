@@ -15,7 +15,7 @@ class Activity extends Model
     protected $fillable = [
         'subject','start_at','due_at',
         'assigned_to_id','related_type','related_id',
-        'status','priority','description','is_private',
+        'status','priority','progress','description','is_private',
         'source',
         'created_by_id','updated_by_id',
     ];
@@ -25,6 +25,7 @@ class Activity extends Model
         'start_at'   => 'datetime', // یا 'datetime:Asia/Tehran'
         'due_at'     => 'datetime',
         'is_private' => 'boolean',
+        'progress'   => 'integer',
     ];
 
     protected $appends = ['start_at_jalali','due_at_jalali'];
@@ -105,6 +106,9 @@ class Activity extends Model
     public function updater()    { return $this->belongsTo(User::class, 'updated_by_id'); }
     public function related()    { return $this->morphTo(); }
     public function reminders()  { return $this->hasMany(ActivityReminder::class); }
+    public function notes()      { return $this->morphMany(Note::class, 'noteable')->latest(); }
+    public function followups()  { return $this->hasMany(ActivityFollowup::class)->orderBy('followup_at'); }
+    public function attachments(){ return $this->morphMany(Attachment::class, 'attachable')->latest(); }
 
     public function scopeVisibleTo($q, User $u) {
         return $q->where(function($qq) use ($u) {
@@ -133,6 +137,7 @@ class Activity extends Model
                 'priority' => $this->priority,
                 'private'  => $this->is_private,
                 'assigned_to' => $this->assigned_to_id,
+                'progress' => $this->progress,
             ],
         ];
     }

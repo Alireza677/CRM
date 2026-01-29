@@ -19,7 +19,16 @@ class Task extends Model
         'project_id',
         'title', 'description',
         'priority', 'status',
-        'assigned_to', 
+        'assigned_to',
+        'start_at',
+        'due_at',
+        'related_type',
+        'related_id',
+    ];
+
+    protected $casts = [
+        'start_at' => 'datetime',
+        'due_at' => 'datetime',
     ];
 
     // هر تسک متعلق به یک پروژه است

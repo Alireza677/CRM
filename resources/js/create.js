@@ -157,6 +157,19 @@
   
       initDateTimePicker('#start_at_display');
       initDateTimePicker('#due_at_display');
+
+      const progressRange = document.getElementById('progress_range');
+      const progressInput = document.getElementById('progress_input');
+      if (progressRange && progressInput) {
+        const sync = (value) => {
+          const n = Math.max(0, Math.min(100, parseInt(value || 0, 10) || 0));
+          progressRange.value = n;
+          progressInput.value = n;
+        };
+        progressRange.addEventListener('input', (e) => sync(e.target.value));
+        progressInput.addEventListener('input', (e) => sync(e.target.value));
+        sync(progressRange.value);
+      }
   
     // نمایش انتخاب قبلی مربوط‌به
     const rt = document.getElementById('related_type')?.value;
@@ -203,6 +216,7 @@
             <option value="1h_before">یک ساعت قبل</option>
             <option value="1d_before">یک روز قبل</option>
             <option value="same_day">همان روز، ساعت مشخص</option>
+            <option value="absolute">زمان مشخص</option>
           `;
 
           const timeWrap = document.createElement('div');
@@ -218,6 +232,18 @@
           timeWrap.appendChild(timeLbl);
           timeWrap.appendChild(timeInp);
 
+          const dateWrap = document.createElement('div');
+          dateWrap.className = 'flex items-center gap-2';
+          const dateLbl = document.createElement('span');
+          dateLbl.className = 'text-sm text-gray-600';
+          dateLbl.textContent = 'تاریخ/ساعت:';
+          const dateInp = document.createElement('input');
+          dateInp.type = 'datetime-local';
+          dateInp.className = 'rounded-md border p-2 text-sm';
+          dateInp.name = `reminders[${i}][datetime]`;
+          dateWrap.appendChild(dateLbl);
+          dateWrap.appendChild(dateInp);
+
           const removeBtn = document.createElement('button');
           removeBtn.type = 'button';
           removeBtn.className = 'px-2 py-1 text-sm rounded-md bg-red-50 text-red-700 hover:bg-red-100';
@@ -227,17 +253,24 @@
           function updateVisibility() {
             const v = typeSel.value;
             const showTime = (v === 'same_day');
+            const showDate = (v === 'absolute');
             timeWrap.style.display = showTime ? 'flex' : 'none';
+            dateWrap.style.display = showDate ? 'flex' : 'none';
           }
           typeSel.addEventListener('change', updateVisibility);
 
           // Apply preset (if any)
           if (preset?.type) typeSel.value = preset.type;
           if (preset?.time) timeInp.value = preset.time;
+          if (preset?.datetime) {
+            const dt = String(preset.datetime).trim().replace(' ', 'T');
+            dateInp.value = dt;
+          }
           updateVisibility();
 
           row.appendChild(typeSel);
           row.appendChild(timeWrap);
+          row.appendChild(dateWrap);
           row.appendChild(removeBtn);
           return row;
         }
@@ -246,8 +279,10 @@
           container.appendChild(makeRow(idx++));
         });
 
-        // Optionally prefill from server-side old() values if present in a data blob
-        // Developers can inject old reminders via a script tag if needed.
+        const presets = Array.isArray(window.__activityReminders) ? window.__activityReminders : [];
+        if (presets.length) {
+          presets.forEach((preset) => container.appendChild(makeRow(idx++, preset)));
+        }
       })();
    });
  })();

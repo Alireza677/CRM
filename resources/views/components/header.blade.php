@@ -106,14 +106,14 @@
                 {{-- وظیفه --}}
                 <a href="{{ route('activities.index') }}"
                    class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
-                   title="وظیفه">
+                   title="فعالیت">
                     <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none"
                          stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
                         <path d="M9 11l3 3L22 4"></path>
                         <path d="M21 10v10a2 2 0 0 1-2 2H7l-4-4V6a2 2 0 0 1 2-2h4"></path>
                         <path d="M8 6h.01"></path>
                     </svg>
-                    <span class="text-[13px] leading-none text-gray-600 mt-0.5">وظیفه</span>
+                    <span class="text-[13px] leading-none text-gray-600 mt-0.5">فعالیت</span>
                 </a>
             </div>
 

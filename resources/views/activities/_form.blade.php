@@ -91,7 +91,8 @@
     <label class="block text-sm font-medium">یادآوری‌ها</label>
     <button type="button" id="btnAddReminder" class="px-3 py-1.5 text-sm rounded-md bg-slate-100 hover:bg-slate-200">+ ایجاد یادآوری</button>
   </div>
-  <p class="text-xs text-gray-500 mb-2">می‌توانید چند یادآوری اضافه کنید. برای یادآوری‌های نسبی، تعیین «موعد/پایان» الزامی است.</p>
+  <p class="text-xs text-gray-500 mb-2">می‌توانید چند یادآوری اضافه کنید. برای یادآوری‌های نسبی، تعیین «موعد/پایان» الزامی است. برای یادآوری زمان مشخص، تاریخ و ساعت را وارد کنید.</p>
+  <input type="hidden" name="reminders_present" value="1">
 
   <div id="remindersContainer" class="space-y-2">
     {{-- ردیف‌های پویا اینجا اضافه می‌شوند --}}
@@ -100,7 +101,34 @@
   @error('reminders')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
   @error('reminders.*.type')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
   @error('reminders.*.time')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
+  @error('reminders.*.datetime')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
 </div>
+
+@php
+  $reminderPresets = [];
+  if (old('reminders')) {
+      $reminderPresets = old('reminders');
+  } elseif ($isEdit && isset($activity) && $activity->relationLoaded('reminders')) {
+      $reminderPresets = $activity->reminders->map(function ($r) {
+          if ($r->kind === 'relative') {
+              $map = [ -30 => '30m_before', -60 => '1h_before', -1440 => '1d_before' ];
+              $type = $map[(int) ($r->offset_minutes ?? 0)] ?? null;
+              if (!$type) return null;
+              return ['type' => $type];
+          }
+          if ($r->kind === 'same_day') {
+              return ['type' => 'same_day', 'time' => $r->time_of_day];
+          }
+          if ($r->kind === 'absolute') {
+              return ['type' => 'absolute', 'datetime' => $r->remind_at ? $r->remind_at->format('Y-m-d H:i') : null];
+          }
+          return null;
+      })->filter()->values()->all();
+  }
+@endphp
+@if(!empty($reminderPresets))
+  <script>window.__activityReminders = @json($reminderPresets);</script>
+@endif
 
 {{-- ارجاع به --}}
 <div>
@@ -155,6 +183,21 @@
     </select>
     @error('priority')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
   </div>
+</div>
+
+{{-- پیشرفت --}}
+@php
+  $progressDefault = old('progress', $isEdit ? ($activity->progress ?? 0) : 0);
+@endphp
+<div>
+  <label class="block text-sm mb-1">پیشرفت (٪)</label>
+  <div class="flex items-center gap-3">
+    <input type="range" id="progress_range" name="progress" min="0" max="100"
+           value="{{ $progressDefault }}" class="w-full">
+    <input type="number" id="progress_input" min="0" max="100"
+           value="{{ $progressDefault }}" class="w-20 rounded-md border p-2 text-sm">
+  </div>
+  @error('progress')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
 </div>
 
 {{-- توضیحات --}}

@@ -7,9 +7,13 @@ use App\Models\Contact;
 use App\Models\Opportunity;
 use App\Models\Organization;
 use App\Models\SalesLead;
+use App\Models\ActivityReminder;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
+use Morilog\Jalali\Jalalian;
+use Spatie\Activitylog\Models\Activity as LogActivity;
 
 class ActivityController extends Controller
 {
@@ -100,6 +104,7 @@ class ActivityController extends Controller
             'related_id'         => ['nullable','integer'],
             'status'             => ['required','in:not_started,in_progress,completed,scheduled'],
             'priority'           => ['required','in:normal,medium,high'],
+            'progress'           => ['nullable','integer','min:0','max:100'],
             'description'        => ['nullable','string'],
             'is_private'         => ['sometimes','boolean'],
         ], [], [
@@ -124,10 +129,26 @@ class ActivityController extends Controller
 
         $data = $validator->validate();
 
+        $original = $this->timelineSnapshot($activity);
+
         [$data['related_type'], $data['related_id']] = $this->resolveRelatedPayload(
             $data['related_type'] ?? null,
             $data['related_id'] ?? null
         );
+
+        if (!isset($data['progress'])) {
+            $data['progress'] = $activity->progress ?? 0;
+        }
+        if (($data['status'] ?? null) === 'completed' && (int) $data['progress'] < 100) {
+            $data['progress'] = 100;
+        }
+
+        if (!isset($data['progress'])) {
+            $data['progress'] = 0;
+        }
+        if (($data['status'] ?? null) === 'completed' && (int) $data['progress'] < 100) {
+            $data['progress'] = 100;
+        }
 
         $activity = new Activity();
         // فیلدهای غیرتاریخی را fill کن
@@ -163,56 +184,11 @@ class ActivityController extends Controller
 
         $this->touchLeadOrOpportunity($activity);
 
-        // Reminders (optional)
-        try {
-            $reminders = (array) $request->input('reminders', []);
-            $prepared = [];
-            foreach ($reminders as $r) {
-                $type = (string) ($r['type'] ?? '');
-                if ($type === '') continue;
+        $this->syncReminders($activity, $request);
 
-                if (in_array($type, ['30m_before','1h_before','1d_before'], true)) {
-                    if (!$activity->due_at) {
-                        // Relative reminders need a due_at; skip safely
-                        continue;
-                    }
-                    $map = [
-                        '30m_before' => -30,
-                        '1h_before'  => -60,
-                        '1d_before'  => -1440,
-                    ];
-                    $prepared[] = [
-                        'kind' => 'relative',
-                        'offset_minutes' => $map[$type] ?? null,
-                        'time_of_day' => null,
-                    ];
-                } elseif ($type === 'same_day') {
-                    $time = trim((string) ($r['time'] ?? ''));
-                    if ($time === '' || !preg_match('/^\d{2}:\d{2}$/', $time)) {
-                        continue;
-                    }
-                    $prepared[] = [
-                        'kind' => 'same_day',
-                        'offset_minutes' => null,
-                        'time_of_day' => $time,
-                    ];
-                }
-            }
-
-            if (!empty($prepared)) {
-                $rows = array_map(function ($p) use ($activity, $request) {
-                    return array_merge($p, [
-                        'activity_id'   => $activity->id,
-                        'notify_user_id'=> (int) $activity->assigned_to_id,
-                        'created_by_id' => (int) (auth()->id() ?? 0) ?: null,
-                    ]);
-                }, $prepared);
-                \App\Models\ActivityReminder::insert($rows);
-            }
-        } catch (\Throwable $e) {
-            // Do not break creation flow on reminders error
-            \Log::warning('ActivityController.store: failed to save reminders', ['error' => $e->getMessage()]);
-        }
+        $this->logActivityEntry($activity, 'created', 'ایجاد فعالیت', [
+            'subject' => $activity->subject,
+        ]);
 
         return redirect()->route('activities.show', $activity)->with('success','وظیفه ایجاد شد.');
     }
@@ -220,12 +196,39 @@ class ActivityController extends Controller
     public function show(Activity $activity)
     {
         $this->authorizeVisibility($activity);
-        return view('activities.show', ['activity' => $activity]);
+        $activity->load([
+            'assignedTo:id,name',
+            'creator:id,name',
+            'updater:id,name',
+            'related',
+            'reminders',
+            'notes.author:id,name,email',
+            'notes.attachments',
+            'followups.assignedTo:id,name',
+            'followups.creator:id,name',
+            'attachments',
+        ]);
+
+        $timeline = LogActivity::query()
+            ->with('causer:id,name')
+            ->where('subject_type', Activity::class)
+            ->where('subject_id', $activity->id)
+            ->latest()
+            ->get();
+
+        $users = User::select('id','name','username','email')->orderBy('name')->get();
+
+        return view('activities.show', [
+            'activity' => $activity,
+            'timeline' => $timeline,
+            'users' => $users,
+        ]);
     }
 
     public function edit(Activity $activity)
     {
         $this->authorizeVisibility($activity);
+        $activity->load('reminders');
 
         // یکدست با create: ساخت name ترکیبی برای Contacts
         $contacts = Contact::query()
@@ -266,6 +269,7 @@ class ActivityController extends Controller
             'related_id'         => ['nullable','integer'],
             'status'             => ['required','in:not_started,in_progress,completed,scheduled'],
             'priority'           => ['required','in:normal,medium,high'],
+            'progress'           => ['nullable','integer','min:0','max:100'],
             'description'        => ['nullable','string'],
             'is_private'         => ['sometimes','boolean'],
         ], [], [
@@ -321,6 +325,9 @@ class ActivityController extends Controller
         $activity->is_private    = (bool) $request->boolean('is_private');
         $activity->save();
 
+        $this->syncReminders($activity, $request);
+        $this->logTimelineChanges($activity, $original);
+
         return redirect()->route('activities.show', $activity)->with('success','وظیفه بروزرسانی شد.');
     }
 
@@ -344,11 +351,34 @@ class ActivityController extends Controller
     
     public function markComplete(Activity $activity)
     {
+        $original = $this->timelineSnapshot($activity);
+
         $activity->update([
             'status' => 'completed',
+            'progress' => 100,
         ]);
 
-        return redirect()->back()->with('success', 'ÙØ¶Ø¹ÛØª ÙØ¸ÛÙÙ Ø¨Ù ØªÚ©ÙÛÙ Ø´Ø¯Ù ØªØºÛÛØ± Ú©Ø±Ø¯.');
+        $this->logTimelineChanges($activity, $original);
+
+        return redirect()->back()->with('success', 'وضعیت وظیفه به تکمیل‌شده تغییر کرد.');
+    }
+
+    public function updateProgress(Request $request, Activity $activity)
+    {
+        $this->authorizeVisibility($activity);
+
+        $validated = $request->validate([
+            'progress' => ['required', 'integer', 'min:0', 'max:100'],
+        ]);
+
+        $original = $this->timelineSnapshot($activity);
+        $activity->progress = (int) $validated['progress'];
+        $activity->updated_by_id = $request->user()?->id;
+        $activity->save();
+
+        $this->logTimelineChanges($activity, $original);
+
+        return redirect()->back()->with('success', 'پیشرفت بروزرسانی شد.');
     }
 
     /**
@@ -433,6 +463,214 @@ class ActivityController extends Controller
 
         $slug = array_search($raw, $map, true);
         return $slug === false ? null : $slug;
+    }
+
+    private function syncReminders(Activity $activity, Request $request): void
+    {
+        if (!$request->has('reminders_present') && !$request->has('reminders')) {
+            return;
+        }
+
+        try {
+            ActivityReminder::where('activity_id', $activity->id)->delete();
+
+            $reminders = (array) $request->input('reminders', []);
+            $prepared = [];
+            foreach ($reminders as $r) {
+                $type = (string) ($r['type'] ?? '');
+                if ($type === '') {
+                    continue;
+                }
+
+                if (in_array($type, ['30m_before','1h_before','1d_before'], true)) {
+                    if (!$activity->due_at) {
+                        continue;
+                    }
+                    $map = [
+                        '30m_before' => -30,
+                        '1h_before'  => -60,
+                        '1d_before'  => -1440,
+                    ];
+                    $prepared[] = [
+                        'kind' => 'relative',
+                        'offset_minutes' => $map[$type] ?? null,
+                        'time_of_day' => null,
+                        'remind_at' => null,
+                    ];
+                } elseif ($type === 'same_day') {
+                    $time = trim((string) ($r['time'] ?? ''));
+                    if ($time === '' || !preg_match('/^\d{2}:\d{2}$/', $time)) {
+                        continue;
+                    }
+                    $prepared[] = [
+                        'kind' => 'same_day',
+                        'offset_minutes' => null,
+                        'time_of_day' => $time,
+                        'remind_at' => null,
+                    ];
+                } elseif ($type === 'absolute') {
+                    $dt = $this->parseDateTimeInput($r['datetime'] ?? $r['remind_at'] ?? null);
+                    if (!$dt) {
+                        continue;
+                    }
+                    $prepared[] = [
+                        'kind' => 'absolute',
+                        'offset_minutes' => null,
+                        'time_of_day' => null,
+                        'remind_at' => $dt,
+                    ];
+                }
+            }
+
+            if (!empty($prepared)) {
+                $rows = array_map(function ($p) use ($activity, $request) {
+                    return array_merge($p, [
+                        'activity_id'   => $activity->id,
+                        'notify_user_id'=> (int) $activity->assigned_to_id,
+                        'created_by_id' => (int) ($request->user()?->id ?? 0) ?: null,
+                    ]);
+                }, $prepared);
+                ActivityReminder::insert($rows);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('ActivityController.syncReminders: failed to save reminders', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function parseDateTimeInput($value): ?string
+    {
+        if ($value === null) {
+            return null;
+        }
+
+        $raw = trim((string) $value);
+        if ($raw === '') {
+            return null;
+        }
+
+        $raw = $this->toEnDigits($raw);
+        $raw = str_replace('T', ' ', $raw);
+        if (preg_match('/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}$/', $raw)) {
+            $raw .= ':00';
+        }
+
+        try {
+            return \Carbon\Carbon::parse($raw)->format('Y-m-d H:i:s');
+        } catch (\Throwable $e) {
+            return null;
+        }
+    }
+
+    private function toEnDigits(?string $s): ?string
+    {
+        if ($s === null) return null;
+        $fa = ['۰','۱','۲','۳','۴','۵','۶','۷','۸','۹'];
+        $ar = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
+        $en = ['0','1','2','3','4','5','6','7','8','9'];
+        return str_replace($ar, $en, str_replace($fa, $en, $s));
+    }
+
+    private function timelineSnapshot(Activity $activity): array
+    {
+        return [
+            'status' => $activity->status,
+            'progress' => (int) ($activity->progress ?? 0),
+            'start_at' => $activity->start_at?->toDateTimeString(),
+            'due_at' => $activity->due_at?->toDateTimeString(),
+            'assigned_to_id' => $activity->assigned_to_id,
+        ];
+    }
+
+    private function logTimelineChanges(Activity $activity, array $original): void
+    {
+        $current = $this->timelineSnapshot($activity);
+
+        if (($original['status'] ?? null) !== ($current['status'] ?? null)) {
+            $old = $this->statusLabel($original['status'] ?? null);
+            $new = $this->statusLabel($current['status'] ?? null);
+            $this->logActivityEntry($activity, 'status_changed', "وضعیت تغییر کرد: {$old} → {$new}", [
+                'field' => 'status',
+                'old' => $original['status'] ?? null,
+                'new' => $current['status'] ?? null,
+            ]);
+        }
+
+        if (($original['progress'] ?? null) !== ($current['progress'] ?? null)) {
+            $this->logActivityEntry($activity, 'progress_changed', 'پیشرفت تغییر کرد: ' . ($original['progress'] ?? 0) . '% → ' . ($current['progress'] ?? 0) . '%', [
+                'field' => 'progress',
+                'old' => $original['progress'] ?? 0,
+                'new' => $current['progress'] ?? 0,
+            ]);
+        }
+
+        if (($original['start_at'] ?? null) !== ($current['start_at'] ?? null)) {
+            $old = $this->formatJalaliDateTime($original['start_at'] ?? null);
+            $new = $this->formatJalaliDateTime($current['start_at'] ?? null);
+            $this->logActivityEntry($activity, 'start_at_changed', "تاریخ شروع تغییر کرد: {$old} → {$new}", [
+                'field' => 'start_at',
+                'old' => $original['start_at'] ?? null,
+                'new' => $current['start_at'] ?? null,
+            ]);
+        }
+
+        if (($original['due_at'] ?? null) !== ($current['due_at'] ?? null)) {
+            $old = $this->formatJalaliDateTime($original['due_at'] ?? null);
+            $new = $this->formatJalaliDateTime($current['due_at'] ?? null);
+            $this->logActivityEntry($activity, 'due_at_changed', "موعد مقرر تغییر کرد: {$old} → {$new}", [
+                'field' => 'due_at',
+                'old' => $original['due_at'] ?? null,
+                'new' => $current['due_at'] ?? null,
+            ]);
+        }
+
+        if (($original['assigned_to_id'] ?? null) !== ($current['assigned_to_id'] ?? null)) {
+            $ids = collect([$original['assigned_to_id'] ?? null, $current['assigned_to_id'] ?? null])->filter()->unique();
+            $names = User::whereIn('id', $ids)->pluck('name', 'id');
+            $oldName = $original['assigned_to_id'] ? ($names[$original['assigned_to_id']] ?? ('#' . $original['assigned_to_id'])) : '—';
+            $newName = $current['assigned_to_id'] ? ($names[$current['assigned_to_id']] ?? ('#' . $current['assigned_to_id'])) : '—';
+            $this->logActivityEntry($activity, 'assignee_changed', "ارجاع به تغییر کرد: {$oldName} → {$newName}", [
+                'field' => 'assigned_to_id',
+                'old' => $original['assigned_to_id'] ?? null,
+                'new' => $current['assigned_to_id'] ?? null,
+            ]);
+        }
+    }
+
+    private function logActivityEntry(Activity $activity, string $event, string $description, array $properties = []): void
+    {
+        try {
+            activity('activities')
+                ->performedOn($activity)
+                ->causedBy(auth()->user())
+                ->withProperties(array_merge(['event' => $event], $properties))
+                ->log($description);
+        } catch (\Throwable $e) {
+            \Log::warning('ActivityController.logActivityEntry failed', ['error' => $e->getMessage()]);
+        }
+    }
+
+    private function statusLabel(?string $status): string
+    {
+        $map = [
+            'not_started' => 'شروع نشده',
+            'in_progress' => 'در حال انجام',
+            'completed' => 'تکمیل شده',
+            'scheduled' => 'برنامه‌ریزی شده',
+        ];
+        return $map[$status] ?? '—';
+    }
+
+    private function formatJalaliDateTime(?string $value): string
+    {
+        if (!$value) {
+            return '—';
+        }
+
+        try {
+            return Jalalian::fromCarbon(\Carbon\Carbon::parse($value))->format('Y/m/d H:i');
+        } catch (\Throwable $e) {
+            return (string) $value;
+        }
     }
 
     /**

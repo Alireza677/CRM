@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-4xl mx-auto p-4" dir="rtl">
-  <h1 class="text-xl font-semibold mb-4">ایجاد وظیفه</h1>
+  <h1 class="text-xl font-semibold mb-4">ایجاد فعالیت</h1>
 
   <form method="POST" action="{{ route('activities.store') }}" class="space-y-4">
     @csrf

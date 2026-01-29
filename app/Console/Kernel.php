@@ -29,6 +29,11 @@ class Kernel extends ConsoleKernel
             ->runInBackground()
             ->name('mail-sync');
 
+        $schedule->command('activities:send-reminders')
+            ->everyMinute()
+            ->withoutOverlapping()
+            ->name('activities-send-reminders');
+
         if (config('services.novatel.token') && config('services.novatel.tenant')) {
             $schedule->command('novatel:cdr-sync --minutes=' . (int) config('services.novatel.cdr_default_minutes', 10))
                 ->everyFiveMinutes()

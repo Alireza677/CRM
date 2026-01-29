@@ -33,7 +33,6 @@ class CalendarController extends Controller
 
         $activitiesByDate = Activity::query()
             ->visibleTo($request->user())
-            ->where('source', 'calendar')
             ->whereBetween('start_at', [$rangeStart, $rangeEnd])
             ->orderBy('start_at')
             ->get(['id', 'subject', 'start_at'])
@@ -110,7 +109,7 @@ class CalendarController extends Controller
             });
         }
 
-        $activities = $q->where('source', 'calendar')->get()->map->toCalendarEvent()->values()->all();
+        $activities = $q->get()->map->toCalendarEvent()->values()->all();
 
         // Holidays are global and always visible
         $startDate = $start ? Carbon::parse($start)->toDateString() : null;

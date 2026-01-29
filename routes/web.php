@@ -58,6 +58,9 @@ use App\Http\Controllers\TaskController;
 use App\Http\Controllers\TaskNoteController;
 use App\Http\Controllers\Inventory\ProductImportController;
 use App\Http\Controllers\ActivityController;
+use App\Http\Controllers\ActivityNoteController;
+use App\Http\Controllers\ActivityFollowupController;
+use App\Http\Controllers\ActivityAttachmentController;
 use App\Http\Controllers\CalendarController;
 use App\Http\Controllers\Marketing\LeadExportController;
 use App\Services\Sms\FarazEdgeService;
@@ -622,7 +625,7 @@ Route::middleware(['auth'])->group(function () {
 
         // Members
         Route::post('/projects/{project}/members',          [ProjectController::class, 'addMember'])->name('projects.members.add');
-        Route::delete('/projects/{project}/members/{user}', [ProjectController::class, 'removeMember'])->name('projects.members.remove');
+        Route::delete('/projects/{project}/members/{member}', [ProjectController::class, 'removeMember'])->name('projects.members.remove');
 
         Route::prefix('projects/{project}')
             ->name('projects.')
@@ -718,6 +721,26 @@ Route::middleware(['auth'])->group(function () {
 
     Route::middleware(['auth'])->group(function () {
         Route::resource('activities', ActivityController::class);
+
+        Route::post('activities/{activity}/progress', [ActivityController::class, 'updateProgress'])
+            ->name('activities.progress');
+
+        Route::post('activities/{activity}/notes', [ActivityNoteController::class, 'store'])
+            ->name('activities.notes.store');
+        Route::delete('activities/{activity}/notes/{note}', [ActivityNoteController::class, 'destroy'])
+            ->name('activities.notes.destroy');
+
+        Route::post('activities/{activity}/followups', [ActivityFollowupController::class, 'store'])
+            ->name('activities.followups.store');
+        Route::put('activities/{activity}/followups/{followup}', [ActivityFollowupController::class, 'update'])
+            ->name('activities.followups.update');
+        Route::delete('activities/{activity}/followups/{followup}', [ActivityFollowupController::class, 'destroy'])
+            ->name('activities.followups.destroy');
+
+        Route::post('activities/{activity}/attachments', [ActivityAttachmentController::class, 'store'])
+            ->name('activities.attachments.store');
+        Route::delete('activities/{activity}/attachments/{attachment}', [ActivityAttachmentController::class, 'destroy'])
+            ->name('activities.attachments.destroy');
 
         // دکمه تغییر وضعیت به تکمیل شده
         Route::patch('activities/{activity}/complete', [\App\Http\Controllers\ActivityController::class, 'markComplete'])

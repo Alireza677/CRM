@@ -15,6 +15,7 @@ class ActivityReminder extends Model
         'kind',             // relative | same_day
         'offset_minutes',   // for kind=relative (negative minutes before due)
         'time_of_day',      // for kind=same_day (HH:MM)
+        'remind_at',        // for kind=absolute
         'notify_user_id',
         'sent_at',
         'created_by_id',
@@ -22,10 +23,10 @@ class ActivityReminder extends Model
 
     protected $casts = [
         'sent_at' => 'datetime',
+        'remind_at' => 'datetime',
     ];
 
     public function activity(): BelongsTo { return $this->belongsTo(Activity::class); }
     public function notifyUser(): BelongsTo { return $this->belongsTo(User::class, 'notify_user_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by_id'); }
 }
-

@@ -7,6 +7,8 @@ use App\Models\Task;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 use App\Models\TaskNote;
+use App\Models\Contact;
+use App\Models\Organization;
 
 class TaskController extends Controller
 {
@@ -21,10 +23,38 @@ class TaskController extends Controller
                 'nullable','integer',
                 Rule::in($project->members()->pluck('users.id')->toArray()),
             ],
+            'start_at'    => ['nullable','date'],
+            'due_at'      => ['nullable','date','after_or_equal:start_at'],
+            'related_type' => ['nullable','in:contact,organization','required_with:related_id'],
+            'related_id'   => ['nullable','integer','required_with:related_type'],
         ]);
         $request->user()->can('view', $project) || abort(403);
 
-        $project->tasks()->create($validated + ['status' => Task::STATUS_PENDING]);
+        $relatedType = $validated['related_type'] ?? null;
+        $relatedId = $validated['related_id'] ?? null;
+
+        $relatedMap = [
+            'contact' => Contact::class,
+            'organization' => Organization::class,
+        ];
+
+        $relatedModel = $relatedType ? ($relatedMap[$relatedType] ?? null) : null;
+        if ($relatedModel && $relatedId) {
+            if (!$relatedModel::whereKey($relatedId)->exists()) {
+                return back()
+                    ->withErrors(['related_id' => 'رکورد مرتبط انتخاب‌شده معتبر نیست.'])
+                    ->withInput();
+            }
+        } else {
+            $relatedModel = null;
+            $relatedId = null;
+        }
+
+        $project->tasks()->create(array_merge($validated, [
+            'status' => Task::STATUS_PENDING,
+            'related_type' => $relatedModel,
+            'related_id' => $relatedId,
+        ]));
 
         return redirect()
             ->route('projects.show', $project)

@@ -74,6 +74,10 @@ class SendDueActivityReminders extends Command
 
     private function computeScheduledAt(ActivityReminder $rem, Activity $activity): ?Carbon
     {
+        if ($rem->kind === 'absolute') {
+            return $rem->remind_at ? Carbon::parse($rem->remind_at) : null;
+        }
+
         if ($rem->kind === 'relative') {
             if (!$activity->due_at) return null;
             $base = $activity->due_at->copy();
@@ -92,4 +96,3 @@ class SendDueActivityReminders extends Command
         return null;
     }
 }
-

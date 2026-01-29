@@ -6,6 +6,8 @@ use App\Models\Project;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Validation\Rule;
+use App\Models\Contact;
+use App\Models\Organization;
 
 
 class ProjectController extends Controller
@@ -82,7 +84,13 @@ class ProjectController extends Controller
         // لیست اعضای پروژه برای ارجاع تسک
         $users = $project->members()->select('users.id','users.name','users.email')->orderBy('users.name')->get();
 
-        return view('projects.show', compact('project','tasks','priority','users','nonMembers'));
+        $contacts = Contact::select('id', 'first_name', 'last_name', 'mobile')
+            ->orderBy('first_name')
+            ->orderBy('last_name')
+            ->get();
+        $organizations = Organization::select('id', 'name', 'phone')->orderBy('name')->get();
+
+        return view('projects.show', compact('project','tasks','priority','users','nonMembers','contacts','organizations'));
     }
 
 
@@ -102,16 +110,16 @@ class ProjectController extends Controller
         return back()->with('success', 'کاربر به اعضای پروژه اضافه شد.');
     }
 
-    public function removeMember(Request $request, Project $project, User $user)
+    public function removeMember(Request $request, Project $project, User $member)
     {
         $this->authorize('manageMembers', $project);
 
         // مدیر پروژه را اجازه حذف نده (برای پایداری دسترسی)
-        if ($user->id === $project->manager_id) {
+        if ($member->id === $project->manager_id) {
             return back()->with('error', 'نمی‌توانید مسئول پروژه را حذف کنید.');
         }
 
-        $project->members()->detach($user->id);
+        $project->members()->detach($member->id);
 
         return back()->with('success', 'کاربر از اعضای پروژه حذف شد.');
     }

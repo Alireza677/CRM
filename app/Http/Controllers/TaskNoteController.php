@@ -46,6 +46,8 @@ class TaskNoteController extends Controller
             'body'       => 'required|string|max:5000',
             'mentions'   => 'nullable|array',
             'mentions.*' => 'nullable|distinct|integer',
+            'attachments'   => 'nullable|array',
+            'attachments.*' => 'file|max:10240|mimes:jpg,jpeg,png,gif,webp,pdf,zip,rar,doc,docx,xls,xlsx,ppt,pptx,txt',
         ]);
 
         if ($validator->fails()) {
@@ -71,6 +73,19 @@ class TaskNoteController extends Controller
                     'user_id' => $author?->id,
                 ]);
                 $task->notes()->save($note);
+
+                if ($request->hasFile('attachments')) {
+                    foreach ((array) $request->file('attachments') as $file) {
+                        if (! $file || ! $file->isValid()) { continue; }
+                        $path = $file->store('note-attachments', 'public');
+                        $note->attachments()->create([
+                            'file_path' => $path,
+                            'file_name' => $file->getClientOriginalName(),
+                            'file_size' => $file->getSize(),
+                            'file_mime' => $file->getClientMimeType(),
+                        ]);
+                    }
+                }
 
                 $formTitle = trim((string) ($task->title ?? ''));
                 if ($formTitle === '') {
@@ -149,6 +164,7 @@ class TaskNoteController extends Controller
         $task->load([
             'assignee:id,name,email',
             'notes.author:id,name,email',
+            'notes.attachments',
             'notes.mentions' => function ($q) {
                 // اگر روی User گلوبال‌اسکوپ (مثل فیلتر اعضای پروژه/active) دارید،
                 // این خط ضروری است تا لیست منشن‌ها تهی نشود

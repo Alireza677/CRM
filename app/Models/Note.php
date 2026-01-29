@@ -62,6 +62,11 @@ class Note extends Model
             ->withTimestamps()
             ->withPivot('notified_at');
     }
+
+    public function attachments()
+    {
+        return $this->hasMany(\App\Models\NoteAttachment::class);
+    }
     
     public function getDisplayBodyAttribute(): string
     {
