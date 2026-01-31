@@ -17,7 +17,7 @@
         @role('admin')
           <a href="{{ route('holidays.index') }}"
              class="inline-flex items-center px-3 py-2 rounded-md border border-gray-300 text-gray-700 hover:bg-gray-100">
-            مدیریت تعطیلات
+            مدیریت رویدادها
           </a>
         @endrole
       </div>

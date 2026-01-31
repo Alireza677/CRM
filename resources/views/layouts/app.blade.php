@@ -65,7 +65,8 @@
         @font-face {
             font-family: 'IRANSans';
             src: url('{{ asset('fonts/iransans/IRANSans.woff2') }}') format('woff2'),
-                url('{{ asset('fonts/iransans/IRANSans.woff') }}') format('woff');
+                url('{{ asset('fonts/iransans/IRANSans.woff') }}') format('woff'),
+                url('{{ asset('fonts/iransans.woff') }}') format('woff');
             font-weight: normal;
             font-style: normal;
             font-display: swap;

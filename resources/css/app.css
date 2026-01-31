@@ -11,13 +11,18 @@
 @font-face {
     font-family: 'IRANSans';
     src: url('/fonts/iransans/IRANSans.woff2') format('woff2'),
-         url('/fonts/iransans/IRANSans.woff') format('woff');
+         url('/fonts/iransans/IRANSans.woff') format('woff'),
+         url('/fonts/iransans.woff') format('woff');
     font-weight: normal;
     font-style: normal;
     font-display: swap;
 }
+:root {
+    --bs-body-font-family: 'IRANSans', sans-serif;
+}
+html,
 body {
-    font-family: 'IRANSans', sans-serif;
+    font-family: 'IRANSans', sans-serif !important;
 }
 
 
@@ -137,4 +142,3 @@ body {
   .link {
     @apply text-primary hover:text-primary-dark transition-colors duration-150;
   }
-

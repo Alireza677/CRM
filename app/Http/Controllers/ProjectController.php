@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Project;
+use App\Models\Task;
 use Illuminate\Http\Request;
 use App\Models\User;
 use Illuminate\Validation\Rule;
@@ -16,6 +17,13 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $projects = Project::query()
+            ->withCount([
+                'members',
+                'tasks',
+                'tasks as tasks_done_count' => function ($query) {
+                    $query->where('status', Task::STATUS_DONE);
+                },
+            ])
             ->latest('id')
             ->paginate(15);
 

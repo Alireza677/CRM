@@ -22,21 +22,37 @@
                     <th class="py-3 px-4">#</th>
                     <th class="py-3 px-4">نام</th>
                     <th class="py-3 px-4">توضیحات</th>
+                    <th class="py-3 px-4">تاریخ ایجاد</th>
+                    <th class="py-3 px-4">اعضا</th>
+                    <th class="py-3 px-4">پیشرفت</th>
                     <th class="py-3 px-4">اقدامات</th>
                 </tr>
             </thead>
             <tbody>
             @forelse($projects as $project)
+                @php
+                    $tasksCount = (int) ($project->tasks_count ?? 0);
+                    $doneCount = (int) ($project->tasks_done_count ?? 0);
+                    $progress = $tasksCount > 0 ? round(($doneCount / $tasksCount) * 100) : 0;
+                @endphp
                 <tr class="border-b">
                     <td class="py-3 px-4">{{ $project->id }}</td>
                     <td class="py-3 px-4 font-semibold">{{ $project->name }}</td>
                     <td class="py-3 px-4 text-gray-700">{{ Str::limit($project->description, 120) }}</td>
+                    <td class="py-3 px-4 text-gray-700">
+                        {{ \Morilog\Jalali\Jalalian::fromDateTime($project->created_at)->format('Y/m/d') }}
+                    </td>
+                    <td class="py-3 px-4 text-gray-700">{{ $project->members_count ?? 0 }}</td>
+                    <td class="py-3 px-4 text-gray-700">
+                        {{ $progress }}٪
+                        <span class="text-xs text-gray-500">({{ $doneCount }}/{{ $tasksCount }})</span>
+                    </td>
                     <td class="py-3 px-4">
                         <a href="{{ route('projects.show', $project) }}" class="text-blue-700 hover:underline">نمایش</a>
                     </td>
                 </tr>
             @empty
-                <tr><td class="py-6 px-4 text-gray-500" colspan="4">هیچ پروژه‌ای ثبت نشده است.</td></tr>
+                <tr><td class="py-6 px-4 text-gray-500" colspan="7">هیچ پروژه‌ای ثبت نشده است.</td></tr>
             @endforelse
             </tbody>
         </table>

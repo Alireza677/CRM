@@ -92,15 +92,25 @@
                 <a href="{{ route('projects.index') }}"
                    class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
                    title="پروژه">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="w-5 h-5 text-gray-700" viewBox="0 0 24 24" fill="none"
-                         stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
-                        <rect x="3" y="4" width="18" height="18" rx="2" ry="2"></rect>
-                        <line x1="16" y1="2" x2="16" y2="6"></line>
-                        <line x1="8" y1="2" x2="8" y2="6"></line>
-                        <line x1="3" y1="10" x2="21" y2="10"></line>
-                        <rect x="7" y="14" width="4" height="4" rx="1"></rect>
-                    </svg>
+                     <img
+                        src="{{ asset('images/projects.svg') }}"
+                        alt="پروژه"
+                        class="w-5 h-5"
+                    >
                     <span class="text-[13px] leading-none text-gray-600 mt-0.5">پروژه</span>
+                </a>
+
+
+                {{-- 'گفتگو' --}}
+                <a href="http://crm.local/chat"
+                   class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
+                   title="چت">
+                    <img
+                        src="{{ asset('images/chat.svg') }}"
+                        alt="چت"
+                        class="w-5 h-5"
+                    >
+                    <span class="text-[13px] leading-none text-gray-600 mt-0.5">چت</span>
                 </a>
 
                 {{-- وظیفه --}}
