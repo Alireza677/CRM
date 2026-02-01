@@ -286,6 +286,9 @@
                         @can('sidebar_settings_general.view')
                         <a href="{{ route('settings.general') }}" class="menu-item">تنظیمات عمومی</a>
                         @endcan
+                        @role('admin')
+                        <a href="{{ route('settings.sales.leads.edit') }}" class="menu-item">تنظیمات سرنخ‌ها</a>
+                        @endrole
                         @can('sidebar_settings_commissions.view')
                         <a href="{{ route('settings.commissions.edit') }}" class="menu-item">درصد کمیسیون نقش‌ها</a>
                         @endcan

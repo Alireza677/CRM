@@ -164,6 +164,11 @@ class SalesLeadController extends Controller
 
         $users = User::all();
         $leadSources = FormOptionsHelper::leadSources();
+        $companyAcquirerUserId = FormOptionsHelper::resolveCompanyAcquirerUserId();
+        $companyAcquirerUserName = null;
+        if (!empty($companyAcquirerUserId)) {
+            $companyAcquirerUserName = $users->firstWhere('id', (int) $companyAcquirerUserId)?->name;
+        }
 
         return [
             'leads' => $leads,
@@ -173,6 +178,8 @@ class SalesLeadController extends Controller
             'perPage' => $perPage,
             'perPageOptions' => $perPageOptions,
             'leadPoolRules' => $this->leadPoolRulesData(),
+            'companyAcquirerUserId' => $companyAcquirerUserId,
+            'companyAcquirerUserName' => $companyAcquirerUserName,
         ];
     }
 
@@ -1353,6 +1360,40 @@ public function show(SalesLead $lead)
     ]);
 
     try {
+        $sourceOwnerType = FormOptionsHelper::getLeadSourceOwnerType($lead->lead_source);
+        $companyAcquirerUserId = FormOptionsHelper::resolveCompanyAcquirerUserId();
+
+        if ($sourceOwnerType === 'company') {
+            if (empty($companyAcquirerUserId) || !User::whereKey($companyAcquirerUserId)->exists()) {
+                $settingsUrl = route('settings.sales.leads.edit');
+                $message = 'کاربر جذب‌کننده شرکتی تنظیم نشده است. لطفاً از <a class="underline text-red-700" href="'
+                    . e($settingsUrl)
+                    . '">تنظیمات سرنخ‌ها</a> این مورد را تنظیم کنید.';
+
+                return redirect()->back()
+                    ->with('error_html', $message);
+            }
+
+            if (!empty($validated['acquirer_user_id']) && (int) $validated['acquirer_user_id'] !== (int) $companyAcquirerUserId) {
+                Log::warning('lead.convert.acquirer_override_blocked', [
+                    'lead_id' => $lead->id,
+                    'lead_source' => $lead->lead_source,
+                    'requested_acquirer' => (int) $validated['acquirer_user_id'],
+                    'forced_acquirer' => (int) $companyAcquirerUserId,
+                    'user_id' => Auth::id(),
+                ]);
+            }
+
+            $validated['acquirer_user_id'] = (int) $companyAcquirerUserId;
+        } else {
+            if (empty($validated['acquirer_user_id'])) {
+                $fallbackAcquirerId = $lead->assigned_to ?? $lead->owner_user_id ?? $lead->created_by;
+                if (!empty($fallbackAcquirerId)) {
+                    $validated['acquirer_user_id'] = (int) $fallbackAcquirerId;
+                }
+            }
+        }
+
         DB::transaction(function () use ($lead, $validated) {
             $organization = null;
             if (!empty($lead->company)) {
@@ -1424,6 +1465,7 @@ public function show(SalesLead $lead)
                     'user_id' => (int) $validated['acquirer_user_id'],
                     'role_type' => 'acquirer',
                     'created_by' => $creatorId,
+                    'is_system' => true,
                 ];
             }
 
@@ -1432,6 +1474,7 @@ public function show(SalesLead $lead)
                     'user_id' => (int) $relationshipOwnerUserId,
                     'role_type' => 'relationship_owner',
                     'created_by' => $creatorId,
+                    'is_system' => true,
                 ];
             }
 

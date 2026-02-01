@@ -20,4 +20,19 @@ return [
         'out_of_scope',
         'unrealistic_timing',
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Lead Source Ownership
+    |--------------------------------------------------------------------------
+    |
+    | Map lead sources to their ownership type. "company" sources route
+    | the acquirer commission to the company user.
+    |
+    */
+    'source_owners' => [
+        'website' => 'company',
+        'tender' => 'company',
+        'event' => 'company',
+    ],
 ];

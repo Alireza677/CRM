@@ -20,6 +20,7 @@ class RoleAssignment extends Model
         'base_commission_percent',
         'final_commission_amount',
         'created_by',
+        'is_system',
     ];
 
     protected $casts = [
@@ -28,6 +29,7 @@ class RoleAssignment extends Model
         'created_by' => 'integer',
         'base_commission_percent' => 'decimal:2',
         'final_commission_amount' => 'decimal:2',
+        'is_system' => 'boolean',
     ];
 
     public function assignable(): MorphTo

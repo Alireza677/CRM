@@ -9,10 +9,7 @@
 @endphp
 
 <div class="bg-gray-100">
-    <div class="flex items-center justify-between px-4 py-3 md:hidden">
-        <h1 class="text-lg font-bold text-gray-800 truncate">
-            سفارش خرید: {{ $purchaseOrder->subject }}
-        </h1>
+    <div class="flex items-center gap-2 px-4 py-3 md:hidden">
         <div class="flex items-center gap-2">
             <a href="{{ route('inventory.purchase-orders.index') }}" class="inline-flex items-center justify-center w-10 h-10 rounded-lg border border-gray-300 bg-white hover:bg-gray-50" title="بازگشت">
                 <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
@@ -21,6 +18,9 @@
                 <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16" /></svg>
             </button>
         </div>
+        <h1 class="text-lg font-bold text-gray-800 truncate flex-1 min-w-0 text-right">
+            سفارش خرید: {{ $purchaseOrder->subject }}
+        </h1>
     </div>
 
     <div class="flex">

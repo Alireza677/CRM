@@ -10,6 +10,17 @@
     <meta name="notifications-unread-count-url" content="{{ route('notifications.unreadCount') }}">
     <meta name="notifications-feed-url" content="{{ route('notifications.feed.latest') }}">
     <meta name="notifications-asset-settings-url" content="{{ route('notifications.asset-settings') }}">
+    @php
+        $apiAuthExpires = now()->addMinutes((int) config('app.api_auth_ttl_minutes', 720))->timestamp;
+        $apiAuthKey = (string) config('app.key');
+        if (\Illuminate\Support\Str::startsWith($apiAuthKey, 'base64:')) {
+            $apiAuthKey = base64_decode(substr($apiAuthKey, 7)) ?: '';
+        }
+        $apiAuthSignature = hash_hmac('sha256', auth()->id() . '|' . $apiAuthExpires, $apiAuthKey);
+    @endphp
+    <meta name="api-auth-user" content="{{ auth()->id() }}">
+    <meta name="api-auth-expires" content="{{ $apiAuthExpires }}">
+    <meta name="api-auth-signature" content="{{ $apiAuthSignature }}">
     @endauth
 
     <title>{{ config('app.name', 'Laravel') }}</title>
@@ -224,6 +235,11 @@
         const statusUrl = @json(route('presence.status'));
         const currentUserId = {{ auth()->id() ?? 'null' }};
         const csrfToken = document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '';
+        const apiAuth = {
+            user: document.querySelector('meta[name="api-auth-user"]')?.getAttribute('content') || '',
+            expires: document.querySelector('meta[name="api-auth-expires"]')?.getAttribute('content') || '',
+            signature: document.querySelector('meta[name="api-auth-signature"]')?.getAttribute('content') || '',
+        };
         const ONLINE_WINDOW_MS = 30000;
         const HEARTBEAT_MS = 10000;
         const STATUS_MS = 12000;
@@ -292,6 +308,11 @@
                     headers: {
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': csrfToken,
+                        ...(apiAuth.user && apiAuth.expires && apiAuth.signature ? {
+                            'X-Api-User': apiAuth.user,
+                            'X-Api-Expires': apiAuth.expires,
+                            'X-Api-Signature': apiAuth.signature,
+                        } : {}),
                     },
                     credentials: 'same-origin',
                     signal: controller.signal,
@@ -326,6 +347,11 @@
                     headers: {
                         'Accept': 'application/json',
                         'X-Requested-With': 'XMLHttpRequest',
+                        ...(apiAuth.user && apiAuth.expires && apiAuth.signature ? {
+                            'X-Api-User': apiAuth.user,
+                            'X-Api-Expires': apiAuth.expires,
+                            'X-Api-Signature': apiAuth.signature,
+                        } : {}),
                     },
                     credentials: 'same-origin',
                 });

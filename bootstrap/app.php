@@ -19,8 +19,20 @@ return Application::configure(basePath: dirname(__DIR__))
         ConsoleKernelContract::class => AppConsoleKernel::class,
     ])
     ->withMiddleware(function (Middleware $middleware) {
-        //
-    })
+        
+    $middleware->alias([
+        'signed.user' => \App\Http\Middleware\SignedUserToken::class,
+    ]);
+
+    // اگر aliasهای Spatie رو هم اینجا می‌خوای:
+    $middleware->alias([
+        'role' => \Spatie\Permission\Middleware\RoleMiddleware::class,
+        'permission' => \Spatie\Permission\Middleware\PermissionMiddleware::class,
+        'role_or_permission' => \Spatie\Permission\Middleware\RoleOrPermissionMiddleware::class,
+    ]);
+})
+
+    
     ->withExceptions(function (Exceptions $exceptions) {
         //
     })

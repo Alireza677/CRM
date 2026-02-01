@@ -44,6 +44,20 @@ function getMetaContent(name) {
     return document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '';
 }
 
+function getApiAuthHeaders() {
+    const user = getMetaContent('api-auth-user');
+    const expires = getMetaContent('api-auth-expires');
+    const signature = getMetaContent('api-auth-signature');
+    if (!user || !expires || !signature) {
+        return {};
+    }
+    return {
+        'X-Api-User': user,
+        'X-Api-Expires': expires,
+        'X-Api-Signature': signature,
+    };
+}
+
 function getNotificationSetting(notification) {
     if (!notification) return null;
     const moduleKey = notification.module || '';
@@ -440,6 +454,7 @@ function initNotificationStream() {
                 headers: {
                     'X-Requested-With': 'XMLHttpRequest',
                     'Accept': 'application/json',
+                    ...getApiAuthHeaders(),
                 },
                 credentials: 'same-origin',
             })

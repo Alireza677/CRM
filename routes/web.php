@@ -43,6 +43,7 @@ use App\Http\Controllers\FormController;
 use App\Http\Controllers\Settings\UserController;
 use App\Http\Controllers\Settings\WorkflowController;
 use App\Http\Controllers\Settings\NotificationRuleController;
+use App\Http\Controllers\Settings\LeadSettingsController;
 use App\Http\Controllers\NotificationController;
 use App\Http\Controllers\GlobalSearchController;
 use App\Http\Controllers\OpportunityNoteController;
@@ -74,7 +75,6 @@ use App\Http\Controllers\Telephony\PhoneCallController;
 use App\Http\Controllers\Telephony\WebhookEventController;
 use App\Http\Controllers\OnlineChatController;
 use App\Http\Controllers\Chat\ChatCallController;
-use App\Http\Controllers\PresenceController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MailboxSettingsController;
 
@@ -175,7 +175,6 @@ Route::middleware(['auth'])->group(function () {
     Route::prefix('notifications')->name('notifications.')->group(function () {
         Route::get('/', [NotificationController::class, 'index'])->name('index');
         Route::get('feed/latest', [NotificationController::class, 'latestFeed'])->name('feed.latest');
-        Route::get('unread-count', [NotificationController::class, 'unreadCount'])->name('unreadCount');
         Route::get('stream', [NotificationController::class, 'stream'])->name('stream');
         Route::get('asset-settings', [NotificationRuleController::class, 'assetSettings'])->name('asset-settings');
         Route::get('read/{notification}', [NotificationController::class, 'read'])->name('read');
@@ -197,12 +196,6 @@ Route::middleware(['auth'])->group(function () {
         Route::get('groups/{group}/messages/{message}/file', [OnlineChatController::class, 'messageFile'])->name('groups.messages.file');
         Route::post('groups/{group}/messages', [OnlineChatController::class, 'sendMessage'])->name('groups.messages.store');
         Route::post('groups/{group}/start-call', [ChatCallController::class, 'startVideoCall'])->name('groups.start-call');
-    });
-
-    // Presence (heartbeat + status)
-    Route::prefix('presence')->name('presence.')->group(function () {
-        Route::post('heartbeat', [PresenceController::class, 'heartbeat'])->name('heartbeat');
-        Route::get('status', [PresenceController::class, 'status'])->name('status');
     });
 
     //// Sales
@@ -560,6 +553,8 @@ Route::middleware(['auth'])->group(function () {
                 ->name('general.assets-emergency');
             Route::get('/commissions', [CommissionSettingController::class, 'edit'])->name('commissions.edit');
             Route::post('/commissions', [CommissionSettingController::class, 'update'])->name('commissions.update');
+            Route::get('/sales/leads', [LeadSettingsController::class, 'edit'])->name('sales.leads.edit');
+            Route::post('/sales/leads', [LeadSettingsController::class, 'update'])->name('sales.leads.update');
             Route::resource('users', UserController::class)->except(['show']);
             Route::get('/workflows', [WorkflowController::class, 'index'])->name('workflows.index');
             Route::post('/workflows/purchase-orders', [WorkflowController::class, 'updatePurchaseOrder'])->name('workflows.purchase-orders.update');

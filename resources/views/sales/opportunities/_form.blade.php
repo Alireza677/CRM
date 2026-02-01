@@ -4,6 +4,9 @@
     // $nextFollowUpDate (shamsi): برای edit از کنترلر پاس می‌شود
 
     $isEdit = isset($opportunity) && $opportunity?->id;
+    $systemRoleLocks = $systemRoleLocks ?? [];
+    $lockAcquirer = $isEdit && array_key_exists('acquirer', $systemRoleLocks);
+    $lockRelationshipOwner = $isEdit && array_key_exists('relationship_owner', $systemRoleLocks);
 @endphp
 
 <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4" dir="rtl">
@@ -153,7 +156,7 @@
 <div>
     <label for="acquirer_user_id" class="block font-medium text-sm text-gray-700">جذب‌کننده</label>
     @php $acquirerSelected = old('acquirer_user_id', $opportunity?->getRoleUserId('acquirer') ?? ''); @endphp
-    <select id="acquirer_user_id" name="acquirer_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+    <select id="acquirer_user_id" name="acquirer_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" @disabled($lockAcquirer)>
         <option value="">انتخاب کنید</option>
         @foreach($users as $user)
             <option value="{{ $user->id }}" {{ (string)$acquirerSelected === (string)$user->id ? 'selected' : '' }}>
@@ -161,13 +164,19 @@
             </option>
         @endforeach
     </select>
+    <input type="hidden" id="acquirer_user_id_locked" name="acquirer_user_id" value="" disabled>
+    @if($lockAcquirer)
+        <p class="mt-1 text-xs text-gray-500">این نقش به صورت سیستمی تعیین شده و فقط توسط مدیر قابل ویرایش است.</p>
+    @else
+        <p id="acquirer_locked_note" class="mt-1 text-xs text-amber-600 hidden"></p>
+    @endif
     @error('acquirer_user_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
 </div>
 
 <div>
     <label for="relationship_owner_user_id" class="block font-medium text-sm text-gray-700">مالک اصلی فرصت</label>
     @php $relationshipOwnerSelected = old('relationship_owner_user_id', $opportunity?->getRoleUserId('relationship_owner') ?? ''); @endphp
-    <select id="relationship_owner_user_id" name="relationship_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm">
+    <select id="relationship_owner_user_id" name="relationship_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" @disabled($lockRelationshipOwner)>
         <option value="">انتخاب کنید</option>
         @foreach($users as $user)
             <option value="{{ $user->id }}" {{ (string)$relationshipOwnerSelected === (string)$user->id ? 'selected' : '' }}>
@@ -175,6 +184,9 @@
             </option>
         @endforeach
     </select>
+    @if($lockRelationshipOwner)
+        <p class="mt-1 text-xs text-gray-500">این نقش به صورت سیستمی تعیین شده و فقط توسط مدیر قابل ویرایش است</p>
+    @endif
     @error('relationship_owner_user_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
 </div>
 

@@ -94,6 +94,9 @@ class OpportunityController extends Controller
         $organizations = Organization::all();
         $contacts = Contact::all();
         $users = User::all();
+        $companyAcquirerUserId = FormOptionsHelper::resolveCompanyAcquirerUserId();
+        $companyAcquirerUserName = FormOptionsHelper::resolveCompanyAcquirerUserName();
+        $companyOwnedSources = FormOptionsHelper::companyLeadSources();
 
         $contactId = $request->input('contact_id');
         $defaultContact = $contactId ? Contact::find($contactId) : null;
@@ -103,7 +106,10 @@ class OpportunityController extends Controller
             'organizations',
             'contacts',
             'users',
-            'defaultContact'
+            'defaultContact',
+            'companyAcquirerUserId',
+            'companyAcquirerUserName',
+            'companyOwnedSources'
         ));
     }
 
@@ -138,6 +144,26 @@ class OpportunityController extends Controller
         $relationshipOwnerUserId = $validated['relationship_owner_user_id'] ?? null;
         $closerUserId = $validated['closer_user_id'] ?? null;
         $executionOwnerUserId = $validated['execution_owner_user_id'] ?? null;
+
+        $sources = FormOptionsHelper::opportunitySources();
+        $sourceKey = strtolower(trim((string) ($validated['source'] ?? '')));
+        if ($sourceKey !== '' && !array_key_exists($sourceKey, $sources)) {
+            $matchedKey = collect($sources)->search(fn ($label) => (string) $label === (string) $sourceKey);
+            if ($matchedKey !== false) {
+                $sourceKey = (string) $matchedKey;
+            }
+        }
+
+        if ($sourceKey !== '' && FormOptionsHelper::isCompanyLeadSource($sourceKey)) {
+            $companyAcquirerUserId = FormOptionsHelper::resolveCompanyAcquirerUserId();
+            if (empty($companyAcquirerUserId) || !User::whereKey($companyAcquirerUserId)->exists()) {
+                return redirect()->back()
+                    ->with('error', 'کاربر جذب‌کننده شرکتی تنظیم نشده است. لطفاً با مدیر سیستم هماهنگ کنید.')
+                    ->withInput();
+            }
+
+            $acquirerUserId = (int) $companyAcquirerUserId;
+        }
 
         $primaryOwnerId = $relationshipOwnerUserId ?: $closerUserId ?: $executionOwnerUserId ?: $acquirerUserId;
         if (!empty($primaryOwnerId)) {
@@ -206,12 +232,20 @@ class OpportunityController extends Controller
     {
         $this->authorize('update', $opportunity);
 
-        $opportunity->loadMissing(['organization', 'contact']);
+        $opportunity->loadMissing(['organization', 'contact', 'roleAssignments']);
 
         $organizations = Organization::orderBy('name')->get(['id', 'name', 'phone']);
         $contacts      = Contact::orderBy('last_name')->get(['id', 'first_name', 'last_name', 'mobile']);
         $users         = User::orderBy('name')->get(['id', 'name']);
         $hasRecentActivity = $opportunity->hasRecentActivity();
+        $systemRoleLocks = $opportunity->roleAssignments
+            ->where('is_system', true)
+            ->whereIn('role_type', [self::ROLE_TYPE_ACQUIRER, self::ROLE_TYPE_RELATIONSHIP_OWNER])
+            ->pluck('user_id', 'role_type')
+            ->toArray();
+        $companyAcquirerUserId = FormOptionsHelper::resolveCompanyAcquirerUserId();
+        $companyAcquirerUserName = FormOptionsHelper::resolveCompanyAcquirerUserName();
+        $companyOwnedSources = FormOptionsHelper::companyLeadSources();
 
         $nextFollowUpDate = '';
         if (!empty($opportunity->next_follow_up)) {
@@ -223,7 +257,16 @@ class OpportunityController extends Controller
         }
 
         return view('sales.opportunities.edit', compact(
-            'opportunity', 'organizations', 'contacts', 'users', 'nextFollowUpDate', 'hasRecentActivity'
+            'opportunity',
+            'organizations',
+            'contacts',
+            'users',
+            'nextFollowUpDate',
+            'hasRecentActivity',
+            'systemRoleLocks',
+            'companyAcquirerUserId',
+            'companyAcquirerUserName',
+            'companyOwnedSources'
         ));
     }
 
@@ -267,10 +310,24 @@ class OpportunityController extends Controller
             'loss_reasons.*' => ['string','max:255'],
         ]);
 
+        $systemRoleLocks = $opportunity->roleAssignments()
+            ->where('is_system', true)
+            ->whereIn('role_type', [self::ROLE_TYPE_ACQUIRER, self::ROLE_TYPE_RELATIONSHIP_OWNER])
+            ->pluck('user_id', 'role_type')
+            ->toArray();
+
         $acquirerUserId = $validated['acquirer_user_id'] ?? null;
         $relationshipOwnerUserId = $validated['relationship_owner_user_id'] ?? null;
         $closerUserId = $validated['closer_user_id'] ?? null;
         $executionOwnerUserId = $validated['execution_owner_user_id'] ?? null;
+
+        if (array_key_exists(self::ROLE_TYPE_ACQUIRER, $systemRoleLocks)) {
+            $acquirerUserId = (int) $systemRoleLocks[self::ROLE_TYPE_ACQUIRER];
+        }
+
+        if (array_key_exists(self::ROLE_TYPE_RELATIONSHIP_OWNER, $systemRoleLocks)) {
+            $relationshipOwnerUserId = (int) $systemRoleLocks[self::ROLE_TYPE_RELATIONSHIP_OWNER];
+        }
 
         $primaryOwnerId = $relationshipOwnerUserId ?: $closerUserId ?: $executionOwnerUserId ?: $acquirerUserId;
         if (!empty($primaryOwnerId)) {
@@ -419,7 +476,14 @@ class OpportunityController extends Controller
 
         $opportunity->update($validated);
         $opportunity->notifyIfAssigneeChanged($oldAssignedTo);
-        $this->syncCommissionRoles($opportunity, $acquirerUserId, $relationshipOwnerUserId, $closerUserId, $executionOwnerUserId);
+        $this->syncCommissionRoles(
+            $opportunity,
+            $acquirerUserId,
+            $relationshipOwnerUserId,
+            $closerUserId,
+            $executionOwnerUserId,
+            $systemRoleLocks
+        );
 
         $newStage = $opportunity->getStageValue();
         if ($previousStage !== Opportunity::STAGE_WON && $newStage === Opportunity::STAGE_WON) {
@@ -439,7 +503,8 @@ class OpportunityController extends Controller
         $acquirerUserId,
         $relationshipOwnerUserId,
         $closerUserId,
-        $executionOwnerUserId
+        $executionOwnerUserId,
+        array $lockedRoleUserIds = []
     ): void {
         $roleTypes = [
             self::ROLE_TYPE_ACQUIRER,
@@ -448,14 +513,25 @@ class OpportunityController extends Controller
             self::ROLE_TYPE_EXECUTION_OWNER,
         ];
 
+        $lockedRoleTypes = array_keys($lockedRoleUserIds);
+
         $opportunity->roleAssignments()
             ->whereIn('role_type', $roleTypes)
+            ->when($lockedRoleTypes !== [], function ($query) use ($lockedRoleTypes) {
+                $query->where(function ($inner) use ($lockedRoleTypes) {
+                    $inner->whereNotIn('role_type', $lockedRoleTypes)
+                        ->orWhere(function ($lockedQuery) use ($lockedRoleTypes) {
+                            $lockedQuery->whereIn('role_type', $lockedRoleTypes)
+                                ->where('is_system', false);
+                        });
+                });
+            })
             ->delete();
 
         $creatorId = auth()->id();
         $rows = [];
 
-        if (!empty($acquirerUserId)) {
+        if (!empty($acquirerUserId) && !in_array(self::ROLE_TYPE_ACQUIRER, $lockedRoleTypes, true)) {
             $rows[] = [
                 'user_id' => (int) $acquirerUserId,
                 'role_type' => self::ROLE_TYPE_ACQUIRER,
@@ -463,7 +539,7 @@ class OpportunityController extends Controller
             ];
         }
 
-        if (!empty($relationshipOwnerUserId)) {
+        if (!empty($relationshipOwnerUserId) && !in_array(self::ROLE_TYPE_RELATIONSHIP_OWNER, $lockedRoleTypes, true)) {
             $rows[] = [
                 'user_id' => (int) $relationshipOwnerUserId,
                 'role_type' => self::ROLE_TYPE_RELATIONSHIP_OWNER,

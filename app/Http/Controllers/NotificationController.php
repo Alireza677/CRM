@@ -6,6 +6,8 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\Cache;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Notifications\DatabaseNotification;
 
 class NotificationController extends Controller
@@ -137,14 +139,68 @@ class NotificationController extends Controller
 
     public function unreadCount()
     {
+        $start = microtime(true);
+        $observe = (bool) config('app.observe_lightweight_endpoints', false);
+
         $user = Auth::user();
+        if ($observe) {
+            Log::info('notifications.unread-count.start', [
+                'user_id' => $user?->id,
+                'user_id_count' => 1,
+            ]);
+        }
         if (!$user) {
             return response()->json(['count' => 0], 401);
         }
 
+        $cache = $this->cacheStore();
+        $cacheKey = 'notifications:unread-count:' . $user->id;
+        $cacheHit = $cache->has($cacheKey);
+        if ($cacheHit) {
+            $count = (int) $cache->get($cacheKey);
+        } else {
+            $count = DatabaseNotification::query()
+                ->where('notifiable_id', $user->id)
+                ->where('notifiable_type', $user->getMorphClass())
+                ->whereNull('read_at')
+                ->count();
+            $cache->put($cacheKey, $count, now()->addSeconds(20));
+        }
+
+        if ($observe) {
+            Log::info('notifications.unread-count', [
+                'user_id' => $user->id,
+                'user_id_count' => 1,
+                'cache_hit' => $cacheHit,
+                'duration_ms' => (int) round((microtime(true) - $start) * 1000),
+            ]);
+        }
+
         return response()->json([
-            'count' => $user->unreadNotifications()->count(),
+            'count' => $count,
         ]);
+    }
+
+    private function cacheStore()
+    {
+        static $resolvedStore = null;
+        if ($resolvedStore) {
+            return Cache::store($resolvedStore);
+        }
+
+        if (config('cache.stores.redis')) {
+            try {
+                $cache = Cache::store('redis');
+                $cache->get('__notifications_cache_probe__');
+                $resolvedStore = 'redis';
+                return $cache;
+            } catch (\Throwable $e) {
+                // fall through to file
+            }
+        }
+
+        $resolvedStore = 'file';
+        return Cache::store('file');
     }
 
     public function stream(Request $request)

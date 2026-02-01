@@ -20,6 +20,10 @@
                     </div>
 
                     <div class="space-y-4">
+                        <a href="{{ route('settings.sales.leads.edit') }}"
+                           class="block w-full text-right text-blue-600 hover:underline text-lg">
+                            تنظیمات سرنخ‌ها → 
+                        </a>
                         <a href="{{ route('settings.commissions.edit') }}" 
                            class="block w-full text-right text-blue-600 hover:underline text-lg">
                             درصد کمیسیون نقش‌ها →

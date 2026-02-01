@@ -1,6 +1,6 @@
 @props(['breadcrumb' => []])
 
-<header 
+<header dir="rtl"
     x-data="{
         mainMenuOpen: false,
         subMenuOpen: false,
@@ -20,7 +20,7 @@
     x-init="$store.menu = $data"
     class="fixed top-0 left-0 right-0 bg-white shadow-md z-50 px-3 sm:px-4 py-1"
 >
-    <div class="flex flex-wrap items-center justify-between gap-3 overflow-x-hidden">
+    <div class="flex flex-wrap items-center justify-between gap-3 overflow-x-hidden w-full">
         <!-- دکمه باز کردن منو + لوگو -->
         <div class="flex items-center gap-3 shrink-0">
             <!-- دکمه باز کردن منو -->
@@ -102,15 +102,15 @@
 
 
                 {{-- 'گفتگو' --}}
-                <a href="http://crm.local/chat"
+                <a href="{{ route('chat.index') }}"
                    class="flex flex-col items-center justify-center w-12 h-12 hover:bg-gray-50 rounded-lg transition"
-                   title="چت">
+                   title="گفتگو">
                     <img
                         src="{{ asset('images/chat.svg') }}"
-                        alt="چت"
+                        alt="گفتگو"
                         class="w-5 h-5"
                     >
-                    <span class="text-[13px] leading-none text-gray-600 mt-0.5">چت</span>
+                    <span class="text-[13px] leading-none text-gray-600 mt-0.5">گفتگو</span>
                 </a>
 
                 {{-- وظیفه --}}

@@ -21,7 +21,11 @@
     </div>
 @endif
 
-@if(session('error'))
+@if(session('error_html'))
+    <div class="bg-red-100 text-red-800 px-4 py-2 rounded mb-4">
+        {!! session('error_html') !!}
+    </div>
+@elseif(session('error'))
     <div class="bg-red-100 text-red-800 px-4 py-2 rounded mb-4">
         {{ session('error') }}
     </div>
@@ -229,6 +233,8 @@
                         <option value="{{ $user->id }}">{{ $user->name }}</option>
                     @endforeach
                 </select>
+                <input type="hidden" id="lead-convert-acquirer-locked" name="acquirer_user_id" value="" disabled>
+                <p id="lead-convert-acquirer-note" class="mt-1 text-xs text-amber-600 hidden"></p>
             </div>
 
             <div>
@@ -292,6 +298,9 @@
 
 <script>
 document.addEventListener('DOMContentLoaded', function () {
+    const companyAcquirerId = @json($companyAcquirerUserId ?? null);
+    const companyAcquirerName = @json($companyAcquirerUserName ?? null);
+    const companyAcquirerSettingsUrl = @json(route('settings.sales.leads.edit'));
     const bulkBtn   = document.getElementById('bulk-delete-btn');
     const countBadge= document.getElementById('selected-count-badge');
     const selectAll = document.getElementById('select-all');
@@ -310,6 +319,8 @@ document.addEventListener('DOMContentLoaded', function () {
     const convertLeadName = document.getElementById('lead-convert-name');
     const convertOwnerName = document.getElementById('lead-convert-owner-name');
     const convertAcquirer = document.getElementById('lead-convert-acquirer');
+    const convertAcquirerLocked = document.getElementById('lead-convert-acquirer-locked');
+    const convertAcquirerNote = document.getElementById('lead-convert-acquirer-note');
     const convertCloser = document.getElementById('lead-convert-closer');
     const convertExecution = document.getElementById('lead-convert-execution');
     const tbody = document.getElementById('leads-tbody');
@@ -455,6 +466,8 @@ document.addEventListener('DOMContentLoaded', function () {
         const action = button.getAttribute('data-convert-action');
         const leadName = button.getAttribute('data-lead-name') || '—';
         const ownerName = button.getAttribute('data-assigned-user-name') || '—';
+        const sourceOwner = button.getAttribute('data-lead-source-owner') || 'agent';
+        const defaultAcquirerId = button.getAttribute('data-default-acquirer-id') || '';
 
         if (action) convertForm.action = action;
         if (convertLeadName) convertLeadName.textContent = leadName;
@@ -463,6 +476,43 @@ document.addEventListener('DOMContentLoaded', function () {
         if (convertAcquirer) convertAcquirer.value = '';
         if (convertCloser) convertCloser.value = '';
         if (convertExecution) convertExecution.value = '';
+
+        if (convertAcquirerNote) {
+            convertAcquirerNote.textContent = '';
+            convertAcquirerNote.classList.add('hidden');
+        }
+
+        if (convertAcquirerLocked) {
+            convertAcquirerLocked.value = '';
+            convertAcquirerLocked.disabled = true;
+        }
+
+        if (convertAcquirer) {
+            convertAcquirer.disabled = false;
+        }
+
+        if (sourceOwner === 'company') {
+            const companyId = companyAcquirerId ? String(companyAcquirerId) : '';
+            if (convertAcquirer) {
+                convertAcquirer.value = companyId;
+                convertAcquirer.disabled = true;
+            }
+            if (convertAcquirerLocked) {
+                convertAcquirerLocked.value = companyId;
+                convertAcquirerLocked.disabled = false;
+            }
+            if (convertAcquirerNote) {
+                if (companyId) {
+                    const label = companyAcquirerName || 'شرکت';
+                    convertAcquirerNote.textContent = `منبع سازمانی است؛ جذب‌کننده به ${label} اختصاص داده می‌شود.`;
+                } else {
+                    convertAcquirerNote.innerHTML = `کاربر جذب‌کننده شرکتی تنظیم نشده است. <a class="underline" href="${companyAcquirerSettingsUrl}">تنظیمات</a>`;
+                }
+                convertAcquirerNote.classList.remove('hidden');
+            }
+        } else if (defaultAcquirerId && convertAcquirer) {
+            convertAcquirer.value = String(defaultAcquirerId);
+        }
 
         convertModal.classList.remove('hidden');
         convertModal.classList.add('flex');

@@ -62,6 +62,9 @@ return [
         }
     })(),
 
+    'observe_lightweight_endpoints' => env('OBSERVE_LIGHTWEIGHT_ENDPOINTS', false),
+    'api_auth_ttl_minutes' => env('API_AUTH_TTL_MINUTES', 720),
+
     /*
     |--------------------------------------------------------------------------
     | Application Timezone

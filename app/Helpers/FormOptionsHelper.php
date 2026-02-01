@@ -2,6 +2,9 @@
 
 namespace App\Helpers;
 
+use App\Models\AppSetting;
+use App\Models\User;
+
 class FormOptionsHelper
 {
     // ---------------- Permission scopes (role matrix & reports) ----------------
@@ -114,6 +117,75 @@ public static function leadDisqualifyReasons(): array
         $src['tender']  = 'مناقصه';
         $src['contact'] = 'مخاطبین';
         return $src;
+    }
+
+    public static function leadSourceOwnerTypes(): array
+    {
+        $companySources = self::companyLeadSources();
+        $map = [];
+
+        foreach ($companySources as $source) {
+            $key = strtolower(trim((string) $source));
+            if ($key !== '') {
+                $map[$key] = 'company';
+            }
+        }
+
+        return $map;
+    }
+
+    public static function getLeadSourceOwnerType($source): string
+    {
+        $key = strtolower(trim((string) $source));
+        $map = self::leadSourceOwnerTypes();
+
+        return $map[$key] ?? 'agent';
+    }
+
+    public static function isCompanyLeadSource($source): bool
+    {
+        return self::getLeadSourceOwnerType($source) === 'company';
+    }
+
+    public static function resolveCompanyAcquirerUserId(): ?int
+    {
+        $value = AppSetting::getValue('lead.company_acquirer_user_id', null);
+        $id = is_numeric($value) ? (int) $value : 0;
+
+        return $id > 0 ? $id : null;
+    }
+
+    public static function resolveCompanyAcquirerUserName(): ?string
+    {
+        $userId = self::resolveCompanyAcquirerUserId();
+        if (!$userId) {
+            return null;
+        }
+
+        return User::whereKey($userId)->value('name');
+    }
+
+    public static function companyLeadSources(): array
+    {
+        $raw = AppSetting::getValue('lead.company_sources', null);
+        if (is_string($raw) && $raw !== '') {
+            $decoded = json_decode($raw, true);
+            if (is_array($decoded)) {
+                return array_values($decoded);
+            }
+
+            $fallback = array_filter(array_map('trim', explode(',', $raw)));
+            if ($fallback !== []) {
+                return array_values($fallback);
+            }
+        }
+
+        $configured = config('lead.source_owners', []);
+        if (is_array($configured) && $configured !== []) {
+            return array_keys(array_filter($configured, fn ($value) => $value === 'company'));
+        }
+
+        return ['website', 'tender', 'event'];
     }
 
     // ---------------- Proforma: Stages ----------------

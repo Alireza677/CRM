@@ -78,6 +78,9 @@
                         data-convert-action="{{ route('marketing.leads.convert', $lead) }}"
                         data-lead-name="{{ $lead->full_name }}"
                         data-assigned-user-name="{{ $lead->assignedUser?->name ?? '' }}"
+                        data-lead-source="{{ $lead->lead_source }}"
+                        data-lead-source-owner="{{ \App\Helpers\FormOptionsHelper::getLeadSourceOwnerType($lead->lead_source) }}"
+                        data-default-acquirer-id="{{ $lead->assigned_to ?? $lead->owner_user_id ?? $lead->created_by ?? '' }}"
                     >
                         تبدیل به فرصت
                     </button>
@@ -92,4 +95,3 @@
         <td colspan="9" class="px-6 py-4 text-center text-sm text-gray-500">هیچ سرنخی ثبت نشده است.</td>
     </tr>
 @endforelse
-
