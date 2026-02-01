@@ -315,44 +315,7 @@
 
 
 
-<style>
-/* تعریف رنگ و افکت درخشش */
-@keyframes sheen {
-  0% {
-    transform: rotate(25deg) translate(-200%, -50%);
-    opacity: 0;
-  }
-  50% {
-    opacity: 0.6;
-  }
-  100% {
-    transform: rotate(25deg) translate(200%, -50%);
-    opacity: 0;
-  }
-}
 
-/* افکت نور روی لوگو */
-a.relative::after {
-  content: "";
-  position: absolute;
-  top: 0;
-  left: -75%;
-  width: 50%;
-  height: 100%;
-  background: linear-gradient(
-    120deg,
-    rgba(255, 255, 255, 0) 0%,
-    rgba(255, 255, 255, 0.5) 50%,
-    rgba(255, 255, 255, 0) 100%
-  );
-  transform: skewX(-25deg);
-}
-
-/* اجرای انیمیشن هنگام hover */
-a.relative:hover::after {
-  animation: sheen 1s forwards;
-}
-</style>
 
 <script>
     function clearNotificationList() {

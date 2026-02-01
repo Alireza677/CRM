@@ -229,7 +229,8 @@
 @auth
 <script>
     (function () {
-        if (window.PresenceService) return;
+        if (window.PresenceService || window.__presenceSingletonInitialized) return;
+        window.__presenceSingletonInitialized = true;
 
         const heartbeatUrl = @json(route('presence.heartbeat'));
         const statusUrl = @json(route('presence.status'));
@@ -241,17 +242,29 @@
             signature: document.querySelector('meta[name="api-auth-signature"]')?.getAttribute('content') || '',
         };
         const ONLINE_WINDOW_MS = 30000;
-        const HEARTBEAT_MS = 10000;
-        const STATUS_MS = 12000;
+        const HEARTBEAT_INTERVAL_MS = 30000;
+        const STATUS_INTERVAL_MS = 15000;
         const HEARTBEAT_TIMEOUT_MS = 5000;
+        const STATUS_TIMEOUT_MS = 8000;
+        const BACKOFF_MAX_MS = 60000;
+        const LEADER_TTL_MS = 45000;
+        const LEADER_CHECK_MS = 10000;
+        const LEADER_KEY = '__presence_leader_v1';
+        const CHANNEL_NAME = '__presence_channel_v1';
 
         const watchers = new Set();
         const watchedIds = new Set();
         const state = new Map();
         let heartbeatTimer = null;
         let statusTimer = null;
+        let leaderCheckTimer = null;
+        let heartbeatBackoffMs = 0;
+        let statusBackoffMs = 0;
         let started = false;
         let lastServerTimeMs = null;
+        let leaderId = null;
+        const tabId = `${Date.now()}-${Math.random().toString(16).slice(2)}`;
+        const channel = 'BroadcastChannel' in window ? new BroadcastChannel(CHANNEL_NAME) : null;
 
         function normalizeIds(ids) {
             return Array.from(new Set(
@@ -283,7 +296,7 @@
             return !prev || prev.online !== next.online || prev.last_seen_at !== next.last_seen_at;
         }
 
-        function notify(updatedIds, serverTimeMs) {
+        function notifyWatchers(updatedIds, serverTimeMs) {
             watchers.forEach((watcher) => {
                 const data = {};
                 const ids = updatedIds && updatedIds.length ? updatedIds : Array.from(watcher.ids);
@@ -298,8 +311,80 @@
             });
         }
 
+        function readLeader() {
+            try {
+                const raw = localStorage.getItem(LEADER_KEY);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                if (!parsed || !parsed.id || !parsed.ts) return null;
+                if (Date.now() - parsed.ts > LEADER_TTL_MS) return null;
+                return parsed;
+            } catch (e) {
+                return null;
+            }
+        }
+
+        function writeLeader(id) {
+            try {
+                localStorage.setItem(LEADER_KEY, JSON.stringify({ id, ts: Date.now() }));
+            } catch (e) {
+                // ignore storage failures
+            }
+        }
+
+        function clearLeader() {
+            try {
+                localStorage.removeItem(LEADER_KEY);
+            } catch (e) {
+                // ignore storage failures
+            }
+        }
+
+        function isLeader() {
+            return leaderId === tabId;
+        }
+
+        function becomeLeader() {
+            leaderId = tabId;
+            writeLeader(tabId);
+            channel?.postMessage({ type: 'leader', id: tabId });
+            startIntervals();
+        }
+
+        function releaseLeader() {
+            if (!isLeader()) return;
+            leaderId = null;
+            clearLeader();
+            channel?.postMessage({ type: 'leader', id: null });
+            stopIntervals();
+        }
+
+        function ensureLeader() {
+            if (document.hidden) {
+                releaseLeader();
+                return false;
+            }
+            const current = readLeader();
+            if (current && current.id) {
+                leaderId = current.id;
+                if (leaderId === tabId) {
+                    writeLeader(tabId);
+                    return true;
+                }
+                stopIntervals();
+                return false;
+            }
+            becomeLeader();
+            return true;
+        }
+
+        function scheduleLeaderCheck() {
+            if (leaderCheckTimer) clearInterval(leaderCheckTimer);
+            leaderCheckTimer = setInterval(ensureLeader, LEADER_CHECK_MS);
+        }
+
         async function sendHeartbeat() {
-            if (!heartbeatUrl || !currentUserId) return;
+            if (!heartbeatUrl || !currentUserId || !isLeader() || document.hidden) return;
             const controller = new AbortController();
             const timeoutId = setTimeout(() => controller.abort(), HEARTBEAT_TIMEOUT_MS);
             try {
@@ -326,22 +411,26 @@
                 if (updated) {
                     notify([currentUserId], lastServerTimeMs);
                 }
+                heartbeatBackoffMs = 0;
             } catch (error) {
                 const updated = setUserState(currentUserId, { last_seen_at: null, is_online: false }, lastServerTimeMs || Date.now());
                 if (updated) {
                     notify([currentUserId], lastServerTimeMs || Date.now());
                 }
+                heartbeatBackoffMs = Math.min(heartbeatBackoffMs ? heartbeatBackoffMs * 2 : 5000, BACKOFF_MAX_MS);
             } finally {
                 clearTimeout(timeoutId);
             }
         }
 
         async function pollStatus() {
-            if (!statusUrl || !watchedIds.size) return;
+            if (!statusUrl || !watchedIds.size || !isLeader() || document.hidden) return;
             const ids = Array.from(watchedIds);
             const url = new URL(statusUrl, window.location.origin);
             ids.forEach((id) => url.searchParams.append('user_ids[]', id));
             try {
+                const controller = new AbortController();
+                const timeoutId = setTimeout(() => controller.abort(), STATUS_TIMEOUT_MS);
                 const response = await fetch(url.toString(), {
                     method: 'GET',
                     headers: {
@@ -354,7 +443,9 @@
                         } : {}),
                     },
                     credentials: 'same-origin',
+                    signal: controller.signal,
                 });
+                clearTimeout(timeoutId);
                 if (!response.ok) {
                     throw new Error('status_failed');
                 }
@@ -374,25 +465,46 @@
                 if (updatedIds.length) {
                     notify(updatedIds, serverTimeMs);
                 }
+                statusBackoffMs = 0;
             } catch (error) {
                 // keep last known states on failure
+                statusBackoffMs = Math.min(statusBackoffMs ? statusBackoffMs * 2 : 5000, BACKOFF_MAX_MS);
             }
         }
 
+        function scheduleHeartbeat() {
+            if (heartbeatTimer) clearTimeout(heartbeatTimer);
+            const delay = HEARTBEAT_INTERVAL_MS + heartbeatBackoffMs;
+            heartbeatTimer = setTimeout(async () => {
+                await sendHeartbeat();
+                scheduleHeartbeat();
+            }, delay);
+        }
+
+        function scheduleStatus() {
+            if (statusTimer) clearTimeout(statusTimer);
+            const delay = STATUS_INTERVAL_MS + statusBackoffMs;
+            statusTimer = setTimeout(async () => {
+                await pollStatus();
+                scheduleStatus();
+            }, delay);
+        }
+
         function startIntervals() {
+            if (!isLeader() || document.hidden) return;
             sendHeartbeat();
             pollStatus();
-            heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS);
-            statusTimer = setInterval(pollStatus, STATUS_MS);
+            scheduleHeartbeat();
+            scheduleStatus();
         }
 
         function stopIntervals() {
             if (heartbeatTimer) {
-                clearInterval(heartbeatTimer);
+                clearTimeout(heartbeatTimer);
                 heartbeatTimer = null;
             }
             if (statusTimer) {
-                clearInterval(statusTimer);
+                clearTimeout(statusTimer);
                 statusTimer = null;
             }
         }
@@ -400,8 +512,8 @@
         function start() {
             if (started) return;
             started = true;
-            stopIntervals();
-            startIntervals();
+            ensureLeader();
+            scheduleLeaderCheck();
         }
 
         function recomputeWatchedIds() {
@@ -455,8 +567,72 @@
         }
 
         window.addEventListener('online', () => {
-            start();
+            ensureLeader();
         });
+
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                releaseLeader();
+            } else {
+                ensureLeader();
+            }
+        });
+
+        window.addEventListener('beforeunload', () => {
+            releaseLeader();
+        });
+
+        window.addEventListener('storage', (event) => {
+            if (event.key !== LEADER_KEY) return;
+            const current = readLeader();
+            leaderId = current?.id || null;
+            if (isLeader()) {
+                startIntervals();
+            } else {
+                stopIntervals();
+            }
+        });
+
+        channel?.addEventListener('message', (event) => {
+            const msg = event.data || {};
+            if (msg.type === 'leader') {
+                leaderId = msg.id || null;
+                if (isLeader()) {
+                    startIntervals();
+                } else {
+                    stopIntervals();
+                }
+            }
+            if (msg.type === 'presence-update') {
+                const serverTimeMs = msg.serverTimeMs || Date.now();
+                lastServerTimeMs = serverTimeMs;
+                const updatedIds = [];
+                const data = msg.data || {};
+                Object.entries(data).forEach(([userId, info]) => {
+                    const id = Number(userId);
+                    if (!Number.isInteger(id)) return;
+                    const changed = setUserState(id, info || {}, serverTimeMs);
+                    if (changed) updatedIds.push(id);
+                });
+                if (updatedIds.length) {
+                    notify(updatedIds, serverTimeMs);
+                }
+            }
+        });
+
+        function notify(updatedIds, serverTimeMs) {
+            notifyWatchers(updatedIds, serverTimeMs);
+            if (isLeader() && channel) {
+                const payload = {};
+                const ids = updatedIds && updatedIds.length ? updatedIds : Array.from(watchedIds);
+                ids.forEach((id) => {
+                    if (state.has(id)) payload[id] = state.get(id);
+                });
+                if (Object.keys(payload).length) {
+                    channel.postMessage({ type: 'presence-update', data: payload, serverTimeMs });
+                }
+            }
+        }
 
         window.PresenceService = { start, watch, getSnapshot };
         window.PresenceService.start();
