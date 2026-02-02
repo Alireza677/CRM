@@ -45,7 +45,19 @@ class ProjectPolicy
      */
     public function delete(User $user, Project $project): bool
     {
-        return false;
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return false;
+        }
+
+        if ($project->manager_id === $user->id) {
+            return true;
+        }
+
+        if (!is_null($project->owner_id ?? null) && $project->owner_id === $user->id) {
+            return true;
+        }
+
+        return $user->can('projects.manage');
     }
 
     /**
@@ -65,10 +77,23 @@ class ProjectPolicy
     }
     public function manageMembers(User $user, Project $project): bool
     {
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return false;
+        }
+
         if ($project->manager_id === $user->id) {
             return true;
         }
         // اگر Permission دارید و خواستید مدیر سیستم هم بتواند
         return $user->can('projects.manage');
+    }
+
+    public function complete(User $user, Project $project): bool
+    {
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return false;
+        }
+
+        return $project->manager_id === $user->id;
     }
 }

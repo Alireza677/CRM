@@ -17,6 +17,7 @@ class ProjectController extends Controller
     public function index(Request $request)
     {
         $projects = Project::query()
+            ->with('manager')
             ->withCount([
                 'members',
                 'tasks',
@@ -101,6 +102,50 @@ class ProjectController extends Controller
         return view('projects.show', compact('project','tasks','priority','users','nonMembers','contacts','organizations'));
     }
 
+    public function destroy(Project $project)
+    {
+        $this->authorize('delete', $project);
+
+        $project->delete();
+
+        return redirect()
+            ->route('projects.index')
+            ->with('success', 'پروژه با موفقیت حذف شد.');
+    }
+
+    public function bulkDestroy(Request $request)
+    {
+        $validated = $request->validate([
+            'ids' => ['required','array','min:1'],
+            'ids.*' => ['integer','exists:projects,id'],
+        ]);
+
+        $projects = Project::query()->whereIn('id', $validated['ids'])->get();
+        if ($projects->isEmpty()) {
+            return back()->with('error', 'هیچ پروژه‌ای برای حذف انتخاب نشده است.');
+        }
+
+        foreach ($projects as $project) {
+            $this->authorize('delete', $project);
+        }
+
+        $deletedCount = Project::query()->whereIn('id', $projects->pluck('id'))->delete();
+
+        return back()->with('success', $deletedCount . ' پروژه حذف شد.');
+    }
+
+    public function complete(Project $project)
+    {
+        $this->authorize('complete', $project);
+
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return back()->with('success', 'این پروژه قبلاً تمام شده است.');
+        }
+
+        $project->update(['status' => Project::STATUS_COMPLETED]);
+
+        return back()->with('success', 'وضعیت پروژه به تمام شده تغییر یافت.');
+    }
 
     public function addMember(Request $request, Project $project)
     {

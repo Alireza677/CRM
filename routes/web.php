@@ -616,7 +616,10 @@ Route::middleware(['auth'])->group(function () {
         Route::get('/projects',               [ProjectController::class, 'index'])->name('projects.index');
         Route::get('/projects/create',        [ProjectController::class, 'create'])->name('projects.create');
         Route::post('/projects',              [ProjectController::class, 'store'])->name('projects.store');
+        Route::delete('/projects/bulk-destroy', [ProjectController::class, 'bulkDestroy'])->name('projects.bulkDestroy');
         Route::get('/projects/{project}',     [ProjectController::class, 'show'])->name('projects.show');
+        Route::delete('/projects/{project}',  [ProjectController::class, 'destroy'])->name('projects.destroy');
+        Route::post('/projects/{project}/complete', [ProjectController::class, 'complete'])->name('projects.complete');
 
         // Members
         Route::post('/projects/{project}/members',          [ProjectController::class, 'addMember'])->name('projects.members.add');

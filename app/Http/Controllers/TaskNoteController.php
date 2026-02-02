@@ -17,6 +17,10 @@ class TaskNoteController extends Controller
    
     public function store(Request $request, Project $project, Task $task)
     {
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return back()->with('error', 'پروژه تمام شده است و امکان ثبت یادداشت وجود ندارد.');
+        }
+
         Log::info('TaskNoteController@store: incoming', [
             'route'     => $request->route()?->getName(),
             'method'    => $request->method(),
@@ -188,6 +192,10 @@ class TaskNoteController extends Controller
 
     public function destroy(Project $project, Task $task, Note $note)
     {
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return back()->with('error', 'پروژه تمام شده است و امکان حذف یادداشت وجود ندارد.');
+        }
+
         $this->authorize('delete', $note);
 
         // اطمینان از تعلق نوت به همین تسک (با مرف noteable)

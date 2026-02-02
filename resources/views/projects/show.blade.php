@@ -12,6 +12,10 @@
         <a href="{{ route('projects.index') }}" class="text-blue-700 hover:underline">← بازگشت به پروژه‌ها</a>
     </div>
 
+    @php
+        $isCompleted = ($project->status ?? \App\Models\Project::STATUS_ACTIVE) === \App\Models\Project::STATUS_COMPLETED;
+    @endphp
+
     <div class="bg-white rounded shadow p-6 mb-8">
         <h1 class="text-2xl font-bold mb-2">{{ $project->name }}</h1>
 
@@ -26,6 +30,7 @@
                     <span class="inline-flex items-center bg-gray-100 rounded px-2 py-0.5 ml-1 mb-1">
                         {{ $member->name ?? $member->email }}
                         @can('manageMembers', $project)
+                            @unless($isCompleted)
                             @if($member->id !== $project->manager_id)
                                 <form action="{{ route('projects.members.remove', [$project, $member]) }}" method="POST"
                                       onsubmit="return confirm('حذف این کاربر از پروژه؟')">
@@ -33,14 +38,32 @@
                                     <button type="submit" class="ml-1 text-red-600 hover:text-red-700 font-bold">×</button>
                                 </form>
                             @endif
+                            @endunless
                         @endcan
                     </span>
                 @empty
                     <span>—</span>
                 @endforelse
             </div>
+            @can('complete', $project)
+                @if(!$isCompleted)
+                    <div class="mt-4 border-t pt-4">
+                        <form method="POST" action="{{ route('projects.complete', $project) }}">
+                            @csrf
+                            <button
+                                type="submit"
+                                class="px-3 py-2 rounded bg-green-600 text-white hover:bg-green-700"
+                                onclick="return confirm('پروژه به وضعیت تمام شده تغییر کند؟');"
+                            >
+                                اتمام پروژه
+                            </button>
+                        </form>
+                    </div>
+                @endif 
+            @endcan
             {{-- فقط مسئول پروژه امکان مدیریت اعضا را ببیند --}}
             @can('manageMembers', $project)
+            @unless($isCompleted)
             <div class="mt-4 border-t pt-4">
                 {{-- افزودن عضو --}}
                 <form action="{{ route('projects.members.add', $project) }}" method="POST" class="flex items-center gap-2 mb-3">
@@ -54,6 +77,7 @@
                     <button class="px-3 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">افزودن</button>
                 </form>
             </div>
+            @endunless
             @endcan
 
             
@@ -66,16 +90,18 @@
     </div>
 
 
-    {{-- ایجاد تسک در مودال --}}
-    <div class="bg-white rounded shadow p-6 mb-6 flex items-center justify-between">
-        <div>
-            <h2 class="text-xl font-semibold">ایجاد تسک جدید</h2>
-            <p class="text-sm text-gray-600 mt-1">برای ثبت تسک جدید روی دکمه زیر کلیک کنید.</p>
+    @unless($isCompleted)
+        {{-- ایجاد تسک در مودال --}}
+        <div class="bg-white rounded shadow p-6 mb-6 flex items-center justify-between">
+            <div>
+                <h2 class="text-xl font-semibold">ایجاد تسک جدید</h2>
+                <p class="text-sm text-gray-600 mt-1">برای ثبت تسک جدید روی دکمه زیر کلیک کنید.</p>
+            </div>
+            <button type="button" id="openTaskModal" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
+                ایجاد تسک
+            </button>
         </div>
-        <button type="button" id="openTaskModal" class="px-4 py-2 rounded bg-blue-600 text-white hover:bg-blue-700">
-            ایجاد تسک
-        </button>
-    </div>
+    @endunless
 
     @php
         $taskStartValue = old('start_at', '');
@@ -94,6 +120,7 @@
         $hasTaskErrors = $errors->hasAny($taskErrorFields);
     @endphp
 
+    @unless($isCompleted)
     <div id="taskCreateModal" class="fixed inset-0 bg-black/50 z-[60] hidden items-center justify-center">
         <div class="bg-white w-11/12 md:w-3/4 max-h-[85vh] overflow-y-auto p-6 rounded shadow">
             <div class="flex items-center justify-between mb-4">
@@ -197,6 +224,7 @@
             </form>
         </div>
     </div>
+    @endunless
 
     {{-- فیلتر اولویت --}}
     <div class="flex items-center justify-between mb-3">
@@ -273,30 +301,36 @@
                         <a href="{{ route('projects.tasks.show', [$project, $task]) }}"
                            class="px-3 py-1 rounded bg-gray-100 text-gray-800 hover:bg-gray-200 text-sm">مشاهده</a>
 
-                        {{-- ویرایش --}}
-                        <a href="{{ route('projects.tasks.edit', [$project, $task]) }}"
-                           class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">ویرایش</a>
+                        @unless($isCompleted)
+                            {{-- ویرایش --}}
+                            <a href="{{ route('projects.tasks.edit', [$project, $task]) }}"
+                               class="px-3 py-1 rounded bg-blue-600 text-white hover:bg-blue-700 text-sm">ویرایش</a>
+                        @endunless
 
-                        {{-- تایید انجام --}}
-                        @if($task->status !== 'done')
-                            <form action="{{ route('projects.tasks.done', [$project, $task]) }}" method="POST"
-                                  onsubmit="return confirm('تسک انجام شد؟');">
-                                @csrf
-                                <button type="submit"
-                                        class="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700 text-sm">
-                                    تایید انجام ✅
+                        @unless($isCompleted)
+                            {{-- تایید انجام --}}
+                            @if($task->status !== 'done')
+                                <form action="{{ route('projects.tasks.done', [$project, $task]) }}" method="POST"
+                                      onsubmit="return confirm('تسک انجام شد؟');">
+                                    @csrf
+                                    <button type="submit"
+                                            class="px-3 py-1 rounded bg-green-600 text-white hover:bg-green-700 text-sm">
+                                        تایید انجام ✅
+                                    </button>
+                                </form>
+                            @endif
+                        @endunless
+
+                        @unless($isCompleted)
+                            {{-- حذف --}}
+                            <form action="{{ route('projects.tasks.destroy', [$project, $task]) }}" method="POST"
+                                  onsubmit="return confirm('حذف این تسک؟');">
+                                @csrf @method('DELETE')
+                                <button class="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 text-sm">
+                                    حذف
                                 </button>
                             </form>
-                        @endif
-
-                        {{-- حذف --}}
-                        <form action="{{ route('projects.tasks.destroy', [$project, $task]) }}" method="POST"
-                              onsubmit="return confirm('حذف این تسک؟');">
-                            @csrf @method('DELETE')
-                            <button class="px-3 py-1 rounded bg-red-600 text-white hover:bg-red-700 text-sm">
-                                حذف
-                            </button>
-                        </form>
+                        @endunless
                     </div>
                 </td>
 

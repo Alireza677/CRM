@@ -272,8 +272,7 @@
                                 alt="User avatar"
                                 class="h-8 w-8 rounded-full object-cover border border-gray-200"
                             >
-                            <span class="absolute bottom-0 right-0 h-2.5 w-2.5 rounded-full border border-gray-400 bg-white ring-2 ring-white"></span>
-                        </span>
+                            
                         <span class="hidden md:inline text-sm font-medium">
                             {{ $authUser->name }}
                         </span>

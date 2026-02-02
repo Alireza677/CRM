@@ -39,6 +39,10 @@ class TaskPolicy
      */
     public function comment(User $user, Task $task, Project $project): bool
     {
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return false;
+        }
+
         // همان منطق view کافی است
         return $this->view($user, $task, $project);
     }
@@ -50,11 +54,21 @@ class TaskPolicy
 
     public function update(User $user, Task $task, ?Project $project = null): bool
     {
+        $project ??= $task->project;
+        if ($project && $project->status === Project::STATUS_COMPLETED) {
+            return false;
+        }
+
         return $this->view($user, $task, $project);
     }
 
     public function delete(User $user, Task $task, ?Project $project = null): bool
     {
+        $project ??= $task->project;
+        if ($project && $project->status === Project::STATUS_COMPLETED) {
+            return false;
+        }
+
         return $this->view($user, $task, $project);
     }
 }

@@ -15,6 +15,10 @@ class TaskController extends Controller
     // ساخت تسک داخل صفحه پروژه
     public function store(Request $request, Project $project)
     {
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return back()->with('error', 'پروژه تمام شده است و امکان ثبت تسک وجود ندارد.');
+        }
+
         $validated = $request->validate([
             'title'       => ['required','string','max:255'],
             'description' => ['nullable','string'],
@@ -95,6 +99,10 @@ class TaskController extends Controller
     public function markDone(Request $request, Project $project, Task $task)
     {
         $this->authorize('view', $project);
+
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return back()->with('error', 'پروژه تمام شده است و امکان تغییر وضعیت تسک وجود ندارد.');
+        }
 
         // اطمینان از تعلق تسک به پروژه
         if ($task->project_id !== $project->id) {

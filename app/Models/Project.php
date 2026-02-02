@@ -9,7 +9,10 @@ class Project extends Model
 {
     use HasFactory;
 
-    protected $fillable = ['name','description','manager_id'];
+    public const STATUS_ACTIVE = 'active';
+    public const STATUS_COMPLETED = 'completed';
+
+    protected $fillable = ['name','description','manager_id','status'];
 
     // مسئول پروژه (یک کاربر)
     public function manager()
