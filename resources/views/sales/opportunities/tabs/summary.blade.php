@@ -33,18 +33,30 @@
     </div>
 
     {{-- یادداشت‌های مرتبط --}}
-    <div class="bg-blue-50 rounded-lg p-4 shadow-sm border border-blue-100 flex items-center justify-between">
+    @php
+        $latestNote = $opportunity->notes()->first();
+        $latestNoteBody = $latestNote?->display_body ?? $latestNote?->body;
+        $latestNotePreview = $latestNoteBody ? \Illuminate\Support\Str::limit((string) $latestNoteBody, 120) : null;
+    @endphp
+    <div class="summary-tab-link bg-blue-50 rounded-lg p-4 shadow-sm border border-blue-100 flex items-center justify-between cursor-pointer transition hover:shadow-md"
+         role="button" tabindex="0" data-card-tab="notes" aria-label="باز کردن تب یادداشت‌ها">
         <div>
             <h3 class="text-base font-semibold text-blue-800">یادداشت‌های مرتبط</h3>
             <p class="text-sm text-blue-700 mt-1">
                 تعداد یادداشت‌های ثبت‌شده: {{ $opportunity->notes?->count() ?? 0 }}
             </p>
+            @if($latestNotePreview)
+                <p class="text-xs text-blue-600 mt-2">
+                    {{ $latestNote?->author?->name ?? $latestNote?->user?->name ?? 'یادداشت' }}: {{ $latestNotePreview }}
+                </p>
+            @endif
         </div>
         <i class="fas fa-sticky-note text-3xl text-blue-400"></i>
     </div>
 
     {{-- وظایف / کارهای مرتبط --}}
-    <div class="bg-green-50 rounded-lg p-4 shadow-sm border border-green-100 flex items-center justify-between">
+    <div class="summary-tab-link bg-green-50 rounded-lg p-4 shadow-sm border border-green-100 flex items-center justify-between cursor-pointer transition hover:shadow-md"
+         role="button" tabindex="0" data-card-tab="updates" aria-label="باز کردن تب بروزرسانی‌ها">
         <div>
             <h3 class="text-base font-semibold text-green-800">کارهای مرتبط</h3>
             <p class="text-sm text-green-700 mt-1">
@@ -55,7 +67,8 @@
     </div>
 
     {{-- تماس‌ها --}}
-    <div class="bg-purple-50 rounded-lg p-4 shadow-sm border border-purple-100 flex items-center justify-between">
+    <div class="summary-tab-link bg-purple-50 rounded-lg p-4 shadow-sm border border-purple-100 flex items-center justify-between cursor-pointer transition hover:shadow-md"
+         role="button" tabindex="0" data-card-tab="calls" aria-label="باز کردن تب تماس‌های تلفنی">
         <div>
             <h3 class="text-base font-semibold text-purple-800">تماس‌ها</h3>
             <p class="text-sm text-purple-700 mt-1">
@@ -66,7 +79,8 @@
     </div>
 
     {{-- مخاطب مرتبط --}}
-    <div class="bg-yellow-50 rounded-lg p-4 shadow-sm border border-yellow-100 flex items-center justify-between">
+    <div class="summary-tab-link bg-yellow-50 rounded-lg p-4 shadow-sm border border-yellow-100 flex items-center justify-between cursor-pointer transition hover:shadow-md"
+         role="button" tabindex="0" data-card-tab="contacts" aria-label="باز کردن تب مخاطبین">
         <div>
             <h3 class="text-base font-semibold text-yellow-800">مخاطب مرتبط</h3>
             <p class="text-sm text-yellow-700 mt-1">
@@ -77,7 +91,8 @@
     </div>
 
     {{-- پیش‌فاکتورهای مرتبط --}}
-    <div class="bg-pink-50 rounded-lg p-4 shadow-sm border border-pink-100 flex items-center justify-between">
+    <div class="summary-tab-link bg-pink-50 rounded-lg p-4 shadow-sm border border-pink-100 flex items-center justify-between cursor-pointer transition hover:shadow-md"
+         role="button" tabindex="0" data-card-tab="proformas" aria-label="باز کردن تب پیش‌فاکتور">
         <div>
             <h3 class="text-base font-semibold text-pink-800">پیش‌فاکتورهای مرتبط</h3>
             <p class="text-sm text-pink-700 mt-1">
@@ -117,11 +132,12 @@
                         $amountText = is_null($row['amount'] ?? null)
                             ? '—'
                             : number_format((float) $row['amount'], 0, '.', ',') . ' ریال';
+                        $userName = trim((string) ($row['user_name'] ?? ''));
                     @endphp
 
                     <tr class="hover:bg-gray-50">
                         <td class="px-4 py-2 text-right text-gray-800">
-                            {{ $row['user_name'] ?? '—' }}
+                            {{ $userName !== '' ? $userName : '—' }}
                         </td>
 
                         <td class="px-4 py-2 text-right text-gray-700">

@@ -1,3 +1,7 @@
+@php
+    $organization = $organization ?? $model ?? null;
+@endphp
+
 <div class="bg-white rounded-lg shadow p-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-6">اطلاعات سازمان</h2>
 
@@ -48,6 +52,14 @@
         <div class="space-y-1">
             <dt class="text-gray-600">شهر</dt>
             <dd class="text-gray-900">{{ $organization->city ?: '-' }}</dd>
+        </div>
+
+        <div class="space-y-1">
+            <dt class="text-gray-600">واسطه/معرف</dt>
+            @php
+                $referrerName = trim(optional(optional($organization)->referrerContact)->first_name . ' ' . optional(optional($organization)->referrerContact)->last_name);
+            @endphp
+            <dd class="text-gray-900">{{ $referrerName !== '' ? $referrerName : '-' }}</dd>
         </div>
 
         <div class="space-y-1 sm:col-span-2 lg:col-span-3">

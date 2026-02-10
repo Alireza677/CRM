@@ -1,3 +1,8 @@
+@php $lead = $lead ?? $model ?? null; @endphp
+
+@if(!$lead)
+    <div class="text-sm text-gray-500">مخاطب مرتبط در دسترس نیست.</div>
+@else
 <div class="bg-white p-6 rounded shadow">
     <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-700">مخاطب مرتبط</h3>
@@ -90,3 +95,4 @@
     'contacts' => $contacts ?? collect(),
     'attachUrl' => $attachUrl
 ])
+@endif

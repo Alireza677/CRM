@@ -43,9 +43,11 @@
 
 @push('scripts')
 <script>
-function openLeadContactModal() {
+function openLeadContactModal(targetId = 'lead_contact_id', targetDisplay = 'lead_contact_display') {
   const modal = document.getElementById('leadContactModal');
   if (!modal) return;
+  modal.dataset.targetId = targetId;
+  modal.dataset.targetDisplay = targetDisplay;
   modal.classList.remove('hidden');
   modal.classList.add('flex');
   const input = document.getElementById('leadContactSearchInput');
@@ -64,8 +66,11 @@ function closeLeadContactModal() {
 }
 
 function selectLeadContact(id, name) {
-  const idInput = document.getElementById('lead_contact_id');
-  const nameInput = document.getElementById('lead_contact_display');
+  const modal = document.getElementById('leadContactModal');
+  const targetId = modal?.dataset?.targetId || 'lead_contact_id';
+  const targetDisplay = modal?.dataset?.targetDisplay || 'lead_contact_display';
+  const idInput = document.getElementById(targetId);
+  const nameInput = document.getElementById(targetDisplay);
   if (idInput) idInput.value = id || '';
   if (nameInput) nameInput.value = name || '';
   closeLeadContactModal();

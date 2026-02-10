@@ -198,7 +198,7 @@ class RolePermissionMatrixController extends Controller
         $all = Permission::orderBy('name')->get()->pluck('name')->all();
 
         // Standard actions & scopes (columns)
-        $defaultActions = ['view', 'create', 'update', 'delete', 'reassign', 'export', 'download'];
+        $defaultActions = ['view', 'create', 'update', 'delete', 'reassign', 'export', 'download', 'manage', 'sales', 'finance'];
         $scopes  = FormOptionsHelper::permissionScopes();
         $scopedColumns = ['view', 'create', 'update', 'delete'];
 

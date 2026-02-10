@@ -12,6 +12,7 @@ class ActivityReminder extends Model
 
     protected $fillable = [
         'activity_id',
+        'followup_id',
         'kind',             // relative | same_day
         'offset_minutes',   // for kind=relative (negative minutes before due)
         'time_of_day',      // for kind=same_day (HH:MM)
@@ -27,6 +28,7 @@ class ActivityReminder extends Model
     ];
 
     public function activity(): BelongsTo { return $this->belongsTo(Activity::class); }
+    public function followup(): BelongsTo { return $this->belongsTo(ActivityFollowup::class, 'followup_id'); }
     public function notifyUser(): BelongsTo { return $this->belongsTo(User::class, 'notify_user_id'); }
     public function creator(): BelongsTo { return $this->belongsTo(User::class, 'created_by_id'); }
 }

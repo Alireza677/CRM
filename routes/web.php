@@ -26,13 +26,16 @@ use App\Http\Controllers\SalesLeadController;
 use App\Http\Controllers\ProformaInvoiceController;
 use App\Http\Controllers\Sales\ContactImportController;
 use App\Http\Controllers\Sales\OpportunityController;
+use App\Http\Controllers\Sales\OpportunityFavoriteController;
 use App\Http\Controllers\Sales\OpportunityImportController;
 use App\Http\Controllers\Sales\ContactController;
 use App\Http\Controllers\Sales\ContactDuplicateController;
+use App\Http\Controllers\Sales\ContactNoteController;
 use App\Http\Controllers\Sales\ProformaController;
 use App\Http\Controllers\Sales\QuotationController;
 use App\Http\Controllers\Sales\OrganizationController;
 use App\Http\Controllers\Sales\OrganizationDuplicateController;
+use App\Http\Controllers\Sales\OrganizationNoteController;
 use App\Http\Controllers\Sales\AjaxCreateController;
 use App\Http\Controllers\Sales\DocumentController;
 use App\Http\Controllers\Inventory\ProductController;
@@ -77,6 +80,8 @@ use App\Http\Controllers\OnlineChatController;
 use App\Http\Controllers\Chat\ChatCallController;
 use App\Http\Controllers\MailController;
 use App\Http\Controllers\MailboxSettingsController;
+use App\Http\Controllers\WebPushSubscriptionController;
+use App\Http\Controllers\WebPushTestController;
 
 
 
@@ -182,6 +187,10 @@ Route::middleware(['auth'])->group(function () {
         Route::post('bulk-action', [NotificationController::class, 'bulkAction'])->name('bulkAction');
     });
 
+    // Web Push subscriptions
+    Route::post('/webpush/subscribe', [WebPushSubscriptionController::class, 'store'])->name('webpush.subscribe');
+    Route::post('/webpush/unsubscribe', [WebPushSubscriptionController::class, 'destroy'])->name('webpush.unsubscribe');
+
     // Internal chat (groups + messages)
     Route::prefix('chat')->name('chat.')->middleware('can:chat.view')->group(function () {
         Route::get('/', [OnlineChatController::class, 'index'])->name('index');
@@ -203,6 +212,12 @@ Route::middleware(['auth'])->group(function () {
 
         // فرصت‌های فروش
         // Opportunities (with permission middleware)
+        Route::get('opportunities/favorites', [OpportunityFavoriteController::class, 'index'])
+            ->name('opportunities.favorites.index');
+        Route::post('opportunities/{opportunity}/favorite', [OpportunityFavoriteController::class, 'store'])
+            ->name('opportunities.favorites.store');
+        Route::delete('opportunities/{opportunity}/favorite', [OpportunityFavoriteController::class, 'destroy'])
+            ->name('opportunities.favorites.destroy');
         Route::get('opportunities/create', [OpportunityController::class, 'create'])
             ->name('opportunities.create')
             ->middleware('can:opportunities.create');
@@ -229,6 +244,9 @@ Route::middleware(['auth'])->group(function () {
         Route::get('opportunities/import', [OpportunityImportController::class, 'create'])->name('opportunities.import');
         Route::post('opportunities/import/dry-run', [OpportunityImportController::class, 'dryRun'])->name('opportunities.import.dryrun');
         Route::post('opportunities/import/confirm', [OpportunityImportController::class, 'store'])->name('opportunities.import.store');
+        Route::post('opportunities/quick-store', [OpportunityController::class, 'quickStore'])
+            ->name('opportunities.quick-store')
+            ->middleware('can:opportunities.create');
 
         Route::resource('opportunities', OpportunityController::class)->names('opportunities')
             ->except(['create','store','edit','update','destroy']);
@@ -364,6 +382,8 @@ Route::middleware(['auth'])->group(function () {
         Route::delete('contacts/bulk-delete', [ContactController::class, 'bulkDelete'])
             ->name('contacts.bulk_delete');
         Route::get('contacts/{contact}/tab/{tab}', [ContactController::class, 'loadTab'])->name('contacts.tab');
+        Route::post('contacts/{contact}/notes', [ContactNoteController::class, 'store'])
+            ->name('contacts.notes.store');
 
         // AJAX lightweight create endpoints for inline modals
         Route::post('ajax/contacts', [AjaxCreateController::class, 'contact'])->name('ajax.contacts.store');
@@ -387,6 +407,8 @@ Route::middleware(['auth'])->group(function () {
             ->name('organizations.merge');
         Route::delete('organizations/bulk-delete', [OrganizationController::class, 'bulkDelete'])->name('organizations.bulkDelete'); // قبل از resource
         Route::get('organizations/{organization}/tab/{tab}', [OrganizationController::class, 'loadTab'])->name('organizations.tab');
+        Route::post('organizations/{organization}/notes', [OrganizationNoteController::class, 'store'])
+            ->name('organizations.notes.store');
         Route::resource('organizations', OrganizationController::class)->names('organizations');
 
         // پیش‌فاکتور
@@ -577,6 +599,7 @@ Route::middleware(['auth'])->group(function () {
             Route::post('/notifications/preview', [NotificationRuleController::class, 'preview'])->name('notifications.preview');
             Route::post('/notifications/email-preference', [NotificationRuleController::class, 'updateEmailPreference'])->name('notifications.email-preference');
             Route::post('/notifications/mute-all', [NotificationRuleController::class, 'updateMuteAll'])->name('notifications.mute-all');
+            Route::post('/notifications/followup-reminders', [NotificationRuleController::class, 'updateFollowupReminderSettings'])->name('notifications.followup-reminders');
             Route::post('/notifications/assets', [NotificationRuleController::class, 'updateAssets'])->name('notifications.assets.update');
             Route::delete('/notifications/assets', [NotificationRuleController::class, 'destroyAsset'])->name('notifications.assets.destroy');
             Route::post('/notifications', [NotificationRuleController::class, 'store'])->name('notifications.store');
@@ -614,9 +637,12 @@ Route::middleware(['auth'])->group(function () {
 
         // Projects
         Route::get('/projects',               [ProjectController::class, 'index'])->name('projects.index');
+        Route::get('/projects/archive',       [ProjectController::class, 'archive'])->name('projects.archive');
         Route::get('/projects/create',        [ProjectController::class, 'create'])->name('projects.create');
         Route::post('/projects',              [ProjectController::class, 'store'])->name('projects.store');
         Route::delete('/projects/bulk-destroy', [ProjectController::class, 'bulkDestroy'])->name('projects.bulkDestroy');
+        Route::get('/projects/{project}/edit', [ProjectController::class, 'edit'])->name('projects.edit');
+        Route::put('/projects/{project}',     [ProjectController::class, 'update'])->name('projects.update');
         Route::get('/projects/{project}',     [ProjectController::class, 'show'])->name('projects.show');
         Route::delete('/projects/{project}',  [ProjectController::class, 'destroy'])->name('projects.destroy');
         Route::post('/projects/{project}/complete', [ProjectController::class, 'complete'])->name('projects.complete');
@@ -766,6 +792,11 @@ Route::middleware(['auth'])->group(function () {
             Route::get('/admin/holidays/{holiday}', [HolidayController::class, 'show'])->name('holidays.show');
         });
     });
+
+    if (app()->isLocal()) {
+        Route::get('/dev/webpush', [WebPushTestController::class, 'index'])->name('dev.webpush.index');
+        Route::post('/dev/webpush/send', [WebPushTestController::class, 'send'])->name('dev.webpush.send');
+    }
 
 });
 

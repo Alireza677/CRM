@@ -4,6 +4,7 @@ namespace App\Support;
 
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
+use Morilog\Jalali\Jalalian;
 
 class NotificationPlaceholderRenderer
 {
@@ -147,6 +148,29 @@ class NotificationPlaceholderRenderer
             $act = $context['activity'] ?? null;
             $map['{activity_subject}'] = (string) ($act->subject ?? ('#'.($act->id ?? '')));
             $map['{due_at}'] = (string) ($act->due_at_jalali ?? $act->start_at_jalali ?? '');
+        }
+
+        if ($module === 'activities' && $event === 'followup.reminder') {
+            $act = $context['activity'] ?? null;
+            $followup = $context['followup'] ?? null;
+            $map['{activity_subject}'] = (string) ($act->subject ?? ('#'.($act->id ?? '')));
+            $map['{followup_title}'] = (string) ($followup->title ?? ('#'.($followup->id ?? '')));
+            try {
+                $dt = $followup?->followup_at ? Jalalian::fromCarbon($followup->followup_at)->format('Y/m/d H:i') : '';
+            } catch (\Throwable $e) {
+                $dt = (string) ($followup?->followup_at ?? '');
+            }
+            $map['{followup_at}'] = (string) $dt;
+        }
+
+        if ($module === 'projects' && $event === 'member.added') {
+            $project = $context['project'] ?? $context['model'] ?? null;
+            $member = $context['member'] ?? null;
+            $manager = $context['manager'] ?? ($project?->manager ?? null);
+
+            $map['{project_name}'] = (string) ($project->name ?? ('#'.($project->id ?? '')));
+            $map['{member_name}'] = (string) (optional($member)->name ?? ($context['member_name'] ?? ''));
+            $map['{manager_name}'] = (string) (optional($manager)->name ?? ($context['manager_name'] ?? ''));
         }
 
         if ($module === 'emails' && $event === 'received') {

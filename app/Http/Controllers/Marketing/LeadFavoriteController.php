@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Marketing;
 use App\Http\Controllers\Controller;
 use App\Http\Controllers\Concerns\LeadsBreadcrumbs;
 use App\Models\SalesLead;
+use App\Crud\Crud;
 use Illuminate\Http\Request;
 
 class LeadFavoriteController extends Controller
@@ -18,16 +19,7 @@ class LeadFavoriteController extends Controller
 
     public function index(Request $request)
     {
-        $user = $request->user();
-
-        $leads = $user->favoriteLeads()
-            ->with('assignedUser')
-            ->orderByDesc('lead_favorites.created_at')
-            ->paginate(10);
-
-        $leadTabCounts = SalesLead::tabCountsFor($request->user());
-
-        return view('marketing.leads.favorites', compact('leads', 'leadTabCounts'))
+        return Crud::index('leads', $request)
             ->with('breadcrumb', $this->leadsBreadcrumb([
                 ['title' => 'علاقه‌مندی‌ها'],
             ]));

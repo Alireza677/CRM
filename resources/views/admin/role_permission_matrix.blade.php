@@ -10,6 +10,9 @@
             'reassign' => 'واگذاری مجدد',
             'export' => 'خروجی',
             'download' => 'دانلود',
+            'manage' => 'مدیریت',
+            'sales' => 'گزارش فروش',
+            'finance' => 'گزارش مالی',
         ];
         $scopeLabels = \App\Helpers\FormOptionsHelper::permissionScopeLabels();
         // Helpers to localize role and module labels with fallback
@@ -66,9 +69,9 @@
                 </div>
             @endif
 
-            <div class="bg-white shadow-sm sm:rounded-lg">
-                <div class="p-4">
-                    <form method="POST" action="{{ route('roles.matrix.store') }}" x-data="permissionMatrix()" x-init="init()" @submit="dirty=false">
+            <div class="bg-white shadow-sm sm:rounded-lg h-[calc(100vh-12rem)] overflow-hidden">
+                <div class="p-4 h-full">
+                    <form method="POST" action="{{ route('roles.matrix.store') }}" x-data="permissionMatrix()" x-init="init()" @submit="dirty=false" class="flex flex-col h-full min-h-0">
                         @csrf
                         <input type="hidden" name="role_id" value="{{ $role?->id }}">
                         <input type="hidden" name="version" value="{{ $version }}">
@@ -84,7 +87,7 @@
                             </label>
                         </div>
 
-                        <div class="overflow-x-auto">
+                        <div class="flex-1 min-h-0 overflow-x-auto overflow-y-auto">
                             <table class="min-w-full border divide-y divide-gray-200">
                                 <thead class="bg-gray-50 sticky top-0 z-10">
                                 <tr>

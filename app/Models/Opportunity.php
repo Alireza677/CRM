@@ -15,6 +15,8 @@ use App\Models\RoleAssignment;
 use App\Models\Activity as CrmActivity;
 use App\Services\ActivityGuard;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Relations\BelongsToMany;
+use App\Models\User;
 
 class Opportunity extends Model
 {
@@ -100,6 +102,27 @@ class Opportunity extends Model
     public function assignedTo()
     {
         return $this->belongsTo(User::class, 'assigned_to');
+    }
+
+    public function favoritedBy(): BelongsToMany
+    {
+        return $this->belongsToMany(User::class, 'opportunity_favorites', 'opportunity_id', 'user_id')
+            ->withTimestamps();
+    }
+
+    public function isFavoritedBy(?User $user): bool
+    {
+        if (!$user) {
+            return false;
+        }
+
+        if ($this->relationLoaded('favoritedBy')) {
+            return $this->favoritedBy->contains('id', $user->id);
+        }
+
+        return $this->favoritedBy()
+            ->where('user_id', $user->id)
+            ->exists();
     }
 
     public function roleAssignments(): MorphMany
@@ -207,6 +230,19 @@ class Opportunity extends Model
     public function activities()
     {
         return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
+    }
+
+    public static function tabCountsFor(User $user): array
+    {
+        $base = self::query();
+        if (method_exists($base->getModel(), 'scopeVisibleFor')) {
+            $base->visibleFor($user, 'opportunities');
+        }
+
+        return [
+            'all' => (int) $base->count(),
+            'favorites' => (int) $user->favoriteOpportunities()->count(),
+        ];
     }
 
     public static function stageOptions(): array

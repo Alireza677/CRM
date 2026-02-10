@@ -1,5 +1,10 @@
 @php
+    $lead = $lead ?? $model ?? null;
     use App\Models\SalesLead;
+
+    if (!$lead) {
+        $lead = new SalesLead();
+    }
 
     $statusValue = $lead->getStatusValue();
     $isFinalized = in_array($statusValue, [SalesLead::STATUS_CONVERTED, SalesLead::STATUS_DISCARDED], true);
@@ -115,11 +120,21 @@
     </div>
 
     {{-- یادداشت‌ها --}}
+    @php
+        $latestLeadNote = $lead->lastNote()->first();
+        $latestLeadNoteBody = $latestLeadNote?->display_body ?? $latestLeadNote?->body;
+        $latestLeadNotePreview = $latestLeadNoteBody ? \Illuminate\Support\Str::limit((string) $latestLeadNoteBody, 120) : null;
+    @endphp
     <div class="bg-blue-50 rounded-lg p-4 shadow flex items-center justify-between hover:shadow-md transition cursor-pointer"
          data-card-tab="notes" role="button" tabindex="0">
         <div>
             <h3 class="text-lg font-semibold text-blue-800">یادداشت‌ها</h3>
             <p class="text-sm text-blue-600 mt-1">تعداد یادداشت‌ها: {{ $lead->notes_count ?? 0 }}</p>
+            @if($latestLeadNotePreview)
+                <p class="text-xs text-blue-600 mt-2">
+                    {{ $latestLeadNote?->author?->name ?? $latestLeadNote?->user?->name ?? 'یادداشت' }}: {{ $latestLeadNotePreview }}
+                </p>
+            @endif
         </div>
         <i class="fas fa-sticky-note text-3xl text-blue-400"></i>
     </div>

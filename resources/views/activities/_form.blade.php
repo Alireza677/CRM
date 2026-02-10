@@ -11,6 +11,7 @@
   $duePrefill   = $dueValue   ? '1' : '0';
 
   $assignedDefault = old('assigned_to_id', $isEdit ? $activity->assigned_to_id : auth()->id());
+  $creatorDefault  = old('created_by_id',  $isEdit ? $activity->created_by_id  : auth()->id());
   $statusDefault   = old('status',   $isEdit ? $activity->status   : '');
   $priorityDefault = old('priority', $isEdit ? $activity->priority : '');
 
@@ -64,6 +65,7 @@
       id="start_at_display"
       class="persian-datepicker w-full rounded-md border p-2"
       data-alt-field="start_at"
+      data-timepicker="1"
       data-prefill="{{ $startPrefill }}"
       autocomplete="off"
       value="">
@@ -78,6 +80,7 @@
       id="due_at_display"
       class="persian-datepicker w-full rounded-md border p-2"
       data-alt-field="due_at"
+      data-timepicker="1"
       data-prefill="{{ $duePrefill }}"
       autocomplete="off"
       value="">
@@ -130,15 +133,30 @@
   <script>window.__activityReminders = @json($reminderPresets);</script>
 @endif
 
-{{-- ارجاع به --}}
-<div>
-  <label class="block text-sm mb-1">ارجاع به</label>
-  <select name="assigned_to_id" class="w-full rounded-md border p-2" required>
-    @foreach($users as $u)
-      <option value="{{ $u->id }}" {{ (string)$assignedDefault === (string)$u->id ? 'selected' : '' }}>{{ $u->name }}</option>
-    @endforeach
-  </select>
-  @error('assigned_to_id')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
+{{-- ارجاع به / ایجادکننده --}}
+<div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+  <div>
+    <label class="block text-sm mb-1">ارجاع به</label>
+    <select name="assigned_to_id" class="w-full rounded-md border p-2" required>
+      @foreach($users as $u)
+        <option value="{{ $u->id }}" {{ (string)$assignedDefault === (string)$u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+      @endforeach
+    </select>
+    @error('assigned_to_id')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
+  </div>
+
+  <div>
+    <label class="block text-sm mb-1">ایجادکننده</label>
+    <select name="created_by_id" class="w-full rounded-md border p-2" {{ $isEdit ? 'disabled' : '' }}>
+      @foreach($users as $u)
+        <option value="{{ $u->id }}" {{ (string)$creatorDefault === (string)$u->id ? 'selected' : '' }}>{{ $u->name }}</option>
+      @endforeach
+    </select>
+    @if($isEdit)
+      <input type="hidden" name="created_by_id" value="{{ $creatorDefault }}">
+    @endif
+    @error('created_by_id')<p class="text-red-600 text-sm">{{ $message }}</p>@enderror
+  </div>
 </div>
 
 {{-- مربوط به (انتخاب با مودال‌ها) --}}

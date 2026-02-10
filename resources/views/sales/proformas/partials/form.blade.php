@@ -129,6 +129,7 @@
             <input type="hidden" id="opportunity_id" name="opportunity_id"
                 value="{{ old('opportunity_id', $oppIdDefault) }}">
             <button type="button" onclick="openOpportunityModal()" class="text-blue-600 text-xl hover:text-blue-800 transition">🔍</button>
+            <button type="button" onclick="openOpportunityCreateModal()" class="text-green-600 text-xl hover:text-green-800 transition" title="ایجاد فرصت فروش">+</button>
         </div>
         @error('opportunity_id')
             <div class="text-red-500 text-xs mt-2">{{ $message }}</div>

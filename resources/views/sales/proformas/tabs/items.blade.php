@@ -1,3 +1,9 @@
+@php $proforma = $proforma ?? $model ?? null; @endphp
+
+@if(!$proforma)
+    <div class="text-sm text-gray-500">آیتم‌های پیش‌فاکتور در دسترس نیست.</div>
+@else
+    @php ob_start(); @endphp
 <div class="bg-white p-4 md:p-6 rounded-lg">
     <h3 class="text-lg font-semibold text-gray-700 mb-4">
         آیتم‌های ثبت‌شده در پیش‌فاکتور
@@ -87,3 +93,13 @@
         </div>
     @endif
 </div>
+    @php
+        $__html = ob_get_clean();
+        $blocks = [[
+            'type' => 'html',
+            'html' => $__html,
+            'class' => 'md:col-span-2 lg:col-span-3 p-0 bg-transparent border-0 shadow-none rounded-none',
+        ]];
+    @endphp
+    @include('crud.partials.cards', ['blocks' => $blocks])
+@endif

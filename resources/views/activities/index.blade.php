@@ -1,45 +1,62 @@
 @extends('layouts.app')
 
-@section('title', 'فهرست وظایف')
-
 @section('content')
-<div class="max-w-7xl mx-auto p-4" dir="rtl">
-
-  <div class="flex items-center justify-between mb-4">
-    <h1 class="text-2xl font-semibold">فعالیت ها</h1>
-    <a href="{{ route('activities.create') }}"
-       class="inline-flex items-center px-3 py-2 rounded-md bg-blue-600 text-white hover:bg-blue-700">
-      + ایجاد فعالیت
-    </a>
+<div class="px-6 h-[calc(100vh-140px)] flex flex-col gap-4 overflow-hidden" dir="rtl">
+  <div class="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+    <div class="text-right">
+      <h1 class="text-lg font-bold text-gray-800">فعالیت‌ها</h1>
+      <div class="text-xs text-gray-500">{{ $activities->total() }} مورد</div>
+    </div>
+    <div class="flex flex-wrap justify-end gap-2">
+      <a href="{{ route('activities.create') }}"
+         class="inline-flex items-center h-9 px-4 bg-blue-600 text-white rounded-md hover:bg-blue-700">
+        + ایجاد فعالیت
+      </a>
+    </div>
   </div>
 
-  {{-- فیلتر ساده --}}
-<form method="GET" 
-      class="bg-white rounded-lg shadow p-3 mb-4 flex flex-wrap items-center gap-3">
+  <div class="flex flex-wrap items-center justify-between gap-3">
+    {{-- فیلتر ساده --}}
+    <form id="filters-form" method="GET" class="bg-white rounded-lg shadow p-3 flex flex-wrap items-center gap-3">
+      <input type="hidden" name="per_page" value="{{ request('per_page', 15) }}">
 
-  <input type="text" name="q" value="{{ request('q') }}" 
-         placeholder="جست‌وجو در موضوع"
-         class="rounded-md border p-2 flex-1 min-w-[150px]">
+      <input type="text" name="q" value="{{ request('q') }}"
+             placeholder="جست‌وجو در موضوع"
+             class="rounded-md border p-2 flex-1 min-w-[150px]">
 
-  <select name="status" class="rounded-md border p-2">
-    <option value="">همه وضعیت‌ها</option>
-    <option value="not_started" @selected(request('status')==='not_started')>شروع نشده</option>
-    <option value="in_progress" @selected(request('status')==='in_progress')>در حال انجام</option>
-    <option value="completed"   @selected(request('status')==='completed')>تکمیل شده</option>
-    <option value="scheduled"   @selected(request('status')==='scheduled')>برنامه‌ریزی شده</option>
-  </select>
+      <select name="status" class="rounded-md border p-2">
+        <option value="">همه وضعیت‌ها</option>
+        <option value="not_started" @selected(request('status')==='not_started')>شروع نشده</option>
+        <option value="in_progress" @selected(request('status')==='in_progress')>در حال انجام</option>
+        <option value="completed"   @selected(request('status')==='completed')>تکمیل شده</option>
+        <option value="scheduled"   @selected(request('status')==='scheduled')>برنامه‌ریزی شده</option>
+      </select>
 
-  <select name="priority" class="rounded-md border p-2">
-    <option value="">همه اولویت‌ها</option>
-    <option value="normal" @selected(request('priority')==='normal')>معمولی</option>
-    <option value="medium" @selected(request('priority')==='medium')>متوسط</option>
-    <option value="high"   @selected(request('priority')==='high')>زیاد</option>
-  </select>
+      <select name="priority" class="rounded-md border p-2">
+        <option value="">همه اولویت‌ها</option>
+        <option value="normal" @selected(request('priority')==='normal')>معمولی</option>
+        <option value="medium" @selected(request('priority')==='medium')>متوسط</option>
+        <option value="high"   @selected(request('priority')==='high')>زیاد</option>
+      </select>
 
-  <button class="rounded-md bg-gray-800 text-white px-3 py-2">
-    اعمال فیلتر
-  </button>
-</form>
+      <button class="rounded-md bg-gray-800 text-white px-3 py-2">
+        اعمال فیلتر
+      </button>
+    </form>
+
+    <form id="per-page-form" method="GET" class="flex items-center gap-2">
+      <input type="hidden" name="q" value="{{ request('q') }}">
+      <input type="hidden" name="status" value="{{ request('status') }}">
+      <input type="hidden" name="priority" value="{{ request('priority') }}">
+      <label class="text-xs text-gray-500">تعداد در صفحه</label>
+      <select name="per_page" class="rounded-md border border-gray-200 bg-white px-2 py-1 text-xs">
+        @foreach([15, 30, 50] as $size)
+          <option value="{{ $size }}" @selected((int) request('per_page', 15) === $size)>{{ $size }}</option>
+        @endforeach
+      </select>
+      <div class="text-xs text-gray-500">صفحه {{ $activities->currentPage() }} از {{ $activities->lastPage() }}</div>
+    </form>
+  </div>
 
 
   @php
@@ -56,8 +73,9 @@
     ];
   @endphp
 
-  <div class="bg-white rounded-lg shadow overflow-x-auto">
-    <table class="min-w-full text-sm">
+  <div class="flex-1 min-h-0 overflow-auto">
+    <div class="bg-white rounded-lg shadow overflow-x-auto">
+      <table class="min-w-full text-sm">
       <thead class="bg-gray-50 text-gray-700">
         <tr>
           <th class="px-3 py-2 text-right">موضوع</th>
@@ -132,13 +150,51 @@
           </tr>
         @endforelse
       </tbody>
-    </table>
+      </table>
+    </div>
   </div>
 
   {{-- صفحه‌بندی --}}
   @if(method_exists($activities, 'links'))
-    <div class="mt-4">{{ $activities->withQueryString()->links() }}</div>
+    <div class="shrink-0 border-t border-gray-200 bg-white py-2">
+      {{ $activities->withQueryString()->links() }}
+    </div>
   @endif
 
 </div>
+
+<script>
+  document.addEventListener('DOMContentLoaded', () => {
+    const perPageSelect = document.querySelector('#per-page-form select[name="per_page"]');
+    if (perPageSelect && perPageSelect.form) {
+      perPageSelect.addEventListener('change', () => perPageSelect.form.submit());
+    }
+
+    const filtersForm = document.getElementById('filters-form');
+    if (filtersForm) {
+      const filterFields = filtersForm.querySelectorAll('select, input[type="text"]');
+      filterFields.forEach((field) => {
+        if (field.tagName === 'SELECT') {
+          field.addEventListener('change', () => filtersForm.submit());
+          return;
+        }
+
+        let timer = null;
+        const submitLater = () => {
+          clearTimeout(timer);
+          timer = setTimeout(() => filtersForm.submit(), 400);
+        };
+
+        field.addEventListener('input', submitLater);
+        field.addEventListener('change', submitLater);
+        field.addEventListener('keydown', (event) => {
+          if (event.key === 'Enter') {
+            event.preventDefault();
+            filtersForm.submit();
+          }
+        });
+      });
+    }
+  });
+</script>
 @endsection

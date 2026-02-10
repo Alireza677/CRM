@@ -1,3 +1,9 @@
+@php $proforma = $proforma ?? $model ?? null; @endphp
+
+@if(!$proforma)
+    <div class="text-sm text-gray-500">اطلاعات پیش‌فاکتور در دسترس نیست.</div>
+@else
+    @php ob_start(); @endphp
 {{-- هشدار وضعیت تأیید --}}
 @if($pending)
     <div class="p-4 bg-amber-50 border border-amber-200 text-amber-800 rounded-lg flex items-start gap-3">
@@ -260,3 +266,13 @@ document.addEventListener('DOMContentLoaded', function () {
     });
 });
 </script>
+    @php
+        $__html = ob_get_clean();
+        $blocks = [[
+            'type' => 'html',
+            'html' => $__html,
+            'class' => 'md:col-span-2 lg:col-span-3 p-0 bg-transparent border-0 shadow-none rounded-none',
+        ]];
+    @endphp
+    @include('crud.partials.cards', ['blocks' => $blocks])
+@endif

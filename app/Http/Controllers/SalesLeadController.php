@@ -24,6 +24,7 @@ use Illuminate\Support\Carbon;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\Log;
 use App\Services\DuplicateMobileFinder;
+use App\Crud\Crud;
 class SalesLeadController extends Controller
 {
     use LeadsBreadcrumbs;
@@ -37,64 +38,12 @@ class SalesLeadController extends Controller
 
     public function index(Request $request)
     {
-        $query = SalesLead::visibleFor(auth()->user(), 'leads')
-            ->with('assignedUser')
-            ->activeListing();
-
-
-        $this->applyLeadFilters($request, $query);
-
-        $listingData = $this->prepareLeadListingData($request, $query);
-        $tabCounts = SalesLead::tabCountsFor($request->user());
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('marketing.leads.partials.rows', [
-                    'leads' => $listingData['leads'],
-                    'favoriteLeadIds' => $listingData['favoriteLeadIds'],
-                ])->render(),
-                'pagination' => view('marketing.leads.partials.pagination', [
-                    'leads' => $listingData['leads'],
-                ])->render(),
-            ]);
-        }
-
-        return view('marketing.leads.index', array_merge($listingData, [
-            'leadListingRoute' => 'marketing.leads.index',
-            'isJunkListing' => false,
-            'leadTabCounts' => $tabCounts,
-        ]))->with('breadcrumb', $this->leadsBreadcrumb([], false));
+        return Crud::index('leads', $request);
     }
 
-   public function junk(Request $request)
+    public function junk(Request $request)
 {
-    $query = SalesLead::visibleFor(auth()->user(), 'leads')
-        ->with('assignedUser')
-        ->junkListing();
-
-    // در لیست سرکاری‌ها فیلتر وضعیت غیرفعال می‌ماند
-    $this->applyLeadFilters($request, $query, false);
-
-    $listingData = $this->prepareLeadListingData($request, $query);
-    $tabCounts = SalesLead::tabCountsFor($request->user());
-
-    if ($request->ajax()) {
-        return response()->json([
-            'rows' => view('marketing.leads.partials.rows', [
-                'leads' => $listingData['leads'],
-                'favoriteLeadIds' => $listingData['favoriteLeadIds'],
-            ])->render(),
-            'pagination' => view('marketing.leads.partials.pagination', [
-                'leads' => $listingData['leads'],
-            ])->render(),
-        ]);
-    }
-
-    return view('marketing.leads.index', array_merge($listingData, [
-        'leadListingRoute' => 'sales.leads.junk',
-        'isJunkListing' => true,
-        'leadTabCounts' => $tabCounts,
-    ]))->with('breadcrumb', $this->leadsBreadcrumb([
+    return \App\Crud\Crud::index('leads', $request)->with('breadcrumb', $this->leadsBreadcrumb([
         ['title' => 'سرکاری‌ها'],
     ], false));
 }
@@ -205,57 +154,9 @@ class SalesLeadController extends Controller
 
     public function converted(Request $request)
     {
-        $query = SalesLead::visibleFor(auth()->user(), 'leads')
-            ->with(['assignedUser', 'convertedOpportunity'])
-            ->convertedListing();
-
-        $this->applyLeadFilters($request, $query);
-
-        $perPageOptions = [20, 50, 100, 200];
-        $perPage = (int) $request->input('per_page', 20);
-        if (! in_array($perPage, $perPageOptions, true)) {
-            $perPage = 20;
-        }
-
-        $leads = $query->latest('converted_at')->paginate($perPage)->appends($request->query());
-
-        $favoriteLeadIds = [];
-        if ($request->user()) {
-            $favoriteLeadIds = \DB::table('lead_favorites')
-                ->where('user_id', $request->user()->id)
-                ->whereIn('lead_id', $leads->pluck('id'))
-                ->pluck('lead_id')
-                ->toArray();
-        }
-
-        $users = User::all();
-        $leadSources = \App\Helpers\FormOptionsHelper::leadSources();
-        $leadTabCounts = SalesLead::tabCountsFor($request->user());
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('marketing.leads.partials.converted-rows', [
-                    'leads' => $leads,
-                    'favoriteLeadIds' => $favoriteLeadIds,
-                ])->render(),
-                'pagination' => view('marketing.leads.partials.pagination', [
-                    'leads' => $leads,
-                ])->render(),
-            ]);
-        }
-
-        return view('marketing.leads.converted', compact(
-            'leads',
-            'users',
-            'leadSources',
-            'favoriteLeadIds',
-            'perPage',
-            'perPageOptions',
-            'leadTabCounts'
-        ))->with('breadcrumb', $this->leadsBreadcrumb([
+        return \App\Crud\Crud::index('leads', $request)->with('breadcrumb', $this->leadsBreadcrumb([
             ['title' => 'سرنخ‌های تبدیل‌شده'],
         ], false));
-
     }
 
    public function create(Request $request)
@@ -342,6 +243,7 @@ class SalesLeadController extends Controller
             'website' => 'nullable|url|max:255',
             'create_contact' => 'nullable|boolean',
             'contact_id' => 'nullable|exists:contacts,id',
+            'referrer_contact_id' => 'nullable|exists:contacts,id',
             'confirm_use_existing_contact' => 'nullable|boolean',
             'existing_contact_id' => 'nullable|exists:contacts,id',
             'lead_source' => ['required', 'string', \Illuminate\Validation\Rule::in(array_keys(FormOptionsHelper::leadSources()))],
@@ -422,6 +324,9 @@ class SalesLeadController extends Controller
         }
 
         $selectedContactId = $validated['contact_id'] ?? null;
+        if (array_key_exists('referrer_contact_id', $validated) && empty($validated['referrer_contact_id'])) {
+            $validated['referrer_contact_id'] = null;
+        }
         if ($confirmUseExistingContact) {
             $confirmedContact = null;
             if ($existingContactId) {
@@ -479,7 +384,8 @@ class SalesLeadController extends Controller
         }
 
 
-        $shouldCreateContact = empty($selectedContactId) && (bool) ($validated['create_contact'] ?? false);
+        // Always create a contact from lead data when no contact is selected.
+        $shouldCreateContact = empty($selectedContactId);
 
         $validated['contact_id'] = $selectedContactId ? (int) $selectedContactId : null;
         unset($validated['create_contact']);
@@ -927,8 +833,12 @@ public function bulkDelete(Request $request)
     $users = User::all();
     $referrals = $users;
     $hasRecentActivity = $lead->hasRecentActivity();
+    $contacts = Contact::select('id', 'first_name', 'last_name', 'mobile')
+        ->orderBy('last_name')
+        ->orderBy('first_name')
+        ->get();
 
-    return view('marketing.leads.edit', compact('lead', 'users', 'referrals', 'hasRecentActivity'))
+    return view('marketing.leads.edit', compact('lead', 'users', 'referrals', 'hasRecentActivity', 'contacts'))
         ->with('breadcrumb', $this->leadsBreadcrumb([
             ['title' => 'ویرایش سرنخ'],
         ]));
@@ -991,6 +901,7 @@ public function update(Request $request, SalesLead $lead)
 
         'assigned_to' => 'nullable|exists:users,id',
         'referred_to' => 'nullable|exists:users,id',
+        'referrer_contact_id' => 'nullable|exists:contacts,id',
 
         'lead_date' => 'required|date',
         'next_follow_up_date' => [
@@ -1197,23 +1108,10 @@ public function update(Request $request, SalesLead $lead)
         ->with('success', 'سرنخ فروش با موفقیت حذف شد.');
 }
 
-public function show(SalesLead $lead)
-{
-    $lead->load(['lastNote', 'assignedTo']);
-    $lead->loadCount(['notes', 'activities']);
-    $lead->jalali_created_at = DateHelper::toJalali($lead->created_at);
-    $lead->jalali_updated_at = DateHelper::toJalali($lead->updated_at);
-
-    $rotationRemainingSeconds = $this->rotationRemainingSeconds($lead);
-
-    // ✓ این خط اضافه شد تا فقط کاربرانی که نام کاربری دارند برگردند
-    $allUsers = User::whereNotNull('username')->get();
-
-    return view('marketing.leads.show', compact('lead', 'allUsers', 'rotationRemainingSeconds'))
-        ->with('breadcrumb', $this->leadsBreadcrumb([
-            ['title' => 'جزئیات سرنخ'],
-        ]));
-}
+    public function show(SalesLead $lead, Request $request)
+    {
+        return Crud::show('leads', $lead, $request);
+    }
 
 
     public function loadTab(SalesLead $lead, $tab)

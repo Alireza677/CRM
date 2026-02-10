@@ -1,3 +1,7 @@
+@php
+    $contact = $contact ?? $model ?? null;
+@endphp
+
 <div class="bg-white rounded-lg shadow p-6">
     <h2 class="text-lg font-semibold text-gray-800 mb-6">اطلاعات مخاطب</h2>
 

@@ -6,11 +6,8 @@
 
 @php($contact = $contact ?? new \App\Models\Contact())
 @php($selectedOrganizationId = old('organization_id', $contact->organization_id ?? ''))
-@php($showNewOrganization = old('create_new_org', request('create_new_org', '0')) === '1')
-
 <input type="hidden" name="opportunity_id" value="{{ request('opportunity_id', $contact->opportunity_id ?? '') }}">
 <input type="hidden" name="lead_id" value="{{ request('lead_id', '') }}">
-<input type="hidden" name="create_new_org" id="create_new_org_flag" value="{{ ($showNewOrganization ?? false) ? 1 : 0 }}">
 
 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
     <div>
@@ -87,26 +84,23 @@
     <div class="md:col-span-3">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
-                <label for="organization_id" class="block text-sm font-medium text-gray-700">سازمان</label>
-                <div class="flex gap-2">
-                    <select name="organization_id" id="organization_id"
-                            class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500">
-                        <option value="">انتخاب از فهرست سازمان‌ها</option>
-                        @foreach($organizations as $org)
-                            <option value="{{ $org->id }}" {{ (string)($selectedOrganizationId ?? '') === (string)$org->id ? 'selected' : '' }}>
-                                {{ $org->name }}
-                            </option>
-                        @endforeach
-                    </select>
+                <label for="organization_name" class="block text-sm font-medium text-gray-700">سازمان</label>
+                <div class="flex items-center gap-2">
+                    <input type="text" id="organization_name" name="organization_name"
+                           class="mt-1 block w-full rounded-md border border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:ring focus:ring-blue-200 focus:border-blue-400"
+                           placeholder="انتخاب سازمان"
+                           readonly
+                           onclick="openOrganizationModal()"
+                           value="{{ old('organization_name', optional($contact->organization ?? null)->name) }}">
+                    <input type="hidden" id="organization_id" name="organization_id"
+                           value="{{ $selectedOrganizationId }}">
                     <button type="button"
-                            id="toggle-new-org"
-                            class="mt-1 inline-flex items-center justify-center rounded-md border border-indigo-200 bg-white px-3 text-lg font-bold text-indigo-600 hover:bg-indigo-50 focus:outline-none focus:ring-2 focus:ring-indigo-400"
-                            aria-expanded="{{ ($showNewOrganization ?? false) ? 'true' : 'false' }}"
-                            title="ایجاد سازمان جدید">
-                        +
+                            onclick="openCreateOrganizationModal(event)"
+                            class="mt-1 inline-flex items-center justify-center w-9 h-9 rounded-md border border-gray-300 bg-white text-green-600 text-xl hover:bg-green-50"
+                            title="ایجاد سازمان جدید">+
                     </button>
                 </div>
-                <p class="text-xs text-gray-500 mt-1">برای افزودن سازمان جدید روی دکمه + کلیک کنید.</p>
+                <p class="text-xs text-gray-500 mt-1">برای انتخاب سازمان روی فیلد کلیک کنید یا با + سازمان جدید بسازید.</p>
                 @error('organization_id')
                     <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                 @enderror
@@ -184,47 +178,6 @@
     </div>
 </div>
 
-<div id="new-org-fields"
-     class="mt-6 rounded-2xl border border-indigo-100 bg-indigo-50/40 p-4 space-y-4 {{ ($showNewOrganization ?? false) ? '' : 'hidden' }}">
-    <div class="flex items-center justify-between">
-        <h3 class="text-base font-semibold text-indigo-700">ایجاد سازمان جدید</h3>
-        <span class="text-xs text-gray-500">شهر، استان و تلفن از اطلاعات مخاطب استفاده می‌شوند.</span>
-    </div>
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div class="md:col-span-2 lg:col-span-3">
-            <label for="new_org_name" class="block text-sm font-medium text-gray-700">نام سازمان <span class="text-red-500">*</span></label>
-            <input type="text" name="new_org_name" id="new_org_name"
-                   value="{{ old('new_org_name') }}"
-                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                   placeholder="نام سازمان جدید را وارد کنید">
-            @error('new_org_name')
-                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div>
-            <label for="new_org_website" class="block text-sm font-medium text-gray-700">وب‌سایت</label>
-            <input type="text" name="new_org_website" id="new_org_website"
-                   value="{{ old('new_org_website') }}"
-                   class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                   placeholder="https://example.com">
-            @error('new_org_website')
-                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-
-        <div class="md:col-span-2">
-            <label for="new_org_address" class="block text-sm font-medium text-gray-700">آدرس سازمان</label>
-            <textarea name="new_org_address" id="new_org_address" rows="3"
-                      class="mt-1 block w-full rounded-md border-gray-300 shadow-sm focus:border-indigo-500 focus:ring-indigo-500"
-                      placeholder="آدرس دقیق سازمان">{{ old('new_org_address') }}</textarea>
-            @error('new_org_address')
-                <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
-            @enderror
-        </div>
-    </div>
-</div>
-
 <div class="flex justify-end space-x-4 rtl:space-x-reverse mt-6">
     <a href="{{ route('sales.contacts.index') }}"
        class="inline-flex items-center px-4 py-2 rounded-md bg-gray-200 text-gray-800 hover:bg-gray-300">
@@ -234,6 +187,98 @@
             class="inline-flex items-center px-4 py-2 rounded-md bg-indigo-600 text-white hover:bg-indigo-700">
         ذخیره
     </button>
+</div>
+
+{{-- مودال انتخاب سازمان --}}
+<div id="organizationModal"
+     class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white w-3/4 max-h-[80vh] overflow-y-auto p-4 rounded shadow">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">انتخاب سازمان</h3>
+            <button type="button" onclick="closeOrganizationModal()" class="text-gray-500 hover:text-red-500 text-lg">&times;</button>
+        </div>
+
+        <div class="mb-3">
+            <input id="organizationSearchInput" type="text" placeholder="جستجوی نام سازمان یا شماره تماس…"
+                   class="w-full rounded-lg border border-gray-300 px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
+                   autocomplete="off">
+            <div class="mt-1 text-xs text-gray-500">با تایپ، فهرست فیلتر می‌شود.</div>
+        </div>
+
+        <div class="border border-gray-200 rounded overflow-hidden">
+            <table class="w-full text-sm text-right">
+                <thead class="bg-gray-100 text-gray-700 sticky top-0">
+                <tr>
+                    <th class="px-4 py-2 border-b border-gray-300">نام سازمان</th>
+                    <th class="px-4 py-2 border-b border-gray-300">شماره تماس</th>
+                </tr>
+                </thead>
+                <tbody id="organizationTableBody">
+                @foreach($organizations as $org)
+                    <tr class="cursor-pointer hover:bg-gray-50"
+                        data-name="{{ $org->name }}"
+                        data-phone="{{ preg_replace('/\D+/', '', (string)($org->phone ?? '')) }}"
+                        onclick="selectOrganization({{ $org->id }}, @js($org->name))">
+                        <td class="px-4 py-2 border-b border-gray-200">{{ $org->name }}</td>
+                        <td class="px-4 py-2 border-b border-gray-200 text-gray-500">{{ $org->phone ?? '—' }}</td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+            <div id="organizationNoResults" class="hidden p-4 text-center text-sm text-gray-500">موردی یافت نشد.</div>
+        </div>
+    </div>
+</div>
+
+{{-- ایجاد سازمان جدید --}}
+<div id="createOrganizationModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center">
+    <div class="bg-white w-11/12 md:w-3/4 max-h-[85vh] overflow-y-auto p-6 rounded-lg shadow">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-lg font-semibold">ایجاد سازمان جدید</h3>
+            <button type="button" onclick="closeCreateOrganizationModal()" class="text-gray-500 hover:text-red-600 text-2xl">&times;</button>
+        </div>
+        <div id="createOrganizationForm">
+            @csrf
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm text-gray-700">نام سازمان</label>
+                    <input type="text" name="name" class="mt-1 block w-full border rounded-md p-2" required />
+                    <div class="text-red-500 text-xs mt-1" data-error="name"></div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-700">شماره تلفن</label>
+                    <input type="text" name="phone" class="mt-1 block w-full border rounded-md p-2" />
+                    <div class="text-red-500 text-xs mt-1" data-error="phone"></div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-700">وبسایت</label>
+                    <input type="url" name="website" class="mt-1 block w-full border rounded-md p-2" />
+                    <div class="text-red-500 text-xs mt-1" data-error="website"></div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-700">استان</label>
+                    <select name="state" id="co_stateSelect" class="mt-1 block w-full border rounded-md p-2">
+                        <option value="">انتخاب استان</option>
+                        @foreach(\App\Helpers\FormOptionsHelper::iranLocations() as $st => $cities)
+                            <option value="{{ $st }}">{{ $st }}</option>
+                        @endforeach
+                    </select>
+                    <div class="text-red-500 text-xs mt-1" data-error="state"></div>
+                </div>
+                <div>
+                    <label class="block text-sm text-gray-700">شهر</label>
+                    <select name="city" id="co_citySelect" class="mt-1 block w-full border rounded-md p-2" disabled>
+                        <option value="">ابتدا استان را انتخاب کنید</option>
+                    </select>
+                    <div class="text-red-500 text-xs mt-1" data-error="city"></div>
+                </div>
+            </div>
+            <div class="flex justify-end gap-3 mt-6">
+                <button type="button" class="px-4 py-2 rounded bg-gray-200" onclick="closeCreateOrganizationModal()">انصراف</button>
+                <button type="button" class="px-4 py-2 rounded bg-indigo-600 text-white" onclick="submitCreateOrganization()">ذخیره</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
@@ -273,80 +318,189 @@ document.addEventListener('DOMContentLoaded', function () {
             fillCities(this.value);
         });
     }
+});
+</script>
 
-    const newOrgSection = document.getElementById('new-org-fields');
-    const toggleBtn = document.getElementById('toggle-new-org');
-    const flagInput = document.getElementById('create_new_org_flag');
+<script>
+function toggleModal(modalId, open = true, focusInputId = null) {
+    const el = document.getElementById(modalId);
+    if (!el) return;
+    if (open) {
+        el.classList.remove('hidden');
+        el.classList.add('flex');
+        el.setAttribute('aria-hidden', 'false');
+        if (focusInputId) setTimeout(() => {
+            const t = document.getElementById(focusInputId);
+            if (t) t.focus();
+        }, 10);
+    } else {
+        el.classList.add('hidden');
+        el.classList.remove('flex');
+        el.setAttribute('aria-hidden', 'true');
+    }
+}
+
+function openOrganizationModal(){ toggleModal('organizationModal', true, 'organizationSearchInput'); }
+function closeOrganizationModal(){ toggleModal('organizationModal', false); }
+
+function openCreateOrganizationModal(e){
+    if (e) { e.stopPropagation?.(); e.preventDefault?.(); }
+    toggleModal('createOrganizationModal', true);
+}
+function closeCreateOrganizationModal(){ toggleModal('createOrganizationModal', false); }
+
+function selectOrganization(id, name){
+    const orgId = document.getElementById('organization_id');
+    const orgName = document.getElementById('organization_name');
     const companyInput = document.getElementById('company_input');
+    if (orgId) orgId.value = id ?? '';
+    if (orgName) orgName.value = name ?? '';
+    if (companyInput) companyInput.value = name ?? '';
+    closeOrganizationModal();
+}
 
-    function toggleNewOrg(forceState) {
-        if (!newOrgSection || !flagInput) {
+function normalizeDigits(str){
+    if (!str) return '';
+    return String(str)
+        .replace(/[\u06F0-\u06F9]/g, (d) => String(d.charCodeAt(0) - 0x06F0))
+        .replace(/[\u0660-\u0669]/g, (d) => String(d.charCodeAt(0) - 0x0660));
+}
+function stripSeparators(str){
+    return String(str)
+        .replace(/[\u200C\u200B\u00A0\s]/g,'')
+        .replace(/[\,\u060C]/g,'')
+        .replace(/[\.\u066B\u066C]/g,'');
+}
+function normalizeQuery(raw){
+    const lowered = String(raw || '').toLowerCase().trim();
+    const digitsFixed = normalizeDigits(lowered);
+    return { text: digitsFixed, numeric: stripSeparators(digitsFixed) };
+}
+
+function makeLiveFilter({inputId, tbodyId, noResultId}) {
+    const $input = document.getElementById(inputId);
+    const $tbody = document.getElementById(tbodyId);
+    const $noRes = document.getElementById(noResultId);
+    if (!$input || !$tbody) return;
+
+    let t = null;
+    $input.addEventListener('input', () => { clearTimeout(t); t = setTimeout(applyFilter, 150); });
+
+    function applyFilter() {
+        const { text, numeric } = normalizeQuery($input.value);
+        const rows = Array.from($tbody.querySelectorAll('tr'));
+
+        if (!text) {
+            rows.forEach(tr => tr.classList.remove('hidden'));
+            if ($noRes) $noRes.classList.add('hidden');
             return;
         }
-        const shouldShow = typeof forceState === 'boolean'
-            ? forceState
-            : newOrgSection.classList.contains('hidden');
-        if (shouldShow) {
-            newOrgSection.classList.remove('hidden');
-            flagInput.value = '1';
-            toggleBtn?.classList.add('bg-indigo-100', 'text-indigo-700');
-            if (window.jQuery) {
-                const $select = window.jQuery('#organization_id');
-                if ($select.length) {
-                    $select.val(null).trigger('change');
-                }
-            } else {
-                const select = document.getElementById('organization_id');
-                if (select) {
-                    select.value = '';
-                }
-            }
-        } else {
-            newOrgSection.classList.add('hidden');
-            flagInput.value = '0';
-            toggleBtn?.classList.remove('bg-indigo-100', 'text-indigo-700');
+
+        let visible = 0;
+        const isPureNumber = /^[0-9]+$/.test(numeric);
+        rows.forEach(tr => {
+            const name  = String(tr.getAttribute('data-name')  || '').toLowerCase();
+            const phone = String(tr.getAttribute('data-phone') || '');
+            const byName  = name.includes(text);
+            const byPhone = isPureNumber ? phone.includes(numeric) : (numeric ? phone.includes(numeric) : false);
+            const match = byName || byPhone;
+            if (match) { tr.classList.remove('hidden'); visible++; } else { tr.classList.add('hidden'); }
+        });
+
+        if ($noRes) (visible === 0) ? $noRes.classList.remove('hidden') : $noRes.classList.add('hidden');
+    }
+}
+
+document.addEventListener('DOMContentLoaded', function () {
+    makeLiveFilter({ inputId:'organizationSearchInput', tbodyId:'organizationTableBody', noResultId:'organizationNoResults' });
+
+    const modalState = document.getElementById('co_stateSelect');
+    const modalCity = document.getElementById('co_citySelect');
+    const locations = @json(\App\Helpers\FormOptionsHelper::iranLocations());
+
+    function fillModalCities(state) {
+        if (!modalCity) return;
+        modalCity.innerHTML = '';
+        if (!state || !locations[state]) {
+            modalCity.disabled = true;
+            modalCity.insertAdjacentHTML('beforeend', '<option value=\"\">ابتدا استان را انتخاب کنید</option>');
+            return;
         }
-        if (toggleBtn) {
-            toggleBtn.setAttribute('aria-expanded', shouldShow ? 'true' : 'false');
-        }
+        modalCity.disabled = false;
+        modalCity.insertAdjacentHTML('beforeend', '<option value=\"\">شهر را انتخاب کنید</option>');
+        locations[state].forEach(function (city) {
+            const opt = document.createElement('option');
+            opt.value = city;
+            opt.textContent = city;
+            modalCity.appendChild(opt);
+        });
     }
 
-    toggleBtn?.addEventListener('click', function () {
-        const nextState = newOrgSection?.classList.contains('hidden');
-        toggleNewOrg(nextState);
-    });
-
-    if (flagInput && flagInput.value === '1') {
-        toggleNewOrg(true);
-    }
-
-    if (window.jQuery && window.jQuery.fn && window.jQuery.fn.select2) {
-        const $orgSelect = window.jQuery('#organization_id');
-        if ($orgSelect.length) {
-            $orgSelect.select2({
-                dir: 'rtl',
-                width: '100%',
-                allowClear: true,
-                placeholder: 'انتخاب یا جستجوی سازمان',
-                language: {
-                    noResults: () => 'هیچ سازمانی یافت نشد',
-                    inputTooShort: () => 'برای جستجو تایپ کنید...',
-                },
-            });
-
-            $orgSelect.on('select2:select', function (event) {
-                if (companyInput && flagInput.value !== '1') {
-                    companyInput.value = (event.params.data.text || '').trim();
-                }
-            });
-
-            $orgSelect.on('select2:clear', function () {
-                if (companyInput && flagInput.value !== '1') {
-                    companyInput.value = '';
-                }
-            });
-        }
+    if (modalState && modalCity) {
+        modalState.addEventListener('change', function () {
+            fillModalCities(this.value);
+        });
     }
 });
+
+async function submitAjaxForm(formId, url, onSuccess){
+    const form = document.getElementById(formId);
+    if (!form) return;
+    form.querySelectorAll('[data-error]').forEach(el => el.textContent = '');
+    const fd = form instanceof HTMLFormElement ? new FormData(form) : new FormData();
+    if (!(form instanceof HTMLFormElement)) {
+        form.querySelectorAll('input, select, textarea').forEach((el) => {
+            if (!el.name) return;
+            if (el.type === 'checkbox' || el.type === 'radio') {
+                if (!el.checked) return;
+            }
+            fd.append(el.name, el.value);
+        });
+    }
+
+    try{
+        const res  = await fetch(url, { method: 'POST', headers: { 'Accept': 'application/json' }, body: fd });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok){
+            if (data && data.errors){
+                Object.entries(data.errors).forEach(([k, msgs]) => {
+                    const holder = form.querySelector(`[data-error="${k}"]`);
+                    if (holder) holder.textContent = Array.isArray(msgs) ? msgs[0] : String(msgs);
+                });
+            } else {
+                alert('Request failed. Please try again.');
+            }
+            return;
+        }
+        onSuccess && onSuccess(data);
+    } catch(e){
+        console.error(e);
+        alert('Network error. Please try again.');
+    }
+}
+
+function submitCreateOrganization(){
+    submitAjaxForm('createOrganizationForm', '{{ route('sales.ajax.organizations.store') }}', function(data){
+        if (data && data.id){
+            const oId = document.getElementById('organization_id');
+            const oName = document.getElementById('organization_name');
+            const companyInput = document.getElementById('company_input');
+            if (oId) oId.value = data.id;
+            if (oName) oName.value = data.name;
+            if (companyInput) companyInput.value = data.name;
+        }
+        closeCreateOrganizationModal();
+    });
+}
+
+window.submitCreateOrganization = submitCreateOrganization;
+
+document.addEventListener('click', function(e){
+    ['organizationModal','createOrganizationModal'].forEach(mid => {
+        const m = document.getElementById(mid);
+        if (m && !m.classList.contains('hidden') && e.target === m) toggleModal(mid, false);
+    });
+});
+document.addEventListener('keydown', function(e){ if (e.key === 'Escape') { closeOrganizationModal(); closeCreateOrganizationModal(); } });
 </script>
 @endpush

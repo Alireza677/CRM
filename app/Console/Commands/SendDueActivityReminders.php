@@ -5,10 +5,12 @@ namespace App\Console\Commands;
 use App\Models\ActivityReminder;
 use App\Models\Activity;
 use App\Models\User;
+use App\Models\ActivityFollowup;
 use App\Services\Notifications\NotificationRouter;
 use Carbon\Carbon;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
+use Morilog\Jalali\Jalalian;
 
 class SendDueActivityReminders extends Command
 {
@@ -20,7 +22,7 @@ class SendDueActivityReminders extends Command
         $now = Carbon::now();
 
         $reminders = ActivityReminder::query()
-            ->with(['activity.assignedTo','notifyUser'])
+            ->with(['activity.assignedTo','notifyUser','followup'])
             ->whereNull('sent_at')
             ->limit(500)
             ->get();
@@ -35,9 +37,20 @@ class SendDueActivityReminders extends Command
             if ($now->lt($scheduledAt)) { continue; } // not yet
 
             try {
-                $url = route('activities.show', $activity);
-                $subject = 'یادآوری وظیفه: ' . (string) ($activity->subject ?? ('#'.$activity->id));
-                $body = 'زمان موعد: ' . (string) ($activity->due_at_jalali ?? $activity->start_at_jalali ?? '') . "\n" . 'برای مشاهده کلیک کنید.';
+                $followup = $rem->followup;
+                $isFollowup = $followup instanceof ActivityFollowup;
+                $event = $isFollowup ? 'followup.reminder' : 'reminder.due';
+                $url = route('activities.show', $activity) . ($isFollowup ? '#followups' : '');
+
+                if ($isFollowup) {
+                    $followupAt = $followup->followup_at ? Jalalian::fromCarbon($followup->followup_at)->format('Y/m/d H:i') : '';
+                    $title = (string) ($followup->title ?? ('#'.$followup->id));
+                    $subject = 'یادآوری پیگیری: ' . $title;
+                    $body = 'زمان پیگیری: ' . $followupAt . "\n" . 'برای مشاهده کلیک کنید.';
+                } else {
+                    $subject = 'یادآوری وظیفه: ' . (string) ($activity->subject ?? ('#'.$activity->id));
+                    $body = 'زمان موعد: ' . (string) ($activity->due_at_jalali ?? $activity->start_at_jalali ?? '') . "\n" . 'برای مشاهده کلیک کنید.';
+                }
 
                 // Prefer NotificationRouter if available/configured
                 try {
@@ -48,13 +61,18 @@ class SendDueActivityReminders extends Command
                             'url' => $url,
                             'actor' => auth()->user(),
                         ];
-                        $router->route('activities', 'reminder.due', $ctx, [$user]);
+                        if ($isFollowup) {
+                            $ctx['followup'] = $followup;
+                            $ctx['followup_at'] = $followup?->followup_at;
+                            $ctx['followup_title'] = $followup?->title;
+                        }
+                        $router->route('activities', $event, $ctx, [$user]);
                     } else {
-                        $user->notify(new \App\Notifications\CustomRoutedNotification('activities','reminder.due',$subject,$body,$url));
+                        $user->notify(new \App\Notifications\CustomRoutedNotification('activities', $event, $subject, $body, $url));
                     }
                 } catch (\Throwable $e) {
                     // Fallback to database-only
-                    $user->notify(new \App\Notifications\CustomRoutedNotification('activities','reminder.due',$subject,$body,$url));
+                    $user->notify(new \App\Notifications\CustomRoutedNotification('activities', $event, $subject, $body, $url));
                 }
 
                 $rem->sent_at = now();

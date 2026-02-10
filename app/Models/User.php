@@ -6,12 +6,13 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
+use NotificationChannels\WebPush\HasPushSubscriptions;
 use Spatie\Permission\Traits\HasRoles;
 
 class User extends Authenticatable
 {
     /** @use HasFactory<\Database\Factories\UserFactory> */
-    use HasFactory, Notifiable, HasRoles; // ← تکراری نبودن HasRoles
+    use HasFactory, Notifiable, HasRoles, HasPushSubscriptions; // ← تکراری نبودن HasRoles
 
     protected $guard_name = 'web';
 
@@ -95,6 +96,13 @@ class User extends Authenticatable
     public function favoriteLeads()
     {
         return $this->belongsToMany(SalesLead::class, 'lead_favorites', 'user_id', 'lead_id')
+            ->withTimestamps()
+            ->withPivot('created_at');
+    }
+
+    public function favoriteOpportunities()
+    {
+        return $this->belongsToMany(Opportunity::class, 'opportunity_favorites', 'user_id', 'opportunity_id')
             ->withTimestamps()
             ->withPivot('created_at');
     }

@@ -1,3 +1,9 @@
+@php $proforma = $proforma ?? $model ?? null; @endphp
+
+@if(!$proforma)
+    <div class="text-sm text-gray-500">تاییدیه‌ها در دسترس نیست.</div>
+@else
+    @php ob_start(); @endphp
 <div class="bg-white rounded-lg border border-gray-200 shadow-sm p-4">
     <h3 class="text-md font-semibold mb-3">
         وضعیت مراحل تأیید پیش‌فاکتور
@@ -78,6 +84,16 @@
         </div>
     @endif
 </div>
+    @php
+        $__html = ob_get_clean();
+        $blocks = [[
+            'type' => 'html',
+            'html' => $__html,
+            'class' => 'md:col-span-2 lg:col-span-3 p-0 bg-transparent border-0 shadow-none rounded-none',
+        ]];
+    @endphp
+    @include('crud.partials.cards', ['blocks' => $blocks])
+@endif
 
 {{-- دکمه‌های تصمیم تأیید/رد --}}
 @if($showDecisionButtons)

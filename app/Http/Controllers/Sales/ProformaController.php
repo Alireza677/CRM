@@ -27,6 +27,7 @@ use App\Helpers\NotificationHelper;
 use App\Helpers\DateHelper;
 use Spatie\Activitylog\Models\Activity;
 use Exception;
+use App\Crud\Crud;
 
 class ProformaController extends Controller
 {
@@ -38,104 +39,7 @@ class ProformaController extends Controller
 
     public function index(Request $request)
     {
-        // ???????
-        $search          = trim((string) $request->get('search', ''));
-        $organizationId  = $request->get('organization_id');
-        $stage           = $request->get('stage');
-        $assignedTo      = $request->get('assigned_to');
-
-        // ???????? ???? ???? ???????
-        $organizations = Organization::select('id', 'name')->orderBy('name')->get();
-        $users         = User::select('id', 'name')->orderBy('name')->get();
-
-        // ???? ?????
-        $query = Proforma::visibleFor(auth()->user(), 'proformas')
-            ->with(['organization', 'contact', 'opportunity', 'assignedTo'])
-            ->orderByDesc('proforma_date')
-            ->orderByDesc('created_at');
-
-        // ????? ??? ?????/??????/?????
-        $query->when($search !== '', function ($q) use ($search) {
-            $q->where(function ($qq) use ($search) {
-                $qq->where('subject', 'like', "%{$search}%")
-                   ->orWhereHas('organization', function ($q2) use ($search) {
-                       $q2->where('name', 'like', "%{$search}%");
-                   })
-                   ->orWhereHas('contact', function ($q3) use ($search) {
-                       $q3->where('first_name', 'like', "%{$search}%")
-                          ->orWhere('last_name',  'like', "%{$search}%");
-                       // ->orWhere('full_name', 'like', "%{$search}%");
-                   });
-            });
-        });
-
-        // ????? ????? ??????????
-        $query->when($request->filled('proforma_number'), function ($q) use ($request) {
-            $term = trim((string) $request->get('proforma_number', ''));
-            if ($term === '') {
-                return;
-            }
-            $q->where('proforma_number', 'like', "%{$term}%");
-        });
-
-        // ????? ??????
-        $query->when(!empty($organizationId), function ($q) use ($organizationId) {
-            $q->where('organization_id', (int) $organizationId);
-        });
-
-        $query->when($request->filled('contact'), function ($q) use ($request) {
-            $term = trim((string) $request->get('contact', ''));
-            if ($term === '') {
-                return;
-            }
-            $q->where(function ($cq) use ($term) {
-                $cq->whereHas('contact', function ($q2) use ($term) {
-                    $q2->where('first_name', 'like', "%{$term}%")
-                       ->orWhere('last_name', 'like', "%{$term}%");
-                })->orWhere('contact_name', 'like', "%{$term}%");
-            });
-        });
-
-        // فیلتر فرصت
-        $query->when($request->filled('opportunity'), function ($q) use ($request) {
-            $term = trim((string) $request->get('opportunity', ''));
-            if ($term === '') {
-                return;
-            }
-            $q->whereHas('opportunity', function ($oq) use ($term) {
-                $oq->where('name', 'like', "%{$term}%");
-            });
-        });
-
-        // فیلتر مرحله
-        $query->when(!empty($stage), function ($q) use ($stage) {
-            $q->where('proforma_stage', $stage);
-        });
-
-        // فیلتر ارجاع‌به (کاربر)
-        $query->when(!empty($assignedTo), function ($q) use ($assignedTo) {
-            $q->where('assigned_to', (int) $assignedTo);
-        });
-
-        // صفحه‌بندی + حفظ کوئری‌استرینگ
-        // Page size (per-page) with whitelist
-        $allowedPerPage = [10, 25, 50, 100];
-        $perPage = (int) $request->get('per_page', 10);
-        if (!in_array($perPage, $allowedPerPage, true)) {
-            $perPage = 10;
-        }
-
-        // Paginate with current query string preserved
-        $proformas = $query->paginate($perPage)->withQueryString();
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('sales.proformas.partials.rows', compact('proformas'))->render(),
-                'pagination' => view('sales.proformas.partials.pagination', compact('proformas'))->render(),
-            ]);
-        }
-
-        return view('sales.proformas.index', compact('proformas', 'organizations', 'users'));
+        return Crud::index('proformas', $request);
     }
 
     public function create(Request $request)
@@ -290,7 +194,7 @@ class ProformaController extends Controller
                 'city'              => 'nullable|string|max:255',
                 'state'             => 'nullable|string|max:255',
                 'assigned_to'       => 'required|exists:users,id',
-                'opportunity_id'    => 'nullable|exists:opportunities,id',
+                'opportunity_id'    => 'required|exists:opportunities,id',
 
                 // محصولات
                 'products'                 => 'nullable|array',
@@ -552,91 +456,9 @@ class ProformaController extends Controller
 
 
 
-    public function show(Proforma $proforma)
+    public function show(Proforma $proforma, Request $request)
     {
-        $proforma->load([
-            'organization', 'contact', 'opportunity', 'assignedTo',
-            'items',
-            'approvals.approver',   // O"OñOUO O3UOO3O¦U. U,O_UOU.UOU? approvals
-            'opportunity.documents',
-            'notes.user',
-        ]);
-
-        // 1) OU_Oñ O_Oñ OªO_U^U, approvals OñUcU^OñO_UO O"O U^OO1UOO¦ A®pendingA¯ O"OñOUO UcOOñO"Oñ O-OOOñ U^OªU^O_ O_OOñO_OO UØU.OU+ OñO OO3O¦U?OO_UØ UcU+
-        $approval = $proforma->approvals()
-            ->where('user_id', auth()->id())
-            ->where('status', 'pending')
-            ->first();
-
-        $pendingApproval = $proforma->approvals
-            ->where('status', 'pending')
-            ->first();
-
-        $pendingApproverName = $pendingApproval?->approver?->name;
-        $pending             = $pendingApproval;
-
-        $stageKey   = $proforma->approval_stage ?? $proforma->proforma_stage ?? null;
-        $stageLabel = \App\Helpers\FormOptionsHelper::proformaStages()[$stageKey] ?? 'U+OU.O"rOæ';
-
-        try {
-            $shamsiDate = ($proforma->proforma_date instanceof \Carbon\Carbon)
-                ? Jalalian::fromCarbon($proforma->proforma_date)->format('Y/m/d')
-                : 'U+OU.O"rOæ';
-        } catch (\Throwable $e) {
-            $shamsiDate = 'U+OU.O"rOæ';
-        }
-
-        // 2) O_Oñ O¨UOOñ OUOU+ OæU^OñO¦OO OOý U,U^OU+UOU+ OO¦U^U.OO3UOU^U+ U.O-OO3O"UØ UcU+ UcUØ U+U^O"O¦ U+UØ UcO3UO OO3O¦
-        if (empty($pendingApproverName)) {
-            $stage = $proforma->approval_stage ?? $proforma->proforma_stage;
-
-            if ($stage === 'send_for_approval') {
-                $rule = AutomationRule::with(['approvers.user'])
-                    ->where('proforma_stage', 'send_for_approval')
-                    ->first();
-
-                if ($rule) {
-                    $pendingApproverId = null;
-
-                    if (empty($proforma->first_approved_by)) {
-                        // UØU+U^Oý U.OñO-U,UØ OU^U, O¨OœUOUOO_ OU+OªOU. U+O'O_UØ
-                        $pendingApproverId = optional($rule->approvers->firstWhere('priority', 1))->user_id;
-                    } elseif (empty($proforma->approved_by)) {
-                        // U.OñO-U,UØ OU^U, O¨OœUOUOO_ O'O_UØ OU.O U+UØOUOUO U+O'O_UØ
-                        $pendingApproverId =
-                            optional($rule->approvers->firstWhere('priority', 2))->user_id
-                            ?? $rule->emergency_approver_id;
-                    }
-
-                    $pendingApproverName = $pendingApproverId
-                        ? optional(User::find($pendingApproverId))->name
-                        : null;
-                }
-            }
-        }
-
-        $approvalViewData = $this->buildProformaApprovalViewData($proforma);
-        if (!empty($pendingApproverName) && empty($approvalViewData['pendingApproverName'] ?? null)) {
-            $approvalViewData['pendingApproverName'] = $pendingApproverName;
-        }
-
-        $updates = Activity::with('causer')
-            ->where('subject_type', Proforma::class)
-            ->where('subject_id', $proforma->id)
-            ->latest()
-            ->get();
-
-        $documents = optional($proforma->opportunity)->documents ?? collect();
-        $allUsers  = User::whereNotNull('username')->get();
-
-        return view(
-            'sales.proformas.show',
-            array_merge(
-                compact('proforma', 'approval', 'pendingApproverName', 'pending', 'stageKey', 'stageLabel', 'shamsiDate', 'updates', 'documents', 'allUsers'),
-                $approvalViewData
-            )
-        );
-
+        return Crud::show('proformas', $proforma, $request);
     }
 
     public function storeNote(Request $request, Proforma $proforma)

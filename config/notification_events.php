@@ -118,6 +118,34 @@ return [
                         'conditions' => false,
                     ],
                 ],
+                'followup.reminder' => [
+                    'label' => 'یادآوری پیگیری',
+                    'default_channels' => ['database'],
+                    'placeholders' => ['{activity_subject}', '{followup_title}', '{followup_at}'],
+                    'default_subject' => 'یادآوری پیگیری: {followup_title}',
+                    'default_body' => 'زمان پیگیری: {followup_at}',
+                    'supports' => [
+                        'channel_templates' => true,
+                        'conditions' => false,
+                    ],
+                ],
+            ],
+        ],
+
+        'projects' => [
+            'label' => 'پروژه‌ها',
+            'events' => [
+                'member.added' => [
+                    'label' => 'افزوده شدن به پروژه',
+                    'default_channels' => ['database'],
+                    'placeholders' => ['{project_name}', '{member_name}', '{manager_name}'],
+                    'default_subject' => 'به پروژه «{project_name}» اضافه شدید',
+                    'default_body' => 'شما به پروژه «{project_name}» اضافه شدید. مسئول پروژه: {manager_name}',
+                    'supports' => [
+                        'channel_templates' => true,
+                        'conditions' => false,
+                    ],
+                ],
             ],
         ],
 

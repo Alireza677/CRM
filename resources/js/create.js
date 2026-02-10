@@ -94,6 +94,9 @@
     
         const altId = $ui.data('alt-field');
         const $alt = altId ? $('#' + altId) : null;
+        const prefill = String($ui.data('prefill') ?? '').trim();
+        const allowInitial = prefill === '1' || ($alt && ($alt.val() || '').trim());
+        let userSelected = false;
     
         try { $ui.persianDatepicker('destroy'); } catch (e) {}
     
@@ -101,13 +104,26 @@
           format: 'YYYY/MM/DD HH:mm',
           initialValue: false,
           autoClose: true,
-          observer: true,
+          observer: false,
           calendar: {
             persian:   { locale: 'fa', leapYearMode: 'astronomical' },
             gregorian: { locale: 'en' }
           },
           timePicker: { enabled: true, step: 1, meridiem: { enabled: false } },
+          formatter: function (unix) {
+            if (!allowInitial && !userSelected) return '';
+            return new persianDate(unix).format('YYYY/MM/DD HH:mm');
+          },
           onSelect: function (unix) {
+            userSelected = true;
+            // onSelect happens before formatter gets a chance to show the value (first pick),
+            // so we set the visible input here to avoid the "second pick" issue.
+            try {
+              const p = new persianDate(unix);
+              const formatted = p.format('YYYY/MM/DD HH:mm');
+              $ui.val(formatted);
+              $ui.attr('value', formatted);
+            } catch (e) {}
             if (!$alt) return;
             try {
               const g = new persianDate(unix).toCalendar('gregorian');
@@ -121,8 +137,26 @@
                 pad(dt.getHours()) + ':' + pad(dt.getMinutes()) + ':' + pad(dt.getSeconds())
               );
             }
+          },
+          onShow: function () {
+            if (!allowInitial && !userSelected) {
+              $ui.val('');
+              $ui.attr('value', '');
+            }
           }
         });
+
+        // در حالت ایجاد، اگر مقدار اولیه نداریم، فیلد را خالی نگه دار (جلوگیری از نمایش تاریخ امروز)
+        if (!allowInitial) {
+          $ui.val('');
+          $ui.attr('value', '');
+          setTimeout(() => {
+            if (!allowInitial && !userSelected) {
+              $ui.val('');
+              $ui.attr('value', '');
+            }
+          }, 0);
+        }
     
         // اگر hidden مقدار گرگوریان دارد، UI را شمسی/ساعت‌دار پر کن (برای ویرایش یا old())
         if ($alt && ($alt.val() || '').trim()) {

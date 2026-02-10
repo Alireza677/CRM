@@ -105,9 +105,27 @@
     <div>
         <label for="stage" class="block font-medium text-sm text-gray-700 required">مرحله فروش</label>
         @php
-            $stage = old('stage', $opportunity->getRawOriginal('stage') ?? '');
             $stageOptions = \App\Helpers\FormOptionsHelper::opportunityStages();
-            $originalStageValue = strtolower((string) ($opportunity->getRawOriginal('stage') ?? ''));
+            $stage = old('stage');
+            $stageRawNormalized = null;
+
+            if (!$stage && isset($opportunity)) {
+                $stageRaw = $opportunity->getRawOriginal('stage') ?? null;
+                $stageRawNormalized = is_string($stageRaw) ? trim($stageRaw) : $stageRaw;
+
+                if ($stageRawNormalized !== null && $stageRawNormalized !== '') {
+                    if (array_key_exists($stageRawNormalized, $stageOptions)) {
+                        $stage = $stageRawNormalized;
+                    } else {
+                        $foundKey = collect($stageOptions)->search(
+                            fn ($label) => trim((string) $label) === (string) $stageRawNormalized
+                        );
+                        if ($foundKey !== false) $stage = $foundKey;
+                    }
+                }
+            }
+
+            $originalStageValue = strtolower((string) ($stage ?? $stageRawNormalized ?? ''));
         @endphp
         <select name="stage" id="stage" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" data-original-value="{{ $originalStageValue }}">
             <option value="">انتخاب کنید...</option>
@@ -175,7 +193,14 @@
 
 <div>
     <label for="relationship_owner_user_id" class="block font-medium text-sm text-gray-700">مالک اصلی فرصت</label>
-    @php $relationshipOwnerSelected = old('relationship_owner_user_id', $opportunity?->getRoleUserId('relationship_owner') ?? ''); @endphp
+    @php
+        $relationshipOwnerSelected = old('relationship_owner_user_id');
+        if (($relationshipOwnerSelected === null || $relationshipOwnerSelected === '') && isset($opportunity)) {
+            $relationshipOwnerSelected = $opportunity->getRoleUserId('relationship_owner')
+                ?? $opportunity->assigned_to
+                ?? '';
+        }
+    @endphp
     <select id="relationship_owner_user_id" name="relationship_owner_user_id" class="mt-1 block w-full border-gray-300 rounded-md shadow-sm" @disabled($lockRelationshipOwner)>
         <option value="">انتخاب کنید</option>
         @foreach($users as $user)

@@ -35,4 +35,9 @@ class ActivityFollowup extends Model
     {
         return $this->belongsTo(User::class, 'assigned_to_id');
     }
+
+    public function reminders()
+    {
+        return $this->hasMany(ActivityReminder::class, 'followup_id');
+    }
 }

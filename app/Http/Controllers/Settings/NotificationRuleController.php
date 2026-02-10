@@ -19,6 +19,7 @@ use Illuminate\Support\Str;
 use Illuminate\Validation\ValidationException;
 use App\Models\User;
 use App\Support\NotificationPlaceholderRenderer;
+use App\Support\FollowupReminderSettings;
 
 class NotificationRuleController extends Controller
 {
@@ -199,6 +200,10 @@ class NotificationRuleController extends Controller
                 );
             }
 
+        $followupReminderRows = FollowupReminderSettings::toFormRows(
+            FollowupReminderSettings::getRows()
+        );
+
         return view('settings.notifications.index', [
             'matrix' => $matrix,
             'channelOptions' => $channelOptions,
@@ -207,6 +212,7 @@ class NotificationRuleController extends Controller
             'purchaseOrderSection' => $purchaseOrderSection,
             'emailNotificationEnabled' => $emailNotificationEnabled,
             'muteAllEnabled' => $muteAllEnabled,
+            'followupReminderRows' => $followupReminderRows,
         ]);
     }
 
@@ -264,6 +270,45 @@ class NotificationRuleController extends Controller
         return redirect()
             ->route('settings.notifications.index')
             ->with('status', 'وضعیت بی‌صدا کردن اعلان‌ها ذخیره شد.');
+    }
+
+    public function updateFollowupReminderSettings(Request $request)
+    {
+        $data = $request->validate([
+            'offsets' => ['nullable', 'array'],
+            'offsets.*.value' => ['nullable', 'integer', 'min:1', 'max:100000'],
+            'offsets.*.unit' => ['nullable', 'in:minutes,hours,days'],
+            'offsets.*.time' => ['nullable', 'string'],
+        ]);
+
+        $rows = [];
+        foreach (($data['offsets'] ?? []) as $row) {
+            $value = (int) ($row['value'] ?? 0);
+            $unit = (string) ($row['unit'] ?? 'minutes');
+            if ($value < 1) {
+                continue;
+            }
+
+            $minutes = match ($unit) {
+                'days' => $value * 1440,
+                'hours' => $value * 60,
+                default => $value,
+            };
+            $time = isset($row['time']) ? trim((string) $row['time']) : '';
+            if ($time === '' || !preg_match('/^\\d{2}:\\d{2}$/', $time)) {
+                $time = null;
+            }
+            $rows[] = [
+                'minutes' => $minutes,
+                'time_of_day' => $time,
+            ];
+        }
+
+        FollowupReminderSettings::setRows($rows);
+
+        return redirect()
+            ->route('settings.notifications.index')
+            ->with('status', 'تنظیمات یادآوری پیگیری‌ها ذخیره شد.');
     }
 
     public function assetSettings(Request $request)
@@ -1185,6 +1230,16 @@ class NotificationRuleController extends Controller
 
             $context['activity']   = $activity;
             $context['form_title'] = $activity->subject;
+
+            if ($event === 'followup.reminder') {
+                $followup = new \App\Models\ActivityFollowup([
+                    'title' => 'پیگیری نمونه',
+                    'followup_at' => now()->addDay(),
+                ]);
+                $context['followup'] = $followup;
+                $context['followup_title'] = $followup->title;
+                $context['followup_at'] = $followup->followup_at;
+            }
         } elseif ($module === 'reports') {
             $context['report_title'] = 'گزارش نمونه سیستم';
             $context['form_title']   = $context['report_title'];

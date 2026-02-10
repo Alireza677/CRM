@@ -7,6 +7,7 @@ const notifAudio = new Audio('/sounds/notification.mp3');
 notifAudio.preload = 'auto';
 let audioUnlocked = false;
 let lastPlayAt = 0;
+let lastPlayErrorAt = 0;
 let notificationAssetSettings = window.__notificationAssetSettings || {};
 let notificationMuteAll = !!window.__notificationMuteAll;
 let notificationDefaultSound = window.__notificationDefaultSound || '/sounds/notification.mp3';
@@ -42,6 +43,117 @@ function unlockAudioOnce() {
 
 function getMetaContent(name) {
     return document.querySelector(`meta[name="${name}"]`)?.getAttribute('content') || '';
+}
+
+function urlBase64ToUint8Array(base64String) {
+    const padding = '='.repeat((4 - (base64String.length % 4)) % 4);
+    const base64 = (base64String + padding).replace(/-/g, '+').replace(/_/g, '/');
+    const raw = window.atob(base64);
+    const outputArray = new Uint8Array(raw.length);
+    for (let i = 0; i < raw.length; i += 1) {
+        outputArray[i] = raw.charCodeAt(i);
+    }
+    return outputArray;
+}
+
+async function registerServiceWorker() {
+    if (!('serviceWorker' in navigator)) return null;
+    try {
+        const registration = await navigator.serviceWorker.register('/service-worker.js');
+        return registration;
+    } catch (err) {
+        console.warn('Service worker registration failed', err);
+        return null;
+    }
+}
+
+async function sendSubscriptionToServer(subscription) {
+    const url = getMetaContent('webpush-subscribe-url');
+    if (!url || !subscription) return;
+
+    const json = subscription.toJSON();
+    const payload = {
+        endpoint: subscription.endpoint,
+        publicKey: json?.keys?.p256dh || null,
+        authToken: json?.keys?.auth || null,
+        contentEncoding: (window.PushManager?.supportedContentEncodings || [])[0] || 'aesgcm',
+    };
+
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getMetaContent('csrf-token'),
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify(payload),
+        });
+    } catch (err) {
+        console.warn('Webpush subscription send failed', err);
+    }
+}
+
+async function removeSubscriptionOnServer(subscription) {
+    const url = getMetaContent('webpush-unsubscribe-url');
+    if (!url || !subscription) return;
+
+    try {
+        await fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': getMetaContent('csrf-token'),
+                'Accept': 'application/json',
+            },
+            credentials: 'same-origin',
+            body: JSON.stringify({ endpoint: subscription.endpoint }),
+        });
+    } catch (err) {
+        console.warn('Webpush unsubscribe failed', err);
+    }
+}
+
+async function ensurePushSubscription() {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    const vapidKey = getMetaContent('webpush-vapid-public-key');
+    if (!vapidKey) return;
+
+    const registration = await registerServiceWorker();
+    if (!registration) return;
+
+    try {
+        let subscription = await registration.pushManager.getSubscription();
+        if (!subscription) {
+            subscription = await registration.pushManager.subscribe({
+                userVisibleOnly: true,
+                applicationServerKey: urlBase64ToUint8Array(vapidKey),
+            });
+        }
+        await sendSubscriptionToServer(subscription);
+    } catch (err) {
+        console.warn('Webpush subscribe failed', err);
+    }
+}
+
+async function initPwaRegistration() {
+    const registration = await registerServiceWorker();
+    if (!registration) return;
+
+    if (registration.waiting) {
+        registration.waiting.postMessage({ type: 'SKIP_WAITING' });
+    }
+
+    registration.addEventListener('updatefound', () => {
+        const worker = registration.installing;
+        if (!worker) return;
+        worker.addEventListener('statechange', () => {
+            if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+                worker.postMessage({ type: 'SKIP_WAITING' });
+            }
+        });
+    });
 }
 
 function getApiAuthHeaders() {
@@ -122,7 +234,6 @@ function initNotificationStream() {
 
     function playNotificationSound(notification) {
         if (notificationMuteAll) return;
-        if (document.visibilityState && document.visibilityState !== 'visible') return;
         const now = Date.now();
         if (now - lastPlayAt < 800) return;
         lastPlayAt = now;
@@ -145,11 +256,19 @@ function initNotificationStream() {
             const playPromise = notifAudio.play();
             if (playPromise && typeof playPromise.then === 'function') {
                 playPromise.catch((err) => {
-                    console.warn('Notification audio play failed', err);
+                    const errNow = Date.now();
+                    if (errNow - lastPlayErrorAt > 30000) {
+                        console.warn('Notification audio play failed', err);
+                        lastPlayErrorAt = errNow;
+                    }
                 });
             }
         } catch (err) {
-            console.warn('Notification audio play failed', err);
+            const errNow = Date.now();
+            if (errNow - lastPlayErrorAt > 30000) {
+                console.warn('Notification audio play failed', err);
+                lastPlayErrorAt = errNow;
+            }
         }
     }
 
@@ -533,3 +652,185 @@ function initNotificationStream() {
 }
 
 document.addEventListener('DOMContentLoaded', initNotificationStream);
+
+function initNotificationPermissionPrompt() {
+    if (!('Notification' in window)) return;
+
+    const bannerHost = document.getElementById('notification-permission-banner');
+    const helpModal = document.getElementById('notification-permission-help');
+    if (!bannerHost) return;
+
+    const DISMISS_KEY = 'crm_notification_permission_dismissed_until';
+    const now = Date.now();
+    const dismissedUntil = Number(window.localStorage.getItem(DISMISS_KEY) || 0) || 0;
+    if (dismissedUntil > now) return;
+
+    const permission = Notification.permission;
+    if (permission === 'granted') {
+        ensurePushSubscription();
+        return;
+    }
+
+    function dismissForDays(days) {
+        const until = Date.now() + days * 24 * 60 * 60 * 1000;
+        try {
+            window.localStorage.setItem(DISMISS_KEY, String(until));
+        } catch (e) {
+            // ignore storage errors
+        }
+    }
+
+    function clearBanner() {
+        bannerHost.innerHTML = '';
+    }
+
+    function showToast(message) {
+        const toastContainer = document.getElementById('notification-toast-container');
+        if (!toastContainer) return;
+        const wrapper = document.createElement('div');
+        wrapper.className =
+            'pointer-events-auto max-w-sm w-72 bg-white border border-green-200 shadow-lg ' +
+            'rounded-xl p-3 flex gap-2 items-start animate-fade-in-down';
+        wrapper.innerHTML = `
+            <span class="inline-flex h-8 w-8 items-center justify-center rounded-full bg-green-100 text-green-600">✓</span>
+            <div class="text-sm text-gray-800">${message}</div>
+        `;
+        toastContainer.appendChild(wrapper);
+        setTimeout(() => {
+            if (wrapper.parentNode) {
+                wrapper.parentNode.removeChild(wrapper);
+            }
+        }, 4000);
+    }
+
+    function showHelpModal() {
+        if (!helpModal) return;
+        helpModal.classList.remove('hidden');
+        helpModal.classList.add('flex');
+    }
+
+    function hideHelpModal() {
+        if (!helpModal) return;
+        helpModal.classList.add('hidden');
+        helpModal.classList.remove('flex');
+    }
+
+    if (helpModal) {
+        helpModal.addEventListener('click', (e) => {
+            if (e.target === helpModal) hideHelpModal();
+        });
+        helpModal.querySelectorAll('[data-notif-help-close]').forEach((btn) => {
+            btn.addEventListener('click', hideHelpModal);
+        });
+    }
+
+    function renderBanner({ title, body, primaryText, onPrimary, secondaryText, onSecondary }) {
+        clearBanner();
+        const wrapper = document.createElement('div');
+        wrapper.className =
+            'pointer-events-auto w-full bg-white border border-gray-200 shadow-lg rounded-xl p-3 flex gap-3 items-start';
+
+        wrapper.innerHTML = `
+            <span class="inline-flex h-9 w-9 items-center justify-center rounded-full bg-blue-100 text-blue-600 flex-shrink-0">
+                <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2"
+                          d="M15 17h5l-1.405-1.405A2.032 2.032 0 0118 14.158V11a6 6 0 00-5-5.917V4a2 2 0 10-4 0v1.083A6 6 0 004 11v3.159c0 .538-.214 1.055-.595 1.436L2 17h5m8 0a3 3 0 11-6 0h6z" />
+                </svg>
+            </span>
+            <div class="flex-1">
+                <div class="text-sm font-semibold text-gray-900">${title}</div>
+                <div class="text-xs text-gray-600 mt-1">${body}</div>
+                <div class="mt-3 flex gap-2 flex-wrap">
+                    ${primaryText ? `<button type="button" data-primary class="px-3 py-1.5 rounded-lg bg-blue-600 text-white text-xs hover:bg-blue-700">${primaryText}</button>` : ''}
+                    ${secondaryText ? `<button type="button" data-secondary class="px-3 py-1.5 rounded-lg border border-blue-200 text-blue-700 text-xs hover:bg-blue-50">${secondaryText}</button>` : ''}
+                </div>
+            </div>
+            <button type="button" data-dismiss class="text-gray-400 hover:text-gray-600 text-lg leading-none">&times;</button>
+        `;
+
+        bannerHost.appendChild(wrapper);
+
+        wrapper.querySelector('[data-dismiss]')?.addEventListener('click', () => {
+            dismissForDays(3);
+            clearBanner();
+        });
+        if (primaryText) {
+            wrapper.querySelector('[data-primary]')?.addEventListener('click', onPrimary);
+        }
+        if (secondaryText) {
+            wrapper.querySelector('[data-secondary]')?.addEventListener('click', onSecondary);
+        }
+    }
+
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) {
+        renderBanner({
+            title: 'مرورگر پشتیبانی نمی‌کند',
+            body: 'این مرورگر از اعلان‌های وب (Push) پشتیبانی کامل ندارد.',
+            secondaryText: 'راهنما',
+            onSecondary: showHelpModal,
+        });
+        return;
+    }
+
+    if (permission === 'default') {
+        renderBanner({
+            title: 'اعلان‌ها غیرفعال هستند',
+            body: 'برای دریافت اعلان‌های لحظه‌ای، مجوز اعلان‌ها را فعال کنید.',
+            primaryText: 'فعال‌سازی اعلان‌ها',
+            onPrimary: () => {
+                try {
+                    unlockAudioOnce();
+                } catch (e) {
+                    // ignore
+                }
+                Notification.requestPermission()
+                    .then((result) => {
+                        if (result === 'granted') {
+                            clearBanner();
+                            dismissForDays(30);
+                            showToast('اعلان‌ها با موفقیت فعال شدند.');
+                            ensurePushSubscription();
+                        } else if (result === 'denied') {
+                            clearBanner();
+                            dismissForDays(3);
+                            renderBanner({
+                                title: 'اعلان‌ها مسدود شده‌اند',
+                                body: 'اعلان‌ها برای این سایت در مرورگر بلاک شده است.',
+                                secondaryText: 'راهنما',
+                                onSecondary: showHelpModal,
+                            });
+                        }
+                    })
+                    .catch(() => {
+                        // ignore request errors
+                    });
+            },
+        });
+    } else if (permission === 'denied') {
+        renderBanner({
+            title: 'اعلان‌ها مسدود شده‌اند',
+            body: 'اعلان‌ها برای این سایت در مرورگر بلاک شده است.',
+            secondaryText: 'راهنما',
+            onSecondary: showHelpModal,
+        });
+    }
+}
+
+document.addEventListener('DOMContentLoaded', initNotificationPermissionPrompt);
+
+document.addEventListener('DOMContentLoaded', initPwaRegistration);
+
+window.addEventListener('beforeunload', async () => {
+    if (!('serviceWorker' in navigator) || !('PushManager' in window)) return;
+    if (Notification.permission !== 'denied') return;
+    try {
+        const reg = await navigator.serviceWorker.getRegistration();
+        if (!reg) return;
+        const subscription = await reg.pushManager.getSubscription();
+        if (subscription) {
+            await removeSubscriptionOnServer(subscription);
+        }
+    } catch (err) {
+        // ignore cleanup errors
+    }
+});

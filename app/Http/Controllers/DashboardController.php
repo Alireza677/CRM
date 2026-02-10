@@ -76,10 +76,42 @@ class DashboardController extends Controller
 
         $todayFollowUps = $leadFollowUps->concat($opFollowUps)->sortBy('date')->values();
 
+        // Past-due follow-ups (before today)
+        $pastLeadFollowUps = SalesLead::query()
+            ->where('assigned_to', $user->id)
+            ->whereNotNull('next_follow_up_date')
+            ->whereDate('next_follow_up_date', '<', $today)
+            ->get()
+            ->map(function (SalesLead $lead) {
+                return [
+                    'type'  => 'lead',
+                    'title' => method_exists($lead, 'getNotificationTitle') ? $lead->getNotificationTitle() : ($lead->full_name ?: ($lead->company ?: (__('Lead') . ' #' . $lead->id))),
+                    'date'  => $lead->next_follow_up_date,
+                    'url'   => route('marketing.leads.show', $lead->id),
+                ];
+            });
+
+        $pastOpFollowUps = Opportunity::query()
+            ->where('assigned_to', $user->id)
+            ->whereNotNull('next_follow_up')
+            ->whereDate('next_follow_up', '<', $today)
+            ->get()
+            ->map(function (Opportunity $opportunity) {
+                return [
+                    'type'  => 'opportunity',
+                    'title' => method_exists($opportunity, 'getNotificationTitle') ? $opportunity->getNotificationTitle() : ($opportunity->name ?: (__('Opportunity') . ' #' . $opportunity->id)),
+                    'date'  => $opportunity->next_follow_up,
+                    'url'   => route('sales.opportunities.show', $opportunity->id),
+                ];
+            });
+
+        $pastFollowUps = $pastLeadFollowUps->concat($pastOpFollowUps)->sortByDesc('date')->values();
+
         return view('dashboard', compact(
             'notifications',
             'tasks',
             'todayFollowUps',
+            'pastFollowUps',
             'organizationStats',
             'contactStats',
             'opportunityStats',

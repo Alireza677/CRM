@@ -9,6 +9,7 @@ use Illuminate\Http\Request;
 use App\Models\Contact;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Schema;
+use App\Crud\Crud;
 
 
 class OrganizationController extends Controller
@@ -20,76 +21,7 @@ class OrganizationController extends Controller
     }
     public function index(Request $request)
     {
-        $query = Organization::visibleFor(auth()->user(), 'organizations')
-            ->select('organizations.*', 'users.name as assigned_to_name')
-            ->leftJoin('users', 'organizations.assigned_to', '=', 'users.id')
-            ->with('contacts');
-
-        // Search functionality
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('organizations.name', 'like', "%{$search}%")
-                  ->orWhere('organizations.phone', 'like', "%{$search}%")
-                  ->orWhere('organizations.city', 'like', "%{$search}%");
-            });
-        }
-        if ($request->filled('name')) {
-            $query->where('organizations.name', 'like', '%' . $request->name . '%');
-        }
-        if ($request->filled('organization_number')) {
-            $query->where('organizations.organization_number', 'like', '%' . $request->organization_number . '%');
-        }
-        if ($request->filled('phone')) {
-            $query->where('organizations.phone', 'like', '%' . $request->phone . '%');
-        }
-        if ($request->filled('contact')) {
-            $contact = trim($request->contact);
-            $query->whereHas('contacts', function ($q) use ($contact) {
-                $q->where('first_name', 'like', "%{$contact}%")
-                  ->orWhere('last_name', 'like', "%{$contact}%");
-            });
-        }
-        if ($request->filled('city')) {
-            $query->where('organizations.city', 'like', '%' . $request->city . '%');
-        }
-        if ($request->filled('assigned_to')) {
-            $query->where('organizations.assigned_to', $request->assigned_to);
-        }
-
-        // Sorting
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-        
-        // Handle special cases for sorting
-        if ($sortField === 'assigned_to_name') {
-            $query->orderBy('users.name', $sortDirection);
-        } else {
-            $query->orderBy("organizations.{$sortField}", $sortDirection);
-        }
-
-        // Per-page selection (with allowed values and persistence)
-        $allowedPerPage = [10, 25, 50, 100, 250];
-        $perPage = (int) $request->get('per_page', session('orgs_per_page', 10));
-        if (!in_array($perPage, $allowedPerPage, true)) {
-            $perPage = 10;
-        }
-        // Remember user's choice in session when explicitly provided
-        if ($request->has('per_page')) {
-            session(['orgs_per_page' => $perPage]);
-        }
-
-        $organizations = $query->paginate($perPage)->withQueryString();
-        $users = User::all(['id', 'name']);
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('sales.organizations.partials.rows', compact('organizations'))->render(),
-                'pagination' => view('sales.organizations.partials.pagination', compact('organizations'))->render(),
-            ]);
-        }
-
-        return view('sales.organizations.index', compact('organizations', 'perPage', 'users'));
+        return Crud::index('organizations', $request);
     }
 
     public function create()
@@ -113,6 +45,7 @@ class OrganizationController extends Controller
             'description' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
             'contact_id'  => 'nullable|exists:contacts,id',
+            'referrer_contact_id' => 'nullable|exists:contacts,id',
     
             // می‌تونیم صحت مخاطب را چک کنیم، اما در create استفاده‌اش نمی‌کنیم
             'contact_id'  => 'nullable|exists:contacts,id',
@@ -160,6 +93,7 @@ class OrganizationController extends Controller
             'city'  => 'nullable|string|max:255',
             'description' => 'nullable|string',
             'assigned_to' => 'nullable|exists:users,id',
+            'referrer_contact_id' => 'nullable|exists:contacts,id',
         ], [
             'name.required' => 'نام سازمان الزامی است.',
             'website.url' => 'فرمت آدرس وب‌سایت نامعتبر است.',
@@ -192,10 +126,9 @@ class OrganizationController extends Controller
             ->with('success', 'سازمان با موفقیت بروزرسانی شد.');
     }
 
-    public function show($id)
+    public function show(Organization $organization, Request $request)
     {
-        $organization = Organization::with('contacts')->findOrFail($id);
-        return view('sales.organizations.show', compact('organization'));
+        return Crud::show('organizations', $organization, $request);
     }
 
     public function loadTab(Organization $organization, $tab)

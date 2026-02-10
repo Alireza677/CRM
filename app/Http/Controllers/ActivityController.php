@@ -9,6 +9,7 @@ use App\Models\Organization;
 use App\Models\SalesLead;
 use App\Models\ActivityReminder;
 use App\Models\User;
+use App\Crud\Crud;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Validation\Rule;
@@ -19,43 +20,7 @@ class ActivityController extends Controller
 {
     public function index(Request $request)
     {
-        $q        = trim((string) $request->get('q', ''));
-        $status   = $request->get('status');
-        $priority = $request->get('priority');
-
-        $query = Activity::query()
-            ->with([
-                'assignedTo:id,name',
-                // 'related'
-            ]);
-
-        // Hide system-generated logs from task list.
-        $query->whereNotIn('subject', [
-            'proforma_created',
-            'lead_status_reason',
-            'lost_reason',
-        ]);
-
-        if ($q !== '') {
-            $query->where(function ($qb) use ($q) {
-                $qb->where('subject', 'like', "%{$q}%")
-                   ->orWhere('description', 'like', "%{$q}%");
-            });
-        }
-
-        if (!empty($status)) {
-            $query->where('status', $status);
-        }
-
-        if (!empty($priority)) {
-            $query->where('priority', $priority);
-        }
-
-        $activities = $query->orderByDesc('start_at')
-                            ->orderByDesc('id')
-                            ->paginate(20);
-
-        return view('activities.index', compact('activities'));
+        return Crud::index('activities', $request);
     }
 
     public function create(Request $request)
@@ -100,6 +65,7 @@ class ActivityController extends Controller
             'due_at'             => ['nullable','date'],
 
             'assigned_to_id'     => ['required','exists:users,id'],
+            'created_by_id'      => ['nullable','exists:users,id'],
             'related_type'       => ['nullable', Rule::in($this->relatedTypeRuleValues())],
             'related_id'         => ['nullable','integer'],
             'status'             => ['required','in:not_started,in_progress,completed,scheduled'],
@@ -129,19 +95,10 @@ class ActivityController extends Controller
 
         $data = $validator->validate();
 
-        $original = $this->timelineSnapshot($activity);
-
         [$data['related_type'], $data['related_id']] = $this->resolveRelatedPayload(
             $data['related_type'] ?? null,
             $data['related_id'] ?? null
         );
-
-        if (!isset($data['progress'])) {
-            $data['progress'] = $activity->progress ?? 0;
-        }
-        if (($data['status'] ?? null) === 'completed' && (int) $data['progress'] < 100) {
-            $data['progress'] = 100;
-        }
 
         if (!isset($data['progress'])) {
             $data['progress'] = 0;
@@ -177,7 +134,7 @@ class ActivityController extends Controller
                 ->withInput();
         }
 
-        $activity->created_by_id = auth()->id();
+        $activity->created_by_id = (int) ($data['created_by_id'] ?? auth()->id());
         $activity->updated_by_id = auth()->id();
         $activity->is_private    = (bool) $request->boolean('is_private');
         $activity->save();
@@ -190,7 +147,7 @@ class ActivityController extends Controller
             'subject' => $activity->subject,
         ]);
 
-        return redirect()->route('activities.show', $activity)->with('success','وظیفه ایجاد شد.');
+        return redirect()->route('activities.show', $activity)->with('success','فعالیت ایجاد شد.');
     }
 
     public function show(Activity $activity)
@@ -290,6 +247,8 @@ class ActivityController extends Controller
         });
 
         $data = $validator->validate();
+
+        $original = $this->timelineSnapshot($activity);
 
         [$data['related_type'], $data['related_id']] = $this->resolveRelatedPayload(
             $data['related_type'] ?? null,

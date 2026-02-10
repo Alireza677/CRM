@@ -1,4 +1,5 @@
 @php
+    $lead = $lead ?? $model ?? null;
     use App\Helpers\UpdateHelper;
 
     $fields = [
@@ -50,9 +51,13 @@
     };
 @endphp
 
+@if(!$lead)
+    <div class="text-sm text-gray-500">بروزرسانی‌ها در دسترس نیست.</div>
+@else
+
 <div class="space-y-4" dir="rtl">
     @forelse($lead->activities()->latest()->get() as $activity)
-        <div class="flex justify-end">
+        <div class="flex justify-start">
             <div class="bg-white shadow rounded-md p-4 w-full sm:w-3/4 text-right space-y-2">
                 <div class="text-sm text-gray-600 mb-1 text-right">
                     {{ jdate($activity->created_at)->format('H:i Y/m/d') }}
@@ -245,3 +250,4 @@
         <p class="text-sm text-gray-500 text-right" dir="rtl">هیچ بروزرسانی ثبت نشده است.</p>
     @endforelse
 </div>
+@endif

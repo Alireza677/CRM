@@ -66,6 +66,7 @@
                          class="hidden absolute z-10 mt-1 w-full max-h-48 overflow-y-auto rounded border bg-white shadow">
                     </div>
                 </div>
+                <div id="mention-hidden"></div>
             </div>
 
             <div>
@@ -134,6 +135,10 @@
                                         @if($att->file_size)
                                             <div class="text-xs text-gray-500">{{ number_format($att->file_size / 1024, 1) }} KB</div>
                                         @endif
+                                        <a href="{{ $url }}" download
+                                           class="inline-block mt-1 text-xs text-blue-700 hover:underline">
+                                            دانلود
+                                        </a>
                                     </div>
                                 </div>
                             @endforeach
@@ -179,6 +184,8 @@
     const mentionUsers = @json($mentionUsers);
     const textarea = document.getElementById('note-body');
     const suggestions = document.getElementById('mention-suggestions');
+    const mentionHidden = document.getElementById('mention-hidden');
+    let selectedMentions = [];
 
     const renderSuggestions = (items) => {
         if (!items.length) {
@@ -227,7 +234,7 @@
         renderSuggestions(items);
     };
 
-    const insertMention = (label) => {
+    const insertMention = (label, id) => {
         const info = getQueryInfo();
         if (!info) return;
         const before = textarea.value.slice(0, info.atIndex);
@@ -238,6 +245,11 @@
         textarea.setSelectionRange(newPos, newPos);
         textarea.focus();
         suggestions.classList.add('hidden');
+
+        if (id && !selectedMentions.some(m => m.id === id)) {
+            selectedMentions.push({ id, label });
+            syncMentionInputs();
+        }
     };
 
     textarea.addEventListener('input', updateSuggestions);
@@ -250,10 +262,26 @@
     suggestions.addEventListener('click', (e) => {
         const btn = e.target.closest('button[data-id]');
         if (!btn) return;
-        const userId = btn.getAttribute('data-id');
+        const userId = parseInt(btn.getAttribute('data-id'), 10);
         const label = btn.getAttribute('data-label');
-        insertMention(label);
+        insertMention(label, userId);
     });
+
+    const syncMentionInputs = () => {
+        if (!mentionHidden) return;
+        const body = textarea.value || '';
+        selectedMentions = selectedMentions.filter(m => body.includes('@' + m.label));
+        mentionHidden.innerHTML = '';
+        selectedMentions.forEach(m => {
+            const input = document.createElement('input');
+            input.type = 'hidden';
+            input.name = 'mentions[]';
+            input.value = m.id;
+            mentionHidden.appendChild(input);
+        });
+    };
+
+    textarea.addEventListener('input', syncMentionInputs);
 
     const lightbox = document.createElement('div');
     lightbox.id = 'lightbox';

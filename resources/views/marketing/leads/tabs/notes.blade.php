@@ -1,3 +1,8 @@
+@php $lead = $lead ?? $model ?? null; @endphp
+
+@if(!$lead)
+    <div class="text-sm text-gray-500">یادداشت‌ها در دسترس نیست.</div>
+@else
 <div class="space-y-6">
     <!-- فرم افزودن یادداشت -->
     <div class="bg-white p-4 shadow rounded-md">
@@ -7,21 +12,19 @@
             @csrf
 
             <!-- متن یادداشت -->
-            <textarea name="body" rows="3" class="w-full border rounded p-2 text-sm" placeholder="یادداشت را بنویسید...">{{ old('body') }}</textarea>
-
-            <!-- دکمه باز کردن مودال -->
-            <div class="mt-4">
-                <label class="text-sm text-gray-600 block mb-1">منشن کردن کاربران:</label>
-                <div class="flex flex-wrap items-center gap-2">
-                    <button type="button" id="openMentionBtn" class="bg-gray-200 text-gray-800 px-3 py-1 rounded hover:bg-gray-300">
-                        انتخاب کاربران
-                    </button>
-                    <div id="selectedMentions" class="flex flex-wrap gap-2"></div>
+            <div class="relative">
+                <textarea name="body" rows="3" class="w-full border rounded p-2 text-sm" placeholder="یادداشت را بنویسید...">{{ old('body') }}</textarea>
+                <div id="mentionDropdown"
+                     class="absolute left-0 top-full mt-1 z-30 hidden min-w-[200px] max-w-[320px] rounded-xl border border-gray-200 bg-white shadow-lg">
+                    <ul id="mentionList" class="max-h-44 overflow-y-auto py-1"></ul>
                 </div>
             </div>
 
-            <!-- فیلد مخفی برای ارسال -->
-            <input type="hidden" name="mentions[]" id="mentionInput">
+            <!-- نمایش منشن‌های انتخاب‌شده -->
+            <div class="mt-4">
+                <label class="text-sm text-gray-600 block mb-1">منشن‌شده‌ها:</label>
+                <div id="selectedMentions" class="flex flex-wrap gap-2"></div>
+            </div>
 
 
             <!-- دکمه ذخیره -->
@@ -86,25 +89,13 @@
 
 </div>
 
-<!-- Modal -->
-<div id="mentionModal" class="fixed inset-0 bg-transparent bg-opacity-30 z-50 hidden items-center justify-center">
-    <div class="bg-white p-6 rounded shadow w-96 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">انتخاب کاربران</h3>
-        <div class="space-y-2">
-            @foreach(($allUsers ?? []) as $user)
-                @if($user->username)
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="mention-checkbox" value="{{ $user->username }}" data-name="{{ $user->name }}">
-                    <span>{{ $user->name }}</span>
-                </label>
-                @endif
-            @endforeach
-        </div>
-        <div class="flex justify-end space-x-2 mt-4">
-            <button type="button" id="cancelMentionBtn" class="text-gray-600 hover:underline">لغو</button>
-            <button type="button" id="applyMentionBtn" class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">تأیید</button>
-        </div>
-    </div>
-</div>
+@php
+    $mentionCandidates = ($allUsers ?? collect())
+        ->filter(fn ($u) => !empty($u->username))
+        ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'username' => $u->username])
+        ->values();
+@endphp
+<div id="mentionData" class="hidden" data-mention-candidates='@json($mentionCandidates)'></div>
+@endif
 
 

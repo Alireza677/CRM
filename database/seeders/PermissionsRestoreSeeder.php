@@ -30,6 +30,14 @@ class PermissionsRestoreSeeder extends Seeder
             'users',
             'roles',
             'settings',
+            'mail',
+            'activities',
+            'forms',
+            'customers',
+            'calendar',
+            'employee_portal',
+            'telephony',
+            'sms',
         ];
 
         $actions = [
@@ -41,6 +49,7 @@ class PermissionsRestoreSeeder extends Seeder
             'update.own',
             'update.team',
             'update.department',
+            'update.company',
             'delete.own',
             'reassign',
             'export',
@@ -60,6 +69,7 @@ class PermissionsRestoreSeeder extends Seeder
             'reports.sales.department',
             'reports.sales.own',
             'reports.finance.department',
+            'projects.manage',
         ];
         foreach ($extra as $name) {
             Permission::firstOrCreate(['name' => $name, 'guard_name' => $guard]);

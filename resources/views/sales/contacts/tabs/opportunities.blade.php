@@ -1,3 +1,7 @@
+@php
+    $contact = $contact ?? $model ?? null;
+@endphp
+
 <div class="bg-white rounded-lg shadow p-6">
     <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-800">فرصت‌های فروش مرتبط</h3>
@@ -22,4 +26,3 @@
         <p class="text-sm text-gray-500">فرصت فروشی برای این مخاطب ثبت نشده است.</p>
     @endif
 </div>
-

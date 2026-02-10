@@ -37,7 +37,15 @@ class ProjectPolicy
      */
     public function update(User $user, Project $project): bool
     {
-        return false;
+        if ($project->status === Project::STATUS_COMPLETED) {
+            return false;
+        }
+
+        if ($project->manager_id === $user->id) {
+            return true;
+        }
+
+        return $user->can('projects.manage');
     }
 
     /**

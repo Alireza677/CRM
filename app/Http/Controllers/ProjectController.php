@@ -9,6 +9,8 @@ use App\Models\User;
 use Illuminate\Validation\Rule;
 use App\Models\Contact;
 use App\Models\Organization;
+use App\Crud\Crud;
+use App\Services\Notifications\NotificationRouter;
 
 
 class ProjectController extends Controller
@@ -16,19 +18,13 @@ class ProjectController extends Controller
     // لیست پروژه‌ها
     public function index(Request $request)
     {
-        $projects = Project::query()
-            ->with('manager')
-            ->withCount([
-                'members',
-                'tasks',
-                'tasks as tasks_done_count' => function ($query) {
-                    $query->where('status', Task::STATUS_DONE);
-                },
-            ])
-            ->latest('id')
-            ->paginate(15);
+        return Crud::index('projects', $request);
+    }
 
-        return view('projects.index', compact('projects'));
+    // بایگانی پروژه‌های تمام‌شده
+    public function archive(Request $request)
+    {
+        return Crud::index('projects_archive', $request);
     }
 
     // فرم ایجاد پروژه
@@ -36,6 +32,16 @@ class ProjectController extends Controller
     {
         $users = User::query()->select('id','name','email')->orderBy('name')->get();
         return view('projects.create', compact('users'));
+    }
+
+    // فرم ویرایش پروژه
+    public function edit(Project $project)
+    {
+        $this->authorize('update', $project);
+
+        $users = User::query()->select('id','name','email')->orderBy('name')->get();
+
+        return view('projects.edit', compact('project', 'users'));
     }
 
 
@@ -48,6 +54,8 @@ class ProjectController extends Controller
             'manager_id'  => ['required','integer','exists:users,id'],
             'members'     => ['nullable','array'],
             'members.*'   => ['integer','exists:users,id'],
+            'start_date'  => ['nullable','date'],
+            'due_date'    => ['nullable','date','after_or_equal:start_date'],
         ]);
     
         // ساخت پروژه
@@ -55,6 +63,8 @@ class ProjectController extends Controller
             'name'        => $validated['name'],
             'description' => $validated['description'] ?? null,
             'manager_id'  => $validated['manager_id'],
+            'start_date'  => $validated['start_date'] ?? null,
+            'due_date'    => $validated['due_date'] ?? null,
         ]);
     
         // اطمینان: مدیر داخل اعضا هم باشد
@@ -65,10 +75,65 @@ class ProjectController extends Controller
                         ->all();
     
         $project->members()->sync($memberIds);
+
+        // Notify members that they were added to the project
+        try {
+            $router = app(NotificationRouter::class);
+            $project->loadMissing('manager');
+            $actor = $request->user();
+            $members = User::whereIn('id', $memberIds)->get();
+            $url = route('projects.show', $project);
+
+            foreach ($members as $member) {
+                if ($actor && (int) $member->id === (int) $actor->id) {
+                    continue;
+                }
+                $context = [
+                    'project' => $project,
+                    'member' => $member,
+                    'member_name' => $member->name,
+                    'manager_name' => optional($project->manager)->name,
+                    'project_name' => $project->name,
+                    'form_title' => $project->name,
+                    'actor' => $actor,
+                    'sender_name' => optional($actor)->name,
+                    'url' => $url,
+                ];
+                $router->route('projects', 'member.added', $context, [$member]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Project.store: NotificationRouter failed', ['error' => $e->getMessage()]);
+        }
     
         return redirect()
             ->route('projects.show', $project)
             ->with('success', 'پروژه با موفقیت ایجاد شد.');
+    }
+
+    // به‌روزرسانی پروژه
+    public function update(Request $request, Project $project)
+    {
+        $this->authorize('update', $project);
+
+        $validated = $request->validate([
+            'name'        => ['required','string','max:255'],
+            'description' => ['nullable','string'],
+            'manager_id'  => ['required','integer','exists:users,id'],
+            'start_date'  => ['nullable','date'],
+            'due_date'    => ['nullable','date','after_or_equal:start_date'],
+        ]);
+
+        $project->update([
+            'name'        => $validated['name'],
+            'description' => $validated['description'] ?? null,
+            'manager_id'  => $validated['manager_id'],
+            'start_date'  => $validated['start_date'] ?? null,
+            'due_date'    => $validated['due_date'] ?? null,
+        ]);
+
+        return redirect()
+            ->route('projects.show', $project)
+            ->with('success', 'پروژه با موفقیت به‌روزرسانی شد.');
     }
     
 
@@ -79,7 +144,10 @@ class ProjectController extends Controller
         // ...
         $priority = $request->query('priority');
 
-        $tasksQuery = $project->tasks()->orderByRaw("FIELD(priority,'urgent','normal')")->latest('id');
+        $tasksQuery = $project->tasks()
+            ->with('assignees:id,name,email')
+            ->orderByRaw("FIELD(priority,'urgent','normal')")
+            ->latest('id');
         if ($priority && in_array($priority, ['normal','urgent'])) {
             $tasksQuery->where('priority', $priority);
         }
@@ -159,6 +227,30 @@ class ProjectController extends Controller
         ]);
 
         $project->members()->attach($validated['user_id']);
+
+        // Notify the newly added member
+        try {
+            $router = app(NotificationRouter::class);
+            $project->loadMissing('manager');
+            $actor = $request->user();
+            $member = User::find((int) $validated['user_id']);
+            if ($member && (!$actor || (int) $member->id !== (int) $actor->id)) {
+                $context = [
+                    'project' => $project,
+                    'member' => $member,
+                    'member_name' => $member->name,
+                    'manager_name' => optional($project->manager)->name,
+                    'project_name' => $project->name,
+                    'form_title' => $project->name,
+                    'actor' => $actor,
+                    'sender_name' => optional($actor)->name,
+                    'url' => route('projects.show', $project),
+                ];
+                $router->route('projects', 'member.added', $context, [$member]);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('Project.addMember: NotificationRouter failed', ['error' => $e->getMessage()]);
+        }
 
         return back()->with('success', 'کاربر به اعضای پروژه اضافه شد.');
     }

@@ -1,3 +1,8 @@
+@php
+    $contact = $contact ?? $model ?? null;
+    $leads = $leads ?? ($contact?->leads ?? collect());
+@endphp
+
 <div class="bg-white rounded-lg shadow p-6">
     <div class="flex justify-between items-center mb-4">
         <h3 class="text-lg font-semibold text-gray-800">سرنخ‌های مرتبط</h3>

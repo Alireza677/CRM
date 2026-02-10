@@ -9,8 +9,11 @@
     @endif
 
     <div class="flex items-center justify-between mb-6">
-        <h1 class="text-2xl font-bold">پروژه‌ها</h1>
+        <h1 class="text-2xl font-bold">پروژه‌های جاری</h1>
         <div class="flex items-center gap-2">
+            <a href="{{ route('projects.archive') }}" class="px-4 py-2 rounded bg-gray-200">
+                بایگانی
+            </a>
             <button
                 id="bulk-delete-button"
                 type="submit"
@@ -41,6 +44,7 @@
                         <th class="py-3 px-4">نام</th>
                         <th class="py-3 px-4">مسئول پروژه</th>
                         <th class="py-3 px-4">تاریخ ایجاد</th>
+                        <th class="py-3 px-4">موعد مقرر</th>
                         <th class="py-3 px-4">اعضا</th>
                         <th class="py-3 px-4">پیشرفت تسک ها</th>
                         <th class="py-3 px-4">اقدامات</th>
@@ -69,6 +73,9 @@
                         </td>
                         <td class="py-3 px-4 text-gray-700">
                             {{ \Morilog\Jalali\Jalalian::fromDateTime($project->created_at)->format('Y/m/d') }}
+                        </td>
+                        <td class="py-3 px-4 text-gray-700">
+                            {{ $project->due_date ? \Morilog\Jalali\Jalalian::fromDateTime($project->due_date)->format('Y/m/d') : '—' }}
                         </td>
                         <td class="py-3 px-4 text-gray-700">{{ $project->members_count ?? 0 }}</td>
                         <td class="py-3 px-4 text-gray-700">

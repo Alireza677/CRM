@@ -1,4 +1,12 @@
-@php \App\Helpers\DateHelper::class; \App\Helpers\FormOptionsHelper::class; @endphp
+@php
+    $lead = $lead ?? $model ?? null;
+    \App\Helpers\DateHelper::class;
+    \App\Helpers\FormOptionsHelper::class;
+@endphp
+
+@if(!$lead)
+    <div class="text-sm text-gray-500">اطلاعات سرنخ در دسترس نیست.</div>
+@else
 
 <div class="font-vazirmatn" lang="fa" dir="rtl">
     @php
@@ -100,6 +108,10 @@
                     <div class="flex items-center justify-between">
                         <span class="text-gray-600">ارجاع به</span>
                         <span class="font-medium text-gray-900">{{ optional($lead->assignedUser)->name ?? '-' }}</span>
+                    </div>
+                    <div class="flex items-center justify-between">
+                        <span class="text-gray-600">واسطه/معرف</span>
+                        <span class="font-medium text-gray-900">{{ optional($lead->referrerContact)->full_name ?? '—' }}</span>
                     </div>
                 </div>
             </div>
@@ -205,3 +217,4 @@
         </div>
     </div>
 </div>
+@endif

@@ -134,8 +134,10 @@ class PurchaseOrderController extends Controller
             $query->orderBy("purchase_orders.{$sortField}", $sortDirection);
         }
 
-        $purchaseOrders = $query->paginate(10)->withQueryString();
-        return view('inventory.purchase-orders.index', compact('purchaseOrders'));
+        $perPage = (int) $request->query('per_page', 25);
+        $perPage = max(5, min($perPage, 100));
+        $purchaseOrders = $query->paginate($perPage)->withQueryString();
+        return view('inventory.purchase-orders.index', compact('purchaseOrders', 'perPage'));
     }
 
     public function create()

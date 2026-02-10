@@ -45,6 +45,14 @@ class RolePermissionSeeder extends Seeder
             'users',
             'roles',
             'settings',
+            'mail',
+            'activities',
+            'forms',
+            'customers',
+            'calendar',
+            'employee_portal',
+            'telephony',
+            'sms',
         ];
 
         $actions = [
@@ -78,6 +86,7 @@ class RolePermissionSeeder extends Seeder
             'reports.sales.department',
             'reports.sales.own',
             'reports.finance.department',
+            'projects.manage',
         ];
         foreach ($extra as $perm) {
             Permission::firstOrCreate(['name' => $perm, 'guard_name' => 'web']);

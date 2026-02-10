@@ -1,11 +1,24 @@
+@php $proforma = $proforma ?? $model ?? null; @endphp
+
+@if(!$proforma)
+    <div class="text-sm text-gray-500">اسناد پیش‌فاکتور در دسترس نیست.</div>
+@else
+    @php ob_start(); @endphp
 <div class="bg-white p-6 rounded shadow">
     <div class="flex items-center justify-between mb-4">
         <h3 class="text-lg font-semibold text-gray-700">اسناد پیش‌فاکتور</h3>
-        @if($proforma->opportunity_id)
-            <a href="{{ route('sales.documents.create', ['opportunity_id' => $proforma->opportunity_id]) }}"
+        @php
+            $opportunityId = $proforma->opportunity_id ?? $proforma->opportunity?->id;
+        @endphp
+        @if($opportunityId)
+            <a href="{{ route('sales.documents.create', ['opportunity_id' => $opportunityId]) }}"
                class="inline-flex items-center px-4 py-2 bg-blue-600 text-white text-sm font-medium rounded-md hover:bg-blue-700">
                 افزودن سند
             </a>
+        @else
+            <span class="inline-flex items-center px-4 py-2 text-sm font-medium rounded-md bg-gray-100 text-gray-400 cursor-not-allowed">
+                افزودن سند
+            </span>
         @endif
     </div>
 
@@ -82,3 +95,13 @@
         </div>
     @endif
 </div>
+    @php
+        $__html = ob_get_clean();
+        $blocks = [[
+            'type' => 'html',
+            'html' => $__html,
+            'class' => 'md:col-span-2 lg:col-span-3 p-0 bg-transparent border-0 shadow-none rounded-none',
+        ]];
+    @endphp
+    @include('crud.partials.cards', ['blocks' => $blocks])
+@endif

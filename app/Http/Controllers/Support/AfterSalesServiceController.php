@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Support;
 
 use App\Http\Controllers\Controller;
+use App\Crud\Crud;
 use App\Http\Requests\AfterSalesServiceRequest;
 use App\Models\AfterSalesService;
 use Illuminate\Http\RedirectResponse;
@@ -13,26 +14,7 @@ class AfterSalesServiceController extends Controller
 {
     public function index(Request $request): View
     {
-        $servicesQuery = AfterSalesService::query()->latest();
-        $search = $request->string('search')->trim();
-
-        if ($search->isNotEmpty()) {
-            $needle = $search->value();
-            $servicesQuery->where(function ($query) use ($needle) {
-                $query->where('customer_name', 'like', '%' . $needle . '%')
-                    ->orWhere('coordinator_name', 'like', '%' . $needle . '%')
-                    ->orWhere('coordinator_mobile', 'like', '%' . $needle . '%')
-                    ->orWhere('address', 'like', '%' . $needle . '%')
-                    ->orWhere('issue_description', 'like', '%' . $needle . '%');
-            });
-        }
-
-        $services = $servicesQuery->paginate(12)->withQueryString();
-
-        return view('support.after-sales-services.index', [
-            'services' => $services,
-            'search'   => $search->value(),
-        ]);
+        return Crud::index('after_sales_services', $request);
     }
 
     public function create(): View

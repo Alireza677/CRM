@@ -70,36 +70,74 @@ body {
         height: auto;
     }
 }
-/* تغییر رنگ پس‌زمینه تقویم */
-.pwt-datepicker {
-    background-color: #fdfdfd !important;
-    border-radius: 8px !important;
-    box-shadow: 0 4px 10px rgba(0, 0, 0, 0.1);
-    font-family: IRANSans, sans-serif;
-}
-
-/* رنگ انتخاب‌شده */
-.pwt-datepicker td.pwt-selected {
-    background-color: #3b82f6 !important; /* آبی Tailwind */
-    color: white !important;
-    border-radius: 4px;
-}
-
-/* رنگ روز جاری */
-.pwt-datepicker td.pwt-today {
-    border: 1px dashed #3b82f6 !important;
-    border-radius: 4px;
-}
-
-/* رنگ نوار بالای تقویم */
-.pwt-datepicker .pwt-toolbar {
-    background-color: #f3f4f6; /* خاکستری روشن */
-    padding: 6px 10px;
-    font-weight: bold;
-    color: #333;
-}
-.pwt-datepicker {
+/* Persian Datepicker (override styles) */
+.datepicker-plot-area,
+.datepicker-plot-area * {
     font-family: 'IRANSans', Tahoma, sans-serif !important;
+    font-size: 13px;
+}
+.datepicker-plot-area {
+    background-color: #ffffff !important;
+    border: 1px solid #e5e7eb !important;
+    border-radius: 12px !important;
+    box-shadow: 0 8px 24px rgba(15, 23, 42, 0.12);
+    padding: 6px !important;
+}
+.datepicker-plot-area .datepicker-navigator,
+.datepicker-plot-area .datepicker-time-view,
+.datepicker-plot-area .toolbox {
+    border-radius: 10px;
+}
+.datepicker-plot-area .datepicker-navigator .pwt-btn-next,
+.datepicker-plot-area .datepicker-navigator .pwt-btn-prev,
+.datepicker-plot-area .datepicker-navigator .pwt-btn-switch {
+    background-color: #f8fafc !important;
+    color: #0f172a !important;
+    border-radius: 8px;
+}
+.datepicker-plot-area .datepicker-navigator .pwt-btn-next:hover,
+.datepicker-plot-area .datepicker-navigator .pwt-btn-prev:hover,
+.datepicker-plot-area .datepicker-navigator .pwt-btn-switch:hover {
+    background-color: #eef2ff !important;
+}
+.datepicker-plot-area .datepicker-day-view .table-days td span,
+.datepicker-plot-area .datepicker-year-view .year-item,
+.datepicker-plot-area .datepicker-month-view .month-item {
+    border-radius: 8px;
+    transition: background-color 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+}
+.datepicker-plot-area .datepicker-day-view .table-days td span:hover,
+.datepicker-plot-area .datepicker-year-view .year-item:hover,
+.datepicker-plot-area .datepicker-month-view .month-item:hover {
+    background-color: #eef2ff !important;
+    color: #1e3a8a !important;
+}
+.datepicker-plot-area .datepicker-day-view .table-days td.selected span,
+.datepicker-plot-area .datepicker-year-view .year-item.selected,
+.datepicker-plot-area .datepicker-month-view .month-item.selected {
+    background-color: #2563eb !important;
+    color: #ffffff !important;
+    box-shadow: 0 4px 10px rgba(37, 99, 235, 0.35);
+}
+.datepicker-plot-area .datepicker-day-view .table-days td.today span {
+    border: 1px dashed #2563eb !important;
+    color: #1e293b !important;
+    background-color: #eff6ff !important;
+}
+.datepicker-plot-area .datepicker-day-view .table-days td.disabled span,
+.datepicker-plot-area .datepicker-year-view .year-item-disable,
+.datepicker-plot-area .datepicker-month-view .month-item-disable {
+    color: #cbd5e1 !important;
+    background: transparent !important;
+    box-shadow: none !important;
+}
+.datepicker-plot-area .toolbox .pwt-btn-submit,
+.datepicker-plot-area .toolbox .pwt-btn-calendar,
+.datepicker-plot-area .toolbox .pwt-btn-today {
+    border-radius: 8px;
+    border: 1px solid #e2e8f0;
+    background: #ffffff;
+    padding: 4px 8px;
 }
 
 

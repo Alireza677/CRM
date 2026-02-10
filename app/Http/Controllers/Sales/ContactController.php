@@ -15,6 +15,7 @@ use Illuminate\Support\Facades\Log;
 use Maatwebsite\Excel\Facades\Excel;
 use App\Imports\ContactsImport;
 use App\Services\DuplicateMobileFinder;
+use App\Crud\Crud;
 
 class ContactController extends Controller
 {
@@ -26,71 +27,7 @@ class ContactController extends Controller
 
     public function index(Request $request)
     {
-        // پیش‌فرض تعداد سطر در هر صفحه 100
-        $perPage = (int) $request->input('per_page', 100);
-        $perPage = in_array($perPage, [25, 50, 100, 200]) ? $perPage : 100;
-
-        $query = Contact::visibleFor(auth()->user(), 'contacts')
-            ->select('contacts.*', 'organizations.name as organization_name', 'users.name as assigned_to_name')
-            ->leftJoin('organizations', 'contacts.organization_id', '=', 'organizations.id')
-            ->leftJoin('users', 'contacts.assigned_to', '=', 'users.id');
-
-        // متد filled مشابه has است، ولی مقدار خالی را در نظر نمی‌گیرد
-        if ($request->filled('search')) {
-            $search = $request->search;
-            $query->where(function ($q) use ($search) {
-                $q->where('contacts.first_name', 'like', "%{$search}%")
-                    ->orWhere('contacts.last_name', 'like', "%{$search}%")
-                    ->orWhere('contacts.mobile', 'like', "%{$search}%");
-            });
-        }
-        if ($request->filled('contact_number')) {
-            $query->where('contacts.contact_number', 'like', '%' . $request->contact_number . '%');
-        }
-        if ($request->filled('mobile')) {
-            $query->where('contacts.mobile', 'like', '%' . $request->mobile . '%');
-        }
-
-        if ($request->filled('assigned_to')) {
-            $query->where('contacts.assigned_to', $request->assigned_to);
-        }
-
-        if ($request->filled('organization')) {
-            $query->where('contacts.organization_id', (int) $request->organization);
-        } elseif ($request->filled('organization_name')) {
-            $name = trim($request->input('organization_name'));
-            if ($name !== '') {
-                $query->where(function ($q) use ($name) {
-                    $q->where('organizations.name', 'like', "%{$name}%")
-                        ->orWhere('contacts.company', 'like', "%{$name}%");
-                });
-            }
-        }
-
-        $sortField     = $request->get('sort', 'created_at');
-        $sortDirection = $request->get('direction', 'desc');
-
-        if ($sortField === 'organization_name') {
-            $query->orderBy('organizations.name', $sortDirection);
-        } elseif ($sortField === 'assigned_to_name') {
-            $query->orderBy('users.name', $sortDirection);
-        } else {
-            $query->orderBy("contacts.{$sortField}", $sortDirection);
-        }
-
-        $contacts      = $query->paginate($perPage)->withQueryString();
-        $users         = \App\Models\User::all(['id', 'name']);
-        $organizations = \App\Models\Organization::all(['id', 'name']);
-        $smsLists      = SmsList::query()->orderByDesc('created_at')->get(['id', 'name']);
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('sales.contacts.partials.rows', compact('contacts'))->render(),
-                'pagination' => view('sales.contacts.partials.pagination', compact('contacts'))->render(),
-            ]);
-        }
-
-        return view('sales.contacts.index', compact('contacts', 'users', 'organizations', 'smsLists'));
+        return Crud::index('contacts', $request);
     }
 
     public function create(Request $request)
@@ -244,9 +181,9 @@ class ContactController extends Controller
         }
     }
 
-    public function show(Contact $contact)
+    public function show(Contact $contact, Request $request)
     {
-        return view('sales.contacts.show', compact('contact'));
+        return Crud::show('contacts', $contact, $request);
     }
 
     public function loadTab(Contact $contact, $tab)

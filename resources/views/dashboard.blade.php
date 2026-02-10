@@ -339,13 +339,16 @@
     </div>
 </div>
 
-        {{-- بخش دو ستونه: وظایف + پیگیری‌های امروز + اعلانات --}}
-<div class="mt-10 grid grid-cols-1 md:grid-cols-3 gap-3 max-w-6xl mx-auto">
+        {{-- بخش سه ستونه: وظایف + پیگیری‌های امروز + پیگیری‌های گذشته + اعلانات --}}
+<div class="mt-10 grid grid-cols-1 md:grid-cols-4 gap-4 max-w-7xl mx-auto">
 
             {{-- باکس وظایف تکمیل‌نشده --}}
-            <div class="w-full max-w-[400px] h-[400px] bg-white border border-gray-200 shadow rounded-none flex flex-col">
-                <div class="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-gray-800">وظایف تکمیل‌نشده</h3>
+            <div class="w-full max-w-[400px] h-[400px] bg-gradient-to-br from-white via-white to-blue-50/40 border border-gray-200/70 shadow-sm rounded-xl flex flex-col overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-200/60 flex items-center justify-between bg-white/70 backdrop-blur">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-semibold text-gray-800">وظایف تکمیل‌نشده</h3>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-blue-50 text-blue-700 border border-blue-100">{{ $tasks->count() }}</span>
+                    </div>
                     <a href="{{ route('activities.index') }}" class="text-xs text-blue-600 hover:text-blue-800">مشاهده همه</a>
                 </div>
 
@@ -353,11 +356,11 @@
                     @if($tasks->isEmpty())
                         <p class="px-4 py-3 text-xs text-gray-500">وظیفه‌ای وجود ندارد.</p>
                     @else
-                        <ul class="divide-y divide-gray-100">
+                        <ul class="divide-y divide-gray-100/70">
                             @foreach($tasks as $task)
                                 <li>
                                     <a href="{{ route('activities.show', $task->id) }}"
-                                       class="block px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 transition outline-none"
+                                       class="block px-4 py-2 hover:bg-white/70 focus:bg-white/70 transition outline-none"
                                        aria-label="مشاهده وظیفه">
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
@@ -379,7 +382,7 @@
                     @endif
                 </div>
 
-                <div class="p-3 border-t border-gray-200">
+                <div class="p-3 border-t border-gray-200/60 bg-white/70">
                     <a href="{{ route('activities.index') }}" class="w-full inline-flex items-center justify-center text-[12px] font-medium px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition">
                         مشاهده همه وظایف
                     </a>
@@ -387,9 +390,12 @@
             </div>
 
             {{-- باکس پیگیری‌های امروز --}}
-            <div class="w-full max-w-[400px] h-[400px] bg-white border border-gray-200 shadow rounded-none flex flex-col">
-                <div class="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-gray-800">پیگیری‌های امروز</h3>
+            <div class="w-full max-w-[400px] h-[400px] bg-gradient-to-br from-white via-white to-indigo-50/40 border border-gray-200/70 shadow-sm rounded-xl flex flex-col overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-200/60 flex items-center justify-between bg-white/70 backdrop-blur">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-semibold text-gray-800">پیگیری‌های امروز</h3>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-indigo-50 text-indigo-700 border border-indigo-100">{{ ($todayFollowUps ?? collect())->count() }}</span>
+                    </div>
                     <a href="{{ route('calendar.index') }}" class="text-xs text-blue-600 hover:text-blue-800">مشاهده تقویم</a>
                 </div>
 
@@ -397,10 +403,10 @@
                     @if(($todayFollowUps ?? collect())->isEmpty())
                         <p class="px-4 py-3 text-xs text-gray-500">برای امروز پیگیری برنامه‌ریزی نشده است.</p>
                     @else
-                        <ul class="divide-y divide-gray-100">
+                        <ul class="divide-y divide-gray-100/70">
                             @foreach($todayFollowUps as $fu)
                                 <li>
-                                    <a href="{{ $fu['url'] ?? '#' }}" class="block px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 transition outline-none">
+                                    <a href="{{ $fu['url'] ?? '#' }}" class="block px-4 py-2 hover:bg-white/70 focus:bg-white/70 transition outline-none">
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
                                                 <p class="text-[13px] text-gray-700 truncate">{{ $fu['title'] }}</p>
@@ -419,7 +425,50 @@
                     @endif
                 </div>
 
-                <div class="p-3 border-t border-gray-200">
+                <div class="p-3 border-t border-gray-200/60 bg-white/70">
+                    <a href="{{ route('calendar.index') }}" class="w-full inline-flex items-center justify-center text-[12px] font-medium px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition">
+                        رفتن به تقویم
+                    </a>
+                </div>
+            </div>
+
+            {{-- باکس پیگیری‌های معوق --}}
+            <div class="w-full max-w-[400px] h-[400px] bg-gradient-to-br from-white via-white to-amber-50/40 border border-gray-200/70 shadow-sm rounded-xl flex flex-col overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-200/60 flex items-center justify-between bg-white/70 backdrop-blur">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-semibold text-gray-800">پیگیری‌های روزهای قبل</h3>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-amber-50 text-amber-700 border border-amber-100">{{ ($pastFollowUps ?? collect())->count() }}</span>
+                    </div>
+                    <a href="{{ route('calendar.index') }}" class="text-xs text-blue-600 hover:text-blue-800">مشاهده تقویم</a>
+                </div>
+
+                <div class="flex-1 overflow-y-auto">
+                    @if(($pastFollowUps ?? collect())->isEmpty())
+                        <p class="px-4 py-3 text-xs text-gray-500">پیگیری معوقی وجود ندارد.</p>
+                    @else
+                        <ul class="divide-y divide-gray-100/70">
+                            @foreach($pastFollowUps as $fu)
+                                <li>
+                                    <a href="{{ $fu['url'] ?? '#' }}" class="block px-4 py-2 hover:bg-white/70 focus:bg-white/70 transition outline-none">
+                                        <div class="flex items-start justify-between gap-3">
+                                            <div class="min-w-0">
+                                                <p class="text-[13px] text-gray-700 truncate">{{ $fu['title'] }}</p>
+                                                <span class="text-[11px] text-gray-400">
+                                                    {{ \Carbon\Carbon::parse($fu['date'])->diffForHumans() }}
+                                                </span>
+                                            </div>
+                                            <span class="mt-0.5 inline-flex items-center gap-1 text-[10px] px-1.5 py-0.5 rounded {{ ($fu['type'] ?? '') === 'lead' ? 'bg-pink-100 text-pink-800' : 'bg-indigo-100 text-indigo-800' }}">
+                                                {{ ($fu['type'] ?? '') === 'lead' ? 'سرنخ' : 'فرصت' }}
+                                            </span>
+                                        </div>
+                                    </a>
+                                </li>
+                            @endforeach
+                        </ul>
+                    @endif
+                </div>
+
+                <div class="p-3 border-t border-gray-200/60 bg-white/70">
                     <a href="{{ route('calendar.index') }}" class="w-full inline-flex items-center justify-center text-[12px] font-medium px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition">
                         رفتن به تقویم
                     </a>
@@ -427,9 +476,12 @@
             </div>
 
             {{-- باکس آخرین اعلانات --}}
-            <div class="w-full max-w-[400px] h-[400px] bg-white border border-gray-200 shadow rounded-none flex flex-col">
-                <div class="px-4 py-2 border-b border-gray-200 flex items-center justify-between">
-                    <h3 class="text-sm font-semibold text-gray-800">آخرین اعلانات</h3>
+            <div class="w-full max-w-[400px] h-[400px] bg-gradient-to-br from-white via-white to-emerald-50/40 border border-gray-200/70 shadow-sm rounded-xl flex flex-col overflow-hidden">
+                <div class="px-4 py-3 border-b border-gray-200/60 flex items-center justify-between bg-white/70 backdrop-blur">
+                    <div class="flex items-center gap-2">
+                        <h3 class="text-sm font-semibold text-gray-800">آخرین اعلانات</h3>
+                        <span class="text-[11px] font-semibold px-2 py-0.5 rounded-full bg-emerald-50 text-emerald-700 border border-emerald-100">{{ $notifications->count() }}</span>
+                    </div>
                     <a href="{{ route('notifications.index') }}" class="text-xs text-blue-600 hover:text-blue-800">مشاهده همه</a>
                 </div>
 
@@ -437,7 +489,7 @@
                     @if($notifications->isEmpty())
                         <p class="px-4 py-3 text-xs text-gray-500">اعلانی وجود ندارد.</p>
                     @else
-                        <ul class="divide-y divide-gray-100">
+                        <ul class="divide-y divide-gray-100/70">
                             @foreach($notifications as $notification)
                                 @php
                                     $data = $notification->data ?? [];
@@ -455,7 +507,7 @@
                                 @endphp
 
                                 <li>
-                                    <a href="{{ $itemUrl }}" class="block px-4 py-2 hover:bg-gray-50 focus:bg-gray-50 transition outline-none" aria-label="مشاهده اعلان">
+                                    <a href="{{ $itemUrl }}" class="block px-4 py-2 hover:bg-white/70 focus:bg-white/70 transition outline-none" aria-label="مشاهده اعلان">
                                         <div class="flex items-start justify-between gap-3">
                                             <div class="min-w-0">
                                                 <p class="text-[13px] text-gray-700 truncate">{{ $title }}</p>
@@ -477,7 +529,7 @@
                     @endif
                 </div>
 
-                <div class="p-3 border-t border-gray-200">
+                <div class="p-3 border-t border-gray-200/60 bg-white/70">
                     <a href="{{ route('notifications.index') }}" class="w-full inline-flex items-center justify-center text-[12px] font-medium px-3 py-2 bg-blue-600 text-white hover:bg-blue-700 transition">
                         مشاهده همه اعلانات
                     </a>

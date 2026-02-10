@@ -25,6 +25,28 @@
                 placeholder="مثلاً: بهینه‌سازی گرمایش سالن A">
         </div>
 
+        {{-- تاریخ‌ها --}}
+        <div class="mb-6 grid gap-4 md:grid-cols-2">
+            <div>
+                <label class="block mb-1 font-medium">تاریخ شروع</label>
+                <input type="text" id="start_date_shamsi" name="start_date_shamsi"
+                       class="persian-datepicker w-full border rounded p-2 focus:outline-none focus:ring"
+                       data-alt-field="start_date" placeholder="YYYY/MM/DD" autocomplete="off"
+                       value="{{ old('start_date_shamsi') }}">
+                <input type="hidden" id="start_date" name="start_date" value="{{ old('start_date') }}">
+                @error('start_date') <div class="text-red-600 text-sm mt-1">{{ $message }}</div> @enderror
+            </div>
+            <div>
+                <label class="block mb-1 font-medium">موعد مقرر</label>
+                <input type="text" id="due_date_shamsi" name="due_date_shamsi"
+                       class="persian-datepicker w-full border rounded p-2 focus:outline-none focus:ring"
+                       data-alt-field="due_date" placeholder="YYYY/MM/DD" autocomplete="off"
+                       value="{{ old('due_date_shamsi') }}">
+                <input type="hidden" id="due_date" name="due_date" value="{{ old('due_date') }}">
+                @error('due_date') <div class="text-red-600 text-sm mt-1">{{ $message }}</div> @enderror
+            </div>
+        </div>
+        
         {{-- مسئول پروژه --}}
         <div class="mb-4">
             <label class="block mb-1 font-medium">مسئول پروژه <span class="text-red-500">*</span></label>
@@ -73,6 +95,7 @@
                     class="w-full border rounded p-2 focus:outline-none focus:ring"
                     placeholder="توضیح کوتاه درباره پروژه...">{{ old('description') }}</textarea>
         </div>
+
 
         <div class="flex gap-3">
             <a href="{{ route('projects.index') }}" class="px-4 py-2 rounded bg-gray-200">بازگشت</a>

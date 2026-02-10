@@ -92,12 +92,32 @@
                 readonly
                 class="mt-1 block w-full pr-10 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-100 cursor-pointer" />
             <input type="hidden" id="contact_id" name="contact_id" value="{{ old('contact_id', $organization->contact_id ?? '') }}" />
-            <button type="button" onclick="openContactsModal()"
+            <button type="button" onclick="openContactsModal('contact_id','contact_display')"
                     class="absolute inset-y-0 left-0 px-3 flex items-center text-gray-500 hover:text-gray-700">
             🔍
             </button>
         </div>
         @error('contact_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
+        </div>
+
+        {{-- واسطه/معرف --}}
+        <div>
+        @php
+            $referrerName = trim(optional(optional($organization)->referrerContact)->first_name.' '.optional(optional($organization)->referrerContact)->last_name);
+        @endphp
+        <label for="referrer_contact_display" class="block font-medium text-sm text-gray-700">واسطه/معرف</label>
+        <div class="relative">
+            <input id="referrer_contact_display" name="referrer_contact_display" type="text"
+                value="{{ old('referrer_contact_display', $referrerName) }}"
+                readonly
+                class="mt-1 block w-full pr-10 border-gray-300 rounded-md shadow-sm focus:border-indigo-500 focus:ring-indigo-500 bg-gray-100 cursor-pointer" />
+            <input type="hidden" id="referrer_contact_id" name="referrer_contact_id" value="{{ old('referrer_contact_id', $organization->referrer_contact_id ?? '') }}" />
+            <button type="button" onclick="openContactsModal('referrer_contact_id','referrer_contact_display')"
+                    class="absolute inset-y-0 left-0 px-3 flex items-center text-gray-500 hover:text-gray-700">
+            🔍
+            </button>
+        </div>
+        @error('referrer_contact_id') <div class="text-red-500 text-xs mt-2">{{ $message }}</div> @enderror
         </div>
     </div>
 
@@ -194,7 +214,12 @@ function toggleModal(modalId, open = true, focusInputId = null) {
   }
 }
 
-function openContactsModal() {
+function openContactsModal(targetId = 'contact_id', targetDisplay = 'contact_display') {
+  const modal = document.getElementById('contactsModal');
+  if (modal) {
+    modal.dataset.targetId = targetId;
+    modal.dataset.targetDisplay = targetDisplay;
+  }
   toggleModal('contactsModal', true, 'contactsSearch');
   document.getElementById('contactsSearch')?.dispatchEvent(new Event('input'));
 }
@@ -202,8 +227,11 @@ function closeContactsModal() { toggleModal('contactsModal', false); }
 
 // انتخاب مخاطب (ایمن)
 function selectContact(id, name) {
-  const idEl   = document.getElementById('contact_id');
-  const textEl = document.getElementById('contact_display');
+  const modal = document.getElementById('contactsModal');
+  const targetId = modal?.dataset?.targetId || 'contact_id';
+  const targetDisplay = modal?.dataset?.targetDisplay || 'contact_display';
+  const idEl   = document.getElementById(targetId);
+  const textEl = document.getElementById(targetDisplay);
 
   if (idEl)   idEl.value   = id ?? '';
   if (textEl) textEl.value = name ?? '';

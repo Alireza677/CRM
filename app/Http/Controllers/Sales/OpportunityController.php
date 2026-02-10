@@ -21,6 +21,7 @@ use App\Services\ActivityGuard;
 use App\Helpers\DateHelper;
 use App\Models\Activity as CrmActivity;
 use Illuminate\Support\Str;
+use App\Crud\Crud;
 
 class OpportunityController extends Controller
 {
@@ -31,59 +32,7 @@ class OpportunityController extends Controller
 
     public function index(Request $request)
     {
-        $query = Opportunity::visibleFor(auth()->user(), 'opportunities')
-            ->with(['contact', 'assignedUser', 'organization']);
-
-        if ($request->filled('name')) {
-            $query->where('name', 'like', '%' . $request->name . '%');
-        }
-
-        if ($request->filled('opportunity_number')) {
-            $query->where('opportunity_number', 'like', '%' . $request->opportunity_number . '%');
-        }
-
-        if ($request->filled('contact')) {
-            $query->whereHas('contact', function ($q) use ($request) {
-                $term = '%' . $request->contact . '%';
-                $q->where('first_name', 'like', $term)
-                    ->orWhere('last_name', 'like', $term)
-                    ->orWhere(DB::raw("CONCAT(first_name, ' ', last_name)"), 'like', $term);
-            });
-        }
-
-        if ($request->filled('source')) {
-            $query->where('source', 'like', '%' . $request->source . '%');
-        }
-
-        if ($request->filled('building_usage')) {
-            $query->where('building_usage', 'like', '%' . $request->building_usage . '%');
-        }
-
-        if ($request->filled('assigned_to')) {
-            $query->where('assigned_to', $request->assigned_to);
-        }
-
-        if ($request->filled('stage')) {
-            $query->where('stage', $request->stage);
-        }
-
-        if ($request->filled('created_at')) {
-            $query->whereDate('created_at', $request->created_at);
-        }
-
-        $perPage = (int) $request->get('per_page', 15);
-        $opportunities = $query->latest()->paginate($perPage)->withQueryString();
-
-        if ($request->ajax()) {
-            return response()->json([
-                'rows' => view('sales.opportunities.partials.rows', compact('opportunities'))->render(),
-                'pagination' => view('sales.opportunities.partials.pagination', compact('opportunities'))->render(),
-            ]);
-        }
-
-        $users = User::orderBy('name')->get(['id', 'name']);
-
-        return view('sales.opportunities.index', compact('opportunities', 'users'));
+        return Crud::index('opportunities', $request);
     }
 
     public function create(Request $request)
@@ -191,41 +140,38 @@ class OpportunityController extends Controller
             ->with('success', 'فرصت فروش با موفقیت ایجاد شد.');
     }
 
-    public function show(Opportunity $opportunity)
+    public function quickStore(Request $request)
     {
-        $this->authorize('view', $opportunity);
+        $this->authorize('create', \App\Models\Opportunity::class);
 
-        $breadcrumb = [
-            ['title' => 'داشبورد', 'url' => url('/dashboard')],
-            ['title' => 'فرصت‌های فروش', 'url' => route('sales.opportunities.index')],
-            ['title' => $opportunity->name ?: ('فرصت فروش #' . $opportunity->id)],
-        ];
+        $validated = $request->validate([
+            'name' => 'required|string|max:255',
+            'organization_id' => 'nullable|exists:organizations,id',
+            'contact_id' => 'nullable|exists:contacts,id',
+            'type' => 'required|string|max:255',
+            'source' => 'required|string|max:255',
+            'building_usage' => 'required|string|max:255',
+            'success_rate' => 'required|numeric|min:0|max:100',
+            'next_follow_up' => 'nullable|date',
+            'description' => 'nullable|string',
+        ]);
 
-        $activities = Activity::where('subject_type', Opportunity::class)
-            ->where('subject_id', $opportunity->id)
-            ->latest()
-            ->get();
+        $validated['stage'] = Opportunity::STAGE_OPEN;
+        $validated['assigned_to'] = $request->user()?->id;
 
-        $opportunity->load([
-            'primaryProforma',
-            'proformas' => function ($q) use ($opportunity) {
-                $q->select(
-                    'id',
-                    'opportunity_id',
-                    'proforma_number',
-                    'proforma_date',
-                    'approval_stage',
-                    'proforma_stage',
-                    'total_amount'
-                )
-                ->where('opportunity_id', $opportunity->id)
-                ->orderByDesc('proforma_date');
-            },
-        ])->loadMissing(['roleAssignments.user']);
-      
+        $opportunity = Opportunity::create($validated);
+        $opportunity->notifyIfAssigneeChanged(null);
 
+        return response()->json([
+            'ok' => true,
+            'id' => $opportunity->id,
+            'name' => $opportunity->name,
+        ]);
+    }
 
-        return view('sales.opportunities.show', compact('opportunity', 'breadcrumb', 'activities'));
+    public function show(Opportunity $opportunity, Request $request)
+    {
+        return Crud::show('opportunities', $opportunity, $request);
     }
 
     public function edit(Opportunity $opportunity)

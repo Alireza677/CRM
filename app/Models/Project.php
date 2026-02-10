@@ -12,7 +12,7 @@ class Project extends Model
     public const STATUS_ACTIVE = 'active';
     public const STATUS_COMPLETED = 'completed';
 
-    protected $fillable = ['name','description','manager_id','status'];
+    protected $fillable = ['name','description','manager_id','status','start_date','due_date'];
 
     // مسئول پروژه (یک کاربر)
     public function manager()

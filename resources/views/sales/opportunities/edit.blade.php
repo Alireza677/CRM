@@ -220,6 +220,7 @@
   const preselectedLossReasons = @json(old('loss_reasons', []));
   const hasRecentActivity = Boolean(@json($hasRecentActivity ?? false));
   const originalStage = (stageSelect ? (stageSelect.dataset.originalValue || '') : '').toLowerCase();
+  const submitBtn = form ? form.querySelector('button[type="submit"]') : null;
   const proformaUrl = @json(route('sales.proformas.create', ['opportunity_id' => $opportunity->id, 'return_to' => request()->fullUrl()]));
   const lostStages = ['lost', 'dead'];
 
@@ -360,6 +361,26 @@
     });
   }
 
+  if (submitBtn) {
+    submitBtn.addEventListener('click', function (e) {
+      if (!form) return;
+      if (typeof form.checkValidity === 'function' && !form.checkValidity()) {
+        return;
+      }
+      if (needsLossReason()) {
+        const combined = buildLossReasonNote();
+        if (!combined) {
+          e.preventDefault();
+          openLossModal();
+          return;
+        }
+      }
+      if (!shouldRequireNote()) return;
+      e.preventDefault();
+      openModal();
+    });
+  }
+
   document.getElementById('opportunityActivitySubmit')?.addEventListener('click', submitWithNote);
   document.getElementById('opportunityActivityCancel')?.addEventListener('click', closeModal);
   document.getElementById('opportunityActivityClose')?.addEventListener('click', closeModal);
@@ -394,4 +415,3 @@
 })();
 </script>
 @endpush
-

@@ -7,18 +7,19 @@
             <form method="POST" action="{{ route('sales.opportunities.notes.store', $opportunity->id) }}" id="noteForm">
                 @csrf
 
+            <div class="relative">
                 <textarea name="content" rows="3" class="w-full border rounded p-2 text-sm"
                         placeholder="یادداشتی ارسال کنید و برای اطلاع رسانی به کاربران افزودن کاربر را بزنید">{{ old('content') }}</textarea>
+                <div id="mentionDropdown"
+                     class="absolute left-0 top-full mt-1 z-30 hidden min-w-[200px] max-w-[320px] rounded-xl border border-gray-200 bg-white shadow-lg">
+                    <ul id="mentionList" class="max-h-44 overflow-y-auto py-1"></ul>
+                </div>
+            </div>
 
                 {{-- نمای گرافیکی کاربران منشن‌شده --}}
                 <div id="selectedMentions" class="flex flex-wrap mt-2 gap-1"></div>
 
-                {{-- دکمه افزودن کاربران --}}
-                <div class="flex justify-between items-center mt-2">
-                    <button type="button" id="openMentionBtn" class="text-sm text-blue-600 hover:underline">
-                        + افزودن کاربران
-                    </button>
-
+                <div class="flex justify-end items-center mt-2">
                     <button type="submit"
                             class="bg-blue-600 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-700 transition">
                         ذخیره یادداشت
@@ -69,25 +70,10 @@
 </div>
 
 
-<!-- Modal انتخاب کاربران -->
-<div id="mentionModal" class="fixed inset-0 bg-transparent bg-opacity-30 z-50 hidden items-center justify-center">
-    <div class="bg-white p-6 rounded shadow w-96 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">انتخاب کاربران</h3>
-        <div class="space-y-2">
-        @foreach($allUsers as $user)
-            @if($user->username)
-                <label class="flex items-center space-x-2">
-                    <input type="checkbox" class="mention-checkbox" value="{{ $user->username }}"
-                        data-name="{{ $user->name }}" data-id="{{ $user->id }}">
-                    <span>{{ $user->name }} <span class="text-gray-400 text-xs">(@user{{ $user->id }})</span></span>
-                </label>
-            @endif
-        @endforeach
-
-        </div>
-        <div class="flex justify-end space-x-2 mt-4">
-            <button type="button" id="cancelMentionBtn" class="text-gray-600 hover:underline">لغو</button>
-            <button type="button" id="applyMentionBtn" class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">تأیید</button>
-        </div>
-    </div>
-</div>
+@php
+    $mentionCandidates = ($allUsers ?? collect())
+        ->filter(fn ($u) => !empty($u->username))
+        ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'username' => $u->username])
+        ->values();
+@endphp
+<div id="mentionData" class="hidden" data-mention-candidates='@json($mentionCandidates)'></div>

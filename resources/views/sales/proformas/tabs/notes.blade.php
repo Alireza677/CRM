@@ -1,3 +1,9 @@
+@php $proforma = $proforma ?? $model ?? null; @endphp
+
+@if(!$proforma)
+    <div class="text-sm text-gray-500">یادداشت‌ها در دسترس نیست.</div>
+@else
+    @php ob_start(); @endphp
 <div class="space-y-6">
 
     <div class="bg-white p-4 shadow rounded-md">
@@ -6,13 +12,18 @@
         <form method="POST" action="{{ route('sales.proformas.notes.store', $proforma->id) }}" id="noteForm">
             @csrf
 
-            <textarea name="content" rows="3" class="w-full border rounded p-2 text-sm"
-                    placeholder="یادداشت خود را بنویسید و در صورت نیاز با @ همکاران را منشن کنید">{{ old('content') }}</textarea>
+            <div class="relative">
+                <textarea name="content" rows="3" class="w-full border rounded p-2 text-sm"
+                        placeholder="یادداشت خود را بنویسید و در صورت نیاز با @ همکاران را منشن کنید">{{ old('content') }}</textarea>
+                <div id="mentionDropdown"
+                     class="absolute left-0 top-full mt-1 z-30 hidden min-w-[200px] max-w-[320px] rounded-xl border border-gray-200 bg-white shadow-lg">
+                    <ul id="mentionList" class="max-h-44 overflow-y-auto py-1"></ul>
+                </div>
+            </div>
 
             <div id="selectedMentions" class="flex flex-wrap mt-2 gap-1"></div>
 
-            <div class="flex justify-between items-center mt-2">
-                <button type="button" id="openMentionBtn" class="text-sm text-blue-600 hover:underline">+ منشن همکاران</button>
+            <div class="flex justify-end items-center mt-2">
                 <button type="submit" class="bg-blue-600 text-white text-sm px-4 py-1.5 rounded hover:bg-blue-700 transition">ثبت یادداشت</button>
             </div>
         </form>
@@ -39,22 +50,20 @@
     @endforeach
 </div>
 
-<div id="mentionModal" class="fixed inset-0 bg-transparent bg-opacity-30 z-50 hidden items-center justify-center">
-    <div class="bg-white p-6 rounded shadow w-96 max-h-[80vh] overflow-y-auto">
-        <h3 class="text-lg font-semibold mb-4">انتخاب همکاران</h3>
-        <div class="space-y-2">
-        @foreach(($allUsers ?? collect()) as $user)
-            @if($user->username)
-                <label class="flex items-center space-x-2 rtl:space-x-reverse">
-                    <input type="checkbox" class="mention-checkbox" value="{{ $user->username }}" data-name="{{ $user->name }}" data-id="{{ $user->id }}">
-                    <span>{{ $user->name }} <span class="text-gray-400 text-xs">(@user{{ $user->id }})</span></span>
-                </label>
-            @endif
-        @endforeach
-        </div>
-        <div class="flex justify-end space-x-2 rtl:space-x-reverse mt-4">
-            <button type="button" id="cancelMentionBtn" class="text-gray-600 hover:underline">انصراف</button>
-            <button type="button" id="applyMentionBtn" class="bg-blue-600 text-white px-4 py-1 rounded hover:bg-blue-700">تایید</button>
-        </div>
-    </div>
-</div>
+@php
+    $mentionCandidates = ($allUsers ?? collect())
+        ->filter(fn ($u) => !empty($u->username))
+        ->map(fn ($u) => ['id' => $u->id, 'name' => $u->name, 'username' => $u->username])
+        ->values();
+@endphp
+<div id="mentionData" class="hidden" data-mention-candidates='@json($mentionCandidates)'></div>
+    @php
+        $__html = ob_get_clean();
+        $blocks = [[
+            'type' => 'html',
+            'html' => $__html,
+            'class' => 'md:col-span-2 lg:col-span-3 p-0 bg-transparent border-0 shadow-none rounded-none',
+        ]];
+    @endphp
+    @include('crud.partials.cards', ['blocks' => $blocks])
+@endif

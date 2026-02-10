@@ -64,6 +64,7 @@ class SalesLead extends Model
         'first_activity_at',
         'pool_status',
         'contact_id',
+        'referrer_contact_id',
         'lead_date',
         'next_follow_up_date',
         'do_not_email',
@@ -106,6 +107,7 @@ class SalesLead extends Model
         'owner_user_id'        => 'integer',
         'assigned_to'          => 'integer',
         'contact_id'           => 'integer',
+        'referrer_contact_id'  => 'integer',
         'team_id'              => 'integer',
         'status'               => 'string',
         'pool_status'          => 'string',
@@ -356,6 +358,11 @@ class SalesLead extends Model
     public function contact()
     {
         return $this->belongsTo(Contact::class);
+    }
+
+    public function referrerContact()
+    {
+        return $this->belongsTo(Contact::class, 'referrer_contact_id');
     }
 
     protected static function generateLeadNumber(): string

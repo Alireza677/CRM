@@ -10,6 +10,9 @@
     <meta name="notifications-unread-count-url" content="{{ route('notifications.unreadCount') }}">
     <meta name="notifications-feed-url" content="{{ route('notifications.feed.latest') }}">
     <meta name="notifications-asset-settings-url" content="{{ route('notifications.asset-settings') }}">
+    <meta name="webpush-vapid-public-key" content="{{ config('webpush.vapid.public_key') }}">
+    <meta name="webpush-subscribe-url" content="{{ route('webpush.subscribe') }}">
+    <meta name="webpush-unsubscribe-url" content="{{ route('webpush.unsubscribe') }}">
     @php
         $apiAuthExpires = now()->addMinutes((int) config('app.api_auth_ttl_minutes', 720))->timestamp;
         $apiAuthKey = (string) config('app.key');
@@ -56,6 +59,9 @@
     <link href="{{ asset('vendor/persian-datepicker/css/persian-datepicker.min.css') }}" rel="stylesheet">
 
     <link rel="icon" href="{{ asset('favicon.ico') }}" type="image/x-icon">
+    <link rel="manifest" href="{{ asset('manifest.webmanifest') }}">
+    <meta name="theme-color" content="#0f172a">
+    <link rel="apple-touch-icon" href="{{ asset('icons/icon-192.png') }}">
 
     @if(!config('app.assets_emergency'))
         <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
@@ -107,6 +113,37 @@
      class="fixed bottom-4 right-4 z-50 flex flex-col gap-2 items-end pointer-events-none">
 </div>
 
+<!-- Notification Permission Banner Container -->
+<div id="notification-permission-banner"
+     class="fixed top-4 right-4 z-50 max-w-md w-[92vw] sm:w-[420px] pointer-events-none">
+</div>
+
+<!-- Notification Permission Help Modal -->
+<div id="notification-permission-help"
+     class="fixed inset-0 z-50 hidden items-center justify-center bg-black/40 p-4">
+    <div class="w-full max-w-md rounded-xl bg-white shadow-lg border border-gray-200 p-4">
+        <div class="flex items-start justify-between gap-3">
+            <h3 class="text-sm font-semibold text-gray-900">فعال‌سازی اعلان‌ها در Chrome</h3>
+            <button type="button" data-notif-help-close
+                    class="text-gray-400 hover:text-gray-600 text-lg leading-none">
+                &times;
+            </button>
+        </div>
+        <ol class="mt-3 text-sm text-gray-700 space-y-1">
+            <li>روی آیکن قفل کنار آدرس کلیک کنید.</li>
+            <li>گزینه <span class="font-semibold">Site settings</span> را باز کنید.</li>
+            <li>در بخش <span class="font-semibold">Notifications</span> گزینه <span class="font-semibold">Allow</span> را انتخاب کنید.</li>
+            <li>صفحه را Refresh کنید.</li>
+        </ol>
+        <div class="mt-4 flex justify-end">
+            <button type="button" data-notif-help-close
+                    class="px-3 py-1.5 rounded-lg border border-gray-200 text-gray-700 hover:bg-gray-50">
+                متوجه شدم
+            </button>
+        </div>
+    </div>
+</div>
+
 <!-- Notification Sound -->
 <audio id="notification-audio"
        src="{{ asset('sounds/notification.mp3') }}"
@@ -137,6 +174,11 @@
 
     function initPicker($input, altSel){
       if (!$input.length) return;
+      const skipAutofill = $input.attr('data-skip-autofill') === '1';
+      const hadValue = !!$input.val();
+      const hadAlt = altSel ? !!$(altSel).val() : false;
+      const allowInitial = hadValue || hadAlt;
+      let userSelected = false;
 
       // اگر قبلاً مقداردهی شده، نابودش کن تا با گزینه‌های جدید بسازیم
       try { $input.persianDatepicker('destroy'); } catch(e){}
@@ -159,24 +201,52 @@
       $input.persianDatepicker({
         format: 'YYYY/MM/DD',
         initialValueType: 'persian',
-        initialValue: !!$input.val(),
+        initialValue: !skipAutofill && !!$input.val(),
         autoClose: true,
-        observer: true,
+        observer: !skipAutofill,
         calendar: {
           persian:   { locale: 'fa', leapYearMode: 'astronomical' },
           gregorian: { locale: 'en' }
         },
         altField: altSel || undefined,
         altFormat: 'YYYY-MM-DD',
+        formatter(unix){
+          if (skipAutofill && !allowInitial && !userSelected) return '';
+          const self = this;
+          const pdate = new persianDate(unix);
+          pdate.formatPersian = self.persianDigit;
+          return pdate.format(self.format);
+        },
         onSelect(unix){
-          if (!altSel) return;
-          const g = new persianDate(unix)
-            .toCalendar('gregorian')
-            .toLocale('en')
-            .format('YYYY-MM-DD');
-          $(altSel).val(g);
+          userSelected = true;
+          // Ensure the visible input is populated on user selection (especially when skipAutofill is enabled)
+          try {
+            const p = new persianDate(unix);
+            p.formatPersian = true;
+            $input.val(p.format('YYYY/MM/DD'));
+          } catch (e) {}
+          if (altSel) {
+            const g = new persianDate(unix)
+              .toCalendar('gregorian')
+              .toLocale('en')
+              .format('YYYY-MM-DD');
+            $(altSel).val(g);
+          }
+          $input.trigger('change');
         }
       });
+
+      if (skipAutofill && !hadValue && !hadAlt) {
+        $input.val('');
+        $input.attr('value', '');
+        if (altSel) $(altSel).val('');
+        setTimeout(() => {
+          if (skipAutofill && !allowInitial && !userSelected) {
+            $input.val('');
+            $input.attr('value', '');
+          }
+        }, 0);
+      }
 
       // همگام‌سازی هنگام تایپ/پاک‌کردن دستی
       if (altSel) {
@@ -212,6 +282,7 @@
     // پشتیبانی عمومی برای هر input با کلاس persian-datepicker و data-alt-field / data-target
     $('.persian-datepicker').each(function(){
       const $i = $(this);
+      if ($i.attr('data-timepicker') === '1') return;
       // Read raw attribute to avoid jQuery camelCase data() mismatch
       const altId = $i.attr('data-alt-field') || $i.attr('data-target');
       if (altId) initPicker($i, '#' + altId); else initPicker($i, null);

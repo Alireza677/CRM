@@ -80,6 +80,47 @@
                         <p class="mt-2 text-xs text-gray-600">در صورت فعال بودن، هیچ صدایی برای اعلان‌ها پخش نمی‌شود.</p>
                     </div>
 
+                    <div class="mb-6 border rounded-lg bg-emerald-50/60 p-4" x-data="followupReminderForm(@js($followupReminderRows ?? []))">
+                        <div class="flex items-center justify-between gap-4">
+                            <div class="space-y-1">
+                                <div class="text-base font-semibold text-gray-800">یادآوری پیگیری‌ها</div>
+                                <div class="text-sm text-gray-600">زمان‌بندی ارسال یادآوری برای پیگیری‌های ثبت‌شده</div>
+                            </div>
+                            <div class="text-xs text-gray-600">تعداد: <span x-text="rows.length"></span></div>
+                        </div>
+                        <form method="POST" action="{{ route('settings.notifications.followup-reminders') }}" class="mt-3 space-y-3">
+                            @csrf
+                            <div class="space-y-2">
+                                <template x-for="(row, idx) in rows" :key="idx">
+                                    <div class="flex flex-wrap items-center gap-2">
+                                        <input type="number" min="1" class="w-24 rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                            x-model.number="row.value" :name="`offsets[${idx}][value]`">
+                                        <select class="rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                            x-model="row.unit" :name="`offsets[${idx}][unit]`">
+                                            <option value="minutes">دقیقه قبل</option>
+                                            <option value="hours">ساعت قبل</option>
+                                            <option value="days">روز قبل</option>
+                                        </select>
+                                        <input type="text" inputmode="numeric" dir="ltr" placeholder="14:30"
+                                            pattern="^([01]\d|2[0-3]):[0-5]\d$"
+                                            class="rounded-md border-gray-300 shadow-sm focus:border-emerald-500 focus:ring-emerald-500"
+                                            x-model="row.time" :name="`offsets[${idx}][time]`">
+                                        <button type="button" class="px-2 py-1 text-xs bg-red-50 border border-red-200 text-red-600 rounded"
+                                            @click="removeRow(idx)">حذف</button>
+                                        <div class="w-full text-[11px] text-gray-500">فرمت ساعت: HH:MM (۲۴ ساعته)، مثل 09:30 یا 18:05</div>
+                                    </div>
+                                </template>
+                                <div x-show="rows.length === 0" class="text-xs text-gray-500">هیچ یادآوری تنظیم نشده است.</div>
+                            </div>
+                            <div class="flex flex-wrap items-center gap-3">
+                                <button type="button" class="px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm"
+                                    @click="addRow()">+ افزودن یادآوری</button>
+                                <button type="submit" class="px-3 py-1.5 bg-emerald-600 text-white rounded hover:bg-emerald-700 text-sm">ذخیره</button>
+                                <div class="text-xs text-gray-600">هر ردیف یعنی یک یادآوری که قبل از موعد پیگیری ارسال می‌شود.</div>
+                            </div>
+                        </form>
+                    </div>
+
                     @if($purchaseOrderSection)
                         <div class="mb-8 border rounded-lg overflow-hidden" x-data="{ showCreate: false, sectionOpen: true }" @po-rules-cancel.window="showCreate=false">
                             <div class="flex items-center justify-between px-4 py-3 bg-gray-50 cursor-pointer" @click="sectionOpen = !sectionOpen; if(!sectionOpen){ showCreate = false }">
@@ -579,6 +620,9 @@ function notificationsMatrix() {
                 '{note_excerpt}':'نمونه متن یادداشت...',
                 '{mentioned_user}':'کاربر منشن‌شده',
                 '{context}':'زمینه مرتبط',
+                '{activity_subject}':'فعالیت نمونه',
+                '{followup_title}':'پیگیری نمونه',
+                '{followup_at}':'1404/01/20 09:30',
                 '{form_title}':'????? ??? ?????',
             };
             let s = this.subject || '';
@@ -598,6 +642,19 @@ function notificationsMatrix() {
             this.preview = {subject:s, body:b, sms:m};
         }
     }
+}
+
+function followupReminderForm(initialRows) {
+    const rows = Array.isArray(initialRows) ? initialRows : [];
+    return {
+        rows,
+        addRow() {
+            this.rows.push({ value: 1, unit: 'days', time: '' });
+        },
+        removeRow(idx) {
+            this.rows.splice(idx, 1);
+        },
+    };
 }
 
 function notificationRuleRow(config = {}) {
@@ -689,6 +746,9 @@ function notificationRuleRow(config = {}) {
                 '{note_excerpt}':'Note excerpt...',
                 '{mentioned_user}':'Mentioned User',
                 '{context}':'Context',
+                '{activity_subject}':'Activity Subject',
+                '{followup_title}':'Followup Title',
+                '{followup_at}':'2025/01/20 09:30',
                 '{form_title}':'عنوان فرم',
             };
             let s = this.subject || '';

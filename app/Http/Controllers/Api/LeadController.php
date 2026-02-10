@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Controllers\SalesLeadController;
 use Illuminate\Http\Request;
 use App\Models\SalesLead;
+use App\Models\Contact;
 use Illuminate\Support\Facades\Log;
 
 class LeadController extends Controller
@@ -91,6 +92,14 @@ class LeadController extends Controller
 
             $lead = SalesLead::create($validated);
 
+            if (empty($lead->contact_id)) {
+                $contact = $this->createContactFromLead($lead);
+                if ($contact) {
+                    $lead->forceFill(['contact_id' => $contact->id])->saveQuietly();
+                    $lead->contacts()->syncWithoutDetaching([$contact->id]);
+                }
+            }
+
             Log::info('✅ سرنخ ذخیره شد', ['lead_id' => $lead->id]);
 
             return response()->json([
@@ -110,6 +119,44 @@ class LeadController extends Controller
                 'message' => 'ثبت سرنخ با خطا مواجه شد.',
             ], 500);
         }
+    }
+
+    private function createContactFromLead(SalesLead $lead): ?Contact
+    {
+        $hasAnyValue = !empty($lead->full_name) || !empty($lead->mobile);
+        if (!$hasAnyValue) {
+            return null;
+        }
+
+        [$firstName, $lastName] = $this->splitLeadName($lead->full_name);
+
+        return Contact::create([
+            'owner_user_id' => $lead->owner_user_id ?? 1,
+            'first_name'    => $firstName,
+            'last_name'     => $lastName,
+            'mobile'        => $lead->mobile,
+            'state'         => $lead->state,
+            'city'          => $lead->city,
+            'assigned_to'   => $lead->assigned_to,
+        ]);
+    }
+
+    private function splitLeadName(?string $fullName): array
+    {
+        if (!$fullName) {
+            return [null, null];
+        }
+
+        $parts = preg_split('/\s+/', trim($fullName));
+        $lastName = array_pop($parts);
+        $firstName = trim(implode(' ', $parts));
+
+        if ($firstName === '') {
+            $firstName = $lastName;
+            $lastName = null;
+        }
+
+        return [$firstName ?: null, $lastName ?: null];
     }
 }
 

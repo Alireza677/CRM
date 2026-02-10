@@ -46,14 +46,17 @@ class RoleReportController extends Controller
             'sales_agent' => 'نماینده فروش',
             'user' => 'کاربر',
         ];
-        $actionLabels = [
-            'view' => 'مشاهده',
-            'create' => 'ایجاد',
-            'update' => 'ویرایش',
-            'delete' => 'حذف',
-            'reassign' => 'اختصاص مجدد',
-            'export' => 'خروجی',
-        ];
+        $actionLabels = [
+            'view' => 'مشاهده',
+            'create' => 'ایجاد',
+            'update' => 'ویرایش',
+            'delete' => 'حذف',
+            'reassign' => 'اختصاص مجدد',
+            'export' => 'خروجی',
+            'manage' => 'مدیریت',
+            'sales' => 'گزارش فروش',
+            'finance' => 'گزارش مالی',
+        ];
 
         $headers = [
             'Content-Type' => 'text/csv; charset=UTF-8',
@@ -146,7 +149,7 @@ class RoleReportController extends Controller
         $allPermissions = Permission::all()->pluck('name')->values();
 
         // Known actions and scopes as requested
-        $actions = ['view', 'create', 'update', 'delete', 'reassign', 'export'];
+        $actions = ['view', 'create', 'update', 'delete', 'reassign', 'export', 'manage', 'sales', 'finance'];
         $scopes  = FormOptionsHelper::permissionScopes();
 
         // Determine modules from permissions list

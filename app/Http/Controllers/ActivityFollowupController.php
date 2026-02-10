@@ -4,6 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Activity;
 use App\Models\ActivityFollowup;
+use App\Models\ActivityReminder;
+use App\Support\FollowupReminderSettings;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 
 class ActivityFollowupController extends Controller
@@ -25,7 +28,7 @@ class ActivityFollowupController extends Controller
             return back()->withErrors(['followup_at' => 'تاریخ پیگیری معتبر نیست.'])->withInput();
         }
 
-        $activity->followups()->create([
+        $followup = $activity->followups()->create([
             'followup_at' => $followupAt,
             'title' => $validated['title'],
             'note' => $validated['note'] ?? null,
@@ -33,6 +36,8 @@ class ActivityFollowupController extends Controller
             'status' => $validated['status'] ?? 'pending',
             'created_by_id' => $request->user()?->id,
         ]);
+
+        $this->syncFollowupReminders($followup, $activity, $request->user());
 
         if (!empty($validated['assigned_to_id'])) {
             $assignee = \App\Models\User::find((int) $validated['assigned_to_id']);
@@ -98,6 +103,8 @@ class ActivityFollowupController extends Controller
             $followup->update($payload);
         }
 
+        $this->syncFollowupReminders($followup, $activity, $request->user());
+
         return redirect()->route('activities.show', $activity)->with('success', 'پیگیری بروزرسانی شد.');
     }
 
@@ -109,6 +116,7 @@ class ActivityFollowupController extends Controller
             abort(404);
         }
 
+        ActivityReminder::where('followup_id', $followup->id)->delete();
         $followup->delete();
 
         return back()->with('success', 'پیگیری حذف شد.');
@@ -150,5 +158,65 @@ class ActivityFollowupController extends Controller
         $ar = ['٠','١','٢','٣','٤','٥','٦','٧','٨','٩'];
         $en = ['0','1','2','3','4','5','6','7','8','9'];
         return str_replace($ar, $en, str_replace($fa, $en, $value));
+    }
+
+    private function syncFollowupReminders(ActivityFollowup $followup, Activity $activity, ?\App\Models\User $actor): void
+    {
+        try {
+            ActivityReminder::where('followup_id', $followup->id)->delete();
+
+            if ($followup->status !== 'pending') {
+                return;
+            }
+
+            $followupAt = $followup->followup_at instanceof Carbon
+                ? $followup->followup_at
+                : ($followup->followup_at ? Carbon::parse($followup->followup_at) : null);
+
+            if (!$followupAt) {
+                return;
+            }
+
+            $notifyUserId = (int) ($followup->assigned_to_id ?: $activity->assigned_to_id);
+            if ($notifyUserId <= 0) {
+                return;
+            }
+
+            $settingsRows = FollowupReminderSettings::getRows();
+            if (empty($settingsRows)) {
+                return;
+            }
+
+            $rows = [];
+            foreach ($settingsRows as $row) {
+                $minutes = (int) ($row['minutes'] ?? 0);
+                if ($minutes < 1) {
+                    continue;
+                }
+                $remindAt = $followupAt->copy()->subMinutes($minutes);
+                $time = isset($row['time_of_day']) ? trim((string) $row['time_of_day']) : '';
+                if ($time !== '' && preg_match('/^(\d{2}):(\d{2})$/', $time, $m)) {
+                    $remindAt = $remindAt->setTime((int) $m[1], (int) $m[2], 0);
+                }
+                $rows[] = [
+                    'activity_id' => $activity->id,
+                    'followup_id' => $followup->id,
+                    'kind' => 'absolute',
+                    'offset_minutes' => null,
+                    'time_of_day' => null,
+                    'remind_at' => $remindAt->format('Y-m-d H:i:s'),
+                    'notify_user_id' => $notifyUserId,
+                    'created_by_id' => (int) ($actor?->id ?? 0) ?: null,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ];
+            }
+
+            if (!empty($rows)) {
+                ActivityReminder::insert($rows);
+            }
+        } catch (\Throwable $e) {
+            \Log::warning('ActivityFollowupController.syncFollowupReminders failed', ['error' => $e->getMessage()]);
+        }
     }
 }

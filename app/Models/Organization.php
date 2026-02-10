@@ -9,6 +9,7 @@ use Spatie\Activitylog\LogOptions;
 use Spatie\Activitylog\Traits\LogsActivity;
 use App\Models\Traits\AppliesVisibilityScope;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Organization extends Model
 {
@@ -27,12 +28,14 @@ class Organization extends Model
         'state',
         'city',
         'assigned_to',
+        'referrer_contact_id',
         'merged_into_id',
         'merged_at',
     ];
 
     protected $casts = [
         'merged_at' => 'datetime',
+        'referrer_contact_id' => 'integer',
     ];
 
     protected static function booted(): void
@@ -83,6 +86,11 @@ class Organization extends Model
         return $this->belongsTo(Contact::class, 'contact_id');
     }
 
+    public function referrerContact()
+    {
+        return $this->belongsTo(Contact::class, 'referrer_contact_id');
+    }
+
     public function mergedInto()
     {
         return $this->belongsTo(self::class, 'merged_into_id');
@@ -107,6 +115,7 @@ class Organization extends Model
                 'state',
                 'city',
                 'assigned_to',
+                'referrer_contact_id',
             ])
             ->useLogName('organization')
             ->logOnlyDirty()
@@ -116,6 +125,11 @@ class Organization extends Model
     public function activities()
     {
         return $this->morphMany(\Spatie\Activitylog\Models\Activity::class, 'subject');
+    }
+
+    public function notes(): MorphMany
+    {
+        return $this->morphMany(\App\Models\Note::class, 'noteable');
     }
 }
 

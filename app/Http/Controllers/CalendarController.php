@@ -33,6 +33,7 @@ class CalendarController extends Controller
 
         $activitiesByDate = Activity::query()
             ->visibleTo($request->user())
+            ->whereRaw('NOT (source = ? AND status = ?)', ['project_task', 'completed'])
             ->whereBetween('start_at', [$rangeStart, $rangeEnd])
             ->orderBy('start_at')
             ->get(['id', 'subject', 'start_at'])
@@ -101,6 +102,8 @@ class CalendarController extends Controller
             // Fallback to visibility rules
             $q->visibleTo($user);
         }
+
+        $q->whereRaw('NOT (source = ? AND status = ?)', ['project_task', 'completed']);
 
         if ($start) $q->where('start_at', '>=', $start);
         if ($end) {

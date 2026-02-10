@@ -89,7 +89,7 @@
                         @endphp
                         <div class="flex items-center justify-between">
                             <span class="text-gray-600">{{ $label }}</span>
-                            <span class="font-medium text-gray-900">{{ $roleUser?->name ?? $roleUser?->username ?? '?' }}</span>
+                            <span class="font-medium text-gray-900">{{ $roleUser?->name ?: ($roleUser?->username ?: '—') }}</span>
                         </div>
                     @endforeach
                 </div>

@@ -48,9 +48,19 @@ class Task extends Model
         return $this->belongsTo(User::class, 'assigned_to');
     }
 
+    public function assignees()
+    {
+        return $this->belongsToMany(User::class, 'task_user');
+    }
+
     public function notes()
     {
         return $this->morphMany(\App\Models\Note::class, 'noteable')->latest();
+    }
+
+    public function activity()
+    {
+        return $this->morphOne(\App\Models\Activity::class, 'related');
     }
 
 }

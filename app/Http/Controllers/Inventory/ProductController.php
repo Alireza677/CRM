@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Inventory;
 
 use App\Http\Controllers\Controller;
+use App\Crud\Crud;
 use App\Models\Product;
 use App\Models\Category;
 use App\Models\Supplier;
@@ -19,61 +20,7 @@ class ProductController extends Controller
     }
     public function index(Request $request)
     {
-        $query = Product::query()
-            ->select([
-                'products.*',
-                'categories.name as category_name',
-                'suppliers.name as supplier_name'
-            ])
-            ->leftJoin('categories', 'products.category_id', '=', 'categories.id')
-            ->leftJoin('suppliers', 'products.supplier_id', '=', 'suppliers.id');
-
-        // Search functionality
-        if ($request->has('search')) {
-            $search = $request->search;
-            $query->where(function($q) use ($search) {
-                $q->where('products.name', 'like', "%{$search}%")
-                  ->orWhere('products.part_number', 'like', "%{$search}%")
-                  ->orWhere('products.manufacturer', 'like', "%{$search}%")
-                  ->orWhere('products.series', 'like', "%{$search}%");
-            });
-        }
-
-        // Sorting
-        $sortField = $request->get('sort', 'created_at');
-        $sortDirection = strtolower((string) $request->get('direction', 'desc'));
-
-        // Normalize sort direction and field to prevent invalid inputs
-        if (! in_array($sortDirection, ['asc', 'desc'], true)) {
-            $sortDirection = 'desc';
-        }
-
-        $allowedSortFields = [
-            'created_at', 'name', 'unit_price', 'stock_quantity',
-            'code', 'serial_number', 'is_active', 'receiver_name', 'percentage'
-        ];
-        $specialSortFields = ['category', 'supplier'];
-        if (! in_array($sortField, array_merge($allowedSortFields, $specialSortFields), true)) {
-            $sortField = 'created_at';
-        }
-        
-        if ($sortField === 'category') {
-            $query->orderBy('categories.name', $sortDirection);
-        } elseif ($sortField === 'supplier') {
-            $query->orderBy('suppliers.name', $sortDirection);
-        } else {
-            $query->orderBy("products.{$sortField}", $sortDirection);
-        }
-
-        $allowedPerPage = [10, 25, 50, 100, 200];
-        $perPage = (int) $request->get('per_page', 10);
-        if (! in_array($perPage, $allowedPerPage, true)) {
-            $perPage = 10;
-        }
-
-        $products = $query->paginate($perPage)->withQueryString();
-
-        return view('inventory.products.index', compact('products'));
+        return Crud::index('products', $request);
     }
 
     public function create()

@@ -119,15 +119,20 @@
                     @enderror
                 </div>
             @endforeach
-            @php $isLeadEditMode = isset($lead) && !empty($lead->id); @endphp
+            @php
+                $isLeadEditMode = isset($lead) && !empty($lead->id);
+                $selectedContactId = old('contact_id', $lead->contact_id ?? null);
+                $selectedContactName = null;
+                if (!empty($selectedContactId)) {
+                    $selectedContactName = optional(($contacts ?? collect())->firstWhere('id', (int) $selectedContactId))->full_name;
+                }
+                $selectedReferrerContactId = old('referrer_contact_id', $lead->referrer_contact_id ?? null);
+                $selectedReferrerContactName = null;
+                if (!empty($selectedReferrerContactId)) {
+                    $selectedReferrerContactName = optional(($contacts ?? collect())->firstWhere('id', (int) $selectedReferrerContactId))->full_name;
+                }
+            @endphp
             @unless($isLeadEditMode)
-                @php
-                    $selectedContactId = old('contact_id', $lead->contact_id ?? null);
-                    $selectedContactName = null;
-                    if (!empty($selectedContactId)) {
-                        $selectedContactName = optional($contacts->firstWhere('id', (int) $selectedContactId))->full_name;
-                    }
-                @endphp
                 <div class="md:col-span-2 col-span-1">
                     <label for="lead_contact_display" class="block font-medium text-sm text-gray-700">مخاطب مرتبط</label>
                     <div class="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
@@ -149,6 +154,26 @@
                     @enderror
                 </div>
             @endunless
+            <div class="md:col-span-2 col-span-1">
+                <label for="lead_referrer_contact_display" class="block font-medium text-sm text-gray-700">واسطه/معرف</label>
+                <div class="mt-2 flex flex-col gap-2 md:flex-row md:items-center">
+                    <input type="text" id="lead_referrer_contact_display"
+                           class="flex-1 rounded-md border-gray-300 shadow-sm bg-gray-50 cursor-pointer focus:border-blue-500 focus:ring-blue-500"
+                           placeholder="یک مخاطب را انتخاب کنید..."
+                           readonly onclick="openLeadContactModal('lead_referrer_contact_id', 'lead_referrer_contact_display')"
+                           value="{{ $selectedReferrerContactName }}">
+                    <input type="hidden" name="referrer_contact_id" id="lead_referrer_contact_id" value="{{ $selectedReferrerContactId }}">
+                    <button type="button"
+                            class="px-4 py-2 rounded-md bg-indigo-600 text-white text-sm font-medium hover:bg-indigo-700 focus:outline-none focus:ring-2 focus:ring-indigo-500 focus:ring-offset-1"
+                            onclick="openLeadContactModal('lead_referrer_contact_id', 'lead_referrer_contact_display')">
+                        انتخاب
+                    </button>
+                </div>
+                <p class="mt-1 text-xs text-gray-500">از بین مخاطبین موجود یک گزینه را برگزینید.</p>
+                @error('referrer_contact_id')
+                    <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                @enderror
+            </div>
         </div>
     </div>
     </details>
